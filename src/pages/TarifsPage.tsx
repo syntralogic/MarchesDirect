@@ -2,70 +2,72 @@ import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { CallbackModal } from '@/components/CallbackModal';
 import { AppointmentModal } from '@/components/AppointmentModal';
-
-const PLANS = [
-  {
-    id: 'decouverte',
-    name: 'DÉCOUVERTE',
-    price: '0',
-    period: '14 jours d\'essai',
-    badge: null,
-    features: [
-      '1 métier suivi',
-      'Alertes par email',
-      'Recherche et filtres',
-      'Support par email',
-    ],
-    cta: 'Essayer gratuitement',
-    ctaType: 'appt' as const,
-    highlight: false,
-  },
-  {
-    id: 'pro',
-    name: 'PRO',
-    price: '89',
-    period: '/ mois',
-    badge: 'Le plus choisi',
-    features: [
-      'Métiers et journeys illimités',
-      'Matching et résumé IA',
-      'Chatbot IA',
-      'Module réponse aux appels d\'offres',
-      'Profil entreprise et coffre-fort documentaire',
-    ],
-    cta: 'Demander un rappel',
-    ctaType: 'callback' as const,
-    highlight: true,
-  },
-  {
-    id: 'entreprise',
-    name: 'ENTREPRISE',
-    price: 'Sur devis',
-    period: 'Plusieurs utilisateurs',
-    badge: null,
-    features: [
-      'Comptes multi-utilisateurs',
-      'Export CRM dédié',
-      'Accompagnement dédié',
-      'MFA et rôles avancés',
-    ],
-    cta: 'Être rappelé',
-    ctaType: 'callback' as const,
-    highlight: false,
-  },
-];
+import { useLang } from '@/contexts/LangContext';
 
 export default function TarifsPage() {
+  const { t } = useLang();
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
+
+  const PLANS = [
+    {
+      id: 'decouverte',
+      name: t('planDiscoveryName'),
+      price: '0',
+      period: t('planDiscoveryPeriod'),
+      badge: null,
+      features: [
+        t('planDiscoveryFeat1'),
+        t('planDiscoveryFeat2'),
+        t('planDiscoveryFeat3'),
+        t('planDiscoveryFeat4'),
+      ],
+      cta: t('planDiscoveryCta'),
+      ctaType: 'appt' as const,
+      highlight: false,
+    },
+    {
+      id: 'pro',
+      name: t('planProName'),
+      price: '89',
+      period: t('planProPeriod'),
+      badge: t('planProBadge'),
+      features: [
+        t('planProFeat1'),
+        t('planProFeat2'),
+        t('planProFeat3'),
+        t('planProFeat4'),
+        t('planProFeat5'),
+      ],
+      cta: t('planProCta'),
+      ctaType: 'callback' as const,
+      highlight: true,
+    },
+    {
+      id: 'entreprise',
+      name: t('planEntName'),
+      price: t('planEntPrice'),
+      period: t('planEntPeriod'),
+      badge: null,
+      features: [
+        t('planEntFeat1'),
+        t('planEntFeat2'),
+        t('planEntFeat3'),
+        t('planEntFeat4'),
+      ],
+      cta: t('planEntCta'),
+      ctaType: 'callback' as const,
+      highlight: false,
+    },
+  ];
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-16">
       {/* Header */}
       <div className="text-center mb-10 md:mb-14">
-        <h1 className="text-2xl md:text-4xl font-extrabold text-white mb-3">Un abonnement, toutes vos opportunités.</h1>
+        <h1 className="text-2xl md:text-4xl font-extrabold text-white mb-3">{t('pricingTitle')}</h1>
         <p className="text-[#B9BBC8] text-sm md:text-base max-w-xl mx-auto">
-          Commencez gratuitement. Un conseiller vous rappelle pour configurer votre profil et choisir la formule adaptée.
+          {t('pricingSub')}
         </p>
       </div>
 
@@ -93,13 +95,12 @@ export default function TarifsPage() {
             <div className="mb-5">
               <h2 className="text-xs font-bold text-orange uppercase tracking-widest mb-3">{plan.name}</h2>
               <div className="flex items-end gap-1">
-                {plan.price === 'Sur devis' ? (
-                  <span className="text-3xl font-extrabold text-white">Sur devis</span>
+                {plan.price === t('planEntPrice') ? (
+                  <span className="text-3xl font-extrabold text-white">{plan.price}</span>
                 ) : (
                   <>
                     <span className="text-4xl font-extrabold text-white">{plan.price}</span>
-                    {plan.price !== '0' && <span className="text-[#B9BBC8] text-sm mb-1">€</span>}
-                    {plan.price === '0' && <span className="text-[#B9BBC8] text-sm mb-1">€</span>}
+                    <span className="text-[#B9BBC8] text-sm mb-1">€</span>
                   </>
                 )}
               </div>
@@ -133,7 +134,7 @@ export default function TarifsPage() {
 
       {/* Note */}
       <p className="text-center text-xs text-[#B9BBC8] mt-8">
-        Tous les tarifs s'entendent HT. Sans engagement. Résiliation à tout moment depuis votre espace profil.
+        {t('pricingNote')}
       </p>
 
       <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />

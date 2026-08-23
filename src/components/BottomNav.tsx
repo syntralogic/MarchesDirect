@@ -22,20 +22,11 @@ export function BottomNav() {
         {NAV_ITEMS.map(item => {
           const active = isActive(item.href);
           return (
-            <Link
-              key={item.key}
-              to={item.href}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group"
-            >
-              {/* Active indicator line */}
+            <Link key={item.key} to={item.href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group">
               {active && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-orange rounded-full" />
               )}
-              <item.icon
-                size={20}
-                strokeWidth={active ? 2 : 1.5}
-                className={active ? 'text-orange' : 'text-[#B9BBC8] group-hover:text-white transition-colors'}
-              />
+              <item.icon size={20} strokeWidth={active ? 2 : 1.5} className={active ? 'text-orange' : 'text-[#B9BBC8] group-hover:text-white transition-colors'} />
               <span className={`text-[10px] font-medium ${active ? 'text-orange' : 'text-[#B9BBC8] group-hover:text-white transition-colors'}`}>
                 {t(item.key)}
               </span>
@@ -43,7 +34,6 @@ export function BottomNav() {
           );
         })}
       </div>
-      {/* Safe area for devices with home indicator */}
       <div className="h-safe-area-bottom" />
     </nav>
   );

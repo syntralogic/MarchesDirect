@@ -11,14 +11,11 @@ import HomePage from '@/pages/HomePage';
 import AppelsPage from '@/pages/AppelsPage';
 import MarchesPublicsPage from '@/pages/MarchesPublicsPage';
 import SousTraitancePage from '@/pages/SousTraitancePage';
-import CommentCaMarchePage from '@/pages/CommentCaMarchePage';
+import UnitedInfoPages from '@/pages/InfoPage'; 
 import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
 import ProfilPage from '@/pages/ProfilPage';
-import AProposPage from '@/pages/AProposPage';
-import EquipePage from '@/pages/EquipePage';
-import FaqPage from '@/pages/FaqPage';
 import ActualitesPage from '@/pages/ActualitesPage';
 import ZonesPage from '@/pages/ZonesPage';
 import SecteursPage from '@/pages/SecteursPage';
@@ -26,7 +23,6 @@ import InternationalPage from '@/pages/InternationalPage';
 import MentionsLegalesPage from '@/pages/MentionsLegalesPage';
 import ConfidentialitePage from '@/pages/ConfidentialitePage';
 import CguPage from '@/pages/CguPage';
-import ContactPage from '@/pages/ContactPage';
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -52,14 +48,20 @@ const App: React.FC = () => {
               <Route path="/appels-doffres" element={<AppelsPage />} />
               <Route path="/marches-publics" element={<MarchesPublicsPage />} />
               <Route path="/sous-traitance" element={<SousTraitancePage />} />
-              <Route path="/comment-ca-marche" element={<CommentCaMarchePage />} />
+              
+              {/* About, Team, and How It Works all share the same data */}
+              <Route path="/about" element={<UnitedInfoPages />} />
+              <Route path="/team" element={<UnitedInfoPages />} />
+              <Route path="/how-it-works" element={<UnitedInfoPages />} />
+              
+              {/* FAQ and Contact only show their own content */}
+              <Route path="/faq" element={<UnitedInfoPages />} />
+              <Route path="/contact" element={<UnitedInfoPages />} />
+              
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
               <Route path="/tableau-de-bord" element={<TableauDeBordPage />} />
               <Route path="/profil" element={<ProfilPage />} />
-              <Route path="/a-propos" element={<AProposPage />} />
-              <Route path="/equipe" element={<EquipePage />} />
-              <Route path="/faq" element={<FaqPage />} />
               <Route path="/actualites" element={<ActualitesPage />} />
               <Route path="/zones" element={<ZonesPage />} />
               <Route path="/secteurs" element={<SecteursPage />} />
@@ -67,7 +69,6 @@ const App: React.FC = () => {
               <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
               <Route path="/confidentialite" element={<ConfidentialitePage />} />
               <Route path="/cgu" element={<CguPage />} />
-              <Route path="/contact" element={<ContactPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

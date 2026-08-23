@@ -1,27 +1,28 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { mockArticles } from '@/data/mockData';
-
-const CATS = ['Tous', 'Réglementation', 'Tendances', 'Opportunités'];
-
-const CAT_COLORS: Record<string, string> = {
-  Réglementation: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  Tendances: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
-  Opportunités: 'text-green-400 bg-green-400/10 border-green-400/20',
-};
+import { useLang } from '@/contexts/LangContext';
 
 export default function ActualitesPage() {
+  const { t } = useLang();
   const [activeCat, setActiveCat] = useState('Tous');
 
+  const CATS = [t('newsCat1'), t('newsCat2'), t('newsCat3'), t('newsCat4')];
+
   const filtered = activeCat === 'Tous' ? mockArticles : mockArticles.filter(a => a.category === activeCat);
+
+  const CAT_COLORS: Record<string, string> = {
+    [t('newsCat2')]: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+    [t('newsCat3')]: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
+    [t('newsCat4')]: 'text-green-400 bg-green-400/10 border-green-400/20',
+  };
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-16">
       <div className="mb-8 md:mb-10">
-        <span className="text-xs font-bold text-orange uppercase tracking-widest">Actualités</span>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-1 mb-2">L'actualité des marchés.</h1>
-        <p className="text-[#B9BBC8] text-sm">Réglementation, nouvelles opportunités et secteurs à suivre.</p>
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('newsPageTag')}</span>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-1 mb-2">{t('newsPageTitle')}</h1>
+        <p className="text-[#B9BBC8] text-sm">{t('newsPageSub')}</p>
       </div>
 
       {/* Category filter */}

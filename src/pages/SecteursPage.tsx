@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Building2, Zap, Settings, Monitor, Truck, Briefcase, ArrowRight } from 'lucide-react';
 import { sectors } from '@/data/mockData';
+import { useLang } from '@/contexts/LangContext';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Building2, Zap, Settings, Monitor, Truck, Briefcase,
@@ -34,14 +35,16 @@ const SECTOR_DETAILS: Record<string, { description: string; examples: string[] }
 };
 
 export default function SecteursPage() {
+  const { t } = useLang();
+
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12">
       {/* Header */}
       <div className="mb-8 md:mb-10">
-        <span className="text-xs font-bold text-orange uppercase tracking-widest">Secteurs d'activité</span>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-1 mb-2">Des opportunités pour tous les métiers</h1>
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('sectorsPageTag')}</span>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-1 mb-2">{t('sectorsPageTitle')}</h1>
         <p className="text-[#B9BBC8] text-sm max-w-2xl">
-          Marchés Direct couvre l'ensemble des secteurs de la commande publique et privée.
+          {t('sectorsPageSub')}
         </p>
       </div>
 
@@ -78,7 +81,7 @@ export default function SecteursPage() {
                 </>
               )}
               <div className="flex items-center gap-1 text-xs text-orange font-semibold mt-auto">
-                Voir les opportunités <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                {t('sectorsSeeOpp')} <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
           );

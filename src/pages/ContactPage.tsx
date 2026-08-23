@@ -2,28 +2,30 @@ import { useState } from 'react';
 import { Calendar, Phone, Mail, CheckCircle } from 'lucide-react';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
+import { useLang } from '@/contexts/LangContext';
 
 type ContactOption = 'rdv' | 'rappel' | 'message';
 
-const OPTIONS: { key: ContactOption; icon: React.ElementType; title: string; sub: string }[] = [
-  { key: 'rdv', icon: Calendar, title: 'Prendre rendez-vous', sub: 'Planifiez un entretien avec un conseiller.' },
-  { key: 'rappel', icon: Phone, title: 'Être rappelé', sub: 'Un conseiller vous rappelle sous 24h.' },
-  { key: 'message', icon: Mail, title: 'Nous écrire', sub: 'Envoyez-nous un message directement.' },
-];
-
-const SUBJECTS = [
-  'Demande d\'information',
-  'Problème technique',
-  'Question sur mon abonnement',
-  'Partenariat',
-  'Autre',
-];
-
 export default function ContactPage() {
+  const { t } = useLang();
   const [activeOption, setActiveOption] = useState<ContactOption>('message');
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const SUBJECTS = [
+    t('contactSubj1'),
+    t('contactSubj2'),
+    t('contactSubj3'),
+    t('contactSubj4'),
+    t('contactSubj5'),
+  ];
+
+  const OPTIONS: { key: ContactOption; icon: React.ElementType; title: string; sub: string }[] = [
+    { key: 'rdv', icon: Calendar, title: t('contactRdv'), sub: t('contactRdvSub') },
+    { key: 'rappel', icon: Phone, title: t('contactCallback'), sub: t('contactCallbackSub') },
+    { key: 'message', icon: Mail, title: t('contactMessage'), sub: t('contactMessageSub') },
+  ];
 
   // Form state
   const [nom, setNom] = useState('');
@@ -42,9 +44,9 @@ export default function ContactPage() {
     <div className="page-fade-in max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-16">
       {/* Header */}
       <div className="text-center mb-8 md:mb-10">
-        <span className="text-xs font-bold text-orange uppercase tracking-widest">Contactez-nous</span>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-2 mb-2">Comment pouvons-nous vous aider ?</h1>
-        <p className="text-[#B9BBC8] text-sm">Choisissez le canal le plus adapté à votre besoin.</p>
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('contactTag')}</span>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-2 mb-2">{t('contactTitle')}</h1>
+        <p className="text-[#B9BBC8] text-sm">{t('contactSub')}</p>
       </div>
 
       {/* Contact options */}
@@ -75,55 +77,55 @@ export default function ContactPage() {
       {submitted ? (
         <div className="bg-[#061D32] border border-green-500/30 rounded-2xl p-8 text-center orange-glow-sm">
           <CheckCircle size={40} className="text-green-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Message envoyé !</h2>
-          <p className="text-[#B9BBC8] text-sm">Nous vous répondrons dans les meilleurs délais, généralement sous 24h ouvrées.</p>
+          <h2 className="text-xl font-bold text-white mb-2">{t('contactSentTitle')}</h2>
+          <p className="text-[#B9BBC8] text-sm">{t('contactSentSub')}</p>
           <button onClick={() => setSubmitted(false)} className="mt-6 text-orange text-sm font-semibold hover:underline">
-            Envoyer un autre message
+            {t('contactSentAgain')}
           </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Nom *</label>
+              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactName')}</label>
               <input required value={nom} onChange={e => setNom(e.target.value)}
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange"
-                placeholder="Votre nom complet" />
+                placeholder={t('contactNamePlaceholder')} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Entreprise</label>
+              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactCompany')}</label>
               <input value={entreprise} onChange={e => setEntreprise(e.target.value)}
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange"
-                placeholder="Nom de votre entreprise" />
+                placeholder={t('contactCompanyPlaceholder')} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Email *</label>
+              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactEmail')}</label>
               <input required type="email" value={email} onChange={e => setEmail(e.target.value)}
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange"
-                placeholder="vous@exemple.fr" />
+                placeholder={t('contactEmailPlaceholder')} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Téléphone</label>
+              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactPhone')}</label>
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange"
-                placeholder="06 xx xx xx xx" />
+                placeholder={t('contactPhonePlaceholder')} />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Sujet *</label>
+            <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactSubject')}</label>
             <select required value={subject} onChange={e => setSubject(e.target.value)}
               className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange appearance-none">
               {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Message *</label>
+            <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactMessageLabel')}</label>
             <textarea required rows={5} value={message} onChange={e => setMessage(e.target.value)}
               className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange resize-none"
-              placeholder="Décrivez votre demande..." />
+              placeholder={t('contactMessagePlaceholder')} />
           </div>
           <button type="submit" className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors text-sm">
-            Envoyer le message
+            {t('contactSubmit')}
           </button>
         </form>
       )}

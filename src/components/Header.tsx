@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  Menu, X, Sun, Moon, User, ChevronDown, Bell
-} from 'lucide-react';
+import { Menu, X, Sun, Moon, User } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -12,7 +10,7 @@ const NAV_LINKS = [
   { key: 'tenders', href: '/appels-doffres' },
   { key: 'public', href: '/marches-publics' },
   { key: 'subcontracting', href: '/sous-traitance' },
-  { key: 'howItWorks', href: '/comment-ca-marche' },
+  { key: 'howItWorks', href: '/how-it-works' },
   { key: 'pricing', href: '/tarifs' },
 ];
 
@@ -21,7 +19,7 @@ const MOBILE_NAV_LINKS = [
   { key: 'tenders', href: '/appels-doffres' },
   { key: 'public', href: '/marches-publics' },
   { key: 'subcontracting', href: '/sous-traitance' },
-  { key: 'howItWorks', href: '/comment-ca-marche' },
+  { key: 'howItWorks', href: '/how-it-works' },
   { key: 'pricing', href: '/tarifs' },
 ];
 
@@ -40,7 +38,6 @@ export function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   const isActive = (href: string) =>
@@ -57,7 +54,6 @@ export function Header() {
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between h-14 md:h-16">
-            {/* Logo */}
             <Link to="/" className="flex items-center shrink-0">
               <span className="text-lg md:text-xl font-bold tracking-tight">
                 <span className="text-white">Marchés</span>
@@ -65,7 +61,6 @@ export function Header() {
               </span>
             </Link>
 
-            {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-1 mx-6">
               {NAV_LINKS.map(link => (
                 <Link
@@ -82,17 +77,13 @@ export function Header() {
               ))}
             </nav>
 
-            {/* Desktop right */}
             <div className="hidden md:flex items-center gap-2 shrink-0">
-              {/* Lang toggle */}
               <button
                 onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors border border-[#17334D] hover:border-[#FF6500]/40"
               >
                 {lang === 'fr' ? 'EN' : 'FR'}
               </button>
-
-              {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors"
@@ -100,25 +91,17 @@ export function Header() {
               >
                 {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               </button>
-
-              {/* CTA */}
               <button
                 onClick={() => setAppointmentOpen(true)}
                 className="px-4 py-2 bg-orange text-white text-sm font-semibold rounded-lg hover:bg-orange/90 transition-colors"
               >
                 {t('bookAppointment')}
               </button>
-
-              {/* Profile */}
-              <Link
-                to="/profil"
-                className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors"
-              >
+              <Link to="/profil" className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors">
                 <User size={18} />
               </Link>
             </div>
 
-            {/* Mobile right */}
             <div className="flex md:hidden items-center gap-1">
               <button
                 onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
@@ -144,7 +127,6 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile drawer */}
         {menuOpen && (
           <div className="md:hidden border-t border-[#17334D] bg-[#031B30]">
             <nav className="px-4 py-4 space-y-1">
@@ -162,7 +144,6 @@ export function Header() {
                   {t(link.key)}
                 </Link>
               ))}
-              {/* Mobile CTAs */}
               <div className="pt-3 border-t border-[#17334D] space-y-2">
                 <button
                   onClick={() => { setMenuOpen(false); setAppointmentOpen(true); }}

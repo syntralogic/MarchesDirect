@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2, Handshake, ChevronRight, Globe,
-  Building, ArrowRight, Zap, Settings, Monitor, Truck, Briefcase
+  Building, ArrowRight, Zap, Settings, Monitor, Truck, Briefcase, Headset 
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -248,8 +248,11 @@ function GeographicSection() {
         <p className="text-[#B9BBC8] text-sm">{t('exploreFrance')}</p>
       </div>
 
-      {/* Card container */}
-      <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-6 hover:border-orange/30 transition-all">
+      {/* Card container - WRAPPED IN LINK */}
+      <Link 
+        to="/zones"
+        className="block border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-6 hover:border-orange/30 transition-all cursor-pointer"
+      >
         <div className="flex flex-row items-start gap-3 md:gap-6">
           {/* France map image on the left - smaller on mobile with navy overlay */}
           <div className="shrink-0 w-[100px] md:w-[180px] relative">
@@ -277,7 +280,11 @@ function GeographicSection() {
               {tabs.map((tab_) => (
                 <button
                   key={tab_.key}
-                  onClick={() => setTab(tab_.key)}
+                  onClick={(e) => {
+                    e.preventDefault(); // Prevent the Link navigation
+                    e.stopPropagation(); // Stop event from bubbling up to the Link
+                    setTab(tab_.key);
+                  }}
                   className={`flex-1 px-2 py-1.5 text-[11px] md:text-[13px] font-semibold border transition-colors text-center first:rounded-l-md last:rounded-r-md ${
                     tab === tab_.key 
                       ? "border-orange text-orange bg-orange/5" 
@@ -292,28 +299,24 @@ function GeographicSection() {
             {/* Items displayed in a table-like grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5">
               {items.map((item) => (
-                <Link
+                <div
                   key={item}
-                  to="/zones"
                   className="flex items-center justify-between gap-2 text-[12px] md:text-[14px] font-semibold py-1 px-2 hover:bg-[#17334D]/30 rounded transition-colors text-white hover:text-orange group"
                 >
                   <span className="truncate">{item}</span>
                   <ChevronRight size={14} className="text-orange shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Link>
+                </div>
               ))}
             </div>
           </div>
         </div>
 
         {/* See all zones link */}
-        <Link
-          to="/zones"
-          className="inline-flex items-center justify-center gap-2 text-orange font-semibold text-sm mt-4 w-full hover:gap-3 transition-all"
-        >
+        <div className="inline-flex items-center justify-center gap-2 text-orange font-semibold text-sm mt-4 w-full hover:gap-3 transition-all">
           {t('seeAllZones')}
           <ArrowRight size={14} />
-        </Link>
-      </div>
+        </div>
+      </Link>
     </section>
   );
 }
@@ -361,13 +364,13 @@ function SectorsSection() {
             <Link
               key={sector.id}
               to="/secteurs"
-              className="flex items-center gap-3 bg-[#061D32] border border-[#17334D] rounded-xl p-4 hover:border-orange/50 group transition-all"
+              className="flex flex-col items-center gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-4 hover:border-orange/50 group transition-all text-center"
             >
-              <div className="w-12 h-12 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
-                <Icon size={24} className="text-orange" />
+              <div className="w-14 h-14 rounded-full bg-orange/10 flex items-center justify-center shrink-0 group-hover:bg-orange/20 transition-colors">
+                <Icon size={28} className="text-orange" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-white group-hover:text-orange transition-colors leading-snug">{sector.name}</div>
+                <div className="text-sm font-semibold text-white group-hover:text-orange transition-colors leading-snug">{sector.name}</div>
                 <div className="text-xs text-[#B9BBC8] mt-0.5">{sector.count.toLocaleString('fr-FR')}</div>
               </div>
             </Link>
@@ -385,10 +388,57 @@ function SectorsSection() {
 
 function NewsSection() {
   const { t } = useLang();
+  
+  // News items data with icons
+  const newsItems = [
+    {
+      id: '1',
+      category: 'Réglementation',
+      title: 'Marchés publics : les changements à connaître en 2026',
+      description: 'Les nouvelles règles issues de la réforme de la commande publique entrent en vigueur. Tour d\'horizon des impacts pour les entreprises.',
+      date: '15 août 2026',
+      icon: (
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 3v14a2 2 0 0 0 2 2h8" />
+          <path d="M6 3h8l3 3v11" />
+          <path d="M9 8h5M9 11h5" />
+          <path d="M4 17l2-4 2 4M2 17h4" />
+        </svg>
+      ),
+    },
+    {
+      id: '2',
+      category: 'Tendances',
+      title: 'Les secteurs qui recherchent de nouveaux partenaires',
+      description: 'Construction, énergie et numérique : trois secteurs en forte croissance qui recrutent massivement via les marchés publics et privés.',
+      date: '10 août 2026',
+      icon: (
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 20V10M10 20V6M16 20v-8" />
+          <path d="M4 12l6-5 6 4 6-8" />
+          <path d="M18 5h4v4" />
+        </svg>
+      ),
+    },
+    {
+      id: '3',
+      category: 'Opportunités',
+      title: 'Les nouvelles consultations près de chez vous',
+      description: 'Plus de 1 200 nouvelles consultations publiées cette semaine. Découvrez les opportunités dans votre région.',
+      date: '5 août 2026',
+      icon: (
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" />
+          <circle cx="12" cy="9" r="2.4" />
+        </svg>
+      ),
+    },
+  ];
+
   const categoryColors: Record<string, string> = {
-    Réglementation: 'text-blue-400 bg-blue-400/10',
-    Tendances: 'text-purple-400 bg-purple-400/10',
-    Opportunités: 'text-green-400 bg-green-400/10',
+    Réglementation: 'text-orange',
+    Tendances: 'text-orange',
+    Opportunités: 'text-orange',
   };
 
   return (
@@ -398,25 +448,40 @@ function NewsSection() {
         <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">{t('newsSub')}</h2>
         <p className="text-[#B9BBC8] text-sm">{t('newsSub2')}</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {mockArticles.slice(0, 3).map(article => (
+      
+      <div className="flex flex-col gap-4 mt-6">
+        {newsItems.map((item) => (
           <Link
-            key={article.id}
+            key={item.id}
             to="/actualites"
-            className="flex flex-col bg-[#061D32] border border-[#17334D] rounded-xl p-5 hover:border-orange/40 group transition-all"
+            className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 md:p-5 flex items-center gap-4 md:gap-5 hover:border-orange/50 transition-colors group"
           >
-            <span className={`text-xs font-semibold px-2 py-1 rounded-full w-fit mb-3 ${categoryColors[article.category] || 'text-orange bg-orange/10'}`}>
-              {article.category}
+            {/* Icon circle */}
+            <span className={`shrink-0 w-14 h-14 md:w-[70px] md:h-[70px] rounded-full border-2 border-orange text-orange flex items-center justify-center group-hover:bg-orange/10 transition-colors`}>
+              {item.icon}
             </span>
-            <h3 className="text-sm font-bold text-white group-hover:text-orange transition-colors mb-2 flex-1">{article.title}</h3>
-            <p className="text-xs text-[#B9BBC8] leading-relaxed mb-4 line-clamp-2">{article.description}</p>
-            <div className="flex items-center justify-between mt-auto">
-              <span className="text-xs text-[#B9BBC8]">{article.date}</span>
-              <ArrowRight size={14} className="text-orange group-hover:translate-x-1 transition-transform" />
+            
+            <div className="flex-1 min-w-0">
+              {/* Category */}
+              <div className={`text-xs font-semibold uppercase tracking-wider mb-1.5 ${categoryColors[item.category] || 'text-orange'}`}>
+                {item.category}
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-sm md:text-[17px] font-bold text-white group-hover:text-orange transition-colors leading-snug">
+                {item.title}
+              </h3>
+              
+              {/* Read more link */}
+              <span className="inline-flex items-center gap-1.5 text-[#B9BBC8] text-xs md:text-[13px] font-semibold mt-2 group-hover:text-orange transition-colors">
+                Lire l'article
+                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </span>
             </div>
           </Link>
         ))}
       </div>
+      
       <div className="mt-5 text-center md:text-left">
         <Link to="/actualites" className="inline-flex items-center gap-2 text-orange font-semibold text-sm hover:gap-3 transition-all">
           {t('seeAllNews')} <ArrowRight size={14} />
@@ -431,6 +496,12 @@ function FinalCTA({ onAppt, onCallback }: { onAppt: () => void; onCallback: () =
   return (
     <section className="px-4 md:px-6 py-10 md:py-16 max-w-7xl mx-auto w-full">
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 md:p-10 text-center orange-glow-sm">
+        
+        {/* Added Library Icon */}
+        <div className="flex justify-center mb-6">
+          <Headset className="w-16 h-16 text-orange" strokeWidth={1.5} />
+        </div>
+
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">{t('finalCtaHeading')}</h2>
         <p className="text-[#B9BBC8] text-sm md:text-base mb-8 max-w-xl mx-auto">{t('finalCtaSub')}</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">

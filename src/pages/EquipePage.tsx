@@ -1,14 +1,17 @@
 import { teamMembers } from '@/data/mockData';
 import { Linkedin, Mail } from 'lucide-react';
+import { useLang } from '@/contexts/LangContext';
 
 export default function EquipePage() {
+  const { t } = useLang();
+
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-16">
       <div className="text-center mb-10 md:mb-14">
-        <span className="text-xs font-bold text-orange uppercase tracking-widest">Notre équipe</span>
-        <h1 className="text-2xl md:text-4xl font-extrabold text-white mt-2 mb-3">Les visages derrière Marchés Direct</h1>
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('teamTag')}</span>
+        <h1 className="text-2xl md:text-4xl font-extrabold text-white mt-2 mb-3">{t('teamTitle')}</h1>
         <p className="text-[#B9BBC8] text-sm md:text-base max-w-xl mx-auto">
-          Une équipe pluridisciplinaire passionnée par la simplification de l'accès aux marchés.
+          {t('teamSub')}
         </p>
       </div>
 

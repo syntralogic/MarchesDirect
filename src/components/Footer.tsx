@@ -3,39 +3,39 @@ import { useLang } from '@/contexts/LangContext';
 
 const FOOTER_COLS = [
   {
-    title: 'Marchés Direct',
+    titleKey: 'footerBrand',
     links: [
-      { label: 'À propos', href: '/a-propos' },
-      { label: 'Notre équipe', href: '/equipe' },
-      { label: 'Comment ça marche', href: '/comment-ca-marche' },
-      { label: 'Tarifs', href: '/tarifs' },
+      { labelKey: 'footerAbout', href: '/about' },
+      { labelKey: 'footerTeam', href: '/team' },
+      { labelKey: 'howItWorks', href: '/how-it-works' },
+      { labelKey: 'pricing', href: '/tarifs' },
     ],
   },
   {
-    title: 'Marchés',
+    titleKey: 'footerMarkets',
     links: [
-      { label: 'Marchés publics', href: '/marches-publics' },
-      { label: "Appels d'offres", href: '/appels-doffres' },
-      { label: 'Sous-traitance', href: '/sous-traitance' },
-      { label: 'International', href: '/international' },
+      { labelKey: 'public', href: '/marches-publics' },
+      { labelKey: 'tenders', href: '/appels-doffres' },
+      { labelKey: 'subcontracting', href: '/sous-traitance' },
+      { labelKey: 'international', href: '/international' },
     ],
   },
   {
-    title: 'Explorer',
+    titleKey: 'footerExplore',
     links: [
-      { label: 'Zones géographiques', href: '/zones' },
-      { label: "Secteurs d'activité", href: '/secteurs' },
-      { label: 'FAQ', href: '/faq' },
-      { label: 'Actualités', href: '/actualites' },
+      { labelKey: 'footerZones', href: '/zones' },
+      { labelKey: 'footerSectors', href: '/secteurs' },
+      { labelKey: 'footerFaq', href: '/faq' },
+      { labelKey: 'news', href: '/actualites' },
     ],
   },
   {
-    title: 'Légal',
+    titleKey: 'footerLegal',
     links: [
-      { label: 'Mentions légales', href: '/mentions-legales' },
-      { label: 'Confidentialité', href: '/confidentialite' },
-      { label: 'CGU', href: '/cgu' },
-      { label: 'Contact', href: '/contact' },
+      { labelKey: 'legalNotice', href: '/mentions-legales' },
+      { labelKey: 'privacy', href: '/confidentialite' },
+      { labelKey: 'terms', href: '/cgu' },
+      { labelKey: 'contact', href: '/contact' },
     ],
   },
 ];
@@ -45,10 +45,8 @@ export function Footer() {
 
   return (
     <footer className="bg-[#031B30] border-t border-[#17334D] mt-auto">
-      {/* Desktop: columns */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-12">
         <div className="hidden md:grid grid-cols-5 gap-8">
-          {/* Brand */}
           <div className="col-span-1">
             <Link to="/" className="inline-block mb-4">
               <span className="text-xl font-bold">
@@ -57,22 +55,18 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-xs text-[#B9BBC8] leading-relaxed">
-              La plateforme de mise en relation pour les marchés publics, appels d'offres privés et la sous-traitance.
+              {t('footerTagline')}
             </p>
           </div>
 
-          {/* Columns */}
           {FOOTER_COLS.map(col => (
-            <div key={col.title}>
-              <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-4">{col.title}</h4>
+            <div key={col.titleKey}>
+              <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-4">{t(col.titleKey)}</h4>
               <ul className="space-y-2">
                 {col.links.map(link => (
                   <li key={link.href}>
-                    <Link
-                      to={link.href}
-                      className="text-xs text-[#B9BBC8] hover:text-orange transition-colors"
-                    >
-                      {link.label}
+                    <Link to={link.href} className="text-xs text-[#B9BBC8] hover:text-orange transition-colors">
+                      {t(link.labelKey)}
                     </Link>
                   </li>
                 ))}
@@ -81,7 +75,6 @@ export function Footer() {
           ))}
         </div>
 
-        {/* Mobile: compact */}
         <div className="md:hidden">
           <Link to="/" className="inline-block mb-4">
             <span className="text-xl font-bold">
@@ -91,13 +84,13 @@ export function Footer() {
           </Link>
           <div className="grid grid-cols-2 gap-6 mb-6">
             {FOOTER_COLS.map(col => (
-              <div key={col.title}>
-                <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">{col.title}</h4>
+              <div key={col.titleKey}>
+                <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">{t(col.titleKey)}</h4>
                 <ul className="space-y-2">
                   {col.links.map(link => (
                     <li key={link.href}>
                       <Link to={link.href} className="text-xs text-[#B9BBC8] hover:text-orange transition-colors">
-                        {link.label}
+                        {t(link.labelKey)}
                       </Link>
                     </li>
                   ))}
@@ -107,7 +100,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom row */}
         <div className="border-t border-[#17334D] pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-xs text-[#B9BBC8]">{t('copyright')}</p>
           <div className="flex items-center gap-4">
