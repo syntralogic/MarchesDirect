@@ -2,169 +2,436 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   LayoutDashboard, Bell, BookmarkCheck, FileText, Calendar,
-  TrendingUp, ChevronRight, Clock, Target, Building2, MapPin
+  TrendingUp, ChevronRight, Clock, Target, Building2, MapPin,
+  Search, CheckCircle2, Info, Sparkles, Lock, ShieldCheck,
+  Files, PenLine, Table, User, Briefcase, Star
 } from 'lucide-react';
-import { mockPublicOpportunities, mockPrivateOpportunities } from '@/data/mockData';
-import { OpportunityCardSimple } from '@/components/OpportunityCard';
+import { useLang } from '@/contexts/LangContext';
 
 const SIDEBAR_ITEMS = [
-  { icon: LayoutDashboard, label: 'Vue d\'ensemble', key: 'overview' },
-  { icon: TrendingUp, label: 'Recommandées', key: 'recommended' },
-  { icon: BookmarkCheck, label: 'Sauvegardées', key: 'saved' },
-  { icon: FileText, label: 'Mes dossiers', key: 'dossiers' },
-  { icon: Calendar, label: 'Échéances', key: 'deadlines' },
-  { icon: Bell, label: 'Notifications', key: 'notifications' },
+  { icon: LayoutDashboard, labelKey: 'dashOverview', key: 'overview' },
+  { icon: TrendingUp, labelKey: 'dashRecommended', key: 'recommended' },
+  { icon: BookmarkCheck, labelKey: 'dashSaved', key: 'saved' },
+  { icon: FileText, labelKey: 'dashDossiers', key: 'dossiers' },
+  { icon: Calendar, labelKey: 'dashDeadlines', key: 'deadlines' },
+  { icon: Bell, labelKey: 'dashNotifications', key: 'notifications' },
 ];
 
 const STATS = [
-  { label: 'Opportunités recommandées', value: '42', delta: '+8 cette semaine', color: 'text-orange' },
-  { label: 'Dossiers en cours', value: '3', delta: '2 à valider', color: 'text-blue-400' },
-  { label: 'Taux de matching moyen', value: '78%', delta: '+5% vs mois dernier', color: 'text-green-400' },
-  { label: 'Alertes non lues', value: '12', delta: 'Nouvelles aujourd\'hui', color: 'text-yellow-400' },
+  { labelKey: 'dashOpportunitiesRecommended', value: '42', deltaKey: '+8 cette semaine', color: 'text-orange' },
+  { labelKey: 'dashDossiersInProgress', value: '3', deltaKey: '2 à valider', color: 'text-blue-400' },
+  { labelKey: 'dashMatchingRate', value: '78%', deltaKey: '+5% vs mois dernier', color: 'text-green-400' },
+  { labelKey: 'dashUnreadAlerts', value: '12', deltaKey: 'Nouvelles aujourd\'hui', color: 'text-yellow-400' },
 ];
 
 const RECENT = [
-  { action: 'Nouvelle opportunité recommandée', detail: 'Réhabilitation voiries — Conseil Dép. du Gard', time: 'Il y a 2h' },
-  { action: 'Dossier généré', detail: 'Déploiement infrastructure réseau — Île-de-France Mobilités', time: 'Il y a 5h' },
-  { action: 'Alerte échéance', detail: 'Services de nettoyage — France Travail', time: 'Demain' },
-  { action: 'Opportunité sauvegardée', detail: 'Construction bâtiment administratif — Toulouse Métropole', time: 'Hier' },
+  { actionKey: 'Nouvelle opportunité recommandée', detailKey: 'Réhabilitation voiries — Conseil Dép. du Gard', timeKey: 'Il y a 2h' },
+  { actionKey: 'Dossier généré', detailKey: 'Déploiement infrastructure réseau — Île-de-France Mobilités', timeKey: 'Il y a 5h' },
+  { actionKey: 'Alerte échéance', detailKey: 'Services de nettoyage — France Travail', timeKey: 'Demain' },
+  { actionKey: 'Opportunité sauvegardée', detailKey: 'Construction bâtiment administratif — Toulouse Métropole', timeKey: 'Hier' },
 ];
 
 const DEADLINES = [
-  { title: 'Services nettoyage — France Travail', date: '5 sept. 2026', urgent: true },
-  { title: 'Réhabilitation voiries — Conseil du Gard', date: '15 sept. 2026', urgent: false },
-  { title: 'Mobilier urbain — Ville de Marseille', date: '22 sept. 2026', urgent: false },
-  { title: 'Maintenance électrique — Université Le Havre', date: '10 sept. 2026', urgent: true },
+  { titleKey: 'Services nettoyage — France Travail', dateKey: '5 sept. 2026', urgent: true },
+  { titleKey: 'Réhabilitation voiries — Conseil du Gard', dateKey: '15 sept. 2026', urgent: false },
+  { titleKey: 'Mobilier urbain — Ville de Marseille', dateKey: '22 sept. 2026', urgent: false },
+  { titleKey: 'Maintenance électrique — Université Le Havre', dateKey: '10 sept. 2026', urgent: true },
+];
+
+const STEPS_UI = [
+  { id: 1, labelKey: 'step1Label', icon: Target },
+  { id: 2, labelKey: 'step2Label', icon: Search },
+  { id: 3, labelKey: 'step3Label', icon: FileText },
+  { id: 4, labelKey: 'step4Label', icon: ShieldCheck },
 ];
 
 export default function TableauDeBordPage() {
+  const { t } = useLang();
   const [activeSection, setActiveSection] = useState('overview');
-  const saved = [...mockPublicOpportunities, ...mockPrivateOpportunities].filter(o => o.saved);
-  const recommended = mockPublicOpportunities.slice(0, 4);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [toggles, setToggles] = useState([true, true, true]);
+
+  const toggleSwitch = (index: number) => {
+    setToggles(prev => prev.map((v, i) => i === index ? !v : v));
+  };
+
+  const NextButton = ({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) => (
+    <button 
+      onClick={onClick}
+      className="w-full bg-orange text-white font-bold py-4 rounded-xl hover:bg-orange/90 transition-colors text-sm md:text-base"
+    >
+      {children}
+    </button>
+  );
+
+  const OutlineButton = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+    <button 
+      onClick={onClick}
+      className="w-full border border-orange text-orange font-bold py-4 rounded-xl hover:bg-orange/10 transition-colors text-sm md:text-base"
+    >
+      {children}
+    </button>
+  );
 
   return (
-    <div className="page-fade-in">
-      {/* Mobile welcome */}
-      <div className="md:hidden px-4 pt-6 pb-4">
-        <h1 className="text-xl font-bold text-white">Bonjour 👋</h1>
-        <p className="text-sm text-[#B9BBC8] mt-0.5">Voici votre tableau de bord</p>
-      </div>
+    <div className="page-fade-in max-w-2xl mx-auto px-4 py-6 pb-24 md:pb-12">
 
-      <div className="flex min-h-[calc(100vh-8rem)] md:min-h-0">
-        {/* Desktop sidebar */}
-        <aside className="hidden md:flex flex-col w-56 shrink-0 bg-[#031B30] border-r border-[#17334D] py-6 px-3">
-          <div className="mb-6 px-3">
-            <p className="text-xs text-[#B9BBC8]">Bonjour</p>
-            <p className="text-sm font-bold text-white">Jean Dupont</p>
-          </div>
-          <nav className="space-y-1 flex-1">
-            {SIDEBAR_ITEMS.map(item => (
-              <button
-                key={item.key}
-                onClick={() => setActiveSection(item.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  activeSection === item.key
-                    ? 'text-orange bg-orange/10'
-                    : 'text-[#B9BBC8] hover:text-white hover:bg-white/5'
-                }`}
+      {/* PROGRESS STEPPER */}
+      <div className="relative mb-8">
+        <div className="absolute left-[12%] right-[12%] top-4 h-0.5 bg-[#17334D]" />
+        <div 
+          className="absolute left-[12%] top-4 h-0.5 bg-orange transition-all duration-500"
+          style={{ width: `${(currentStep - 1) * 25}%` }}
+        />
+        
+        <div className="relative flex justify-between">
+          {STEPS_UI.map((step) => {
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            return (
+              <button 
+                key={step.id}
+                onClick={() => setCurrentStep(step.id)}
+                className="flex flex-col items-center gap-2"
               >
-                <item.icon size={16} className={activeSection === item.key ? 'text-orange' : ''} />
-                {item.label}
+                <div 
+                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                    isActive ? 'bg-orange border-orange text-white' : 
+                    isCompleted ? 'bg-green-500 border-green-500 text-white' : 
+                    'bg-[#031B30] border-[#17334D] text-[#B9BBC8]'
+                  }`}
+                >
+                  {isCompleted ? <CheckCircle2 size={16} /> : <span className="text-xs font-bold">{step.id}</span>}
+                </div>
+                <span className={`text-[10px] font-medium ${isActive ? 'text-orange' : isCompleted ? 'text-green-500' : 'text-[#B9BBC8]'}`}>
+                  {t(step.labelKey)}
+                </span>
               </button>
-            ))}
-          </nav>
-          <div className="px-3 pt-4 border-t border-[#17334D]">
-            <Link to="/profil" className="flex items-center gap-2 text-xs text-[#B9BBC8] hover:text-orange transition-colors">
-              <div className="w-7 h-7 rounded-full bg-orange/20 border border-orange/30 flex items-center justify-center text-xs font-bold text-orange">JD</div>
-              Mon profil
-            </Link>
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <div className="flex-1 min-w-0 px-4 md:px-6 py-4 md:py-8 overflow-x-hidden">
-          {/* Stats grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 md:mb-8">
-            {STATS.map(stat => (
-              <div key={stat.label} className="bg-[#061D32] border border-[#17334D] rounded-xl p-4">
-                <div className={`text-2xl md:text-3xl font-extrabold mb-1 ${stat.color}`}>{stat.value}</div>
-                <div className="text-xs text-white font-medium leading-snug mb-1">{stat.label}</div>
-                <div className="text-xs text-[#B9BBC8]">{stat.delta}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Recommended */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <TrendingUp size={14} className="text-orange" /> Opportunités recommandées
-                </h2>
-                <Link to="/recherche" className="text-xs text-orange hover:underline">Voir tout</Link>
-              </div>
-              <div className="space-y-2">
-                {recommended.map(o => <OpportunityCardSimple key={o.id} opportunity={o} />)}
-              </div>
-            </div>
-
-            {/* Right column */}
-            <div className="space-y-6">
-              {/* Saved */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                    <BookmarkCheck size={14} className="text-orange" /> Sauvegardées
-                  </h2>
-                  <span className="text-xs text-[#B9BBC8]">{saved.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {saved.slice(0, 3).map(o => <OpportunityCardSimple key={o.id} opportunity={o} />)}
-                </div>
-              </div>
-
-              {/* Deadlines */}
-              <div>
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                  <Calendar size={14} className="text-orange" /> Échéances proches
-                </h2>
-                <div className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
-                  {DEADLINES.map((d, i) => (
-                    <div key={i} className={`flex items-center gap-3 px-4 py-3 ${i < DEADLINES.length - 1 ? 'border-b border-[#17334D]' : ''}`}>
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${d.urgent ? 'bg-red-400' : 'bg-green-400'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-white truncate">{d.title}</p>
-                        <p className="text-xs text-[#B9BBC8]">{d.date}</p>
-                      </div>
-                      {d.urgent && <span className="text-xs text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full shrink-0">Urgent</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recent activity */}
-              <div>
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
-                  <Clock size={14} className="text-orange" /> Activité récente
-                </h2>
-                <div className="space-y-2">
-                  {RECENT.map((r, i) => (
-                    <div key={i} className="bg-[#061D32] border border-[#17334D] rounded-xl px-4 py-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-orange">{r.action}</p>
-                          <p className="text-xs text-[#B9BBC8] mt-0.5 truncate">{r.detail}</p>
-                        </div>
-                        <span className="text-xs text-[#B9BBC8] shrink-0">{r.time}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* ---------------- STEP 1: OPPORTUNITY DETAILS ---------------- */}
+      {currentStep === 1 && (
+        <div className="space-y-4">
+          <div>
+            <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('dashMarchPublic')}</span>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight mt-1">Entretien des espaces verts départementaux</h1>
+            <p className="text-[#B9BBC8] text-sm mt-1">Conseil départemental du Gard</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <span className="bg-[#0F3D2E] text-[#3FA96E] text-xs font-bold px-3 py-1.5 rounded-full">{t('dashNew')}</span>
+            <span className="border border-orange/40 text-orange text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
+              <TrendingUp size={12} /> {t('dashHighCompatibility')}
+            </span>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
+            <div className="grid grid-cols-4 gap-2">
+              <div className="flex flex-col items-center text-center gap-1">
+                <MapPin size={16} className="text-orange" />
+                <span className="text-xs text-[#B9BBC8]">{t('dashLocation')}</span>
+                <span className="text-xs font-bold text-white">Nîmes (30)</span>
+              </div>
+              <div className="flex flex-col items-center text-center gap-1 border-l border-[#17334D]">
+                <FileText size={16} className="text-orange" />
+                <span className="text-xs text-[#B9BBC8]">{t('dashBudgetEst')}</span>
+                <span className="text-xs font-bold text-white">180 000 € HT</span>
+              </div>
+              <div className="flex flex-col items-center text-center gap-1 border-l border-[#17334D]">
+                <Calendar size={16} className="text-orange" />
+                <span className="text-xs text-[#B9BBC8]">{t('dashDeadlineLabel')}</span>
+                <span className="text-xs font-bold text-white">24 août 2026</span>
+              </div>
+              <div className="flex flex-col items-center text-center gap-1 border-l border-[#17334D]">
+                <Clock size={16} className="text-orange" />
+                <span className="text-xs text-[#B9BBC8]">{t('dashDurationEst')}</span>
+                <span className="text-xs font-bold text-white">12 mois</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
+                <Target size={20} className="text-orange" />
+              </div>
+              <h2 className="text-base font-bold text-white">{t('dashSellerNeeds')}</h2>
+            </div>
+            <p className="text-sm text-[#B9BBC8] leading-relaxed">Entretien régulier des espaces verts, débroussaillage, taille, tonte et évacuation des déchets verts sur plusieurs sites départementaux.</p>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={20} className="text-green-400" />
+              </div>
+              <h2 className="text-base font-bold text-white">{t('dashWhyThisOpportunity')}</h2>
+            </div>
+            <div className="space-y-2">
+              {[t('dashZoneCompatible'), t('dashActivityMatches'), t('dashBudgetCompatible'), t('dashComfortableDelay')].map(point => (
+                <div key={point} className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-green-400 shrink-0" />
+                  <span className="text-sm text-white">{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
+                <User size={20} className="text-orange" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white mb-1">{t('dashMDTakesCare')}</h2>
+                <p className="text-sm text-[#B9BBC8] leading-relaxed">{t('dashMDTakesCareText')}</p>
+              </div>
+            </div>
+          </div>
+
+          <button className="w-full flex items-center justify-center gap-2 text-orange font-semibold py-2 text-sm">
+            <FileText size={16} /> {t('dashViewDocs')}
+          </button>
+
+          <div className="space-y-3 pt-2">
+            <NextButton onClick={() => setCurrentStep(2)}>{t('dashInterested')}</NextButton>
+            <OutlineButton>{t('dashSaveForLater')}</OutlineButton>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- STEP 2: ANALYSIS ---------------- */}
+      {currentStep === 2 && (
+        <div className="space-y-4">
+          <div>
+            <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('dashAnalyseMDF')}</span>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight mt-1">{t('dashRecommendedTitle')}</h1>
+            <p className="text-[#B9BBC8] text-sm mt-1">{t('dashRecommendedSub')}</p>
+          </div>
+
+          <div className="bg-[#061D32] border border-green-500/30 rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center">
+                <CheckCircle2 size={20} className="text-green-400" />
+              </div>
+              <span className="bg-green-500/10 text-green-400 text-xs font-bold px-3 py-1.5 rounded-full">{t('dashOpportunityRecommended')}</span>
+            </div>
+            <div className="space-y-3">
+              {[t('dashCriteria1'), t('dashCriteria2'), t('dashCriteria3'), t('dashCriteria4')].map((crit, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#031B30] border border-[#17334D] flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={16} className="text-green-400" />
+                  </div>
+                  <span className="text-sm text-white">{crit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <h2 className="text-base font-bold text-white mb-4">{t('dashMDPrepares')}</h2>
+            <div className="space-y-3">
+              {[t('dashPrep1'), t('dashPrep2'), t('dashPrep3'), t('dashPrep4'), t('dashPrep5')].map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Search size={18} className="text-orange shrink-0" />
+                  <span className="text-sm text-white">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
+                <Info size={20} className="text-orange" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white mb-1">{t('dashLimitedIntervention')}</h2>
+                <p className="text-sm text-[#B9BBC8] leading-relaxed">{t('dashLimitedInterventionText')}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <NextButton onClick={() => setCurrentStep(3)}>{t('dashEntrust')}</NextButton>
+            <OutlineButton onClick={() => setCurrentStep(1)}>{t('dashTalkToAdvisor')}</OutlineButton>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- STEP 3: PREPARATION ---------------- */}
+      {currentStep === 3 && (
+        <div className="space-y-4">
+          <div>
+            <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('step3Label')}</span>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight mt-1">{t('dashPreparationTitle')}</h1>
+            <p className="text-[#B9BBC8] text-sm mt-1">{t('dashPreparationSub')}</p>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="space-y-4">
+              {[
+                { label: t('dashStep1Analysis'), status: t('dashStatusDone'), type: 'done' },
+                { label: t('dashStep2Docs'), status: t('dashStatusPrepared'), type: 'done' },
+                { label: t('dashStep3Memo'), status: t('dashStatusInProgress'), type: 'loading' },
+                { label: t('dashStep4Prices'), status: t('dashStatusWaitingInfo'), type: 'waiting' },
+                { label: t('dashStep5Control'), status: t('dashStatusUpcoming'), type: 'waiting' },
+              ].map((step, i) => (
+                <div key={i} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {step.type === 'done' ? (
+                      <CheckCircle2 size={20} className="text-green-400 shrink-0" />
+                    ) : step.type === 'loading' ? (
+                      <div className="w-5 h-5 rounded-full border-2 border-dashed border-orange animate-spin shrink-0" />
+                    ) : (
+                      <Clock size={20} className="text-[#B9BBC8] shrink-0" />
+                    )}
+                    <span className="text-sm font-medium text-white truncate">{i + 1}. {step.label}</span>
+                  </div>
+                  <span className={`text-xs font-medium shrink-0 px-3 py-1 rounded-full ${
+                    step.type === 'done' ? 'bg-green-500/10 text-green-400' :
+                    step.type === 'loading' ? 'bg-orange/10 text-orange' :
+                    'bg-[#031B30] border border-[#17334D] text-[#B9BBC8]'
+                  }`}>
+                    {step.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6">
+              <div className="flex justify-between text-xs text-[#B9BBC8] mb-1">
+                <span>{t('dashDossierProgress')}</span>
+                <span className="text-orange font-bold">60 %</span>
+              </div>
+              <div className="h-2 bg-[#17334D] rounded-full overflow-hidden">
+                <div className="h-full bg-orange rounded-full" style={{ width: '60%' }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-orange/30 rounded-2xl p-5">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
+                <Info size={20} className="text-orange" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">{t('dashActionNeeded')}</h2>
+                <p className="text-sm text-[#B9BBC8] mt-1">{t('dashActionNeededText')}</p>
+              </div>
+            </div>
+            <button className="w-full bg-orange text-white font-bold py-3.5 rounded-xl hover:bg-orange/90 transition-colors text-sm mb-3">
+              {t('dashSubmitPrices')}
+            </button>
+            <p className="text-center text-xs text-[#B9BBC8] flex items-center justify-center gap-1">
+              <Clock size={12} /> {t('dashEstimatedTime')}
+            </p>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-[#031B30] border border-[#17334D] flex items-center justify-center text-xs font-bold text-white">
+                  SM
+                </div>
+                <div>
+                  <p className="text-xs text-[#B9BBC8]">{t('dashYourAdvisor')}</p>
+                  <p className="text-sm font-bold text-white">Sophie Martin</p>
+                  <p className="text-xs text-[#B9BBC8]">Chargée de votre candidature</p>
+                </div>
+              </div>
+              <button className="border border-orange text-orange text-xs font-bold px-4 py-2 rounded-xl hover:bg-orange/10 transition-colors">
+                {t('dashContactAdvisor')}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 flex items-start gap-3">
+            <ShieldCheck size={20} className="text-green-400 shrink-0" />
+            <p className="text-xs text-[#B9BBC8] leading-relaxed">{t('dashNoDocsNeeded')}</p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <NextButton onClick={() => setCurrentStep(4)}>{t('dashSeeFinalValidation')}</NextButton>
+            <OutlineButton onClick={() => setCurrentStep(2)}>{t('dashBackToAnalysis')}</OutlineButton>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- STEP 4: FINAL VALIDATION ---------------- */}
+      {currentStep === 4 && (
+        <div className="space-y-4">
+          <div>
+            <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('dashFinalValidation')}</span>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-tight mt-1">{t('dashReady')}</h1>
+            <p className="text-[#B9BBC8] text-sm mt-1">{t('dashReadySub')}</p>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center">
+                <CheckCircle2 size={20} className="text-green-400" />
+              </div>
+              <h2 className="text-base font-bold text-green-400 uppercase tracking-wide">{t('dashDossierReady')}</h2>
+            </div>
+            <div className="space-y-3">
+              {[t('dashCheck1'), t('dashCheck2'), t('dashCheck3'), t('dashCheck4'), t('dashCheck5')].map(item => (
+                <div key={item} className="flex items-center gap-2">
+                  <CheckCircle2 size={16} className="text-green-400 shrink-0" />
+                  <span className="text-sm text-white">{item}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-[#17334D] flex items-center gap-2">
+              <Calendar size={16} className="text-orange" />
+              <span className="text-sm text-orange font-medium">{t('dashDepositBefore')}</span>
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <h2 className="text-base font-bold text-white mb-4">{t('dashYourValidation')}</h2>
+            <div className="space-y-4">
+              {[t('dashConfirm1'), t('dashConfirm2'), t('dashConfirm3')].map((confirm, i) => (
+                <div key={i} className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-white">{confirm}</span>
+                  <button 
+                    onClick={() => toggleSwitch(i)}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${toggles[i] ? 'bg-green-500' : 'bg-[#17334D]'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${toggles[i] ? 'translate-x-6' : ''}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                <Info size={20} className="text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white mb-1">{t('dashAfterAuthorization')}</h2>
+                <p className="text-sm text-[#B9BBC8] leading-relaxed">{t('dashAfterAuthorizationText')}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <NextButton>{t('dashValidateDeposit')}</NextButton>
+            <OutlineButton onClick={() => setCurrentStep(3)}>{t('dashRequestModification')}</OutlineButton>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <Lock size={14} className="text-green-400" />
+            <p className="text-xs text-[#B9BBC8]">{t('dashFinalDecision')}</p>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

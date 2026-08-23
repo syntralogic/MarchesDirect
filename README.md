@@ -1,91 +1,185 @@
-# Welcome to Your Miaoda Project
+# Marchés Direct 🚀
 
-## Project Info
+> **Votre prochaine opportunité commence ici.**
+> Plateforme de mise en relation pour les marchés publics, appels d'offres privés et la sous-traitance.
 
-## Project Directory
+Bienvenue dans le dépôt officiel de **Marchés Direct**. Ce projet est une application web moderne construite avec **React**, **TypeScript**, **Vite** et **Supabase**, conçue pour connecter les entreprises françaises aux opportunités de marchés publics et privés.
 
-```
-├── README.md # Documentation
-├── components.json # Component library configuration
-├── index.html # Entry file
-├── package.json # Package management
-├── postcss.config.js # PostCSS configuration
-├── public # Static resources directory
-│   ├── favicon.png # Icon
-│   └── images # Image resources
-├── src # Source code directory
-│   ├── App.tsx # Entry file
-│   ├── components # Components directory
-│   ├── context # Context directory
-│   ├── db # Database configuration directory
-│   ├── hooks # Common hooks directory
-│   ├── index.css # Global styles
-│   ├── layout # Layout directory
-│   ├── lib # Utility library directory
-│   ├── main.tsx # Entry file
-│   ├── routes.tsx # Routing configuration
-│   ├── pages # Pages directory
-│   ├── services # Database interaction directory
-│   ├── types # Type definitions directory
-├── tsconfig.app.json # TypeScript frontend configuration file
-├── tsconfig.json # TypeScript configuration file
-├── tsconfig.node.json # TypeScript Node.js configuration file
-└── vite.config.ts # Vite configuration file
-```
+---
 
-## Tech Stack
+## 📁 Project Directory
 
-Vite, TypeScript, React, Supabase
-
-## Development Guidelines
-
-### How to edit code locally?
-
-You can choose [VSCode](https://code.visualstudio.com/Download) or any IDE you prefer. The only requirement is to have Node.js and npm installed.
-
-### Environment Requirements
-
-```
-# Node.js ≥ 20
-# npm ≥ 10
-Example:
-# node -v   # v20.18.3
-# npm -v    # 10.8.2
-```
-
-### Installing Node.js on Windows
-
-```
-# Step 1: Visit the Node.js official website: https://nodejs.org/, click download. The website will automatically suggest a suitable version (32-bit or 64-bit) for your system.
-# Step 2: Run the installer: Double-click the downloaded installer to run it.
-# Step 3: Complete the installation: Follow the installation wizard to complete the process.
-# Step 4: Verify installation: Open Command Prompt (cmd) or your IDE terminal, and type `node -v` and `npm -v` to check if Node.js and npm are installed correctly.
+```text
+├── README.md                    # Documentation
+├── components.json              # Component library configuration
+├── index.html                   # Entry file
+├── package.json                 # Package management
+├── postcss.config.js            # PostCSS configuration
+├── public                        # Static resources directory
+│   ├── favicon.png              # Icon
+│   └── images                   # Image resources
+├── src                           # Source code directory
+│   ├── App.tsx                   # Main Application Router
+│   ├── components                # Reusable UI components
+│   │   ├── Header.tsx            # Global Header
+│   │   ├── Footer.tsx            # Global Footer
+│   │   ├── BottomNav.tsx         # Mobile Bottom Navigation
+│   │   ├── AppointmentModal.tsx   # RDV Modal
+│   │   ├── CallbackModal.tsx     # Callback Modal
+│   │   └── ...
+│   ├── context                    # Context (State) Management
+│   │   ├── LangContext.tsx        # FR/EN Translations
+│   │   └── ThemeContext.tsx       # Dark/Light Mode
+│   ├── db                         # Database configuration
+│   ├── hooks                      # Common hooks
+│   ├── index.css                  # Global styles (Tailwind)
+│   ├── layout                     # Layout directory
+│   ├── lib                        # Utility library
+│   ├── main.tsx                   # React Entry point
+│   ├── routes.tsx                 # Legacy Routing configuration
+│   ├── pages                      # Pages directory
+│   │   ├── HomePage.tsx
+│   │   ├── AppelsPage.tsx
+│   │   ├── MarchesPublicsPage.tsx
+│   │   ├── SousTraitancePage.tsx
+│   │   ├── InfoPage.tsx           # About / Team / How-it-works / FAQ / Contact
+│   │   ├── TarifsPage.tsx
+│   │   ├── RecherchePage.tsx
+│   │   └── ...
+│   ├── services                   # Database interaction
+│   └── types                      # Type definitions
+├── tsconfig.app.json              # TypeScript frontend config
+├── tsconfig.json                  # TypeScript config
+├── tsconfig.node.json             # TypeScript Node.js config
+└── vite.config.ts                 # Vite configuration
 ```
 
-### Installing Node.js on macOS
+---
 
+## 🛠️ Tech Stack
+
+* **Frontend:** [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
+* **Build Tool:** [Vite](https://vitejs.dev/)
+* **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+* **Icons:** [Lucide React](https://lucide.dev/)
+* **Database & Auth:** [Supabase](https://supabase.com/)
+* **Routing:** [React Router DOM](https://reactrouter.com/)
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+* Node.js ≥ 20
+* npm ≥ 10
+
+### Installation
+
+1. **Clone the repository** or download the code package.
+2. **Open the project** in your preferred IDE (VSCode recommended).
+3. **Install dependencies:**
+
+```bash
+npm install
 ```
-# Step 1: Using Homebrew (Recommended method): Open Terminal. Type the command `brew install node` and press Enter. If Homebrew is not installed, you need to install it first by running the following command in Terminal:
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-Alternatively, use the official installer: Visit the Node.js official website. Download the macOS .pkg installer. Open the downloaded .pkg file and follow the prompts to complete the installation.
-# Step 2: Verify installation: Open Command Prompt (cmd) or your IDE terminal, and type `node -v` and `npm -v` to check if Node.js and npm are installed correctly.
+
+4. **Start the development server:**
+
+```bash
+npm run dev -- --host 127.0.0.1
 ```
 
-### After installation, follow these steps:
+If the above command fails, try:
 
-```
-# Step 1: Download the code package
-# Step 2: Extract the code package
-# Step 3: Open the code package with your IDE and navigate into the code directory
-# Step 4: In the IDE terminal, run the command to install dependencies: npm i
-# Step 5: In the IDE terminal, run the command to start the development server: npm run dev -- --host 127.0.0.1
-# Step 6: if step 5 failed, try this command to start the development server: npx vite --host 127.0.0.1
+```bash
+npx vite --host 127.0.0.1
 ```
 
-### How to develop backend services?
+---
 
-Configure environment variables and install relevant dependencies.If you need to use a database, please use the official version of Supabase.
+## 🌍 Internationalization (i18n)
 
-## Learn More
+The app supports **French (FR)** and **English (EN)** out-of-the-box.
 
-You can also check the help documentation: Download and Building the app（ [https://intl.cloud.baidu.com/en/doc/MIAODA/s/download-and-building-the-app-en](https://intl.cloud.baidu.com/en/doc/MIAODA/s/download-and-building-the-app-en)）to learn more detailed content.
+All UI text is managed in:
+
+```text
+src/context/LangContext.tsx
+```
+
+Use the `useLang()` hook in any component:
+
+```tsx
+const { t } = useLang();
+
+<p>{t('home')}</p>
+```
+
+---
+
+## 🗺️ Routing Structure
+
+The app uses one unified single-route architecture for informational pages to keep the bundle slim and maintainable.
+
+| Path               | Component            | Description                                 |
+| ------------------ | -------------------- | ------------------------------------------- |
+| `/`                | `HomePage`           | Landing page                                |
+| `/appels-doffres`  | `AppelsPage`         | Private tenders                             |
+| `/marches-publics` | `MarchesPublicsPage` | Public contracts                            |
+| `/sous-traitance`  | `SousTraitancePage`  | Subcontracting                              |
+| `/recherche`       | `RecherchePage`      | Global search                               |
+| `/tarifs`          | `TarifsPage`         | Pricing plans                               |
+| `/zones`           | `ZonesPage`          | Geographic zones                            |
+| `/info`            | `InfoPage`           | About / Team / How-it-works / FAQ / Contact |
+
+> **Note:** The `InfoPage` uses the URL path (`/info?section=...` or dedicated sub-routes) to display the correct content section dynamically.
+
+---
+
+## 🎨 Theming & Styling
+
+**Dark Mode** is enabled by default.
+
+The application uses a deep navy palette:
+
+* `#001326`
+* `#061D32`
+
+with a vibrant orange accent:
+
+* `#FF6500`
+
+Tailwind CSS classes are used throughout the application, with custom colors defined in `tailwind.config`.
+
+---
+
+## 🗄️ Backend (Supabase)
+
+Configure your environment variables in a `.env` file to connect to Supabase:
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Install the Supabase client if it is not already present:
+
+```bash
+npm install @supabase/supabase-js
+```
+
+---
+
+## 📚 Learn More
+
+* [Vite Documentation](https://vitejs.dev/)
+* [React Documentation](https://react.dev/)
+* [Supabase Documentation](https://supabase.com/docs)
+* [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+
+---
+
+## 📄 License
+
+© 2026 MarchésDirect. All rights reserved.
