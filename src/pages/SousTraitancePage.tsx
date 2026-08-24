@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
-import { mockSubcontractingOpportunities } from '@/data/mockData';
+import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
 
 const PROFESSIONS = ['Tous', 'Maçonnerie', 'Plomberie', 'Revêtements', 'Métallerie', 'Peinture', 'Électricité'];
@@ -8,6 +8,7 @@ const DEPARTMENTS = ['Tous', 'Hauts-de-Seine (92)', 'Yvelines (78)', 'Alpes-Mari
 
 export default function SousTraitancePage() {
   const { t } = useLang();
+  const { opportunities: mockSubcontractingOpportunities, loading, error } = useOpportunities('subcontracting');
   const [mode, setMode] = useState<'chantier' | 'partenaire'>('chantier');
   const [location, setLocation] = useState('');
   const [dept, setDept] = useState('Tous');
@@ -21,7 +22,7 @@ export default function SousTraitancePage() {
       if (profession !== 'Tous' && o.category !== profession) return false;
       return true;
     });
-  }, [location, dept, profession]);
+  }, [location, dept, profession, mockSubcontractingOpportunities]);
 
   const resetFilters = () => { setLocation(''); setDept('Tous'); setProfession('Tous'); };
   const hasFilters = location || dept !== 'Tous' || profession !== 'Tous';
@@ -132,6 +133,12 @@ export default function SousTraitancePage() {
             </h2>
           </div>
 
+          {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
+          {!loading && error && <div className="text-center text-[11px] text-orange py-8">{error}</div>}
+          {!loading && !error && filtered.length === 0 && (
+            <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map((o) => (
               <div key={o.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-3">
@@ -151,12 +158,12 @@ export default function SousTraitancePage() {
                 <div className="mt-2 pt-2 border-t border-[#17334D]">
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchDuration')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.duration || '4 semaines'}</p>
+                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('dashDeadlineLabel')}</p>
+                      <p className="text-[11px] font-semibold text-white">{o.deadline || '-'}</p>
                     </div>
                     <div>
                       <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.budget?.toLocaleString('fr-FR') || '42 000'} € HT</p>
+                      <p className="text-[11px] font-semibold text-white">{o.amount}</p>
                     </div>
                   </div>
 

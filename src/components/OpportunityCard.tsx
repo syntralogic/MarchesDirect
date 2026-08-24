@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, Bookmark, BookmarkCheck, MapPin, Calendar, Building2, Target } from 'lucide-react';
+import { Bookmark, BookmarkCheck, MapPin, Calendar, Building2, Target } from 'lucide-react';
 import { useState } from 'react';
 import type { Opportunity } from '@/data/mockData';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
-  compact?: boolean;
 }
 
 function getStatusColor(status: string) {
@@ -24,7 +23,7 @@ function getMatchColor(score: number) {
   return 'text-muted-foreground';
 }
 
-export function OpportunityCard({ opportunity, compact = false }: OpportunityCardProps) {
+export function OpportunityCard({ opportunity }: OpportunityCardProps) {
   const [saved, setSaved] = useState(opportunity.saved);
 
   return (

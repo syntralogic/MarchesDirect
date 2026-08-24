@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Building2, Settings, Bell, Shield, Smartphone, Save, LogOut, ChevronRight } from 'lucide-react';
+import { User, Building2, Settings, Bell, Shield, Smartphone, Save, LogOut } from 'lucide-react';
 
 const SECTIONS = [
   { key: 'profil', icon: User, label: 'Mon profil' },

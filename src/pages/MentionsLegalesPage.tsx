@@ -1,14 +1,14 @@
 import { useLang } from '@/contexts/LangContext';
 
 export default function MentionsLegalesPage() {
-  const { t } = useLang();
+  const { t, tList } = useLang();
 
   const sections = [
-    { title: t('legalPublisher'), content: t('legalPublisherContent') },
-    { title: t('legalHost'), content: t('legalHostContent') },
-    { title: t('legalContactInfo'), content: t('legalContactContent') },
-    { title: t('legalIP'), content: t('legalIPContent') },
-    { title: t('legalResponsibility'), content: t('legalResponsibilityContent') },
+    { title: t('legalPublisher'), content: tList('legalPublisherContent') },
+    { title: t('legalHost'), content: tList('legalHostContent') },
+    { title: t('legalContactInfo'), content: tList('legalContactContent') },
+    { title: t('legalIP'), content: tList('legalIPContent') },
+    { title: t('legalResponsibility'), content: tList('legalResponsibilityContent') },
   ];
 
   return (

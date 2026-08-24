@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 
 type Lang = 'fr' | 'en';
-type Translations = Record<string, string>;
+type Translations = Record<string, string | string[]>;
 
 const frTranslations: Translations = {
   // Nav
@@ -1007,12 +1007,19 @@ interface LangContextType {
   lang: Lang;
   setLang: (l: Lang) => void;
   t: (key: string) => string;
+  // For the handful of translation entries that are genuinely multi-paragraph
+  // arrays (legal pages) rather than a single string - t() always collapses
+  // these to a joined string so every other `{t('x')}` call site in the app
+  // keeps working unchanged; use tList() specifically where each paragraph
+  // needs to render as its own element (see MentionsLegalesPage).
+  tList: (key: string) => string[];
 }
 
 const LangContext = createContext<LangContextType>({
   lang: 'en',
   setLang: () => {},
   t: (k) => k,
+  tList: (k) => [k],
 });
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
@@ -1020,11 +1027,18 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
 
   const t = (key: string): string => {
     const dict = lang === 'fr' ? frTranslations : enTranslations;
-    return dict[key] ?? key;
+    const value = dict[key] ?? key;
+    return Array.isArray(value) ? value.join(' ') : value;
+  };
+
+  const tList = (key: string): string[] => {
+    const dict = lang === 'fr' ? frTranslations : enTranslations;
+    const value = dict[key] ?? key;
+    return Array.isArray(value) ? value : [value];
   };
 
   return (
-    <LangContext.Provider value={{ lang, setLang, t }}>
+    <LangContext.Provider value={{ lang, setLang, t, tList }}>
       {children}
     </LangContext.Provider>
   );

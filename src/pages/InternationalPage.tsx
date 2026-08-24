@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Globe, MapPin, ArrowRight, ChevronRight } from 'lucide-react';
+import { Globe, ArrowRight, ChevronRight } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 
 export default function InternationalPage() {

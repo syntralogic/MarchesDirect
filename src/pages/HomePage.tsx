@@ -7,15 +7,11 @@ import {
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
-import { mockArticles, sectors } from '@/data/mockData';
+import { sectors } from '@/data/mockData';
 
 import arrowImage from "@/assets/home-arrow.png";
 import team from "@/assets/team.jpg";
 import map from "@/assets/map.png";
-
-const SECTOR_ICONS: Record<string, React.ElementType> = {
-  Building2, Zap, Settings, Monitor, Truck, Briefcase,
-};
 
 function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
   const { t } = useLang();

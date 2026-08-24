@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
-import { mockPrivateOpportunities } from '@/data/mockData';
+import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
 
 const SECTORS = ['Tous', 'Travaux & construction', 'Énergie & environnement', 'Industrie & maintenance', 'Informatique & télécoms', 'Services aux entreprises'];
@@ -8,6 +8,7 @@ const CATEGORIES = ['Toutes', 'Second œuvre', 'Technique', 'Aménagement', 'Fa�
 
 export default function AppelsPage() {
   const { t } = useLang();
+  const { opportunities: mockPrivateOpportunities, loading, error } = useOpportunities('tender');
   const [location, setLocation] = useState('');
   const [sector, setSector] = useState('Tous');
   const [category, setCategory] = useState('Toutes');
@@ -20,7 +21,7 @@ export default function AppelsPage() {
       if (category !== 'Toutes' && o.category !== category) return false;
       return true;
     });
-  }, [location, sector, category]);
+  }, [location, sector, category, mockPrivateOpportunities]);
 
   const resetFilters = () => { setLocation(''); setSector('Tous'); setCategory('Toutes'); };
   const hasFilters = location || sector !== 'Tous' || category !== 'Toutes';
@@ -122,6 +123,12 @@ export default function AppelsPage() {
             </h2>
           </div>
 
+          {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
+          {!loading && error && <div className="text-center text-[11px] text-orange py-8">{error}</div>}
+          {!loading && !error && filtered.length === 0 && (
+            <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map((o) => (
               <div key={o.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-3">
@@ -141,12 +148,12 @@ export default function AppelsPage() {
                 <div className="mt-2 pt-2 border-t border-[#17334D]">
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchDuration')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.duration || '4 semaines'}</p>
+                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('dashDeadlineLabel')}</p>
+                      <p className="text-[11px] font-semibold text-white">{o.deadline || '-'}</p>
                     </div>
                     <div>
                       <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.budget?.toLocaleString('fr-FR') || '42 000'} € HT</p>
+                      <p className="text-[11px] font-semibold text-white">{o.amount}</p>
                     </div>
                   </div>
 

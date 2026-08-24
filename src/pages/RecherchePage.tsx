@@ -1,13 +1,11 @@
 import { useState, useMemo } from 'react';
 import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2 } from 'lucide-react';
-import { mockPublicOpportunities, mockPrivateOpportunities, mockSubcontractingOpportunities } from '@/data/mockData';
+import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
-
-// Combine all opportunities
-const ALL_OPPS = [...mockPublicOpportunities, ...mockPrivateOpportunities, ...mockSubcontractingOpportunities];
 
 export default function RecherchePage() {
   const { t } = useLang();
+  const { opportunities: ALL_OPPS, loading, error } = useOpportunities(undefined);
   const [query, setQuery] = useState('');
   
   const filtered = useMemo(() => {
@@ -15,7 +13,7 @@ export default function RecherchePage() {
       if (query && !o.title.toLowerCase().includes(query.toLowerCase()) && !o.organization.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
-  }, [query]);
+  }, [query, ALL_OPPS]);
 
   const getIcon = (title: string) => {
     if (title.toLowerCase().includes('peinture')) return <Paintbrush size={16} className="text-orange" />;
@@ -105,6 +103,12 @@ export default function RecherchePage() {
         </h2>
       </div>
 
+      {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
+      {!loading && error && <div className="text-center text-[11px] text-orange py-8">{error}</div>}
+      {!loading && !error && filtered.length === 0 && (
+        <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
+      )}
+
       {/* Cards */}
       <div className="space-y-2">
         {filtered.map((o) => (
@@ -126,7 +130,7 @@ export default function RecherchePage() {
 
                 <div className="flex items-center gap-2 text-[9px] text-[#B9BBC8]">
                   <span className="flex items-center gap-0.5"><MapPin size={9} className="text-[#B9BBC8]" /> {o.location}</span>
-                  <span className="flex items-center gap-0.5"><Calendar size={9} className="text-[#B9BBC8]" /> {t('searchStart')} {o.startDate || 'octobre'}</span>
+                  <span className="flex items-center gap-0.5"><Calendar size={9} className="text-[#B9BBC8]" /> {t('dashDeadlineLabel')} {o.deadline || '-'}</span>
                 </div>
               </div>
             </div>
@@ -135,12 +139,12 @@ export default function RecherchePage() {
             <div className="mt-2 pt-2 border-t border-[#17334D]">
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <div>
-                  <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchDuration')}</p>
-                  <p className="text-[11px] font-semibold text-white">{o.duration || '4 semaines'}</p>
+                  <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
+                  <p className="text-[11px] font-semibold text-white">{o.amount}</p>
                 </div>
                 <div>
-                  <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
-                  <p className="text-[11px] font-semibold text-white">{o.budget?.toLocaleString('fr-FR') || '42 000'} € HT</p>
+                  <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('appelsSector')}</p>
+                  <p className="text-[11px] font-semibold text-white">{o.sector || '-'}</p>
                 </div>
               </div>
 

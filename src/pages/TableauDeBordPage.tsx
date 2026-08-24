@@ -1,42 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  LayoutDashboard, Bell, BookmarkCheck, FileText, Calendar,
-  TrendingUp, ChevronRight, Clock, Target, Building2, MapPin,
-  Search, CheckCircle2, Info, Sparkles, Lock, ShieldCheck,
-  Files, PenLine, Table, User, Briefcase, Star
+  FileText, MapPin, Calendar, Clock, TrendingUp, User,
+  Search, CheckCircle2, Info, Lock, ShieldCheck, Target
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
-
-const SIDEBAR_ITEMS = [
-  { icon: LayoutDashboard, labelKey: 'dashOverview', key: 'overview' },
-  { icon: TrendingUp, labelKey: 'dashRecommended', key: 'recommended' },
-  { icon: BookmarkCheck, labelKey: 'dashSaved', key: 'saved' },
-  { icon: FileText, labelKey: 'dashDossiers', key: 'dossiers' },
-  { icon: Calendar, labelKey: 'dashDeadlines', key: 'deadlines' },
-  { icon: Bell, labelKey: 'dashNotifications', key: 'notifications' },
-];
-
-const STATS = [
-  { labelKey: 'dashOpportunitiesRecommended', value: '42', deltaKey: '+8 cette semaine', color: 'text-orange' },
-  { labelKey: 'dashDossiersInProgress', value: '3', deltaKey: '2 à valider', color: 'text-blue-400' },
-  { labelKey: 'dashMatchingRate', value: '78%', deltaKey: '+5% vs mois dernier', color: 'text-green-400' },
-  { labelKey: 'dashUnreadAlerts', value: '12', deltaKey: 'Nouvelles aujourd\'hui', color: 'text-yellow-400' },
-];
-
-const RECENT = [
-  { actionKey: 'Nouvelle opportunité recommandée', detailKey: 'Réhabilitation voiries — Conseil Dép. du Gard', timeKey: 'Il y a 2h' },
-  { actionKey: 'Dossier généré', detailKey: 'Déploiement infrastructure réseau — Île-de-France Mobilités', timeKey: 'Il y a 5h' },
-  { actionKey: 'Alerte échéance', detailKey: 'Services de nettoyage — France Travail', timeKey: 'Demain' },
-  { actionKey: 'Opportunité sauvegardée', detailKey: 'Construction bâtiment administratif — Toulouse Métropole', timeKey: 'Hier' },
-];
-
-const DEADLINES = [
-  { titleKey: 'Services nettoyage — France Travail', dateKey: '5 sept. 2026', urgent: true },
-  { titleKey: 'Réhabilitation voiries — Conseil du Gard', dateKey: '15 sept. 2026', urgent: false },
-  { titleKey: 'Mobilier urbain — Ville de Marseille', dateKey: '22 sept. 2026', urgent: false },
-  { titleKey: 'Maintenance électrique — Université Le Havre', dateKey: '10 sept. 2026', urgent: true },
-];
 
 const STEPS_UI = [
   { id: 1, labelKey: 'step1Label', icon: Target },
@@ -47,7 +14,6 @@ const STEPS_UI = [
 
 export default function TableauDeBordPage() {
   const { t } = useLang();
-  const [activeSection, setActiveSection] = useState('overview');
   const [currentStep, setCurrentStep] = useState(1);
   const [toggles, setToggles] = useState([true, true, true]);
 

@@ -56,7 +56,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
 
         {/* Step indicator */}
         <div className="flex items-center px-5 py-3 gap-1">
-          {stepLabels.map((label, i) => (
+          {stepLabels.map((_label, i) => (
             <div key={i} className="flex items-center gap-1 flex-1">
               <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold shrink-0 ${
                 i + 1 < step ? 'bg-orange text-white' :

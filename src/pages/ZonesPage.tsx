@@ -73,7 +73,7 @@ export default function ZonesPage() {
             >
               {/* Icon Box */}
               <div className="shrink-0 w-12 h-12 md:w-16 md:h-16 flex items-center justify-center text-orange border border-orange/30 group-hover:bg-orange/10 transition-colors rounded-lg">
-                <Icon size={28} md:size={32} strokeWidth={1.5} className="text-orange" />
+                <Icon size={28} strokeWidth={1.5} className="text-orange w-7 h-7 md:w-8 md:h-8" />
               </div>
 
               {/* Text */}
@@ -83,7 +83,7 @@ export default function ZonesPage() {
               </div>
 
               {/* Chevron */}
-              <ChevronRight size={20} md:size={24} className="text-orange shrink-0 ml-auto group-hover:translate-x-1 transition-transform" />
+              <ChevronRight size={20} className="text-orange shrink-0 ml-auto w-5 h-5 md:w-6 md:h-6 group-hover:translate-x-1 transition-transform" />
             </button>
           );
         })}
