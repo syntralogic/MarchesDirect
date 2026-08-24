@@ -7,15 +7,11 @@ import {
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
-import { mockArticles, sectors } from '@/data/mockData';
+import { sectors } from '@/data/mockData';
 
 import arrowImage from "@/assets/home-arrow.png";
 import team from "@/assets/team.jpg";
 import map from "@/assets/map.png";
-
-const SECTOR_ICONS: Record<string, React.ElementType> = {
-  Building2, Zap, Settings, Monitor, Truck, Briefcase,
-};
 
 function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
   const { t } = useLang();
@@ -26,7 +22,7 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
         <div className="flex-1 min-w-0">
           {/* Mobile hero card */}
           <div className="md:hidden border border-orange/40 rounded-2xl bg-[#061D32] p-6 orange-glow mb-6 relative overflow-hidden">
-            {/* Trading Arrow - Bigger, behind text, with fade gradient */}
+            {/* Trading Arrow - ONLY ON MOBILE */}
             <div className="absolute right-5 top-5 z-0 opacity-50">
               <img 
                 src={arrowImage} 
@@ -72,7 +68,7 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
             </div>
           </div>
 
-          {/* Desktop hero text */}
+          {/* Desktop hero text - NO ARROW */}
           <div className="hidden md:block">
             <h1 className="text-5xl xl:text-6xl font-extrabold leading-tight mb-4 tracking-tight">
               <span className="text-white">{t('heroLine1')}</span>
@@ -97,21 +93,8 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
           </div>
         </div>
         
-        {/* Right: desktop visual */}
+        {/* Right: desktop visual - NO ARROW */}
         <div className="hidden md:flex flex-shrink-0 w-80 xl:w-96 flex-col gap-3 relative">
-          {/* Desktop arrow */}
-          <div className="absolute -top-8 -right-8 opacity-90 z-10">
-            <div className="absolute inset-0 rounded-full bg-orange/20 blur-3xl scale-150 -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"></div>
-            <img 
-              src={arrowImage} 
-              alt="Trading arrow up" 
-              className="w-32 h-auto relative"
-              style={{ 
-                filter: 'drop-shadow(0 0 25px rgba(249, 115, 22, 0.8)) drop-shadow(0 0 50px rgba(249, 115, 22, 0.4))'
-              }}
-            />
-          </div>
-
           <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-5 orange-glow-sm">
             <div className="text-xs text-orange font-semibold uppercase tracking-wide mb-2">BOAMP · PLACE · JOUE</div>
             <div className="text-2xl font-bold text-white mb-1">3 421+</div>
@@ -224,7 +207,6 @@ function GeographicSection() {
     { key: 'cities' as const, label: t('cities') },
   ];
   
-  // Sample data for regions, departments, cities
   const regionData = [
     "Île-de-France", "Auvergne-Rhône-Alpes", "Hauts-de-France", 
     "Nouvelle-Aquitaine", "Occitanie", "Pays de la Loire"
@@ -248,22 +230,18 @@ function GeographicSection() {
         <p className="text-[#B9BBC8] text-sm">{t('exploreFrance')}</p>
       </div>
 
-      {/* Card container - WRAPPED IN LINK */}
       <Link 
         to="/zones"
         className="block border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-6 hover:border-orange/30 transition-all cursor-pointer"
       >
         <div className="flex flex-row items-start gap-3 md:gap-6">
-          {/* France map image on the left - smaller on mobile with navy overlay */}
           <div className="shrink-0 w-[100px] md:w-[180px] relative">
             <img 
               src={map} 
               alt="France map" 
               className="w-full h-auto rounded-lg"
             />
-            {/* Navy blue overlay */}
             <div className="absolute inset-0 bg-[#061D32]/90 rounded-lg"></div>
-            {/* Orange accent dots on the overlay */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative w-full h-full">
                 <div className="absolute top-[30%] left-[45%] w-2 h-2 md:w-3 md:h-3 rounded-full bg-orange shadow-lg shadow-orange/50"></div>
@@ -275,14 +253,13 @@ function GeographicSection() {
           </div>
 
           <div className="flex-1 min-w-0">
-            {/* Filter buttons - 3 in a row */}
             <div className="flex flex-row gap-0 mb-4 w-full">
               {tabs.map((tab_) => (
                 <button
                   key={tab_.key}
                   onClick={(e) => {
-                    e.preventDefault(); // Prevent the Link navigation
-                    e.stopPropagation(); // Stop event from bubbling up to the Link
+                    e.preventDefault();
+                    e.stopPropagation();
                     setTab(tab_.key);
                   }}
                   className={`flex-1 px-2 py-1.5 text-[11px] md:text-[13px] font-semibold border transition-colors text-center first:rounded-l-md last:rounded-r-md ${
@@ -296,7 +273,6 @@ function GeographicSection() {
               ))}
             </div>
 
-            {/* Items displayed in a table-like grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5">
               {items.map((item) => (
                 <div
@@ -311,7 +287,6 @@ function GeographicSection() {
           </div>
         </div>
 
-        {/* See all zones link */}
         <div className="inline-flex items-center justify-center gap-2 text-orange font-semibold text-sm mt-4 w-full hover:gap-3 transition-all">
           {t('seeAllZones')}
           <ArrowRight size={14} />
@@ -389,7 +364,6 @@ function SectorsSection() {
 function NewsSection() {
   const { t } = useLang();
   
-  // News items data with icons
   const newsItems = [
     {
       id: '1',
@@ -456,23 +430,19 @@ function NewsSection() {
             to="/actualites"
             className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 md:p-5 flex items-center gap-4 md:gap-5 hover:border-orange/50 transition-colors group"
           >
-            {/* Icon circle */}
             <span className={`shrink-0 w-14 h-14 md:w-[70px] md:h-[70px] rounded-full border-2 border-orange text-orange flex items-center justify-center group-hover:bg-orange/10 transition-colors`}>
               {item.icon}
             </span>
             
             <div className="flex-1 min-w-0">
-              {/* Category */}
               <div className={`text-xs font-semibold uppercase tracking-wider mb-1.5 ${categoryColors[item.category] || 'text-orange'}`}>
                 {item.category}
               </div>
               
-              {/* Title */}
               <h3 className="text-sm md:text-[17px] font-bold text-white group-hover:text-orange transition-colors leading-snug">
                 {item.title}
               </h3>
               
-              {/* Read more link */}
               <span className="inline-flex items-center gap-1.5 text-[#B9BBC8] text-xs md:text-[13px] font-semibold mt-2 group-hover:text-orange transition-colors">
                 Lire l'article
                 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -496,8 +466,6 @@ function FinalCTA({ onAppt, onCallback }: { onAppt: () => void; onCallback: () =
   return (
     <section className="px-4 md:px-6 py-10 md:py-16 max-w-7xl mx-auto w-full">
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 md:p-10 text-center orange-glow-sm">
-        
-        {/* Added Library Icon */}
         <div className="flex justify-center mb-6">
           <Headset className="w-16 h-16 text-orange" strokeWidth={1.5} />
         </div>

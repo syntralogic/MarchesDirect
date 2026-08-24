@@ -5,7 +5,11 @@ import path from "path";
 
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      // This helps Vite handle files that export both components (Providers) and hooks (like useLang/useToast)
+      // It prevents the "Could not Fast Refresh" warning
+      fastRefresh: true,
+    }),
     svgr({
       svgrOptions: {
         icon: true,
