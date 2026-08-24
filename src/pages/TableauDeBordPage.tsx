@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   LayoutDashboard, Bell, BookmarkCheck, FileText, Calendar,
   TrendingUp, ChevronRight, Clock, Target, Building2, MapPin,
   Search, CheckCircle2, Info, Sparkles, Lock, ShieldCheck,
-  Files, PenLine, Table, User, Briefcase, Star
+  Files, PenLine, Table, User, Briefcase, Star, AlertCircle
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 
 const SIDEBAR_ITEMS = [
   { icon: LayoutDashboard, labelKey: 'dashOverview', key: 'overview' },
@@ -17,12 +18,14 @@ const SIDEBAR_ITEMS = [
   { icon: Bell, labelKey: 'dashNotifications', key: 'notifications' },
 ];
 
-const STATS = [
-  { labelKey: 'dashOpportunitiesRecommended', value: '42', deltaKey: '+8 cette semaine', color: 'text-orange' },
-  { labelKey: 'dashDossiersInProgress', value: '3', deltaKey: '2 à valider', color: 'text-blue-400' },
-  { labelKey: 'dashMatchingRate', value: '78%', deltaKey: '+5% vs mois dernier', color: 'text-green-400' },
-  { labelKey: 'dashUnreadAlerts', value: '12', deltaKey: 'Nouvelles aujourd\'hui', color: 'text-yellow-400' },
-];
+interface DashboardSummary {
+  activeOpportunities: number;
+  unreadAlerts: number;
+  bidsByStatus: { status: string; count: string }[];
+  validDocuments: number;
+}
+
+type StatCard = { labelKey: string; value: string; color: string };
 
 const RECENT = [
   { actionKey: 'Nouvelle opportunité recommandée', detailKey: 'Réhabilitation voiries — Conseil Dép. du Gard', timeKey: 'Il y a 2h' },
@@ -51,6 +54,41 @@ export default function TableauDeBordPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [toggles, setToggles] = useState([true, true, true]);
 
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSummary = async () => {
+      setStatsLoading(true);
+      setStatsError(null);
+      try {
+        const { data } = await apiClient.get<DashboardSummary>('/dashboard');
+        if (!cancelled) setSummary(data);
+      } catch (err) {
+        if (!cancelled) setStatsError(getApiErrorMessage(err, t('dashStatsLoadError')));
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    };
+
+    loadSummary();
+    return () => { cancelled = true; };
+  }, [t]);
+
+  const dossiersInProgress = summary?.bidsByStatus
+    .filter(b => b.status === 'draft' || b.status === 'in_progress')
+    .reduce((sum, b) => sum + parseInt(b.count, 10), 0) ?? 0;
+
+  const statCards: StatCard[] = summary ? [
+    { labelKey: 'dashOpportunitiesRecommended', value: String(summary.activeOpportunities), color: 'text-orange' },
+    { labelKey: 'dashDossiersInProgress', value: String(dossiersInProgress), color: 'text-blue-400' },
+    { labelKey: 'dashValidDocuments', value: String(summary.validDocuments), color: 'text-green-400' },
+    { labelKey: 'dashUnreadAlerts', value: String(summary.unreadAlerts), color: 'text-yellow-400' },
+  ] : [];
+
   const toggleSwitch = (index: number) => {
     setToggles(prev => prev.map((v, i) => i === index ? !v : v));
   };
@@ -75,6 +113,36 @@ export default function TableauDeBordPage() {
 
   return (
     <div className="page-fade-in max-w-2xl mx-auto px-4 py-6 pb-24 md:pb-12">
+
+      {/* STATS OVERVIEW */}
+      {statsError ? (
+        <div className="mb-8 bg-[#061D32] border border-red-500/30 rounded-2xl p-4 flex items-center gap-3">
+          <AlertCircle size={20} className="text-red-400 shrink-0" />
+          <p className="text-sm text-[#B9BBC8]">{statsError}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          {(statsLoading ? Array.from({ length: 4 }) : statCards).map((stat, i) => (
+            <div key={i} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
+              {statsLoading ? (
+                <>
+                  <div className="h-3 w-20 bg-[#17334D] rounded animate-pulse mb-3" />
+                  <div className="h-6 w-10 bg-[#17334D] rounded animate-pulse" />
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] font-medium text-[#B9BBC8] uppercase tracking-wide mb-1">
+                    {t((stat as StatCard).labelKey)}
+                  </p>
+                  <p className={`text-xl font-extrabold ${(stat as StatCard).color}`}>
+                    {(stat as StatCard).value}
+                  </p>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* PROGRESS STEPPER */}
       <div className="relative mb-8">
