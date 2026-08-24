@@ -1,122 +1,94 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-// @ts-ignore
-import { supabase } from '@/db/supabase';
-import type { User } from '@supabase/supabase-js';
-// @ts-ignore
-import type { Profile } from '@/types/types';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { apiClient, tokenStorage, getApiErrorMessage } from '@/lib/apiClient';
+import type { AuthUser, Company, RegisterPayload } from '@/types/auth';
 import { toast } from 'sonner';
 
-export async function getProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (error) {
-    console.error('获取用户信息失败:', error);
-    return null;
-  }
-  return data;
-}
 interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
+  user: AuthUser | null;
+  company: Company | null;
   loading: boolean;
-  signInWithUsername: (username: string, password: string) => Promise<{ error: Error | null }>;
-  signUpWithUsername: (username: string, password: string) => Promise<{ error: Error | null }>;
-  signOut: () => Promise<void>;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<{ error: string | null; mfaRequired?: boolean; mfaToken?: string; userId?: string }>;
+  register: (payload: RegisterPayload) => Promise<{ error: string | null }>;
+  logout: () => void;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshProfile = async () => {
-    if (!user) {
-      setProfile(null);
+  const refreshProfile = useCallback(async () => {
+    if (!tokenStorage.getAccessToken()) {
+      setUser(null);
+      setCompany(null);
       return;
     }
-
-    const profileData = await getProfile(user.id);
-    setProfile(profileData);
-  };
-
-  useEffect(() => {
-    supabase
-      .auth
-      .getSession()
-      // @ts-ignore
-      .then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          getProfile(session.user.id).then(setProfile);
-        }
-      })
-      // @ts-ignore
-      .catch(error => {
-        toast.error(`获取用户信息失败: ${error.message}`);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    // @ts-ignore
-    // In this function, do NOT use any await calls. Use `.then()` instead to avoid deadlocks.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        getProfile(session.user.id).then(setProfile);
-      } else {
-        setProfile(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    try {
+      const { data } = await apiClient.get('/auth/me');
+      setUser(data.user);
+      setCompany(data.company ?? null);
+    } catch {
+      // Token invalid/expired and refresh already failed upstream - clear local state.
+      tokenStorage.clear();
+      setUser(null);
+      setCompany(null);
+    }
   }, []);
 
-  const signInWithUsername = async (username: string, password: string) => {
-    try {
-      const email = `${username}@miaoda.com`;
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  useEffect(() => {
+    refreshProfile().finally(() => setLoading(false));
 
-      if (error) throw error;
+    // Fired by apiClient when a refresh attempt fails - keeps this context in sync.
+    const onExpired = () => {
+      setUser(null);
+      setCompany(null);
+      toast.error('Votre session a expire. Merci de vous reconnecter.');
+    };
+    window.addEventListener('md:session-expired', onExpired);
+    return () => window.removeEventListener('md:session-expired', onExpired);
+  }, [refreshProfile]);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const { data } = await apiClient.post('/auth/login', { email, password });
+
+      if (data.mfaRequired) {
+        return { error: null, mfaRequired: true, mfaToken: data.mfaToken, userId: data.userId };
+      }
+
+      tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      await refreshProfile();
       return { error: null };
-    } catch (error) {
-      return { error: error as Error };
+    } catch (err) {
+      return { error: getApiErrorMessage(err, 'Email ou mot de passe incorrect.') };
     }
   };
 
-  const signUpWithUsername = async (username: string, password: string) => {
+  const register = async (payload: RegisterPayload) => {
     try {
-      const email = `${username}@miaoda.com`;
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) throw error;
+      const { data } = await apiClient.post('/auth/register', payload);
+      tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      await refreshProfile();
       return { error: null };
-    } catch (error) {
-      return { error: error as Error };
+    } catch (err) {
+      return { error: getApiErrorMessage(err, "L'inscription a echoue.") };
     }
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const logout = () => {
+    tokenStorage.clear();
     setUser(null);
-    setProfile(null);
+    setCompany(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signInWithUsername, signUpWithUsername, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ user, company, loading, isAuthenticated: !!user, login, register, logout, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

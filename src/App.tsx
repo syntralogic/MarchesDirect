@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { RequireAuth } from '@/components/common/RequireAuth';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
@@ -23,6 +25,8 @@ import InternationalPage from '@/pages/InternationalPage';
 import MentionsLegalesPage from '@/pages/MentionsLegalesPage';
 import ConfidentialitePage from '@/pages/ConfidentialitePage';
 import CguPage from '@/pages/CguPage';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +45,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
       <LangProvider>
+        <AuthProvider>
         <BrowserRouter>
           <Layout>
             <Routes>
@@ -60,8 +65,10 @@ const App: React.FC = () => {
               
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
-              <Route path="/tableau-de-bord" element={<TableauDeBordPage />} />
-              <Route path="/profil" element={<ProfilPage />} />
+              <Route path="/connexion" element={<LoginPage />} />
+              <Route path="/inscription" element={<SignupPage />} />
+              <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
+              <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
               <Route path="/actualites" element={<ActualitesPage />} />
               <Route path="/zones" element={<ZonesPage />} />
               <Route path="/secteurs" element={<SecteursPage />} />
@@ -74,6 +81,7 @@ const App: React.FC = () => {
           </Layout>
           <Toaster />
         </BrowserRouter>
+        </AuthProvider>
       </LangProvider>
     </ThemeProvider>
   );
