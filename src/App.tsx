@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
@@ -62,8 +63,9 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
       <LangProvider>
-        <BrowserRouter>
-          <AppLayout>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppLayout>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
@@ -114,9 +116,10 @@ const App: React.FC = () => {
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </AppLayout>
-          <Toaster />
-        </BrowserRouter>
+            </AppLayout>
+            <Toaster />
+          </BrowserRouter>
+        </AuthProvider>
       </LangProvider>
     </ThemeProvider>
   );
