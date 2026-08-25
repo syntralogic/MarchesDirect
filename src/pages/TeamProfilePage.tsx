@@ -4,7 +4,6 @@ import { X, ShieldCheck, GraduationCap, Briefcase, Search, Calendar, Phone, User
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 
-// Team Member Type
 interface TeamMember {
   name: string;
   role: string;
@@ -20,7 +19,6 @@ interface TeamMember {
   expertise: string[];
 }
 
-// Full Team Data
 const TEAM: TeamMember[] = [
   {
     name: 'Bernard Delmas',
@@ -115,7 +113,6 @@ export default function TeamProfilePage() {
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
-  // Read member from URL query
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const memberName = params.get('member');
@@ -147,89 +144,88 @@ export default function TeamProfilePage() {
         </div>
       </div>
 
-      {/* Team Member Modal - Centered, No UI Issues */}
+      {/* Compact Bottom Sheet for Mobile & Small Centered Card for Desktop */}
       {selectedMember && (
-        <div className="fixed inset-0 z-[999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-end md:items-center md:justify-center">
           
-          {/* Modal Card */}
-          <div className="relative w-full md:max-w-lg bg-[#061D32] border border-[#17334D] rounded-3xl max-h-[90vh] overflow-y-auto p-5 md:p-7 pb-8">
+          <div className="relative w-full md:max-w-md bg-[#061D32] border-t md:border border-[#17334D] rounded-t-3xl md:rounded-2xl max-h-[75vh] md:max-h-[85vh] overflow-y-auto p-4 md:p-5 pb-5 md:pb-6">
             
             {/* Close Button */}
             <button 
               onClick={() => { setSelectedMember(null); navigate('/how-it-works'); }}
-              className="absolute top-4 right-4 z-20 p-2 rounded-full bg-[#061D32]/80 border border-[#17334D] text-white hover:text-orange transition-colors"
+              className="absolute top-3 right-3 z-20 p-1.5 rounded-full bg-[#061D32]/80 border border-[#17334D] text-white hover:text-orange transition-colors"
             >
-              <X size={20} />
+              <X size={16} />
             </button>
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6 mb-6">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-[#031B30] border-2 border-orange flex items-center justify-center shrink-0">
-                <Users size={48} className="text-orange" />
+            {/* Header - Compact */}
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-3 mt-4 md:mt-0 mb-4">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#031B30] border border-orange flex items-center justify-center shrink-0">
+                <Users size={32} className="text-orange" />
               </div>
 
               <div className="flex-1 text-center md:text-left">
-                <h2 className="text-2xl md:text-3xl font-extrabold text-white mb-1">{selectedMember.name}</h2>
-                <p className="text-lg font-semibold text-orange mb-2">{selectedMember.role}</p>
-                <span className="inline-flex items-center gap-2 bg-orange/10 border border-orange/30 text-orange text-xs font-semibold px-3 py-1.5 rounded-full mb-3">
-                  <Users size={14} /> {selectedMember.badge}
+                <h2 className="text-xl font-bold text-white mb-0.5">{selectedMember.name}</h2>
+                <p className="text-sm font-semibold text-orange mb-1">{selectedMember.role}</p>
+                <span className="inline-flex items-center gap-1.5 bg-orange/10 border border-orange/30 text-orange text-[10px] font-semibold px-2 py-1 rounded-full">
+                  <Users size={10} /> {selectedMember.badge}
                 </span>
-                <p className="text-sm text-[#B9BBC8] leading-relaxed mt-2">{selectedMember.description}</p>
+                <p className="text-xs text-[#B9BBC8] leading-relaxed mt-1.5">{selectedMember.description}</p>
               </div>
             </div>
 
-            {/* Strength */}
-            <div className="bg-[#031B30] border border-[#17334D] rounded-2xl p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <ShieldCheck size={22} className="text-orange shrink-0 mt-1" />
+            {/* Strength - Compact */}
+            <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3 mb-3">
+              <div className="flex items-start gap-2">
+                <ShieldCheck size={16} className="text-orange shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-base font-bold text-white mb-1">{selectedMember.strengthTitle}</h3>
-                  <p className="text-sm text-[#B9BBC8] leading-relaxed">{selectedMember.strength}</p>
+                  <h3 className="text-sm font-bold text-white mb-0.5">{selectedMember.strengthTitle}</h3>
+                  <p className="text-xs text-[#B9BBC8] leading-relaxed">{selectedMember.strength}</p>
                 </div>
               </div>
             </div>
 
-            {/* Formation & Experience */}
-            <div className="mb-6">
-              <h3 className="text-base font-bold text-white mb-3">{selectedMember.formationTitle}</h3>
-              <div className="flex items-center gap-3 bg-[#031B30] border border-[#17334D] rounded-xl p-3.5 mb-2">
-                <GraduationCap size={20} className="text-orange shrink-0" />
-                <span className="text-sm text-white">{selectedMember.formation}</span>
+            {/* Formation & Experience - Compact */}
+            <div className="mb-3">
+              <h3 className="text-sm font-bold text-white mb-2">{selectedMember.formationTitle}</h3>
+              <div className="flex items-center gap-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 mb-1.5">
+                <GraduationCap size={16} className="text-orange shrink-0" />
+                <span className="text-xs text-white">{selectedMember.formation}</span>
               </div>
 
-              <h3 className="text-base font-bold text-white mb-3 mt-4">{selectedMember.experienceTitle}</h3>
-              <div className="flex items-center gap-3 bg-[#031B30] border border-[#17334D] rounded-xl p-3.5">
-                <Briefcase size={20} className="text-orange shrink-0" />
-                <span className="text-sm text-white">{selectedMember.experience}</span>
+              <h3 className="text-sm font-bold text-white mb-2 mt-2">{selectedMember.experienceTitle}</h3>
+              <div className="flex items-center gap-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2">
+                <Briefcase size={16} className="text-orange shrink-0" />
+                <span className="text-xs text-white">{selectedMember.experience}</span>
               </div>
             </div>
 
-            {/* How can they help */}
-            <div className="mb-8">
-              <h3 className="text-base font-bold text-white mb-3">{selectedMember.expertiseTitle}</h3>
-              <div className="space-y-2.5">
+            {/* How can they help - Compact */}
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-white mb-2">{selectedMember.expertiseTitle}</h3>
+              <div className="space-y-1.5">
                 {selectedMember.expertise.map((item: string, i: number) => (
-                  <div key={i} className="flex items-center gap-3 bg-[#031B30] border border-[#17334D] rounded-xl p-3.5">
-                    <Search size={18} className="text-orange shrink-0" />
-                    <span className="text-sm text-white">{item}</span>
+                  <div key={i} className="flex items-center gap-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2">
+                    <Search size={14} className="text-orange shrink-0" />
+                    <span className="text-xs text-white">{item}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            {/* CTA Buttons - Compact */}
+            <div className="flex flex-col sm:flex-row gap-2">
               <button 
                 onClick={() => { setSelectedMember(null); setApptOpen(true); }}
-                className="flex-1 bg-orange text-white font-bold py-3.5 rounded-xl hover:bg-orange/90 transition-colors flex items-center justify-center gap-2 text-sm"
+                className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg hover:bg-orange/90 transition-colors flex items-center justify-center gap-1.5 text-xs"
               >
-                <Calendar size={16} /> Prendre rendez-vous
+                <Calendar size={14} /> Prendre rendez-vous
               </button>
               <button 
                 onClick={() => { setSelectedMember(null); setCallbackOpen(true); }}
-                className="flex-1 border border-orange text-orange font-bold py-3.5 rounded-xl hover:bg-orange/10 transition-colors flex items-center justify-center gap-2 text-sm"
+                className="flex-1 border border-orange text-orange font-bold py-2.5 rounded-lg hover:bg-orange/10 transition-colors flex items-center justify-center gap-1.5 text-xs"
               >
-                <Phone size={16} /> Être rappelé
+                <Phone size={14} /> Être rappelé
               </button>
             </div>
           </div>
