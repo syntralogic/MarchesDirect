@@ -190,17 +190,29 @@ export const chatbotApi = {
   },
 };
 
+export type ApiSubscriptionPlan = {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  billing_period: string;
+  features: string[] | null;
+  max_opportunities: number | null;
+  max_bid_responses: number | null;
+};
+
 export const subscriptionsApi = {
-  plans: async () => {
-    const { data } = await apiClient.get('/subscriptions/plans');
+  plans: async (): Promise<ApiSubscriptionPlan[]> => {
+    const { data } = await apiClient.get<ApiSubscriptionPlan[]>('/subscriptions/plans');
     return data;
   },
   me: async () => {
     const { data } = await apiClient.get('/subscriptions/me');
     return data;
   },
-  checkout: async (planId: string) => {
-    const { data } = await apiClient.post('/subscriptions/checkout', { planId });
+  checkout: async (planId: string): Promise<{ checkoutUrl: string }> => {
+    const { data } = await apiClient.post<{ checkoutUrl: string }>('/subscriptions/checkout', { planId });
     return data;
   },
   cancel: async () => {
@@ -299,6 +311,31 @@ export const companiesApi = {
   },
   updateMe: async (payload: Partial<ApiCompany>): Promise<ApiCompany> => {
     const { data } = await apiClient.put('/companies/me', payload);
+    return data;
+  },
+};
+
+export type ApiSeoPage = {
+  page_slug: string;
+  page_title: string | null;
+  page_meta_description: string | null;
+  page_keywords: string | null;
+  page_content: string | null;
+  filter_trade_id: number | null;
+  filter_region: string | null;
+  filter_city: string | null;
+  filter_department: string | null;
+};
+
+// Public - no auth. Backs the /pages/:slug landing pages generated daily by
+// the backend's seoGeneration job (Milestone 11).
+export const seoPagesApi = {
+  list: async (): Promise<{ pages: { page_slug: string; updated_at: string }[] }> => {
+    const { data } = await axios.get(`${API_URL}/api/seo-pages`);
+    return data;
+  },
+  getBySlug: async (slug: string): Promise<ApiSeoPage> => {
+    const { data } = await axios.get(`${API_URL}/api/seo-pages/${slug}`);
     return data;
   },
 };

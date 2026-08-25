@@ -13,6 +13,7 @@ import AppelsPage from '@/pages/AppelsPage';
 import MarchesPublicsPage from '@/pages/MarchesPublicsPage';
 import SousTraitancePage from '@/pages/SousTraitancePage';
 import InfoPage from '@/pages/InfoPage';
+import SeoLandingPage from '@/pages/SeoLandingPage';
 import MissionDetailPage from '@/pages/sous-traitance/MissionDetailPage';
 import MissionProfilPage from '@/pages/sous-traitance/MissionProfilPage';
 import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
@@ -73,6 +74,7 @@ const App: React.FC = () => {
               <Route path="/marches-publics" element={<MarchesPublicsPage />} />
               <Route path="/sous-traitance" element={<SousTraitancePage />} />
               <Route path="/info" element={<InfoPage />} />
+              <Route path="/pages/:slug" element={<SeoLandingPage />} />
               <Route path="/a-propos" element={<InfoPage />} />
               <Route path="/about" element={<InfoPage />} />
               <Route path="/team" element={<InfoPage />} />

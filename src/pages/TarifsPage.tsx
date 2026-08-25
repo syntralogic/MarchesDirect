@@ -1,13 +1,25 @@
-import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Check, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { CallbackModal } from '@/components/CallbackModal';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { useLang } from '@/contexts/LangContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { subscriptionsApi, getApiErrorMessage, type ApiSubscriptionPlan } from '@/lib/apiClient';
 
 export default function TarifsPage() {
   const { t } = useLang();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
+  const [backendPlans, setBackendPlans] = useState<ApiSubscriptionPlan[]>([]);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    subscriptionsApi.plans().then(setBackendPlans).catch(() => setBackendPlans([]));
+  }, []);
 
   const PLANS = [
     {
@@ -40,7 +52,7 @@ export default function TarifsPage() {
         t('planProFeat5'),
       ],
       cta: t('planProCta'),
-      ctaType: 'callback' as const,
+      ctaType: 'checkout' as const,
       highlight: true,
     },
     {
@@ -60,6 +72,32 @@ export default function TarifsPage() {
       highlight: false,
     },
   ];
+
+  const handleSubscribe = async (plan: (typeof PLANS)[number]) => {
+    if (!isAuthenticated) {
+      toast.info('Connectez-vous pour souscrire.');
+      navigate('/connexion', { state: { from: '/tarifs' } });
+      return;
+    }
+
+    // Plans here are the static, translated display copy (names/features come
+    // from LangContext) - matched against the real subscription_plans row by
+    // price, since there's no shared slug/code column between the two yet.
+    const match = backendPlans.find((p) => Number(p.price) === Number(plan.price));
+    if (!match) {
+      toast.error("Ce forfait n'est pas encore disponible à la souscription en ligne.");
+      return;
+    }
+
+    setCheckoutLoading(plan.id);
+    try {
+      const { checkoutUrl } = await subscriptionsApi.checkout(String(match.id));
+      window.location.href = checkoutUrl;
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Impossible de démarrer le paiement.'));
+      setCheckoutLoading(null);
+    }
+  };
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-16">
@@ -119,13 +157,19 @@ export default function TarifsPage() {
 
             {/* CTA */}
             <button
-              onClick={() => plan.ctaType === 'appt' ? setApptOpen(true) : setCallbackOpen(true)}
-              className={`w-full font-semibold py-3.5 rounded-xl transition-colors text-sm ${
+              onClick={() => {
+                if (plan.ctaType === 'appt') setApptOpen(true);
+                else if (plan.ctaType === 'checkout') handleSubscribe(plan);
+                else setCallbackOpen(true);
+              }}
+              disabled={checkoutLoading === plan.id}
+              className={`w-full font-semibold py-3.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-60 ${
                 plan.highlight
                   ? 'bg-orange text-white hover:bg-orange/90'
                   : 'border border-orange text-orange hover:bg-orange/10'
               }`}
             >
+              {checkoutLoading === plan.id && <Loader2 size={14} className="animate-spin" />}
               {plan.cta}
             </button>
           </div>
