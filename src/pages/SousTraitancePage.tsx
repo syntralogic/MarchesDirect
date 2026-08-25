@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
@@ -172,9 +173,12 @@ export default function SousTraitancePage() {
                       <CheckCircle2 size={10} />
                       <span>{t('searchCompatible')}</span>
                     </div>
-                    <button className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
+                    <Link
+                      to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?org=${encodeURIComponent(o.organization)}`}
+                      className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors"
+                    >
                       {t('searchView')} <ArrowRight size={10} />
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
