@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
-import { 
-  Target, ArrowRight, CheckCircle, CircleHelp, Filter, FileText, Edit3, Send, Handshake, 
-  Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Scale, Building2, TrendingUp
+import {
+  Target, ArrowRight, CheckCircle, CircleHelp, Filter, FileText, Edit3, Send, Handshake,
+  Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Scale, Building2, TrendingUp,
+  Briefcase, PenLine, FolderSearch, Trophy
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+
+import aboutImage from "@/assets/aboutImage.png";
 
 const TEAM = [
   { name: 'Bernard Delmas', role: 'Directeur général' },
@@ -137,7 +140,7 @@ export default function InfoPage() {
     );
   }
 
-  // ------- FAQ PAGE (Only opens when on /faq, all closed by default) -------
+  // ------- FAQ PAGE -------
   if (path === '/faq') {
     return (
       <div className="page-fade-in max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-12">
@@ -159,7 +162,7 @@ export default function InfoPage() {
             <div className="space-y-3">
               {section.items.map((item, itemIndex) => {
                 const isOpen = openFaq === itemIndex && openSection === section.title;
-                
+
                 return (
                   <div key={item.q} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
                     <button
@@ -204,7 +207,7 @@ export default function InfoPage() {
     );
   }
 
-  // ------- MAIN PAGE (HOW IT WORKS + TEAM GRID + FAQ) -------
+  // ------- MAIN PAGE -------
   const STEPS = [
     { num: '01', icon: CircleHelp, title: t('step1'), desc: t('step1Desc') },
     { num: '02', icon: Filter, title: t('step2'), desc: t('step2Desc') },
@@ -216,7 +219,7 @@ export default function InfoPage() {
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12">
-      
+
       {/* 1. HOW IT WORKS */}
       <div className="mb-10">
         <div className="mb-6">
@@ -241,7 +244,77 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* 2. TEAM GRID */}
+      {/* 2. NEW SECTION: EXACT UI FROM IMAGE */}
+      <div className="mb-10">
+        {/* Heading */}
+        <div className="mb-4 md:mb-6 text-justify">
+          <h2 className="text-xl md:text-5xl font-extrabold text-white leading-tight mb-1 md:mb-2">
+            Des marchés à portée de main.
+          </h2>
+          <p className="text-orange font-semibold text-sm md:text-base mb-2 md:mb-4">Quand vous gagnez, nous gagnons.</p>
+          <p className="text-[#B9BBC8] text-[11px] md:text-base leading-relaxed">
+            Marchés Direct vous aide à remporter des <span className="text-orange font-semibold">appels d'offres privés</span>, des <span className="text-orange font-semibold">marchés publics</span> et à signer des <span className="text-orange font-semibold">contrats de sous-traitance</span> pour augmenter votre <span className="text-orange font-semibold">chiffre d'affaires</span> et vos <span className="text-orange font-semibold">marges</span>.
+          </p>
+        </div>
+
+        {/* Image */}
+        <img src={aboutImage} className="w-80 rounded-xl mb-8" />
+
+        {/* Stats Section - 3 in a row on mobile */}
+        <div className="text-center mb-8">
+          <h3 className="text-lg font-bold text-white mb-4">Les marchés publics en chiffres</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-[#061D32] border border-[#17334D] rounded-xl p-4 flex flex-col items-center text-center">
+              <Briefcase size={20} className="text-orange mb-2" />
+              <span className="text-sm font-extrabold text-orange mb-1">114 000 €</span>
+              <p className="text-[8px] text-[#B9BBC8]">Un marché public sur deux dépasse ce montant</p>
+            </div>
+            <div className="bg-[#061D32] border border-[#17334D] rounded-xl p-4 flex flex-col items-center text-center">
+              <FileText size={20} className="text-orange mb-2" />
+              <span className="text-sm font-extrabold text-orange mb-1">3 offres</span>
+              <p className="text-[8px] text-[#B9BBC8]">C'est le nombre médian de candidats par marché</p>
+            </div>
+            <div className="bg-[#061D32] border border-[#17334D] rounded-xl p-4 flex flex-col items-center text-center">
+              <FileText size={20} className="text-orange mb-2" />
+              <span className="text-sm font-extrabold text-orange mb-1">17 %</span>
+              <p className="text-[8px] text-[#B9BBC8]">des marchés ne reçoivent qu'une seule candidature.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* List Section - Exact layout from image */}
+        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+          <h3 className="text-lg font-bold text-white mb-2">On vous apporte les opportunités sur un plateau.</h3>
+          <p className="text-sm text-[#B9BBC8] mb-4">Vous restez concentré sur votre métier. Nous prenons en charge :</p>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Search size={22} className="text-orange shrink-0" />
+              <span className="text-sm text-white">Recherche des <span className="text-orange font-semibold">appels d'offres</span>, marchés <span className="text-orange font-semibold">publics</span> et contrats de <span className="text-orange font-semibold">sous-traitance</span></span>
+            </div>
+            <div className="flex items-center gap-3">
+              <FolderSearch size={22} className="text-orange shrink-0" />
+              <span className="text-sm text-white">Analyse et sélection des opportunités adaptées à votre entreprise</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <FileText size={22} className="text-orange shrink-0" />
+              <span className="text-sm text-white">Documents administratifs et préparation complète du dossier</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Handshake size={22} className="text-orange shrink-0" />
+              <span className="text-sm text-white">Conseil, négociation, dépôt et suivi <span className="text-orange font-semibold">jusqu'à la signature</span></span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Trophy size={22} className="text-orange shrink-0" />
+              <span className="text-sm text-white">Notre objectif : vous aider à décrocher <span className="text-orange font-semibold">le bon marché et le bon contrat.</span></span>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-center text-sm text-[#B9BBC8] mt-4">Vous faites votre travail. Nous faisons avancer votre prochain contrat.</p>
+      </div>
+
+      {/* 3. TEAM GRID */}
       <div className="mb-10">
         <div className="mb-6">
           <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('teamTag')}</span>
@@ -251,7 +324,7 @@ export default function InfoPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
           {TEAM.map((member) => (
-            <Link 
+            <Link
               to={`/team-profile?member=${encodeURIComponent(member.name)}`}
               className="bg-[#061D32] border border-[#17334D] rounded-xl p-4 md:p-6 flex flex-col items-center text-center hover:border-orange/50 transition-all cursor-pointer"
             >
@@ -266,7 +339,7 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* 3. OBJECTIVE CTA */}
+      {/* 4. OBJECTIVE CTA */}
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-8 text-center mb-10">
         <h2 className="text-xl md:text-2xl font-extrabold text-white mb-2">
           Notre objectif : vous faire <span className="text-orange">remporter le marché.</span>
@@ -282,7 +355,7 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* 4. FAQ SECTION (On Main Page) */}
+      {/* 5. FAQ SECTION (On Main Page) */}
       <div className="mb-10">
         <div className="mb-6">
           <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('faqTag')}</span>
@@ -300,7 +373,7 @@ export default function InfoPage() {
             <div className="space-y-3">
               {section.items.map((item, itemIndex) => {
                 const isOpen = openFaq === itemIndex && openSection === section.title;
-                
+
                 return (
                   <div key={item.q} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
                     <button
@@ -337,16 +410,6 @@ export default function InfoPage() {
             <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm"><Calendar size={16} /> Prendre rendez-vous</button>
             <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors text-sm"><Phone size={16} /> Être rappelé</button>
           </div>
-        </div>
-      </div>
-
-      {/* 5. FINAL CTA */}
-      <div className="bg-[#061D32] border border-[#17334D] rounded-xl md:rounded-2xl p-4 md:p-6 text-center orange-glow-sm">
-        <h2 className="text-lg md:text-2xl font-extrabold text-white mb-2">Votre prochain marché <br className="hidden md:block" /> <span className="text-orange">commence peut-être ici.</span></h2>
-        <p className="text-[10px] md:text-sm text-[#B9BBC8] mb-4 md:mb-6">Présentez-nous votre entreprise dès aujourd'hui.</p>
-        <div className="flex flex-col sm:flex-row gap-2 md:gap-3 justify-center">
-          <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-4 md:px-6 py-2.5 md:py-3 rounded-xl hover:bg-orange/90 transition-colors text-xs md:text-sm"><Calendar size={14} /> {t('bookAppointment')}</button>
-          <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-4 md:px-6 py-2.5 md:py-3 rounded-xl hover:bg-orange/10 transition-colors text-xs md:text-sm"><Phone size={14} /> {t('callBack')}</button>
         </div>
       </div>
 
