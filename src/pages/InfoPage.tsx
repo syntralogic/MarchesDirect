@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import {
-  Target, ArrowRight, CheckCircle, CircleHelp, Filter, FileText, Edit3, Send, Handshake,
+  Target, ArrowRight, CheckCircle, FileText, Handshake,
   Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Scale, Building2, TrendingUp,
   Briefcase, FolderSearch, Trophy
 } from 'lucide-react';
@@ -208,41 +208,11 @@ export default function InfoPage() {
   }
 
   // ------- MAIN PAGE -------
-  const STEPS = [
-    { num: '01', icon: CircleHelp, title: t('step1'), desc: t('step1Desc') },
-    { num: '02', icon: Filter, title: t('step2'), desc: t('step2Desc') },
-    { num: '03', icon: FileText, title: t('step3'), desc: t('step3Desc') },
-    { num: '04', icon: Edit3, title: t('step4'), desc: t('step4Desc') },
-    { num: '05', icon: Send, title: t('step5'), desc: t('step5Desc') },
-    { num: '06', icon: Handshake, title: t('step6'), desc: t('step6Desc') },
-  ];
+
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12">
 
-      {/* 1. HOW IT WORKS */}
-      <div className="mb-10">
-        <div className="mb-6">
-          <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('howItWorks')}</span>
-          <h1 className="text-2xl md:text-5xl font-extrabold text-white leading-tight mt-2 mb-3">{t('stepsTitle')}</h1>
-          <p className="text-[#B9BBC8] text-sm md:text-base">{t('stepsSub')}</p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
-          {STEPS.map((step) => (
-            <div key={step.num} className="bg-[#061D32] border border-[#17334D] rounded-xl p-3 md:p-6">
-              <div className="flex items-center gap-2 md:items-start md:gap-4 mb-2 md:mb-4">
-                <span className="text-lg md:text-2xl font-extrabold text-orange">{step.num}</span>
-                <step.icon size={20} className="text-orange shrink-0 md:hidden" strokeWidth={1.5} />
-                <step.icon size={28} className="text-orange shrink-0 hidden md:block" strokeWidth={1.5} />
-              </div>
-              <h3 className="text-xs md:text-lg font-bold text-white mb-1 md:mb-2">{step.title}</h3>
-              <p className="text-[10px] md:text-sm text-[#B9BBC8] leading-relaxed hidden md:block">{step.desc}</p>
-              <p className="text-[10px] md:text-sm text-[#B9BBC8] leading-snug md:hidden">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* 2. NEW SECTION: EXACT UI FROM IMAGE */}
       <div className="mb-10">
