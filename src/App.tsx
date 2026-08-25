@@ -25,6 +25,8 @@ import MentionsLegalesPage from '@/pages/MentionsLegalesPage';
 import ConfidentialitePage from '@/pages/ConfidentialitePage';
 import CguPage from '@/pages/CguPage';
 import ContactPage from '@/pages/ContactPage';
+import LoginPage from '@/pages/LoginPage';
+import SignupPage from '@/pages/SignupPage';
 import { RequireAuth } from '@/components/common/RequireAuth';
 
 import AdminDashboard from '@/pages/AdminDashboard';
@@ -78,6 +80,13 @@ const App: React.FC = () => {
               <Route path="/confidentialite" element={<ConfidentialitePage />} />
               <Route path="/cgu" element={<CguPage />} />
               <Route path="/contact" element={<ContactPage />} />
+              {/* connexion/inscription were built (LoginPage.tsx, SignupPage.tsx,
+                  both link to each other and to these exact paths) but never
+                  registered here - RequireAuth's redirect to /connexion hit the
+                  wildcard fallback instead, so nobody could actually log in
+                  through the UI. */}
+              <Route path="/connexion" element={<LoginPage />} />
+              <Route path="/inscription" element={<SignupPage />} />
 
               {/* Admin Routes */}
               {/* Admin Routes - logged-in + role in ('admin','super_admin') only.

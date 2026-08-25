@@ -203,6 +203,34 @@ export const subscriptionsApi = {
     const { data } = await apiClient.post('/subscriptions/checkout', { planId });
     return data;
   },
+  cancel: async () => {
+    const { data } = await apiClient.post('/subscriptions/cancel');
+    return data;
+  },
+};
+
+// Account security: password change and TOTP-based 2FA.
+//
+// NOTE (flag for client): POST /auth/password-reset/confirm changes the
+// password for whatever account the current access token belongs to, with
+// no verification of the "current password" at all - it just needs a valid
+// JWT. The Sécurité form still collects a current-password field to match
+// expected UX, but the backend can't actually check it today, so it isn't
+// sent. Worth a real fix (require + verify current password server-side)
+// before this ships to real users.
+export const accountApi = {
+  changePassword: async (newPassword: string) => {
+    const { data } = await apiClient.post('/auth/password-reset/confirm', { newPassword });
+    return data;
+  },
+  mfaEnable: async (): Promise<{ secret: string; qrCode: string; manualEntryKey: string }> => {
+    const { data } = await apiClient.post('/auth/mfa/enable');
+    return data;
+  },
+  mfaConfirm: async (mfaToken: string) => {
+    const { data } = await apiClient.post('/auth/mfa/confirm', { mfaToken });
+    return data;
+  },
 };
 
 // CRM lead capture is a public endpoint (no auth) - uses a plain axios call
