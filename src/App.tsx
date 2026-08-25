@@ -71,6 +71,11 @@ const App: React.FC = () => {
               <Route path="/marches-publics" element={<MarchesPublicsPage />} />
               <Route path="/sous-traitance" element={<SousTraitancePage />} />
               <Route path="/info" element={<InfoPage />} />
+              <Route path="/a-propos" element={<InfoPage />} />
+              <Route path="/about" element={<InfoPage />} />
+              <Route path="/team" element={<InfoPage />} />
+              <Route path="/how-it-works" element={<InfoPage />} />
+              <Route path="/faq" element={<InfoPage />} />
               <Route path="/sous-traitance/mission/:id" element={<RequireAuth><MissionDetailPage /></RequireAuth>} />
               <Route path="/sous-traitance/mission/:id/profil" element={<RequireAuth><MissionProfilPage /></RequireAuth>} />
               <Route path="/sous-traitance/mission/:id/relation" element={<RequireAuth><MissionRelationPage /></RequireAuth>} />
