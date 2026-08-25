@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
+import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 
 const SECTORS = ['Tous', 'Travaux & construction', 'Énergie & environnement', 'Industrie & maintenance', 'Informatique & télécoms', 'Transport & logistique', 'Services aux entreprises'];
 const STATUSES = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
@@ -126,13 +127,13 @@ export default function MarchesPublicsPage() {
         {/* Results */}
         <div className="flex-1 min-w-0">
           <div className="mb-3">
-            <h2 className="text-xs font-bold text-white">
+            {!error && <h2 className="text-xs font-bold text-white">
               <span className="text-orange">{filtered.length}</span> {filtered.length !== 1 ? t('publicResultsPlural') : t('publicResults')}
-            </h2>
+            </h2>}
           </div>
 
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
-          {!loading && error && <div className="text-center text-[11px] text-orange py-8">{error}</div>}
+          {!loading && error && <OpportunitiesPendingState />}
           {!loading && !error && filtered.length === 0 && (
             <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
           )}
