@@ -179,12 +179,23 @@ export const alertsApi = {
   },
 };
 
+export type ApiChatbotConversation = { id: string; topic: string; context: unknown; created_at: string; updated_at: string };
+export type ApiChatbotMessage = { id: string; conversation_id: string; role: 'user' | 'assistant'; content: string; created_at: string };
+
 export const chatbotApi = {
-  createConversation: async (payload: { topic?: string; opportunityId?: string; journey?: string }) => {
+  createConversation: async (payload: { topic?: string; opportunityId?: string; journey?: string }): Promise<ApiChatbotConversation> => {
     const { data } = await apiClient.post('/chatbot/conversations', payload);
     return data;
   },
-  sendMessage: async (conversationId: string, message: string) => {
+  listConversations: async (): Promise<ApiChatbotConversation[]> => {
+    const { data } = await apiClient.get('/chatbot/conversations');
+    return data;
+  },
+  getMessages: async (conversationId: string): Promise<ApiChatbotMessage[]> => {
+    const { data } = await apiClient.get(`/chatbot/conversations/${conversationId}/messages`);
+    return data;
+  },
+  sendMessage: async (conversationId: string, message: string): Promise<{ response: string }> => {
     const { data } = await apiClient.post(`/chatbot/conversations/${conversationId}/messages`, { message });
     return data;
   },
@@ -360,5 +371,96 @@ export const adminApi = {
   runDataSource: async (code: string): Promise<unknown> => {
     const { data } = await apiClient.post(`/admin/data-sources/${code}/run`);
     return data;
+  },
+  opportunities: async (params: { q?: string; status?: string; page?: number; limit?: number }) => {
+    const { data } = await apiClient.get<{ results: ApiAdminOpportunity[]; pagination: ApiPagination }>('/admin/opportunities', { params });
+    return data;
+  },
+  updateOpportunityStatus: async (id: string, status: string) => {
+    const { data } = await apiClient.patch(`/admin/opportunities/${id}/status`, { status });
+    return data;
+  },
+  companies: async (params: { q?: string; status?: string; page?: number; limit?: number }) => {
+    const { data } = await apiClient.get<{ results: ApiAdminCompany[]; pagination: ApiPagination }>('/admin/companies', { params });
+    return data;
+  },
+  updateCompanyStatus: async (id: string, status: string) => {
+    const { data } = await apiClient.patch(`/admin/companies/${id}/status`, { status });
+    return data;
+  },
+};
+
+export type ApiAdminOpportunity = {
+  id: string;
+  title: string;
+  estimated_value: number | null;
+  currency: string | null;
+  deadline: string | null;
+  status: string;
+  location_city: string | null;
+  opportunity_type: string | null;
+};
+
+export type ApiAdminCompany = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  subscription_status: string | null;
+  subscription_tier: string | null;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+export type ApiTender = {
+  id: string;
+  opportunity_id: string;
+  dce_analysis_status: 'not_analyzed' | 'processing' | 'analyzed';
+  selection_criteria: unknown;
+  required_documents: string[] | null;
+  scoring_weights: unknown;
+  complexity_assessment: string | null;
+  estimated_effort_hours: number | null;
+};
+
+export type ApiBidResponse = {
+  id: string;
+  tender_id: string;
+  company_id: string;
+  status: string;
+  technical_memo_text: string | null;
+  engagement_act_text: string | null;
+  missing_documents: string[] | null;
+  submission_deadline: string | null;
+};
+
+export const tendersApi = {
+  get: async (opportunityId: string): Promise<ApiTender> => {
+    const { data } = await apiClient.get(`/tenders/${opportunityId}`);
+    return data;
+  },
+  analyze: async (tenderId: string): Promise<ApiTender> => {
+    const { data } = await apiClient.post(`/tenders/${tenderId}/analyze`);
+    return data;
+  },
+  getBid: async (tenderId: string): Promise<ApiBidResponse> => {
+    const { data } = await apiClient.get(`/tenders/${tenderId}/bid`);
+    return data;
+  },
+  generateBidDocuments: async (bidId: string) => {
+    const { data } = await apiClient.post(`/tenders/bid/${bidId}/generate`);
+    return data;
+  },
+  // Package can come back as either JSON { url } (S3 configured) or a raw
+  // ZIP stream (local/dev, no S3) - request as a blob and sniff the content
+  // type so both cases work without the caller needing to know which one
+  // the server picked.
+  downloadPackage: async (bidId: string): Promise<{ blob?: Blob; url?: string }> => {
+    const { data, headers } = await apiClient.get(`/tenders/bid/${bidId}/package`, { responseType: 'blob' });
+    if (headers['content-type']?.includes('application/json')) {
+      const text = await (data as Blob).text();
+      return { url: JSON.parse(text).url };
+    }
+    return { blob: data as Blob };
   },
 };

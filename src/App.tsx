@@ -7,6 +7,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
+import { ChatbotWidget } from '@/components/ChatbotWidget';
 
 import HomePage from '@/pages/HomePage';
 import AppelsPage from '@/pages/AppelsPage';
@@ -56,6 +57,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       <Footer />
       <BottomNav />
+      <ChatbotWidget />
     </div>
   );
 }
