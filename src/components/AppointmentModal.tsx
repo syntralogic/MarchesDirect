@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 
 interface AppointmentModalProps {
   open: boolean;
@@ -31,11 +32,40 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!open) return null;
 
-  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); };
+  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setSubmitError(null); };
   const handleClose = () => { onClose(); setTimeout(reset, 300); };
+
+  // There's no real calendar/booking backend behind this multi-step picker
+  // (no such module exists in marchesdirect-backend) - the chosen date/slot
+  // is a stated preference, submitted as a CRM lead like the rest of the
+  // site's CTAs (see Technical Requirements section 9: lead form -> CRM ->
+  // sales callback). A human confirms the actual slot when they call back,
+  // rather than this booking a real calendar event.
+  const confirmAppointment = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const [firstName, ...rest] = form.nom.trim().split(' ');
+      await crmApi.submitLead({
+        first_name: firstName || form.nom,
+        last_name: rest.join(' ') || undefined,
+        email: form.email,
+        phone: form.telephone || undefined,
+        company_name: form.entreprise || undefined,
+        message: `Demande de rendez-vous — Motif : ${motif}. Créneau souhaité : ${selectedDate} à ${selectedSlot}.`,
+      });
+      setStep(5);
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, "Impossible d'envoyer votre demande. Réessayez."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const stepLabels = ['Motif', 'Date', 'Heure', 'Contact', 'Confirmation'];
 
@@ -196,13 +226,14 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
                   <ChevronLeft size={14} className="inline mr-1" /> Retour
                 </button>
                 <button
-                  disabled={!form.nom || !form.email}
-                  onClick={() => setStep(5)}
+                  disabled={!form.nom || !form.email || submitting}
+                  onClick={confirmAppointment}
                   className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm"
                 >
-                  Confirmer <Check size={14} className="inline ml-1" />
+                  {submitting ? '...' : <>Confirmer <Check size={14} className="inline ml-1" /></>}
                 </button>
               </div>
+              {submitError && <p className="text-xs text-red-400 text-center mt-3">{submitError}</p>}
             </div>
           )}
 

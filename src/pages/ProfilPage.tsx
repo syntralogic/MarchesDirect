@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Building2, Settings, Bell, Shield, Smartphone, Save, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { companiesApi, getApiErrorMessage } from '@/lib/apiClient';
 
 const SECTIONS = [
   { key: 'profil', icon: User, label: 'Mon profil' },
@@ -34,18 +37,44 @@ function InputField({ label, value, onChange, type = 'text', placeholder = '' }:
 }
 
 export default function ProfilPage() {
+  const { user, company, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('profil');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Profile state
-  const [nom, setNom] = useState('Jean Dupont');
-  const [email, setEmail] = useState('jean.dupont@masociete.fr');
-  const [phone, setPhone] = useState('06 12 34 56 78');
-  const [company, setCompany] = useState('Ma Société SAS');
-  const [siret, setSiret] = useState('12345678900012');
-  const [address, setAddress] = useState('12 rue de la Paix, 75001 Paris');
-  const [website, setWebsite] = useState('www.masociete.fr');
-  const [sector, setSector] = useState('Travaux & construction');
+  // Profile state - name/email/phone come from `users` (no update endpoint
+  // exists on the backend for these yet, so they're read-only display data
+  // pulled from the logged-in session rather than editable+silently-not-saved);
+  // company fields come from `companies` and DO save via PUT /api/companies/me.
+  const [nom, setNom] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [company_, setCompany] = useState('');
+  const [siret, setSiret] = useState('');
+  const [address, setAddress] = useState('');
+  const [website, setWebsite] = useState('');
+  const [sector, setSector] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setNom([user.firstName, user.lastName].filter(Boolean).join(' '));
+      setEmail(user.email || '');
+    }
+    if (company) {
+      setCompany(company.name || '');
+      setSiret(company.siret || '');
+      setPhone(company.phone || '');
+      const addr = [
+        (company as { address_street?: string }).address_street,
+        (company as { address_city?: string }).address_city,
+      ].filter(Boolean).join(', ');
+      setAddress(addr);
+      setWebsite((company as { website_url?: string }).website_url || '');
+      setSector((company as { industry_sector?: string }).industry_sector || '');
+    }
+  }, [user, company]);
 
   // Notification toggles
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -59,7 +88,36 @@ export default function ProfilPage() {
   const [language, setLanguage] = useState('fr');
   const [matchThreshold, setMatchThreshold] = useState('60');
 
-  const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      // Personal fields (nom/email/phone) aren't persisted - no backend
+      // endpoint exists yet for a user to update their own users-table row
+      // (see marchesdirect-backend routes/companies.ts, which only covers
+      // company-level fields). Only the company fields below actually save.
+      const [street, ...cityParts] = address.split(',').map((s) => s.trim());
+      await companiesApi.update({
+        name: company_ || undefined,
+        siret: siret || undefined,
+        address_street: street || undefined,
+        address_city: cityParts.join(', ') || undefined,
+        website_url: website || undefined,
+        industry_sector: sector || undefined,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, "Impossible d'enregistrer les modifications."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -70,12 +128,13 @@ export default function ProfilPage() {
             {/* Avatar */}
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-full bg-orange/20 border-2 border-orange flex items-center justify-center">
-                <span className="text-xl font-bold text-orange">JD</span>
+                <span className="text-xl font-bold text-orange">
+                  {(nom || email || '?').slice(0, 2).toUpperCase()}
+                </span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">Jean Dupont</p>
-                <p className="text-xs text-[#B9BBC8]">Formule Pro · Membre depuis août 2025</p>
-                <button className="text-xs text-orange mt-1 hover:underline">Modifier l'avatar</button>
+                <p className="text-sm font-semibold text-white">{nom || email || 'Utilisateur'}</p>
+                <p className="text-xs text-[#B9BBC8]">{company?.subscription_tier ? `Formule ${String(company.subscription_tier)}` : ''}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -90,7 +149,7 @@ export default function ProfilPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-white mb-5">Mon entreprise</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InputField label="Raison sociale" value={company} onChange={setCompany} />
+              <InputField label="Raison sociale" value={company_} onChange={setCompany} />
               <InputField label="SIRET" value={siret} onChange={setSiret} />
               <div className="md:col-span-2">
                 <InputField label="Adresse" value={address} onChange={setAddress} />
@@ -225,14 +284,15 @@ export default function ProfilPage() {
 
           {/* Save / logout */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <button onClick={handleSave} className={`flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm ${saved ? 'bg-green-500 hover:bg-green-500' : ''}`}>
+            <button onClick={handleSave} disabled={saving} className={`flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 disabled:opacity-60 transition-colors text-sm ${saved ? 'bg-green-500 hover:bg-green-500' : ''}`}>
               <Save size={14} />
-              {saved ? 'Enregistré !' : 'Enregistrer les modifications'}
+              {saving ? 'Enregistrement...' : saved ? 'Enregistré !' : 'Enregistrer les modifications'}
             </button>
-            <button className="flex items-center justify-center gap-2 border border-[#17334D] text-[#B9BBC8] font-medium px-6 py-3 rounded-xl hover:border-red-400/40 hover:text-red-400 transition-colors text-sm">
+            <button onClick={handleLogout} className="flex items-center justify-center gap-2 border border-[#17334D] text-[#B9BBC8] font-medium px-6 py-3 rounded-xl hover:border-red-400/40 hover:text-red-400 transition-colors text-sm">
               <LogOut size={14} /> Se déconnecter
             </button>
           </div>
+          {saveError && <p className="text-xs text-red-400 mt-2">{saveError}</p>}
         </div>
       </div>
     </div>

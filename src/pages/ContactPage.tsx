@@ -3,6 +3,7 @@ import { Calendar, Phone, Mail, CheckCircle } from 'lucide-react';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { useLang } from '@/contexts/LangContext';
+import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 
 type ContactOption = 'rdv' | 'rappel' | 'message';
 
@@ -35,9 +36,29 @@ export default function ContactPage() {
   const [subject, setSubject] = useState(SUBJECTS[0]);
   const [message, setMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const [firstName, ...rest] = nom.trim().split(' ');
+      await crmApi.submitLead({
+        first_name: firstName || nom,
+        last_name: rest.join(' ') || undefined,
+        email,
+        phone: phone || undefined,
+        company_name: entreprise || undefined,
+        message: `Sujet : ${subject}\n\n${message}`,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err, "Impossible d'envoyer votre message. Réessayez."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -124,9 +145,10 @@ export default function ContactPage() {
               className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange resize-none"
               placeholder={t('contactMessagePlaceholder')} />
           </div>
-          <button type="submit" className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors text-sm">
-            {t('contactSubmit')}
+          <button type="submit" disabled={submitting} className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 disabled:opacity-50 transition-colors text-sm">
+            {submitting ? '...' : t('contactSubmit')}
           </button>
+          {submitError && <p className="text-xs text-red-400 text-center">{submitError}</p>}
         </form>
       )}
 

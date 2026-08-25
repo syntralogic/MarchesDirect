@@ -90,6 +90,17 @@ export function getApiErrorMessage(err: unknown, fallback = 'Une erreur est surv
   return fallback;
 }
 
+export const companiesApi = {
+  me: async () => {
+    const { data } = await apiClient.get('/companies/me');
+    return data;
+  },
+  update: async (payload: Record<string, unknown>) => {
+    const { data } = await apiClient.put('/companies/me', payload);
+    return data;
+  },
+};
+
 // ============================================================================
 // Business data endpoints (opportunities, dashboard, trades, alerts, chatbot,
 // subscriptions, CRM) - everything beyond auth. `apiClient` above already

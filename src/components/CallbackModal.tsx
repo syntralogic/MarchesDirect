@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Check, Phone, User, Building2, Clock } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 
 interface CallbackModalProps {
   open: boolean;
@@ -10,15 +11,38 @@ interface CallbackModalProps {
 export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const { t } = useLang();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: '' });
 
   if (!open) return null;
 
-  const handleClose = () => { onClose(); setTimeout(() => setSubmitted(false), 300); };
+  const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setError(null); }, 300); };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitting(true);
+    setError(null);
+    try {
+      const [firstName, ...rest] = form.nom.trim().split(' ');
+      await crmApi.submitLead({
+        first_name: firstName || form.nom,
+        last_name: rest.join(' ') || undefined,
+        // The CRM lead form requires an email but this modal only collects a
+        // phone number (matching the client's reference design exactly) - a
+        // placeholder is used so the lead still reaches the CRM; the sales
+        // team calls back on the phone number in the note either way.
+        email: `${form.telephone.replace(/\s+/g, '') || 'inconnu'}@rappel.marchesdirect.fr`,
+        phone: form.telephone,
+        company_name: form.entreprise || undefined,
+        message: `Demande de rappel — moment souhaité : ${form.moment || 'indifférent'}`,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Impossible d'envoyer votre demande. Réessayez."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -78,9 +102,10 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors mt-2">
-                {t('callbackSubmit')}
+              <button type="submit" disabled={submitting} className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 disabled:opacity-50 transition-colors mt-2">
+                {submitting ? '...' : t('callbackSubmit')}
               </button>
+              {error && <p className="text-xs text-red-400 text-center">{error}</p>}
             </form>
           ) : (
             <div className="text-center py-6">
