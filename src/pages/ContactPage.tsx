@@ -1,17 +1,22 @@
 import { useState } from 'react';
-import { Calendar, Phone, Mail, CheckCircle } from 'lucide-react';
+import { Calendar, Phone, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { useLang } from '@/contexts/LangContext';
+import { useBrand } from '@/hooks/use-brand';
+import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 
 type ContactOption = 'rdv' | 'rappel' | 'message';
 
 export default function ContactPage() {
   const { t } = useLang();
+  const { brandId } = useBrand();
   const [activeOption, setActiveOption] = useState<ContactOption>('message');
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const SUBJECTS = [
     t('contactSubj1'),
@@ -35,9 +40,30 @@ export default function ContactPage() {
   const [subject, setSubject] = useState(SUBJECTS[0]);
   const [message, setMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const [firstName, ...rest] = nom.trim().split(' ');
+      await crmApi.submitLead({
+        brandId,
+        firstName: firstName || nom,
+        lastName: rest.join(' ') || undefined,
+        email,
+        phone: phone || undefined,
+        companyName: entreprise || undefined,
+        leadSource: 'contact_form',
+        message: `Sujet : ${subject}\n\n${message}`,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Échec de l'envoi — réessayez."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -124,7 +150,13 @@ export default function ContactPage() {
               className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange resize-none"
               placeholder={t('contactMessagePlaceholder')} />
           </div>
-          <button type="submit" className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors text-sm">
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {submitting && <Loader2 size={16} className="animate-spin" />}
             {t('contactSubmit')}
           </button>
         </form>

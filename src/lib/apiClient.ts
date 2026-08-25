@@ -209,18 +209,68 @@ export const subscriptionsApi = {
 // rather than `apiClient` so it never attaches a stale/absent Bearer token or
 // gets caught by the 401-refresh interceptor for a route that isn't
 // authenticated in the first place.
+// Field names are camelCase to match crmPublic.ts's req.body destructuring
+// on the backend (brandId, firstName, companyName, etc.) - a prior version of
+// this client sent snake_case, which meant every field except brandId/email
+// was silently dropped (landed as NULL) since Express never reads a body key
+// that doesn't match what the route destructures.
 export const crmApi = {
   submitLead: async (payload: {
-    first_name?: string;
-    last_name?: string;
-    email: string;
+    brandId: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
     phone?: string;
-    company_name?: string;
-    industry_trade?: string;
-    location_city?: string;
+    companyName?: string;
+    industryTrade?: string;
+    locationCity?: string;
+    locationRegion?: string;
+    leadSource?: string;
     message?: string;
   }) => {
     const { data } = await axios.post(`${API_URL}/api/crm/leads`, payload);
+    return data;
+  },
+};
+
+// Public brand resolution - no auth, used by the CRM lead-capture forms to
+// get the brandId the backend requires (POST /api/crm/leads validates it).
+export type ApiBrand = { id: string; code: string; name: string; language: string };
+
+export const brandsApi = {
+  current: async (): Promise<ApiBrand> => {
+    const { data } = await axios.get(`${API_URL}/api/brands/current`);
+    return data;
+  },
+};
+
+export type ApiCompany = {
+  id: string;
+  name: string;
+  kbis_number?: string | null;
+  legal_form?: string | null;
+  siret?: string | null;
+  phone?: string | null;
+  website_url?: string | null;
+  address_street?: string | null;
+  address_city?: string | null;
+  address_postal_code?: string | null;
+  industry_sector?: string | null;
+  employee_count?: number | null;
+  annual_revenue?: number | null;
+  founding_year?: number | null;
+  working_radius_km?: number | null;
+  verified?: boolean;
+  [key: string]: unknown;
+};
+
+export const companiesApi = {
+  me: async (): Promise<ApiCompany> => {
+    const { data } = await apiClient.get('/companies/me');
+    return data;
+  },
+  updateMe: async (payload: Partial<ApiCompany>): Promise<ApiCompany> => {
+    const { data } = await apiClient.put('/companies/me', payload);
     return data;
   },
 };

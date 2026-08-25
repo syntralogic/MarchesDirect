@@ -1,24 +1,55 @@
 import { useState } from 'react';
-import { X, Check, Phone, User, Building2, Clock } from 'lucide-react';
+import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { useBrand } from '@/hooks/use-brand';
+import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 
 interface CallbackModalProps {
   open: boolean;
   onClose: () => void;
 }
 
+const MOMENT_LABELS: Record<string, string> = {
+  matin: 'Matin (9h–12h)',
+  aprem: 'Après-midi (14h–17h)',
+  fin: 'Fin de journée (17h–19h)',
+};
+
 export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const { t } = useLang();
+  const { brandId } = useBrand();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: '' });
 
   if (!open) return null;
 
-  const handleClose = () => { onClose(); setTimeout(() => setSubmitted(false), 300); };
+  const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setError(null); }, 300); };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const [firstName, ...rest] = form.nom.trim().split(' ');
+      await crmApi.submitLead({
+        brandId,
+        firstName: firstName || form.nom,
+        lastName: rest.join(' ') || undefined,
+        phone: form.telephone,
+        companyName: form.entreprise || undefined,
+        leadSource: 'callback_modal',
+        message: form.moment ? `Créneau souhaité : ${MOMENT_LABELS[form.moment] || form.moment}` : undefined,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Échec de l'envoi — réessayez."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -78,7 +109,16 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors mt-2">
+              {error && (
+                <p className="text-xs text-red-400 -mb-1">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {submitting && <Loader2 size={16} className="animate-spin" />}
                 {t('callbackSubmit')}
               </button>
             </form>
