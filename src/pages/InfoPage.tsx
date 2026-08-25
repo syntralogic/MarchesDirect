@@ -5,7 +5,7 @@ import { CallbackModal } from '@/components/CallbackModal';
 import {
   Target, ArrowRight, CheckCircle, CircleHelp, Filter, FileText, Edit3, Send, Handshake,
   Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Scale, Building2, TrendingUp,
-  Briefcase, PenLine, FolderSearch, Trophy
+  Briefcase, FolderSearch, Trophy
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 
