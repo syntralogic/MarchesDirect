@@ -302,3 +302,25 @@ export const companiesApi = {
     return data;
   },
 };
+
+export type ApiDataSource = {
+  code: string;
+  name: string;
+  active: boolean;
+  last_run: string | null;
+  next_run: string | null;
+};
+
+// Backend has had these endpoints (requires admin/super_admin role) since the
+// connector work landed, but nothing in this frontend ever called them - the
+// only way to pull fresh listings was to wait for the every-2-hour cron.
+export const adminApi = {
+  dataSources: async (): Promise<{ sources: ApiDataSource[] }> => {
+    const { data } = await apiClient.get('/admin/data-sources');
+    return data;
+  },
+  runDataSource: async (code: string): Promise<unknown> => {
+    const { data } = await apiClient.post(`/admin/data-sources/${code}/run`);
+    return data;
+  },
+};
