@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
+import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 
 const PROFESSIONS = ['Tous', 'Maçonnerie', 'Plomberie', 'Revêtements', 'Métallerie', 'Peinture', 'Électricité'];
 const DEPARTMENTS = ['Tous', 'Hauts-de-Seine (92)', 'Yvelines (78)', 'Alpes-Maritimes (06)', 'Isère (38)', 'Rhône (69)'];
@@ -128,13 +130,13 @@ export default function SousTraitancePage() {
         {/* Results */}
         <div className="flex-1 min-w-0">
           <div className="mb-3">
-            <h2 className="text-xs font-bold text-white">
+            {!error && <h2 className="text-xs font-bold text-white">
               <span className="text-orange">{filtered.length}</span> {filtered.length !== 1 ? t('subResultsPlural') : t('subResults')}
-            </h2>
+            </h2>}
           </div>
 
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
-          {!loading && error && <div className="text-center text-[11px] text-orange py-8">{error}</div>}
+          {!loading && error && <OpportunitiesPendingState />}
           {!loading && !error && filtered.length === 0 && (
             <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
           )}
@@ -172,9 +174,12 @@ export default function SousTraitancePage() {
                       <CheckCircle2 size={10} />
                       <span>{t('searchCompatible')}</span>
                     </div>
-                    <button className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
+                    <Link
+                      to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?org=${encodeURIComponent(o.organization)}`}
+                      className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors"
+                    >
                       {t('searchView')} <ArrowRight size={10} />
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

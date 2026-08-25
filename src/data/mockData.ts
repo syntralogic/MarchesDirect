@@ -17,6 +17,8 @@ export interface Opportunity {
   category?: string;
   ref?: string;
   published?: string;
+  description?: string;
+  profileRequired?: string[];
 }
 
 export const mockPublicOpportunities: Opportunity[] = [
@@ -324,6 +326,8 @@ export const mockSubcontractingOpportunities: Opportunity[] = [
     saved: false,
     published: '2026-08-12',
     category: 'Maçonnerie',
+    description: 'Réalisation du gros-œuvre pour un ensemble résidentiel R+4 : fondations, élévation des murs porteurs, planchers et dalles béton. Chantier en zone urbaine avec accès contraint, coordination hebdomadaire avec le conducteur de travaux Bouygues.',
+    profileRequired: ['Assurance décennale valide', 'Minimum 5 ans d\'expérience en gros-œuvre', 'Équipe de 4 compagnons minimum disponible', 'Références sur programmes résidentiels R+3 ou plus'],
   },
   {
     id: 'sub2',
@@ -341,6 +345,8 @@ export const mockSubcontractingOpportunities: Opportunity[] = [
     saved: false,
     published: '2026-08-10',
     category: 'Plomberie',
+    description: 'Installation sanitaire complète pour un programme de 60 logements sociaux : alimentation eau chaude/froide, évacuations, pose des équipements sanitaires. Livraison par tranches, la première tranche de 20 logements doit être terminée sous 6 semaines.',
+    profileRequired: ['Assurance décennale valide', 'Qualification Qualibat plomberie', 'Disponibilité immédiate', 'Expérience en logement collectif social'],
   },
   {
     id: 'sub3',
@@ -358,6 +364,8 @@ export const mockSubcontractingOpportunities: Opportunity[] = [
     saved: true,
     published: '2026-08-08',
     category: 'Revêtements',
+    description: 'Pose de carrelage grand format et revêtements de sol souples dans les parties communes et chambres d\'un hôtel 4 étoiles en rénovation. Travail en site occupé partiellement, horaires décalés possibles pour limiter la gêne aux clients.',
+    profileRequired: ['Assurance décennale valide', 'Expérience en hôtellerie ou tertiaire haut de gamme', 'Capacité à travailler en horaires décalés', 'Portfolio de réalisations similaires'],
   },
   {
     id: 'sub4',
@@ -375,6 +383,8 @@ export const mockSubcontractingOpportunities: Opportunity[] = [
     saved: false,
     published: '2026-08-13',
     category: 'Métallerie',
+    description: 'Fabrication et pose de garde-corps, portes coupe-feu et menuiseries métalliques pour un nouveau bâtiment universitaire. Plans d\'exécution fournis par le maître d\'œuvre, délai de fabrication en atelier à prévoir avant pose.',
+    profileRequired: ['Assurance décennale valide', 'Atelier de fabrication propre', 'Certification portes coupe-feu', 'Expérience en marché public ou parapublic'],
   },
   {
     id: 'sub5',
@@ -392,6 +402,8 @@ export const mockSubcontractingOpportunities: Opportunity[] = [
     saved: false,
     published: '2026-08-07',
     category: 'Peinture',
+    description: 'Peinture intérieure et finitions pour un immeuble de bureaux de 6 étages : préparation des supports, peinture des cloisons et plafonds, finitions autour des menuiseries. Livraison étage par étage sur 8 semaines.',
+    profileRequired: ['Assurance décennale valide', 'Équipe de 3 peintres minimum', 'Expérience en tertiaire', 'Disponibilité sous 2 semaines'],
   },
 ];
 

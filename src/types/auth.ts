@@ -5,6 +5,7 @@ export interface AuthUser {
   role: string;
   firstName: string;
   lastName: string;
+  mfaEnabled: boolean;
 }
 
 export interface Company {

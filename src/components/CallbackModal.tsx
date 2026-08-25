@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { X, Check, Phone, User, Building2, Clock } from 'lucide-react';
+import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 
 interface CallbackModalProps {
@@ -8,8 +9,15 @@ interface CallbackModalProps {
   onClose: () => void;
 }
 
+const MOMENT_LABELS: Record<string, string> = {
+  matin: 'Matin (9h–12h)',
+  aprem: 'Après-midi (14h–17h)',
+  fin: 'Fin de journée (17h–19h)',
+};
+
 export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const { t } = useLang();
+  const { brandId } = useBrand();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,25 +29,24 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
+
     setSubmitting(true);
     setError(null);
     try {
       const [firstName, ...rest] = form.nom.trim().split(' ');
       await crmApi.submitLead({
-        first_name: firstName || form.nom,
-        last_name: rest.join(' ') || undefined,
-        // The CRM lead form requires an email but this modal only collects a
-        // phone number (matching the client's reference design exactly) - a
-        // placeholder is used so the lead still reaches the CRM; the sales
-        // team calls back on the phone number in the note either way.
-        email: `${form.telephone.replace(/\s+/g, '') || 'inconnu'}@rappel.marchesdirect.fr`,
+        brandId,
+        firstName: firstName || form.nom,
+        lastName: rest.join(' ') || undefined,
         phone: form.telephone,
-        company_name: form.entreprise || undefined,
-        message: `Demande de rappel — moment souhaité : ${form.moment || 'indifférent'}`,
+        companyName: form.entreprise || undefined,
+        leadSource: 'callback_modal',
+        message: form.moment ? `Créneau souhaité : ${MOMENT_LABELS[form.moment] || form.moment}` : undefined,
       });
       setSubmitted(true);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Impossible d'envoyer votre demande. Réessayez."));
+      setError(getApiErrorMessage(err, "Échec de l'envoi — réessayez."));
     } finally {
       setSubmitting(false);
     }
@@ -102,10 +109,18 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
                 </div>
               </div>
 
-              <button type="submit" disabled={submitting} className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 disabled:opacity-50 transition-colors mt-2">
-                {submitting ? '...' : t('callbackSubmit')}
+              {error && (
+                <p className="text-xs text-red-400 -mb-1">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {submitting && <Loader2 size={16} className="animate-spin" />}
+                {t('callbackSubmit')}
               </button>
-              {error && <p className="text-xs text-red-400 text-center">{error}</p>}
             </form>
           ) : (
             <div className="text-center py-6">

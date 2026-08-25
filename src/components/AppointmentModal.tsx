@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2 } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 
 interface AppointmentModalProps {
@@ -17,7 +18,14 @@ const MOTIFS = [
   'Autre demande',
 ];
 
-const MOCK_DATES = [
+// NOTE: there is no real calendar/availability backend (no appointments or
+// staff-scheduling table/route exists in marchesdirect-backend). These slots
+// are a preference picker, not live availability - the submission itself
+// (below) creates a real CRM lead so a human can actually schedule the call;
+// nothing here is presented to the user as a confirmed booking beyond that.
+// Flag for the client: real calendar integration (e.g. Cal.com/Google
+// Calendar) is needed if slots must reflect true staff availability.
+const AVAILABLE_SLOTS = [
   { date: 'Lun 25 août', slots: ['09:00', '10:00', '14:00', '15:00'] },
   { date: 'Mar 26 août', slots: ['09:30', '11:00', '14:30', '16:00'] },
   { date: 'Mer 27 août', slots: ['10:00', '11:30', '15:00'] },
@@ -27,47 +35,45 @@ const MOCK_DATES = [
 
 export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
   const { t } = useLang();
+  const { brandId } = useBrand();
   const [step, setStep] = useState(1);
   const [motif, setMotif] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
-  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setSubmitError(null); };
+  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); };
   const handleClose = () => { onClose(); setTimeout(reset, 300); };
 
-  // There's no real calendar/booking backend behind this multi-step picker
-  // (no such module exists in marchesdirect-backend) - the chosen date/slot
-  // is a stated preference, submitted as a CRM lead like the rest of the
-  // site's CTAs (see Technical Requirements section 9: lead form -> CRM ->
-  // sales callback). A human confirms the actual slot when they call back,
-  // rather than this booking a real calendar event.
-  const confirmAppointment = async () => {
+  const stepLabels = ['Motif', 'Date', 'Heure', 'Contact', 'Confirmation'];
+
+  const handleConfirm = async () => {
+    if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
     setSubmitting(true);
-    setSubmitError(null);
+    setError(null);
     try {
       const [firstName, ...rest] = form.nom.trim().split(' ');
       await crmApi.submitLead({
-        first_name: firstName || form.nom,
-        last_name: rest.join(' ') || undefined,
+        brandId,
+        firstName: firstName || form.nom,
+        lastName: rest.join(' ') || undefined,
         email: form.email,
         phone: form.telephone || undefined,
-        company_name: form.entreprise || undefined,
-        message: `Demande de rendez-vous — Motif : ${motif}. Créneau souhaité : ${selectedDate} à ${selectedSlot}.`,
+        companyName: form.entreprise || undefined,
+        leadSource: 'appointment_modal',
+        message: `Motif : ${motif}\nCréneau souhaité : ${selectedDate} à ${selectedSlot}`,
       });
       setStep(5);
     } catch (err) {
-      setSubmitError(getApiErrorMessage(err, "Impossible d'envoyer votre demande. Réessayez."));
+      setError(getApiErrorMessage(err, "Échec de l'envoi — réessayez."));
     } finally {
       setSubmitting(false);
     }
   };
-
-  const stepLabels = ['Motif', 'Date', 'Heure', 'Contact', 'Confirmation'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true">
@@ -137,7 +143,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
             <div>
               <h3 className="font-semibold text-brand-primary mb-4">Choisissez une date</h3>
               <div className="grid grid-cols-1 gap-2">
-                {MOCK_DATES.map(d => (
+                {AVAILABLE_SLOTS.map(d => (
                   <button
                     key={d.date}
                     onClick={() => setSelectedDate(d.date)}
@@ -170,7 +176,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
               <h3 className="font-semibold text-brand-primary mb-1">Choisissez un créneau</h3>
               <p className="text-xs text-brand-muted mb-4">{selectedDate}</p>
               <div className="grid grid-cols-3 gap-2">
-                {(MOCK_DATES.find(d => d.date === selectedDate)?.slots || []).map(slot => (
+                {(AVAILABLE_SLOTS.find(d => d.date === selectedDate)?.slots || []).map(slot => (
                   <button
                     key={slot}
                     onClick={() => setSelectedSlot(slot)}
@@ -221,19 +227,20 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
                   </div>
                 ))}
               </div>
+              {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
               <div className="flex gap-3 mt-5">
                 <button onClick={() => setStep(3)} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 transition-colors text-sm">
                   <ChevronLeft size={14} className="inline mr-1" /> Retour
                 </button>
                 <button
                   disabled={!form.nom || !form.email || submitting}
-                  onClick={confirmAppointment}
-                  className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm"
+                  onClick={handleConfirm}
+                  className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2"
                 >
-                  {submitting ? '...' : <>Confirmer <Check size={14} className="inline ml-1" /></>}
+                  {submitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  Confirmer
                 </button>
               </div>
-              {submitError && <p className="text-xs text-red-400 text-center mt-3">{submitError}</p>}
             </div>
           )}
 

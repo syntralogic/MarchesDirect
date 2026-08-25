@@ -1,11 +1,45 @@
-import { useState } from 'react';
-import { Save, Globe, Shield, Bell, Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Save, Globe, Shield, Bell, Check, Database, RefreshCw } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
+import { adminApi, type ApiDataSource } from '@/lib/apiClient';
 
 export default function AdminSettings() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [saved, setSaved] = useState(false);
+
+  const [sources, setSources] = useState<ApiDataSource[] | null>(null);
+  const [sourcesError, setSourcesError] = useState(false);
+  const [runningCode, setRunningCode] = useState<string | null>(null);
+  const [runResult, setRunResult] = useState<{ code: string; ok: boolean } | null>(null);
+
+  const loadSources = () => {
+    adminApi
+      .dataSources()
+      .then((res) => setSources(res.sources))
+      .catch(() => setSourcesError(true));
+  };
+
+  useEffect(loadSources, []);
+
+  const runSource = async (code: string) => {
+    setRunningCode(code);
+    setRunResult(null);
+    try {
+      await adminApi.runDataSource(code);
+      setRunResult({ code, ok: true });
+    } catch {
+      setRunResult({ code, ok: false });
+    } finally {
+      setRunningCode(null);
+      loadSources();
+    }
+  };
+
+  const fmtDate = (iso: string | null) => {
+    if (!iso) return lang === 'en' ? 'never run' : 'jamais lancé';
+    return new Date(iso).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
 
   const [twoFactor, setTwoFactor] = useState(true);
   const [maintenance, setMaintenance] = useState(false);
@@ -28,6 +62,53 @@ export default function AdminSettings() {
       </div>
 
       <div className="space-y-6 max-w-2xl">
+        <div className="bg-[#061D32] border border-[#17334D] rounded-xl p-5">
+          <h2 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+            <Database size={18} className="text-orange" /> {t('adminDataSources')}
+          </h2>
+          <p className="text-xs text-[#B9BBC8] mb-4">{t('adminDataSourcesDesc')}</p>
+
+          {sourcesError && <p className="text-xs text-red-400">Erreur de chargement.</p>}
+          {!sourcesError && !sources && <p className="text-xs text-[#B9BBC8]">{lang === 'en' ? 'Loading...' : 'Chargement...'}</p>}
+
+          {sources && (
+            <div className="flex flex-col gap-3">
+              {sources.map((s) => (
+                <div key={s.code} className="flex items-center justify-between flex-wrap gap-2 border-b border-[#17334D] pb-3 last:border-b-0 last:pb-0">
+                  <div>
+                    <span className="text-sm font-semibold text-white">{s.name}</span>
+                    <div className="text-[11px] text-[#B9BBC8] font-mono mt-0.5">
+                      {t('adminLastRun')}: {fmtDate(s.last_run)} · {t('adminNextRun')}: {fmtDate(s.next_run)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                        s.active ? 'bg-orange/15 text-orange' : 'bg-red-500/15 text-red-400'
+                      }`}
+                    >
+                      {s.active ? 'OK' : t('adminSourceInactive')}
+                    </span>
+                    <button
+                      onClick={() => runSource(s.code)}
+                      disabled={runningCode === s.code}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold border border-[#17334D] text-[#B9BBC8] hover:text-white hover:border-orange/40 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw size={12} className={runningCode === s.code ? 'animate-spin' : ''} />
+                      {runningCode === s.code ? t('adminRunning') : t('adminRunNow')}
+                    </button>
+                  </div>
+                  {runResult && runResult.code === s.code && (
+                    <span className={`text-[11px] w-full ${runResult.ok ? 'text-green-400' : 'text-red-400'}`}>
+                      {runResult.ok ? t('adminRunSuccess') : t('adminRunFailed')}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="bg-[#061D32] border border-[#17334D] rounded-xl p-5">
           <h2 className="text-base font-bold text-white flex items-center gap-2 mb-4">
             <Globe size={18} className="text-orange" /> {t('adminGeneral')}
