@@ -397,7 +397,19 @@ export type ApiDataSource = {
 // Backend has had these endpoints (requires admin/super_admin role) since the
 // connector work landed, but nothing in this frontend ever called them - the
 // only way to pull fresh listings was to wait for the every-2-hour cron.
+export type ApiAdminStats = {
+  activeOpportunities: number;
+  totalCompanies: number;
+  matchRate: number | null;
+  monthlyRecurringRevenue: number;
+  recentActivity: { user: string; action: string; target: string; time: string }[];
+};
+
 export const adminApi = {
+  stats: async (): Promise<ApiAdminStats> => {
+    const { data } = await apiClient.get<ApiAdminStats>('/admin/stats');
+    return data;
+  },
   dataSources: async (): Promise<{ sources: ApiDataSource[] }> => {
     const { data } = await apiClient.get('/admin/data-sources');
     return data;
