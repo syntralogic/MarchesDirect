@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
+import { SaveButton } from '@/components/SaveButton';
 
 const SECTORS = ['Tous', 'Travaux & construction', 'Énergie & environnement', 'Industrie & maintenance', 'Informatique & télécoms', 'Transport & logistique', 'Services aux entreprises'];
 const STATUSES = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
@@ -152,6 +154,7 @@ export default function MarchesPublicsPage() {
                       <span className="flex items-center gap-0.5"><MapPin size={9} className="text-[#B9BBC8]" /> {o.location}</span>
                     </div>
                   </div>
+                  <SaveButton opportunityId={o.id} />
                 </div>
 
                 <div className="mt-2 pt-2 border-t border-[#17334D]">
@@ -171,9 +174,9 @@ export default function MarchesPublicsPage() {
                       <CheckCircle2 size={10} />
                       <span>{t('searchCompatible')}</span>
                     </div>
-                    <button className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
+                    <Link to={`/marches-publics/${o.id}`} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
                       {t('searchView')} <ArrowRight size={10} />
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { FavoritesProvider } from '@/contexts/FavoritesContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
@@ -12,6 +13,7 @@ import HomePage from '@/pages/HomePage';
 import AppelsPage from '@/pages/AppelsPage';
 import MarchesPublicsPage from '@/pages/MarchesPublicsPage';
 import SousTraitancePage from '@/pages/SousTraitancePage';
+import AnnonceDetailPage from '@/pages/AnnonceDetailPage';
 import InfoPage from '@/pages/InfoPage';
 import MissionDetailPage from '@/pages/sous-traitance/MissionDetailPage';
 import MissionProfilPage from '@/pages/sous-traitance/MissionProfilPage';
@@ -64,13 +66,16 @@ const App: React.FC = () => {
     <ThemeProvider>
       <LangProvider>
         <AuthProvider>
+          <FavoritesProvider>
           <BrowserRouter>
             <AppLayout>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
               <Route path="/appels-doffres" element={<AppelsPage />} />
+              <Route path="/appels-doffres/:id" element={<AnnonceDetailPage journey="tender" backHref="/appels-doffres" />} />
               <Route path="/marches-publics" element={<MarchesPublicsPage />} />
+              <Route path="/marches-publics/:id" element={<AnnonceDetailPage journey="public_procurement" backHref="/marches-publics" />} />
               <Route path="/sous-traitance" element={<SousTraitancePage />} />
               <Route path="/info" element={<InfoPage />} />
               <Route path="/a-propos" element={<InfoPage />} />
@@ -119,6 +124,7 @@ const App: React.FC = () => {
             </AppLayout>
             <Toaster />
           </BrowserRouter>
+          </FavoritesProvider>
         </AuthProvider>
       </LangProvider>
     </ThemeProvider>

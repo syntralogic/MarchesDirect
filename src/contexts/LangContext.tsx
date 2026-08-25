@@ -569,6 +569,29 @@ const frTranslations: Translations = {
   adminViewAll: 'Voir tout',
   adminSuspend: 'Suspendre',
   adminActivate: 'Activer',
+
+  // Annonce detail page (Tenders & Marchés publics)
+  detailBack: 'Retour aux résultats',
+  detailNotFound: 'Cette annonce est introuvable ou a été retirée.',
+  detailLoadError: "Impossible de charger cette annonce. Vérifiez votre connexion et réessayez.",
+  detailPublished: 'Publiée le',
+  detailDeadline: 'Date limite de remise des plis',
+  detailBudget: 'Montant estimé',
+  detailLocation: 'Lieu d\'exécution',
+  detailTrade: 'Métier',
+  detailStatus: 'Statut',
+  detailDescriptionTitle: 'Description',
+  detailAiSummaryTitle: 'Résumé IA',
+  detailAiSummaryPending: "Cette annonce n'a pas encore été analysée par l'IA.",
+  detailMatchedTradesTitle: 'Métiers correspondants (IA)',
+  detailSave: 'Mettre de côté',
+  detailSaved: 'Dans ma sélection',
+  detailSaveLoginRequired: 'Connectez-vous pour sauvegarder cette annonce',
+  detailDocumentsTitle: 'Documents',
+  detailDocumentsNote: "Le dossier de consultation complet (DCE) sera téléchargeable directement ici une fois le module de réponse aux appels d'offres branché. En attendant, consultez la source officielle ci-dessous.",
+  detailSourceLink: 'Voir sur la source officielle',
+  detailSourceMissing: "Lien source non disponible pour cette annonce.",
+  detailBackToTop: 'Haut de page',
 };
 
 const enTranslations: Translations = {
@@ -1133,6 +1156,29 @@ const enTranslations: Translations = {
   adminViewAll: 'View all',
   adminSuspend: 'Suspend',
   adminActivate: 'Activate',
+
+  // Annonce detail page (Tenders & Marchés publics)
+  detailBack: 'Back to results',
+  detailNotFound: 'This listing could not be found or has been withdrawn.',
+  detailLoadError: 'Could not load this listing. Check your connection and try again.',
+  detailPublished: 'Published on',
+  detailDeadline: 'Submission deadline',
+  detailBudget: 'Estimated amount',
+  detailLocation: 'Place of performance',
+  detailTrade: 'Trade',
+  detailStatus: 'Status',
+  detailDescriptionTitle: 'Description',
+  detailAiSummaryTitle: 'AI summary',
+  detailAiSummaryPending: 'This listing has not been analyzed by the AI yet.',
+  detailMatchedTradesTitle: 'Matched trades (AI)',
+  detailSave: 'Save',
+  detailSaved: 'In your selection',
+  detailSaveLoginRequired: 'Log in to save this listing',
+  detailDocumentsTitle: 'Documents',
+  detailDocumentsNote: "The full tender document package (DCE) will be downloadable directly here once the tender-response module is wired up. In the meantime, check the official source below.",
+  detailSourceLink: 'View on the official source',
+  detailSourceMissing: 'No source link available for this listing.',
+  detailBackToTop: 'Back to top',
 };
 
 interface LangContextType {

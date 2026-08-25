@@ -116,6 +116,21 @@ export type ApiOpportunity = {
   match_score?: number;
 };
 
+// Extra fields only returned by GET /opportunities/:id (SELECT o.*, ...), not
+// by the list endpoint's narrower SELECT - kept separate so list-page code
+// doesn't have to deal with fields it never receives.
+export type ApiOpportunityDetail = ApiOpportunity & {
+  raw_data?: Record<string, any> | null;
+  ai_matched_trades?: { trade_id: string; trade_name?: string; confidence: number; reasoning?: string }[] | null;
+  contract_type?: string | null;
+  complexity_level?: string | null;
+  estimated_start_date?: string | null;
+  estimated_end_date?: string | null;
+  journey_name?: string | null;
+  cpv_display?: string | null;
+  source_reference?: string | null;
+};
+
 export type ApiPagination = {
   page: number;
   limit: number;
@@ -145,8 +160,27 @@ export const opportunitiesApi = {
     return data;
   },
   getById: async (id: string) => {
-    const { data } = await apiClient.get<ApiOpportunity>(`/opportunities/${id}`);
+    const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;
+  },
+};
+
+// Favorites ("Ma selection") - requires auth, hence the auth-attaching apiClient
+// rather than a plain axios call.
+export const favoritesApi = {
+  list: async () => {
+    const { data } = await apiClient.get<{ results: ApiOpportunity[] }>('/favorites');
+    return data.results;
+  },
+  ids: async () => {
+    const { data } = await apiClient.get<{ ids: string[] }>('/favorites/ids');
+    return data.ids;
+  },
+  save: async (opportunityId: string) => {
+    await apiClient.put(`/favorites/${opportunityId}`);
+  },
+  remove: async (opportunityId: string) => {
+    await apiClient.delete(`/favorites/${opportunityId}`);
   },
 };
 

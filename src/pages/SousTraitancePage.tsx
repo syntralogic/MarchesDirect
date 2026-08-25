@@ -4,6 +4,7 @@ import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, Sl
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
+import { SaveButton } from '@/components/SaveButton';
 
 const PROFESSIONS = ['Tous', 'Maçonnerie', 'Plomberie', 'Revêtements', 'Métallerie', 'Peinture', 'Électricité'];
 const DEPARTMENTS = ['Tous', 'Hauts-de-Seine (92)', 'Yvelines (78)', 'Alpes-Maritimes (06)', 'Isère (38)', 'Rhône (69)'];
@@ -155,6 +156,7 @@ export default function SousTraitancePage() {
                       <span className="flex items-center gap-0.5"><MapPin size={9} className="text-[#B9BBC8]" /> {o.location}</span>
                     </div>
                   </div>
+                  <SaveButton opportunityId={o.id} />
                 </div>
 
                 <div className="mt-2 pt-2 border-t border-[#17334D]">
