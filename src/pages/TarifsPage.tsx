@@ -80,10 +80,9 @@ export default function TarifsPage() {
       return;
     }
 
-    // Plans here are the static, translated display copy (names/features come
-    // from LangContext) - matched against the real subscription_plans row by
-    // price, since there's no shared slug/code column between the two yet.
-    const match = backendPlans.find((p) => Number(p.price) === Number(plan.price));
+    // plan.id here ('decouverte'/'pro'/'entreprise') is the same stable
+    // code stored in subscription_plans.plan_code on the backend.
+    const match = backendPlans.find((p) => p.plan_code === plan.id);
     if (!match) {
       toast.error("Ce forfait n'est pas encore disponible à la souscription en ligne.");
       return;

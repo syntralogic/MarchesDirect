@@ -1,19 +1,29 @@
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
 
 export default function RecherchePage() {
   const { t } = useLang();
-  const { opportunities: ALL_OPPS, loading, error } = useOpportunities(undefined);
+  const [searchParams] = useSearchParams();
+
+  // Seeded from the URL so a link like /recherche?region=Ile-de-France&trade_id=3
+  // (e.g. from an SEO landing page) lands here already filtered, instead of
+  // a generic unfiltered list. Still fully editable afterwards.
   const [query, setQuery] = useState('');
-  
-  const filtered = useMemo(() => {
-    return ALL_OPPS.filter(o => {
-      if (query && !o.title.toLowerCase().includes(query.toLowerCase()) && !o.organization.toLowerCase().includes(query.toLowerCase())) return false;
-      return true;
-    });
-  }, [query, ALL_OPPS]);
+  const [location, setLocation] = useState(searchParams.get('region') || searchParams.get('city') || '');
+  const tradeId = searchParams.get('trade_id') || undefined;
+
+  const debouncedQuery = useDebounce(query, 400);
+  const debouncedLocation = useDebounce(location, 400);
+
+  const { opportunities: filtered, loading, error } = useOpportunities({
+    q: debouncedQuery || undefined,
+    region: debouncedLocation || undefined,
+    trade_id: tradeId,
+  });
 
   const getIcon = (title: string) => {
     if (title.toLowerCase().includes('peinture')) return <Paintbrush size={16} className="text-orange" />;
@@ -60,6 +70,8 @@ export default function RecherchePage() {
               <input
                 type="text"
                 placeholder={t('searchLocationPlaceholder')}
+                value={location}
+                onChange={e => setLocation(e.target.value)}
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
               />
             </div>

@@ -192,6 +192,7 @@ export const chatbotApi = {
 
 export type ApiSubscriptionPlan = {
   id: number;
+  plan_code: string | null;
   name: string;
   description: string | null;
   price: number;

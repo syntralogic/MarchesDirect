@@ -3,7 +3,16 @@ import { opportunitiesApi, getApiErrorMessage, type OpportunitySearchParams } fr
 import { apiOpportunityToDisplay } from '@/lib/opportunityAdapter';
 import type { Opportunity } from '@/data/mockData';
 
-export function useOpportunities(journey: OpportunitySearchParams['journey']) {
+export function useOpportunities(params: OpportunitySearchParams['journey'] | OpportunitySearchParams) {
+  // Accepts either a bare journey (existing call sites: useOpportunities('tender'))
+  // or a full filter object (region/trade_id/city/department/q) for pages that
+  // need real server-side filtering, e.g. RecherchePage reading URL params
+  // from an SEO landing page link.
+  const searchParams: OpportunitySearchParams = typeof params === 'object' && params !== null
+    ? params
+    : { journey: params };
+
+  const { journey, region, city, department, trade_id, q } = searchParams;
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +24,7 @@ export function useOpportunities(journey: OpportunitySearchParams['journey']) {
     setError(null);
 
     opportunitiesApi
-      .search({ journey, limit: 50 })
+      .search({ journey, region, city, department, trade_id, q, limit: 50 })
       .then((data) => {
         if (cancelled) return;
         setOpportunities(data.results.map(apiOpportunityToDisplay));
@@ -35,7 +44,7 @@ export function useOpportunities(journey: OpportunitySearchParams['journey']) {
     return () => {
       cancelled = true;
     };
-  }, [journey]);
+  }, [journey, region, city, department, trade_id, q]);
 
   return { opportunities, loading, error };
 }

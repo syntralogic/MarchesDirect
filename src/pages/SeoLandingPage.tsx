@@ -51,6 +51,10 @@ export default function SeoLandingPage() {
     );
   }
 
+  const searchParams = new URLSearchParams();
+  if (page.filter_region) searchParams.set('region', page.filter_region);
+  if (page.filter_trade_id) searchParams.set('trade_id', String(page.filter_trade_id));
+
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-16">
       <PageMeta title={page.page_title || page.page_slug} description={page.page_meta_description || ''} />
@@ -71,13 +75,8 @@ export default function SeoLandingPage() {
         {page.page_content}
       </p>
 
-      {/* NOTE for client: RecherchePage.tsx doesn't read URL query params yet
-          (its filters are local useState only), so this can't deep-link
-          straight into a pre-filtered result set today - it lands on the
-          general search page. Worth wiring region/trade_id params through
-          RecherchePage as a follow-up so this link is fully useful. */}
       <Link
-        to="/recherche"
+        to={`/recherche?${searchParams.toString()}`}
         className="inline-flex items-center gap-2 bg-orange text-white font-semibold text-sm px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors"
       >
         <Search size={16} />
