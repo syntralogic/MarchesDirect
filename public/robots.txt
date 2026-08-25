@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /tableau-de-bord
+Disallow: /profil
+Disallow: /admin
+
+Sitemap: https://marchesdirect.vercel.app/sitemap.xml

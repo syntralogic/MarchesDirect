@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { mockSubcontractingOpportunities } from '@/data/mockData';
-import { useLang } from '@/contexts/LangContext';
 import { TopBar, StepIndicator, Eyebrow, PageTitle, PageSub, Badge, Button, InfoBox } from '@/components/sous-traitance/ui';
 
 const STEPS = [{ label: 'Missions' }, { label: 'Détail' }, { label: 'Mon profil' }, { label: 'Mise en relation' }];
@@ -10,7 +9,6 @@ const STEPS = [{ label: 'Missions' }, { label: 'Détail' }, { label: 'Mon profil
 export default function MissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useLang();
   const mission = mockSubcontractingOpportunities.find(o => o.id === id);
   const [message, setMessage] = useState('');
 

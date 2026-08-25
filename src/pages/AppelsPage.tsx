@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useLang } from '@/contexts/LangContext';
@@ -11,6 +11,7 @@ const CATEGORIES = ['Toutes', 'Second œuvre', 'Technique', 'Aménagement', 'Fa�
 
 export default function AppelsPage() {
   const { t } = useLang();
+  const navigate = useNavigate();
   const { opportunities: mockPrivateOpportunities, loading, error } = useOpportunities('tender');
   const [location, setLocation] = useState('');
   const [sector, setSector] = useState('Tous');
@@ -166,9 +167,9 @@ export default function AppelsPage() {
                       <CheckCircle2 size={10} />
                       <span>{t('searchCompatible')}</span>
                     </div>
-                    <Link to={`/appels-doffres/${o.id}`} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
+                    <button onClick={() => navigate(`/opportunites/${o.id}`)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
                       {t('searchView')} <ArrowRight size={10} />
-                    </Link>
+                    </button>
                   </div>
                 </div>
               </div>
