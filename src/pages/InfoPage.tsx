@@ -4,7 +4,7 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { 
   Target, ArrowRight, CheckCircle, CircleHelp, Filter, FileText, Edit3, Send, Handshake, 
-  Phone, Calendar, Plus, ChevronUp 
+  Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Scale, Building2, TrendingUp
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 
@@ -17,14 +17,73 @@ const TEAM = [
   { name: 'Charlotte Le Guen', role: 'Experte marchés publics' },
 ];
 
-const FAQ_ITEMS = [
-  { q: 'Marchés Direct peut-il réellement trouver des opportunités adaptées à mon entreprise ?', a: 'Oui, notre IA et nos experts analysent des milliers d’annonces chaque jour pour cibler uniquement les appels d’offres correspondant à votre secteur, votre localisation et votre capacité de production.' },
-  { q: 'Pourquoi choisir Marchés Direct plutôt que chercher seul ou passer par une autre plateforme ?', a: 'Nous ne nous contentons pas de lister les offres : nous qualifions, nous préparons le dossier administratif et technique, et nous déposons pour vous. Vous gagnez un temps considérable.' },
-  { q: 'Que prend concrètement en charge Marchés Direct ?', a: 'La veille, la qualification, la génération des pièces administratives (DC1, DC2, mémoire technique, BPU), la soumission sur les plateformes et l’accompagnement jusqu’à la signature.' },
-  { q: 'Combien de temps devrais-je personnellement y consacrer ?', a: 'Environ 2 à 3 heures par mois pour valider les dossiers que nous préparons. Le reste est automatisé ou géré par nos équipes.' },
-  { q: 'Quelles sont mes chances de remporter un marché ?', a: 'Nos clients déposent en moyenne 40 % de dossiers en plus qu’auparavant, avec un taux de signature qui augmente dès les premiers mois grâce à des dossiers mieux préparés et ciblés.' },
-  { q: 'Sous quel délai puis-je obtenir mes premiers résultats ?', a: 'Vous recevez vos premières alertes dès la première semaine. Les premiers dossiers sont déposés généralement sous 2 à 3 semaines, selon la complexité de votre profil.' },
-  { q: 'Comment savoir si Marchés Direct correspond à mon entreprise ?', a: 'Le plus simple est de réserver un appel de 15 minutes avec un conseiller. Il étudie votre activité et vous dit immédiatement si nos services sont pertinents pour vous.' },
+// EXACT FAQ DATA & STYLE FROM IMAGE
+const FAQ_SECTIONS = [
+  {
+    title: 'LE SERVICE',
+    items: [
+      {
+        icon: Euro,
+        q: 'Combien ça va me coûter ?',
+        a: "L'essentiel de notre rémunération vient de vos succès : un pourcentage compris entre 0,5 % et 5 % du marché selon sa taille, et uniquement si vous le signez.\n\nÀ côté, un abonnement à partir de 29 €/mois vous donne accès à la plateforme, à la veille sur vos secteurs, à votre chargé d'affaires dédié et à une équipe complète qui prend tout en charge, du repérage jusqu'à la signature du marché.\n\nPas de frais de dossier. Les conditions exactes sont fixées avec vous dès le premier échange.",
+      },
+      {
+        icon: FileText,
+        q: 'Que prend concrètement en charge Marchés Direct ?',
+        a: "Nous prenons en charge la veille, la qualification, la génération des pièces administratives (DC1, DC2, mémoire technique, BPU), la soumission sur les plateformes et l'accompagnement jusqu'à la signature.",
+      },
+      {
+        icon: Clock,
+        q: 'Combien de temps devrais-je personnellement y consacrer ?',
+        a: "Environ 2 à 3 heures par mois pour valider les dossiers que nous préparons. Le reste est automatisé ou géré par nos équipes.",
+      },
+      {
+        icon: Shield,
+        q: 'Mes informations d\'entreprise restent-elles confidentielles ?',
+        a: "Oui, toutes vos données sont chiffrées et stockées de manière sécurisée. Nous ne partageons jamais vos informations sans votre accord explicite.",
+      },
+    ],
+  },
+  {
+    title: 'LES OPPORTUNITÉS',
+    items: [
+      {
+        icon: Search,
+        q: 'Marchés Direct peut-il réellement trouver des opportunités adaptées à mon entreprise ?',
+        a: "Oui, notre IA et nos experts analysent des milliers d'annonces chaque jour pour cibler uniquement les appels d'offres correspondant à votre secteur, votre localisation et votre capacité de production.",
+      },
+      {
+        icon: Scale,
+        q: 'Pourquoi choisir Marchés Direct plutôt que chercher seul ou passer par une autre plateforme ?',
+        a: "Nous ne nous contentons pas de lister les offres : nous qualifions, nous préparons le dossier administratif et technique, et nous déposons pour vous. Vous gagnez un temps considérable.",
+      },
+      {
+        icon: Building2,
+        q: 'Comment savoir si Marchés Direct correspond à mon entreprise ?',
+        a: "Le plus simple est de réserver un appel de 15 minutes avec un conseiller. Il étudie votre activité et vous dit immédiatement si nos services sont pertinents pour vous.",
+      },
+    ],
+  },
+  {
+    title: 'LES RÉSULTATS',
+    items: [
+      {
+        icon: Shield,
+        q: 'Que se passe-t-il si je ne remporte aucun marché ?',
+        a: "Aucun marché signé, aucune commission. Vous ne payez que l'abonnement de base, et vous conservez tous les dossiers préparés pour vos futures candidatures.",
+      },
+      {
+        icon: TrendingUp,
+        q: 'Quelles sont mes chances de remporter un marché ?',
+        a: "Nos clients déposent en moyenne 40 % de dossiers en plus qu'auparavant, avec un taux de signature qui augmente dès les premiers mois grâce à des dossiers mieux préparés et ciblés.",
+      },
+      {
+        icon: Calendar,
+        q: 'Sous quel délai puis-je obtenir mes premiers résultats ?',
+        a: "Vous recevez vos premières alertes dès la première semaine. Les premiers dossiers sont déposés généralement sous 2 à 3 semaines, selon la complexité de votre profil.",
+      },
+    ],
+  },
 ];
 
 export default function InfoPage() {
@@ -32,7 +91,8 @@ export default function InfoPage() {
   const location = useLocation();
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null); // All FAQs closed
+  const [openSection, setOpenSection] = useState<string | null>(null); // No section open
   const path = location.pathname;
 
   // ------- CONTACT PAGE -------
@@ -77,38 +137,64 @@ export default function InfoPage() {
     );
   }
 
-  // ------- FAQ PAGE -------
+  // ------- FAQ PAGE (Only opens when on /faq, all closed by default) -------
   if (path === '/faq') {
     return (
       <div className="page-fade-in max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-12">
         <div className="mb-8">
-          <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('faqTag')}</span>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mt-2 mb-3">{t('faqTitle')}</h1>
-          <p className="text-[#B9BBC8] text-sm md:text-base">{t('faqSub')}</p>
+          <span className="text-xs font-bold text-orange uppercase tracking-widest">FAQ</span>
+          <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight mt-2 mb-3">
+            Tout savoir avant <br className="hidden md:block" /> <span className="text-orange">de démarrer.</span>
+          </h1>
+          <p className="text-[#B9BBC8] text-sm md:text-base">Les réponses aux principales questions avant de nous confier votre prochain marché.</p>
         </div>
 
-        <div className="space-y-3 mb-8">
-          {FAQ_ITEMS.map((item, i) => (
-            <div key={i} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
-              <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full flex items-center justify-between p-5 text-left gap-4">
-                <span className="text-sm font-semibold text-white leading-snug">{item.q}</span>
-                {openFaq === i ? <ChevronUp size={18} className="text-orange shrink-0" /> : <Plus size={18} className="text-orange shrink-0" />}
-              </button>
-              {openFaq === i && (
-                <div className="px-5 pb-5 border-t border-[#17334D]">
-                  <p className="text-sm text-[#B9BBC8] leading-relaxed pt-4">{item.a}</p>
-                </div>
-              )}
+        {FAQ_SECTIONS.map((section) => (
+          <div key={section.title} className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-orange uppercase tracking-widest">{section.title}</h2>
+              <div className="flex-1 h-px bg-orange/30 ml-4" />
             </div>
-          ))}
-        </div>
 
-        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center orange-glow-sm">
-          <h2 className="text-2xl font-extrabold text-white mb-2">Votre prochain marché <br className="hidden md:block" /> <span className="text-orange">commence peut-être ici.</span></h2>
-          <p className="text-[#B9BBC8] text-sm mb-6">Présentez-nous votre entreprise dès aujourd'hui.</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors"><Calendar size={16} /> {t('bookAppointment')}</button>
-            <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors"><Phone size={16} /> {t('callBack')}</button>
+            <div className="space-y-3">
+              {section.items.map((item, itemIndex) => {
+                const isOpen = openFaq === itemIndex && openSection === section.title;
+                
+                return (
+                  <div key={item.q} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => {
+                        setOpenSection(section.title);
+                        setOpenFaq(isOpen ? null : itemIndex);
+                      }}
+                      className="w-full flex items-center justify-between p-4 text-left gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon size={20} className="text-orange shrink-0" />
+                        <span className="text-sm font-semibold text-white leading-snug">{item.q}</span>
+                      </div>
+                      {isOpen ? <ChevronUp size={18} className="text-orange shrink-0" /> : <Plus size={18} className="text-orange shrink-0" />}
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 pb-4 pl-12 border-t border-[#17334D]">
+                        <p className="text-sm text-[#B9BBC8] leading-relaxed pt-4 whitespace-pre-line">
+                          {item.a}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 text-center">
+          <h2 className="text-lg font-bold text-white mb-1">Une question avant de vous lancer ?</h2>
+          <p className="text-sm text-orange font-medium mb-4">Elena vous répond directement.</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm"><Calendar size={16} /> Prendre rendez-vous</button>
+            <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors text-sm"><Phone size={16} /> Être rappelé</button>
           </div>
         </div>
 
@@ -118,7 +204,7 @@ export default function InfoPage() {
     );
   }
 
-  // ------- MAIN PAGE (HOW IT WORKS + TEAM GRID) -------
+  // ------- MAIN PAGE (HOW IT WORKS + TEAM GRID + FAQ) -------
   const STEPS = [
     { num: '01', icon: CircleHelp, title: t('step1'), desc: t('step1Desc') },
     { num: '02', icon: Filter, title: t('step2'), desc: t('step2Desc') },
@@ -155,7 +241,7 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* 2. TEAM GRID (Click to go to /team-profile) */}
+      {/* 2. TEAM GRID */}
       <div className="mb-10">
         <div className="mb-6">
           <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('teamTag')}</span>
@@ -196,7 +282,65 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* FINAL CTA */}
+      {/* 4. FAQ SECTION (On Main Page) */}
+      <div className="mb-10">
+        <div className="mb-6">
+          <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('faqTag')}</span>
+          <h1 className="text-2xl md:text-5xl font-extrabold text-white leading-tight mt-2 mb-3">{t('faqTitle')}</h1>
+          <p className="text-xs md:text-sm text-[#B9BBC8]">{t('faqSub')}</p>
+        </div>
+
+        {FAQ_SECTIONS.map((section) => (
+          <div key={section.title} className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-orange uppercase tracking-widest">{section.title}</h2>
+              <div className="flex-1 h-px bg-orange/30 ml-4" />
+            </div>
+
+            <div className="space-y-3">
+              {section.items.map((item, itemIndex) => {
+                const isOpen = openFaq === itemIndex && openSection === section.title;
+                
+                return (
+                  <div key={item.q} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => {
+                        setOpenSection(section.title);
+                        setOpenFaq(isOpen ? null : itemIndex);
+                      }}
+                      className="w-full flex items-center justify-between p-4 text-left gap-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon size={20} className="text-orange shrink-0" />
+                        <span className="text-sm font-semibold text-white leading-snug">{item.q}</span>
+                      </div>
+                      {isOpen ? <ChevronUp size={18} className="text-orange shrink-0" /> : <Plus size={18} className="text-orange shrink-0" />}
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 pb-4 pl-12 border-t border-[#17334D]">
+                        <p className="text-sm text-[#B9BBC8] leading-relaxed pt-4 whitespace-pre-line">
+                          {item.a}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 text-center">
+          <h2 className="text-lg font-bold text-white mb-1">Une question avant de vous lancer ?</h2>
+          <p className="text-sm text-orange font-medium mb-4">Elena vous répond directement.</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm"><Calendar size={16} /> Prendre rendez-vous</button>
+            <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors text-sm"><Phone size={16} /> Être rappelé</button>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. FINAL CTA */}
       <div className="bg-[#061D32] border border-[#17334D] rounded-xl md:rounded-2xl p-4 md:p-6 text-center orange-glow-sm">
         <h2 className="text-lg md:text-2xl font-extrabold text-white mb-2">Votre prochain marché <br className="hidden md:block" /> <span className="text-orange">commence peut-être ici.</span></h2>
         <p className="text-[10px] md:text-sm text-[#B9BBC8] mb-4 md:mb-6">Présentez-nous votre entreprise dès aujourd'hui.</p>
