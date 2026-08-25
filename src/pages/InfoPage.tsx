@@ -9,12 +9,12 @@ import {
 import { useLang } from '@/contexts/LangContext';
 
 const TEAM = [
-  { name: 'Charlotte Le Guen', role: 'Experte marchés publics' },
-  { name: 'Emre Kaya', role: 'Chargé d’affaires' },
-  { name: 'Nicole Pisseron', role: 'Chargée d’affaires' },
   { name: 'Bernard Delmas', role: 'Directeur général' },
-  { name: 'Maria Ferreira', role: 'Chargée d’affaires' },
   { name: 'Elena Popescu', role: 'Assistante de direction' },
+  { name: 'Maria Ferreira', role: 'Chargée d’affaires' },
+  { name: 'Nicole Pisseron', role: 'Chargée d’affaires' },
+  { name: 'Emre Kaya', role: 'Chargé d’affaires' },
+  { name: 'Charlotte Le Guen', role: 'Experte marchés publics' },
 ];
 
 const FAQ_ITEMS = [
@@ -67,12 +67,8 @@ export default function InfoPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors flex-1">
-            <Calendar size={16} /> {t('bookAppointment')}
-          </button>
-          <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors flex-1">
-            <Phone size={16} /> {t('callBack')}
-          </button>
+          <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors flex-1"><Calendar size={16} /> {t('bookAppointment')}</button>
+          <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors flex-1"><Phone size={16} /> {t('callBack')}</button>
         </div>
 
         <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
@@ -122,7 +118,7 @@ export default function InfoPage() {
     );
   }
 
-  // ------- MAIN PAGE (HOW IT WORKS + TEAM GRID + FAQ) -------
+  // ------- MAIN PAGE (HOW IT WORKS + TEAM GRID) -------
   const STEPS = [
     { num: '01', icon: CircleHelp, title: t('step1'), desc: t('step1Desc') },
     { num: '02', icon: Filter, title: t('step2'), desc: t('step2Desc') },
@@ -159,32 +155,7 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* 2. MISSION */}
-      <div className="mb-10">
-        <div className="bg-[#061D32] border border-[#17334D] rounded-xl md:rounded-2xl p-4 md:p-6">
-          <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-6">
-            <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
-              <Target size={22} className="text-orange md:hidden" />
-              <Target size={28} className="text-orange hidden md:block" />
-            </div>
-            <div>
-              <h2 className="text-base md:text-xl font-bold text-white mb-1 md:mb-2">{t('aboutMissionTitle')}</h2>
-              <p className="text-xs md:text-sm text-[#B9BBC8] leading-relaxed">Vous faire gagner du temps et augmenter vos chances de réussite.</p>
-            </div>
-          </div>
-          <div className="space-y-1.5 md:space-y-2">
-            {['Gagnez du temps', 'Augmentez votre chiffre d’affaires et surtout vos marges', 'Soyez accompagné de A à Z', 'Améliorez votre taux de signature'].map(reason => (
-              <div key={reason} className="flex items-center gap-1.5 md:gap-2">
-                <CheckCircle size={14} className="text-orange shrink-0 md:hidden" />
-                <CheckCircle size={16} className="text-orange shrink-0 hidden md:block" />
-                <span className="text-xs md:text-sm text-white">{reason}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 3. TEAM GRID (Links to TeamProfilePage) */}
+      {/* 2. TEAM GRID (Click to go to /team-profile) */}
       <div className="mb-10">
         <div className="mb-6">
           <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('teamTag')}</span>
@@ -192,46 +163,40 @@ export default function InfoPage() {
           <p className="text-xs md:text-sm text-[#B9BBC8] max-w-2xl">{t('teamSub')}</p>
         </div>
 
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">
-          {TEAM.map((member, i) => (
-            <Link key={i} to="/team-profile" className="bg-[#061D32] border border-[#17334D] rounded-xl p-2 md:p-6 flex flex-col items-center text-center hover:border-orange/50 transition-all">
-              <div className="w-10 h-10 md:w-20 md:h-20 rounded-full bg-[#031B30] border border-[#17334D] mb-2 md:mb-4" />
-              <p className="text-[8px] md:text-sm font-semibold text-orange mb-0.5 md:mb-1">{member.role}</p>
-              <h3 className="text-[10px] md:text-lg font-bold text-white mb-1 md:mb-2">{member.name}</h3>
-              <span className="text-[8px] md:text-xs text-orange font-medium flex items-center gap-0.5 md:gap-1">
-                Voir son profil <ArrowRight size={8} className="md:hidden" /><ArrowRight size={12} className="hidden md:block" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          {TEAM.map((member) => (
+            <Link 
+              to={`/team-profile?member=${encodeURIComponent(member.name)}`}
+              className="bg-[#061D32] border border-[#17334D] rounded-xl p-4 md:p-6 flex flex-col items-center text-center hover:border-orange/50 transition-all cursor-pointer"
+            >
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#031B30] border border-[#17334D] mb-3 md:mb-4" />
+              <p className="text-[10px] md:text-sm font-semibold text-orange mb-0.5 md:mb-1">{member.role}</p>
+              <h3 className="text-xs md:text-lg font-bold text-white mb-1 md:mb-2">{member.name}</h3>
+              <span className="text-[9px] md:text-xs text-orange font-medium flex items-center gap-0.5 md:gap-1">
+                Découvrir sa fonction <ArrowRight size={8} className="md:hidden" /><ArrowRight size={12} className="hidden md:block" />
               </span>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* 4. FAQ */}
-      <div className="mb-10">
-        <div className="mb-6">
-          <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('faqTag')}</span>
-          <h1 className="text-2xl md:text-5xl font-extrabold text-white leading-tight mt-2 mb-3">{t('faqTitle')}</h1>
-          <p className="text-xs md:text-sm text-[#B9BBC8]">{t('faqSub')}</p>
-        </div>
-
-        <div className="space-y-2 md:space-y-3">
-          {FAQ_ITEMS.map((item, i) => (
-            <div key={i} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
-              <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full flex items-center justify-between p-3 md:p-5 text-left gap-4">
-                <span className="text-[11px] md:text-sm font-semibold text-white leading-snug">{item.q}</span>
-                {openFaq === i ? <ChevronUp size={16} className="text-orange shrink-0" /> : <Plus size={16} className="text-orange shrink-0" />}
-              </button>
-              {openFaq === i && (
-                <div className="px-3 pb-3 md:px-5 md:pb-5 border-t border-[#17334D]">
-                  <p className="text-[10px] md:text-sm text-[#B9BBC8] leading-relaxed pt-3 md:pt-4">{item.a}</p>
-                </div>
-              )}
-            </div>
-          ))}
+      {/* 3. OBJECTIVE CTA */}
+      <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-8 text-center mb-10">
+        <h2 className="text-xl md:text-2xl font-extrabold text-white mb-2">
+          Notre objectif : vous faire <span className="text-orange">remporter le marché.</span>
+        </h2>
+        <p className="text-xs md:text-sm text-[#B9BBC8] leading-relaxed mb-4">
+          Nous ne sommes pas là uniquement pour déposer des dossiers. De la sélection de l'opportunité jusqu'à la signature, toute l'équipe se mobilise pour maximiser vos chances de succès.
+        </p>
+        <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
+          <p className="text-[11px] md:text-sm text-[#B9BBC8]">
+            Appel d'offres privé, marché public ou contrat de sous-traitance :<br />
+            <span className="text-orange font-semibold">quand vous gagnez, nous gagnons.</span>
+          </p>
         </div>
       </div>
 
-      {/* 5. FINAL CTA */}
+      {/* FINAL CTA */}
       <div className="bg-[#061D32] border border-[#17334D] rounded-xl md:rounded-2xl p-4 md:p-6 text-center orange-glow-sm">
         <h2 className="text-lg md:text-2xl font-extrabold text-white mb-2">Votre prochain marché <br className="hidden md:block" /> <span className="text-orange">commence peut-être ici.</span></h2>
         <p className="text-[10px] md:text-sm text-[#B9BBC8] mb-4 md:mb-6">Présentez-nous votre entreprise dès aujourd'hui.</p>
