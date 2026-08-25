@@ -21,6 +21,7 @@ import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
 import MiseEnRelationPage from '@/pages/sous-traitance/MiseEnRelationPage';
 import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
+import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
 import ProfilPage from '@/pages/ProfilPage';
 import EquipePage from '@/pages/EquipePage';
@@ -88,6 +89,7 @@ const App: React.FC = () => {
               <Route path="/sous-traitance/mise-en-relation" element={<RequireAuth><MiseEnRelationPage /></RequireAuth>} />
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
+              <Route path="/opportunites/:id" element={<OpportunityDetailPage />} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
               <Route path="/equipe" element={<EquipePage />} />

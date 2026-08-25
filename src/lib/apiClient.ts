@@ -457,7 +457,8 @@ export const tendersApi = {
   // the server picked.
   downloadPackage: async (bidId: string): Promise<{ blob?: Blob; url?: string }> => {
     const { data, headers } = await apiClient.get(`/tenders/bid/${bidId}/package`, { responseType: 'blob' });
-    if (headers['content-type']?.includes('application/json')) {
+    const contentType = String(headers['content-type'] || '');
+    if (contentType.includes('application/json')) {
       const text = await (data as Blob).text();
       return { url: JSON.parse(text).url };
     }

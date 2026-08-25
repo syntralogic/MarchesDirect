@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
@@ -7,6 +8,7 @@ import { useLang } from '@/contexts/LangContext';
 
 export default function RecherchePage() {
   const { t } = useLang();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Seeded from the URL so a link like /recherche?region=Ile-de-France&trade_id=3
@@ -167,7 +169,7 @@ export default function RecherchePage() {
                   <span>{t('searchCompatible')}</span>
                 </div>
                 {/* CTA Button */}
-                <button className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
+                <button onClick={() => navigate(`/opportunites/${o.id}`)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
                   {t('searchView')} <ArrowRight size={10} />
                 </button>
               </div>
