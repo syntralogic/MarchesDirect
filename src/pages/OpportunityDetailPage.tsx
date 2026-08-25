@@ -203,7 +203,10 @@ export default function OpportunityDetailPage() {
             {bid?.missing_documents && bid.missing_documents.length > 0 && (
               <div className="flex items-start gap-2 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-brand-muted mb-3">
                 <AlertTriangle size={14} className="text-orange shrink-0 mt-0.5" />
-                <span>Documents manquants dans votre profil : {bid.missing_documents.map(d => DOC_LABELS[d] || d).join(', ')}. Ajoutez-les depuis votre profil avant de soumettre.</span>
+                <span>
+                  Documents manquants dans votre profil : {bid.missing_documents.map(d => DOC_LABELS[d] || d).join(', ')}.{' '}
+                  <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline">Ajoutez-les depuis votre dossier entreprise</Link> avant de soumettre.
+                </span>
               </div>
             )}
             {bid?.technical_memo_text && (

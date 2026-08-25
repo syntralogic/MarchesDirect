@@ -361,6 +361,109 @@ export const companiesApi = {
   },
 };
 
+export type ApiCompanyDocument = {
+  id: string;
+  document_type: string;
+  document_name: string | null;
+  description: string | null;
+  file_url: string;
+  file_size_bytes: number | null;
+  file_mime_type: string | null;
+  issued_date: string | null;
+  expiry_date: string | null;
+  is_expired: boolean;
+};
+
+export type ApiCompanyCertification = {
+  id: string;
+  certification_name: string;
+  certification_code: string | null;
+  issued_by: string | null;
+  issued_date: string | null;
+  expiry_date: string | null;
+  is_expired: boolean;
+  document_url: string | null;
+};
+
+export type ApiCompanyReference = {
+  id: string;
+  project_name: string;
+  description: string | null;
+  client_name: string | null;
+  contract_value: number | null;
+  contract_type: string | null;
+  completion_date: string | null;
+  skills_demonstrated: string[] | null;
+};
+
+export type ApiCompanyResource = {
+  id: string;
+  resource_type: string;
+  name: string;
+  category: string | null;
+  quantity: number | null;
+  description: string | null;
+};
+
+export type ApiCompanyPolicy = {
+  id: string;
+  policy_type: string;
+  policy_text: string;
+  effective_date: string | null;
+};
+
+export const uploadsApi = {
+  upload: async (file: File): Promise<{ url: string; sizeBytes: number; mimeType: string; originalName: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post('/uploads', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+};
+
+// Milestone 9 "reusable company file" - documents/certifications/references/
+// resources/policies entered once, reused on every bid. Backend has had all
+// of this since the tender-response data model was built; nothing in the
+// frontend ever called it (there was no document vault UI at all).
+export const companyVaultApi = {
+  documents: {
+    list: async (): Promise<ApiCompanyDocument[]> => (await apiClient.get('/companies/me/documents')).data,
+    create: async (payload: {
+      documentType: string; documentName?: string; description?: string; fileUrl: string;
+      fileSizeBytes?: number; fileMimeType?: string; issuedDate?: string; expiryDate?: string;
+    }): Promise<ApiCompanyDocument> => (await apiClient.post('/companies/me/documents', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/documents/${id}`); },
+  },
+  certifications: {
+    list: async (): Promise<ApiCompanyCertification[]> => (await apiClient.get('/companies/me/certifications')).data,
+    create: async (payload: {
+      certificationName: string; certificationCode?: string; issuedBy?: string;
+      issuedDate?: string; expiryDate?: string; documentUrl?: string;
+    }): Promise<ApiCompanyCertification> => (await apiClient.post('/companies/me/certifications', payload)).data,
+  },
+  references: {
+    list: async (): Promise<ApiCompanyReference[]> => (await apiClient.get('/companies/me/references')).data,
+    create: async (payload: {
+      projectName: string; description?: string; clientName?: string; contractValue?: number;
+      contractType?: string; completionDate?: string; skillsDemonstrated?: string[];
+    }): Promise<ApiCompanyReference> => (await apiClient.post('/companies/me/references', payload)).data,
+  },
+  resources: {
+    list: async (): Promise<ApiCompanyResource[]> => (await apiClient.get('/companies/me/resources')).data,
+    create: async (payload: {
+      resourceType: string; name: string; category?: string; quantity?: number; description?: string;
+    }): Promise<ApiCompanyResource> => (await apiClient.post('/companies/me/resources', payload)).data,
+  },
+  policies: {
+    list: async (): Promise<ApiCompanyPolicy[]> => (await apiClient.get('/companies/me/policies')).data,
+    create: async (payload: {
+      policyType: string; policyText: string; effectiveDate?: string;
+    }): Promise<ApiCompanyPolicy> => (await apiClient.post('/companies/me/policies', payload)).data,
+  },
+};
+
 export type ApiSeoPage = {
   page_slug: string;
   page_title: string | null;

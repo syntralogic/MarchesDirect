@@ -26,6 +26,7 @@ import RecherchePage from '@/pages/RecherchePage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
 import ProfilPage from '@/pages/ProfilPage';
+import CompanyVaultPage from '@/pages/CompanyVaultPage';
 import EquipePage from '@/pages/EquipePage';
 import ActualitesPage from '@/pages/ActualitesPage';
 import ZonesPage from '@/pages/ZonesPage';
@@ -97,6 +98,7 @@ const App: React.FC = () => {
               <Route path="/opportunites/:id" element={<OpportunityDetailPage />} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
+              <Route path="/profil/dossier-entreprise" element={<RequireAuth><CompanyVaultPage /></RequireAuth>} />
               <Route path="/equipe" element={<EquipePage />} />
               <Route path="/actualites" element={<ActualitesPage />} />
               <Route path="/zones" element={<ZonesPage />} />

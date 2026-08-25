@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Building2, Settings, Bell, Shield, Smartphone, Save, LogOut, Loader2, Info } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { User, Building2, Settings, Bell, Shield, Smartphone, Save, LogOut, Loader2, Info, FolderOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLang } from '@/contexts/LangContext';
 import { companiesApi, subscriptionsApi, accountApi, getApiErrorMessage, type ApiCompany } from '@/lib/apiClient';
@@ -243,6 +243,21 @@ export default function ProfilPage() {
                 </select>
               </div>
             </div>
+
+            <Link
+              to="/profil/dossier-entreprise"
+              className="flex items-center justify-between gap-3 bg-[#061D32] border border-[#17334D] rounded-xl p-4 hover:border-orange/40 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
+                  <FolderOpen size={16} className="text-orange" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">Dossier entreprise</p>
+                  <p className="text-xs text-[#B9BBC8]">Documents, certifications, références — réutilisés dans chaque candidature</p>
+                </div>
+              </div>
+            </Link>
           </div>
         );
       case 'preferences':
