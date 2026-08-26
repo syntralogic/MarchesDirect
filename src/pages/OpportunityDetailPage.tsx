@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, Download, AlertTriangle, CheckCircle2, LogIn } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, LogIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SaveButton } from '@/components/SaveButton';
 import {
@@ -40,7 +40,6 @@ export default function OpportunityDetailPage() {
   const [dceLoading, setDceLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [downloading, setDownloading] = useState(false);
   const [dceError, setDceError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -92,29 +91,6 @@ export default function OpportunityDetailPage() {
       setDceError(getApiErrorMessage(err, "La génération des documents a échoué."));
     } finally {
       setGenerating(false);
-    }
-  };
-
-  const handleDownload = async () => {
-    if (!bid) return;
-    setDownloading(true);
-    setDceError(null);
-    try {
-      const result = await tendersApi.downloadPackage(bid.id);
-      if (result.url) {
-        window.open(result.url, '_blank');
-      } else if (result.blob) {
-        const url = URL.createObjectURL(result.blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `dossier-candidature-${bid.id}.zip`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (err) {
-      setDceError(getApiErrorMessage(err, "Le téléchargement a échoué — générez d'abord les documents."));
-    } finally {
-      setDownloading(false);
     }
   };
 
@@ -210,16 +186,18 @@ export default function OpportunityDetailPage() {
               </div>
             )}
             {bid?.technical_memo_text && (
-              <div className="flex items-center gap-2 text-xs text-green-400 mb-3"><CheckCircle2 size={14} /> Documents générés — prêts à télécharger.</div>
+              <div className="flex items-center gap-2 text-xs text-green-400 mb-3"><CheckCircle2 size={14} /> Documents générés.</div>
             )}
 
             <div className="flex flex-wrap gap-2">
               <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-1.5 text-xs text-white bg-[#031B30] border border-[#17334D] px-3 py-2 rounded-lg hover:border-orange/50 transition-colors disabled:opacity-40">
                 {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Générer les documents
               </button>
-              <button onClick={handleDownload} disabled={downloading || !bid?.technical_memo_text} className="flex items-center gap-1.5 text-xs text-white bg-orange px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors disabled:opacity-40">
-                {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Télécharger le dossier (ZIP)
-              </button>
+              {bid?.technical_memo_text && (
+                <Link to={`/opportunites/${id}/candidature`} className="flex items-center gap-1.5 text-xs text-white bg-orange px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors">
+                  <FileText size={13} /> Relire, valider et télécharger
+                </Link>
+              )}
             </div>
           </div>
 

@@ -572,13 +572,19 @@ export type ApiTender = {
   estimated_effort_hours: number | null;
 };
 
+export type ApiPricingItem = { label: string; quantity?: number; unit?: string; unit_price?: number };
+
 export type ApiBidResponse = {
   id: string;
   tender_id: string;
   company_id: string;
   status: string;
   technical_memo_text: string | null;
+  is_technical_memo_approved: boolean;
   engagement_act_text: string | null;
+  is_engagement_act_signed: boolean;
+  pricing_schedule_json: ApiPricingItem[] | null;
+  total_bid_amount: number | null;
   missing_documents: string[] | null;
   submission_deadline: string | null;
 };
@@ -598,6 +604,13 @@ export const tendersApi = {
   },
   generateBidDocuments: async (bidId: string) => {
     const { data } = await apiClient.post(`/tenders/bid/${bidId}/generate`);
+    return data;
+  },
+  updateBid: async (bidId: string, payload: Partial<{
+    technical_memo_text: string; is_technical_memo_approved: boolean;
+    pricing_schedule_json: ApiPricingItem[]; total_bid_amount: number;
+  }>): Promise<ApiBidResponse> => {
+    const { data } = await apiClient.put(`/tenders/bid/${bidId}`, payload);
     return data;
   },
   // Package can come back as either JSON { url } (S3 configured) or a raw
