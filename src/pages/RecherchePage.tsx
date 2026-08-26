@@ -105,7 +105,11 @@ export default function RecherchePage() {
           </div>
         </div>
 
-        <button className="w-full bg-orange text-white font-bold py-2 rounded-md text-xs hover:bg-orange/90 transition-colors">
+        <button
+          type="button"
+          onClick={() => (document.activeElement as HTMLElement | null)?.blur()}
+          className="w-full bg-orange text-white font-bold py-2 rounded-md text-xs hover:bg-orange/90 transition-colors"
+        >
           {t('searchButton')}
         </button>
       </div>

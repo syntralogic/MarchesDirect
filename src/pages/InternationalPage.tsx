@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Globe, ArrowRight, ChevronRight } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { CallbackModal } from '@/components/CallbackModal';
 
 export default function InternationalPage() {
   const { t } = useLang();
   const [selected, setSelected] = useState<string | null>(null);
+  const [callbackOpen, setCallbackOpen] = useState(false);
 
   const MARKETS = [
     {
@@ -137,7 +139,7 @@ export default function InternationalPage() {
                   ))}
                 </div>
               </div>
-              <button className="w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2">
+              <button onClick={() => setCallbackOpen(true)} className="w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2">
                 {t('intlExplore')} {active.name} <ArrowRight size={14} />
               </button>
             </div>
@@ -150,6 +152,7 @@ export default function InternationalPage() {
           )}
         </div>
       </div>
+      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
   );
 }

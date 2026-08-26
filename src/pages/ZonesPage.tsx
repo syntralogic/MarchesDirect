@@ -1,5 +1,5 @@
 import { ChevronRight, Landmark, Building2, Handshake } from 'lucide-react';
-import { Link } from 'react-router-dom'; // <-- Add this import
+import { Link } from 'react-router-dom';
 import { useLang } from '@/contexts/LangContext';
 
 export default function ZonesPage() {
@@ -10,16 +10,19 @@ export default function ZonesPage() {
       title: t('zoneCardPublicTitle'),
       desc: t('zoneCardPublicDesc'),
       icon: Landmark,
+      href: '/marches-publics',
     },
     {
       title: t('zoneCardPrivateTitle'),
       desc: t('zoneCardPrivateDesc'),
       icon: Building2,
+      href: '/appels-doffres',
     },
     {
       title: t('zoneCardSubTitle'),
       desc: t('zoneCardSubDesc'),
       icon: Handshake,
+      href: '/sous-traitance',
     },
   ];
 
@@ -67,8 +70,9 @@ export default function ZonesPage() {
         {zoneCards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <button
+            <Link
               key={index}
+              to={card.href}
               className="w-full flex flex-row items-center gap-4 p-4 md:p-5 rounded-xl border bg-[#061D32] border-[#17334D] hover:border-orange/40 text-left transition-all duration-200 group"
             >
               {/* Icon Box */}
@@ -84,16 +88,16 @@ export default function ZonesPage() {
 
               {/* Chevron */}
               <ChevronRight size={20} className="text-orange shrink-0 ml-auto w-5 h-5 md:w-6 md:h-6 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </Link>
           );
         })}
       </div>
 
       {/* Bottom Action Section */}
       <div className="mt-8 pt-4 border-t border-[#17334D]">
-        <button className="w-full py-3 rounded-xl border border-orange text-orange text-sm md:text-base font-semibold hover:bg-orange/10 transition-colors mb-3">
+        <Link to="/profil" className="w-full py-3 rounded-xl border border-orange text-orange text-sm md:text-base font-semibold hover:bg-orange/10 transition-colors mb-3 flex items-center justify-center">
           {t('changeSector')}
-        </button>
+        </Link>
 
         {/* Selected State Box */}
         <div className="flex items-center gap-3 p-3 bg-[#061D32] border border-[#17334D] rounded-xl">
