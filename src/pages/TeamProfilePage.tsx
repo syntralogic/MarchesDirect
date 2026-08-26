@@ -4,6 +4,13 @@ import { X, ShieldCheck, GraduationCap, Briefcase, Search, Calendar, Phone, User
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 
+import mem1 from "@/assets/1.jpeg";
+import mem2 from "@/assets/2.jpeg";
+import mem3 from "@/assets/3.jpeg";
+import mem4 from "@/assets/4.jpeg";
+import mem5 from "@/assets/5.jpeg";
+import mem6 from "@/assets/6.jpeg";
+
 interface TeamMember {
   name: string;
   role: string;
@@ -17,6 +24,7 @@ interface TeamMember {
   experience: string;
   expertiseTitle: string;
   expertise: string[];
+  image: string; // Added image property
 }
 
 const TEAM: TeamMember[] = [
@@ -28,17 +36,18 @@ const TEAM: TeamMember[] = [
     strengthTitle: 'Son point fort',
     strength: 'Une vision globale pour sécuriser les décisions et arbitrer les dossiers complexes.',
     formationTitle: 'Formation',
-    formation: 'Management et stratégie d’entreprise',
+    formation: 'Management et stratégie d\'entreprise',
     experienceTitle: 'Expérience',
     experience: '25 ans en direction et développement commercial',
     expertiseTitle: 'Comment peut-il vous aider ?',
     expertise: ['Trancher si un marché vaut le coup pour vous', 'Vous dire quand ne pas candidater', 'Intervenir sur vos dossiers les plus importants'],
+    image: mem3,
   },
   {
     name: 'Elena Popescu',
     role: 'Assistante de direction',
     badge: 'Votre premier contact',
-    description: 'Elena accueille votre demande, identifie votre besoin et organise votre premier échange avec l’équipe.',
+    description: 'Elena accueille votre demande, identifie votre besoin et organise votre premier échange avec l\'équipe.',
     strengthTitle: 'Son point fort',
     strength: 'Elle clarifie les démarches sans jargon et vérifie que chaque information utile est transmise au bon expert.',
     formationTitle: 'Formation',
@@ -47,12 +56,13 @@ const TEAM: TeamMember[] = [
     experience: '3 ans en coordination administrative et relation client',
     expertiseTitle: 'Comment peut-elle vous aider ?',
     expertise: ['Comprendre votre besoin', 'Planifier votre premier échange', 'Orienter votre dossier vers le bon expert'],
+    image: mem1,
   },
   {
     name: 'Maria Ferreira',
-    role: 'Chargée d’affaires',
+    role: 'Chargée d\'affaires',
     badge: 'Référente marchés privés',
-    description: 'Maria accompagne les entreprises sur les appels d’offres privés et les échanges avec les donneurs d’ordre.',
+    description: 'Maria accompagne les entreprises sur les appels d\'offres privés et les échanges avec les donneurs d\'ordre.',
     strengthTitle: 'Son point fort',
     strength: 'Elle structure une réponse claire et défend la valeur de votre offre lors des échanges commerciaux.',
     formationTitle: 'Formation',
@@ -60,25 +70,27 @@ const TEAM: TeamMember[] = [
     experienceTitle: 'Expérience',
     experience: '15 ans en développement commercial et suivi client',
     expertiseTitle: 'Comment peut-elle vous aider ?',
-    expertise: ['Analyser le besoin du donneur d’ordre', 'Construire l’offre commerciale', 'Préparer les échanges et la négociation'],
+    expertise: ['Analyser le besoin du donneur d\'ordre', 'Construire l\'offre commerciale', 'Préparer les échanges et la négociation'],
+    image: mem2,
   },
   {
     name: 'Nicole Pisseron',
-    role: 'Chargée d’affaires',
+    role: 'Chargée d\'affaires',
     badge: 'Référente préparation des offres',
-    description: 'Nicole transforme les éléments transmis par l’entreprise en dossier structuré, lisible et prêt à valider.',
+    description: 'Nicole transforme les éléments transmis par l\'entreprise en dossier structuré, lisible et prêt à valider.',
     strengthTitle: 'Son point fort',
     strength: 'Elle repère rapidement les pièces manquantes et organise le dossier pour éviter les oublis.',
     formationTitle: 'Formation',
     formation: 'Gestion commerciale et relation client',
     experienceTitle: 'Expérience',
-    experience: '4 ans en préparation d’offres et suivi de dossiers',
+    experience: '4 ans en préparation d\'offres et suivi de dossiers',
     expertiseTitle: 'Comment peut-elle vous aider ?',
     expertise: ['Rassembler les informations utiles', 'Structurer votre proposition', 'Préparer le dossier pour validation'],
+    image: mem4,
   },
   {
     name: 'Emre Kaya',
-    role: 'Chargé d’affaires',
+    role: 'Chargé d\'affaires',
     badge: 'Référent sous-traitance',
     description: 'Emre identifie les opportunités de sous-traitance et accompagne les échanges avec les entreprises générales.',
     strengthTitle: 'Son point fort',
@@ -89,6 +101,7 @@ const TEAM: TeamMember[] = [
     experience: '14 ans en affaires B2B et partenariats',
     expertiseTitle: 'Comment peut-il vous aider ?',
     expertise: ['Trouver les partenaires adaptés à votre activité', 'Présenter clairement votre savoir-faire', 'Vous accompagner dans la négociation'],
+    image: mem5,
   },
   {
     name: 'Charlotte Le Guen',
@@ -102,7 +115,8 @@ const TEAM: TeamMember[] = [
     experienceTitle: 'Expérience',
     experience: '22 ans en marchés publics et conformité des dossiers',
     expertiseTitle: 'Comment peut-elle vous aider ?',
-    expertise: ['Vous dire si le dossier est conforme', 'Repérer les exigences qui peuvent vous éliminer', 'Sécuriser votre dépôt avant l’échéance'],
+    expertise: ['Vous dire si le dossier est conforme', 'Repérer les exigences qui peuvent vous éliminer', 'Sécuriser votre dépôt avant l\'échéance'],
+    image: mem6,
   },
 ];
 
@@ -133,12 +147,18 @@ export default function TeamProfilePage() {
             <button
               key={member.name}
               onClick={() => setSelectedMember(member)}
-              className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center hover:border-orange/50 transition-all cursor-pointer"
+              className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center hover:border-orange/50 transition-all cursor-pointer group"
             >
-              <div className="w-20 h-20 rounded-full bg-[#031B30] border border-[#17334D] mx-auto mb-3" />
+              <div className="w-20 h-20 rounded-full bg-[#031B30] border-2 border-[#17334D] group-hover:border-orange/50 mx-auto mb-3 overflow-hidden">
+                <img 
+                  src={member.image} 
+                  alt={member.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <p className="text-sm font-semibold text-orange mb-1">{member.role}</p>
               <h3 className="text-lg font-bold text-white mb-2">{member.name}</h3>
-              <span className="text-xs text-orange font-medium">Voir son profil</span>
+              <span className="text-xs text-orange font-medium group-hover:underline">Voir son profil</span>
             </button>
           ))}
         </div>
@@ -158,10 +178,14 @@ export default function TeamProfilePage() {
               <X size={16} />
             </button>
 
-            {/* Header - Compact */}
+            {/* Header - Compact with Image */}
             <div className="flex flex-col md:flex-row items-center md:items-start gap-3 mt-4 md:mt-0 mb-4">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#031B30] border border-orange flex items-center justify-center shrink-0">
-                <Users size={32} className="text-orange" />
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#031B30] border-2 border-orange flex items-center justify-center shrink-0 overflow-hidden">
+                <img 
+                  src={selectedMember.image} 
+                  alt={selectedMember.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
 
               <div className="flex-1 text-center md:text-left">
