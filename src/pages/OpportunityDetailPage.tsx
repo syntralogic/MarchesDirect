@@ -193,11 +193,15 @@ export default function OpportunityDetailPage() {
               <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-1.5 text-xs text-white bg-[#031B30] border border-[#17334D] px-3 py-2 rounded-lg hover:border-orange/50 transition-colors disabled:opacity-40">
                 {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Générer les documents
               </button>
-              {bid?.technical_memo_text && (
-                <Link to={`/opportunites/${id}/candidature`} className="flex items-center gap-1.5 text-xs text-white bg-orange px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors">
-                  <FileText size={13} /> Relire, valider et télécharger
-                </Link>
-              )}
+              {/* Always reachable once a (draft) bid exists - GET /api/tenders/:id/bid
+                  auto-creates one on first load, so this doesn't need to wait on a
+                  successful AI generation first. Previously this link only appeared
+                  after `bid?.technical_memo_text` was set, meaning if AI generation
+                  wasn't configured/working, there was no way to reach the bid
+                  workspace page at all - it would look like the page didn't exist. */}
+              <Link to={`/opportunites/${id}/candidature`} className="flex items-center gap-1.5 text-xs text-white bg-orange px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors">
+                <FileText size={13} /> {bid?.technical_memo_text ? 'Relire, valider et télécharger' : 'Gérer ma candidature'}
+              </Link>
             </div>
           </div>
 
