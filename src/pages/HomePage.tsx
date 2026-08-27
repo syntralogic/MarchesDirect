@@ -5,12 +5,12 @@ import {
   Building, ArrowRight, Zap, Settings, Monitor, Truck, Briefcase, Headset,
   Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle,
 } from 'lucide-react';
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { sectors } from '@/data/mockData';
-import { opportunitiesApi } from '@/lib/apiClient';
+import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 
 import arrowImage from "@/assets/home-arrow.png";
 import team from "@/assets/team.jpg";
@@ -34,7 +34,9 @@ function GeographicSection() {
   const [selectedDept, setSelectedDept] = useState<GeoFeatureProps | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [cityQuery, setCityQuery] = useState('');
-  const [cityResult, setCityResult] = useState<{ name: string; count: number } | null>(null);
+  const [cityResult, setCityResult] = useState<{ name: string; coords: [number, number] | null } | null>(null);
+  const [cityOpportunities, setCityOpportunities] = useState<ApiOpportunity[]>([]);
+  const [cityTotal, setCityTotal] = useState(0);
   const [cityLoading, setCityLoading] = useState(false);
   const [position, setPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
 
@@ -78,11 +80,27 @@ function GeographicSection() {
   const handleCitySearch = async () => {
     if (!cityQuery.trim()) return;
     setCityLoading(true);
+    const query = cityQuery.trim();
     try {
-      const data = await opportunitiesApi.search({ journey: undefined, city: cityQuery.trim(), limit: 1 });
-      setCityResult({ name: cityQuery.trim(), count: data.pagination.total });
+      const [searchData, geo] = await Promise.all([
+        opportunitiesApi.search({ journey: undefined, city: query, limit: 5 }),
+        // Real, free, no-key French government geocoding (Base Adresse
+        // Nationale) - only used to place a pin at the city's actual
+        // location, never for distance/radius math (see note above on
+        // why opportunities can't be geo-filtered yet).
+        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=1`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null),
+      ]);
+      setCityOpportunities(searchData.results);
+      setCityTotal(searchData.pagination.total);
+      const feature = geo?.features?.[0];
+      const coords: [number, number] | null = feature ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : null;
+      setCityResult({ name: feature?.properties?.city || query, coords });
     } catch {
-      setCityResult({ name: cityQuery.trim(), count: 0 });
+      setCityResult({ name: query, coords: null });
+      setCityOpportunities([]);
+      setCityTotal(0);
     } finally {
       setCityLoading(false);
     }
@@ -225,9 +243,10 @@ function GeographicSection() {
           </>
         ) : (
           <>
-            {/* Villes tab - real text search, no fake radius (opportunities have
-                no lat/lng data yet, so a distance-based search would always
-                return 0 - see /api/opportunities/stats/near). */}
+            {/* Villes tab - real geocoded pin (Base Adresse Nationale) for the
+                map, and real opportunity results below (not just a count).
+                No radius/distance filtering - see note above on why that
+                can't be honest yet (opportunities have no lat/lng). */}
             <div className="flex gap-2 mb-3">
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
@@ -251,32 +270,92 @@ function GeographicSection() {
               <MousePointerClick size={12} /> {t('mapTouchCity')}
             </p>
 
-            <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-8 flex flex-col items-center text-center min-h-[200px] justify-center">
-              {cityResult ? (
-                <>
-                  <MapPin size={28} className="text-orange mb-2" />
-                  <p className="text-base font-bold text-white">{cityResult.name}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-1">
-                    {cityResult.count > 0
-                      ? `${cityResult.count} ${t('mapOpportunitiesCount')}`
-                      : t('mapNoData')}
-                  </p>
-                </>
+            {/* Map with city pin */}
+            <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[220px] md:h-[300px] mb-3">
+              {geoLoadError ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
+                  <AlertCircle size={20} className="text-red-400 mb-2" />
+                  <p className="text-xs text-[#B9BBC8]">Impossible de charger la carte. Rechargez la page.</p>
+                </div>
+              ) : !regionsGeoJson ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Loader2 size={22} className="animate-spin text-orange" />
+                </div>
               ) : (
-                <>
-                  <Globe size={28} className="text-orange mb-2" />
-                  <p className="text-sm font-bold text-white">{t('mapSelectPrompt')}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-1">{t('mapTouchCity')}</p>
-                </>
+                <ComposableMap
+                  projection="geoMercator"
+                  projectionConfig={{ center: [2.454, 46.6], scale: 2600 }}
+                  width={780}
+                  height={620}
+                  style={{ width: '100%', height: '100%' }}
+                >
+                  <Geographies geography={regionsGeoJson}>
+                    {({ geographies }: { geographies: GeoFeature[] }) =>
+                      geographies.map(geo => (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          style={{
+                            default: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
+                            hover: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
+                            pressed: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
+                          }}
+                        />
+                      ))
+                    }
+                  </Geographies>
+                  {cityResult?.coords && (
+                    <Marker coordinates={cityResult.coords}>
+                      <circle r={6} fill="#FF6500" stroke="#fff" strokeWidth={1.5} />
+                      <text textAnchor="middle" y={-12} style={{ fontSize: 11, fill: '#fff', fontWeight: 700 }}>
+                        {cityResult.name}
+                      </text>
+                    </Marker>
+                  )}
+                </ComposableMap>
               )}
             </div>
 
-            {cityResult && (
+            {/* Results */}
+            {cityLoading ? (
+              <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-8 flex items-center justify-center">
+                <Loader2 size={20} className="animate-spin text-orange" />
+              </div>
+            ) : !cityResult ? (
+              <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-6 flex flex-col items-center text-center">
+                <Globe size={24} className="text-orange mb-2" />
+                <p className="text-sm font-bold text-white">{t('mapSelectPrompt')}</p>
+                <p className="text-xs text-[#B9BBC8] mt-1">{t('mapTouchCity')}</p>
+              </div>
+            ) : cityOpportunities.length === 0 ? (
+              <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-6 text-center">
+                <p className="text-sm font-semibold text-white">{cityResult.name}</p>
+                <p className="text-xs text-[#B9BBC8] mt-1">{t('mapNoData')}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {cityOpportunities.map(opp => (
+                  <Link
+                    key={opp.id}
+                    to={`/opportunites/${opp.id}`}
+                    className="block bg-[#031B30] border border-[#17334D] rounded-xl p-3 hover:border-orange/40 transition-colors"
+                  >
+                    <p className="text-sm font-semibold text-white leading-snug mb-1">{opp.title}</p>
+                    <div className="flex flex-wrap gap-3 text-[10px] text-[#B9BBC8]">
+                      {opp.location_city && <span className="flex items-center gap-1"><MapPin size={10} /> {opp.location_city}</span>}
+                      {opp.deadline && <span>{new Date(opp.deadline).toLocaleDateString('fr-FR')}</span>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {cityResult && cityTotal > 0 && (
               <Link
                 to={`/recherche?city=${encodeURIComponent(cityResult.name)}`}
                 className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 rounded-xl hover:bg-orange/10 transition-colors"
               >
-                {t('mapViewOpportunitiesAround')} {cityResult.name} <ArrowRight size={14} />
+                {t('mapViewOpportunitiesAround')} {cityResult.name} ({cityTotal}) <ArrowRight size={14} />
               </Link>
             )}
           </>
