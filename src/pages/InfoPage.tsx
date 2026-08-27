@@ -4,7 +4,7 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import {
   Target, ArrowRight, CheckCircle, FileText, Handshake,
-  Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Scale, Building2, TrendingUp,
+  Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Building2,
   Briefcase, FolderSearch, Trophy, Lock, ChevronRight
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';

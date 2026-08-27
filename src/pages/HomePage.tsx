@@ -12,7 +12,6 @@ import { CallbackModal } from '@/components/CallbackModal';
 import { sectors } from '@/data/mockData';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 
-import arrowImage from "@/assets/home-arrow.png";
 import team from "@/assets/team.jpg";
 
 interface GeoFeatureProps { code: string; nom: string }
@@ -106,6 +105,28 @@ function GeographicSection() {
     }
   };
 
+  // Auto-select on an unambiguous search match, so typing a region/department
+  // name produces the same highlighted-shape + tooltip + "view opportunities"
+  // button as clicking it directly on the map - previously the search box
+  // only filtered which shapes were drawn (see the fix in the Geographies
+  // render below) and never actually selected anything itself.
+  useEffect(() => {
+    if (!search.trim()) return;
+    const query = search.trim().toLowerCase();
+    if (tab === 'regions' && regionsGeoJson) {
+      const matches = (regionsGeoJson.features as { properties: GeoFeatureProps }[]).filter(f =>
+        f.properties.nom.toLowerCase().includes(query)
+      );
+      if (matches.length === 1) setSelectedRegion(matches[0].properties);
+    } else if (tab === 'departments' && departementsGeoJson) {
+      const matches = (departementsGeoJson.features as { properties: GeoFeatureProps }[]).filter(
+        f => f.properties.nom.toLowerCase().includes(query) || f.properties.code?.includes(search.trim())
+      );
+      if (matches.length === 1) setSelectedDept(matches[0].properties);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, tab, regionsGeoJson, departementsGeoJson]);
+
   const selected = tab === 'regions' ? selectedRegion : tab === 'departments' ? selectedDept : null;
   const selectedCount = tab === 'regions' && selectedRegion
     ? getRegionCount(selectedRegion.nom)
@@ -180,11 +201,13 @@ function GeographicSection() {
                   <Geographies geography={tab === 'regions' ? regionsGeoJson : departementsGeoJson}>
                     {({ geographies }: { geographies: GeoFeature[] }) =>
                       geographies
-                        .filter(geo => search === '' || geo.properties.nom.toLowerCase().includes(search.toLowerCase()) || geo.properties.code?.includes(search))
                         .map(geo => {
                           const key = tab === 'regions' ? geo.properties.nom : geo.properties.code;
                           const isSelected = tab === 'regions' ? selectedRegion?.nom === geo.properties.nom : selectedDept?.code === geo.properties.code;
-                          const isHovered = hovered === key;
+                          const isSearchMatch =
+                            search !== '' &&
+                            (geo.properties.nom.toLowerCase().includes(search.toLowerCase()) ||
+                              (geo.properties.code?.includes(search) ?? false));
                           return (
                             <Geography
                               key={geo.rsmKey}
@@ -193,8 +216,8 @@ function GeographicSection() {
                               onMouseLeave={() => setHovered(null)}
                               onClick={() => tab === 'regions' ? setSelectedRegion(geo.properties) : setSelectedDept(geo.properties)}
                               style={{
-                                default: { fill: isSelected ? '#FF6500' : '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
-                                hover: { fill: isSelected ? '#FF6500' : '#5A7893', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
+                                default: { fill: isSelected || isSearchMatch ? '#FF6500' : '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
+                                hover: { fill: isSelected || isSearchMatch ? '#FF6500' : '#5A7893', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
                                 pressed: { fill: '#FF6500', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
                               }}
                             />
