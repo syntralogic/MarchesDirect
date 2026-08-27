@@ -163,6 +163,14 @@ export const opportunitiesApi = {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;
   },
+  statsByRegion: async (): Promise<{ regions: { region: string; count: number }[] }> => {
+    const { data } = await axios.get(`${API_URL}/api/opportunities/stats/regions`);
+    return data;
+  },
+  statsByDepartment: async (): Promise<{ departments: { department: string; count: number }[] }> => {
+    const { data } = await axios.get(`${API_URL}/api/opportunities/stats/departments`);
+    return data;
+  },
 };
 
 // Favorites ("Ma selection") - requires auth, hence the auth-attaching apiClient
@@ -191,6 +199,16 @@ export const tradesApi = {
   },
 };
 
+export type ApiDashboardMatch = {
+  id: string;
+  title: string;
+  deadline: string | null;
+  estimated_value: number | null;
+  location_city: string | null;
+  location_region: string | null;
+  ai_summary: string | null;
+};
+
 export const dashboardApi = {
   today: async () => {
     const { data } = await apiClient.get('/dashboard/today');
@@ -198,6 +216,10 @@ export const dashboardApi = {
   },
   overview: async () => {
     const { data } = await apiClient.get('/dashboard');
+    return data;
+  },
+  matches: async (): Promise<{ matches: ApiDashboardMatch[] }> => {
+    const { data } = await apiClient.get('/dashboard/matches');
     return data;
   },
 };
