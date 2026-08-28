@@ -461,6 +461,22 @@ export const sectors = [
   { id: 's6', name: 'Services aux entreprises', icon: 'Briefcase', count: 1123, color: '#FF6500' },
 ];
 
+// All 16 sectors, shown on the dedicated /secteurs page (the 6 above are
+// just the ones featured on the homepage).
+export const allSectors = [
+  ...sectors,
+  { id: 's7', name: 'Espaces verts & paysagisme', icon: 'Leaf', count: 296, color: '#FF6500' },
+  { id: 's8', name: 'Nettoyage & entretien', icon: 'Sparkles', count: 415, color: '#FF6500' },
+  { id: 's9', name: 'Sécurité & gardiennage', icon: 'ShieldCheck', count: 268, color: '#FF6500' },
+  { id: 's10', name: 'Immobilier & facility management', icon: 'Home', count: 347, color: '#FF6500' },
+  { id: 's11', name: 'Restauration & hôtellerie', icon: 'UtensilsCrossed', count: 189, color: '#FF6500' },
+  { id: 's12', name: 'Santé & social', icon: 'HeartPulse', count: 512, color: '#FF6500' },
+  { id: 's13', name: 'Formation & conseil', icon: 'GraduationCap', count: 231, color: '#FF6500' },
+  { id: 's14', name: 'Communication & événementiel', icon: 'Megaphone', count: 164, color: '#FF6500' },
+  { id: 's15', name: 'Agroalimentaire', icon: 'Wheat', count: 143, color: '#FF6500' },
+  { id: 's16', name: 'Autre / Activité non listée', icon: 'PlusCircle', count: 98, color: '#FF6500' },
+];
+
 export const frenchRegions = [
   { name: 'Île-de-France', count: 3421, coords: { x: 52, y: 35 } },
   { name: 'Auvergne-Rhône-Alpes', count: 2187, coords: { x: 56, y: 58 } },
