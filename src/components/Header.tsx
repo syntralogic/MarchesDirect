@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Sun, Moon, User } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
+import { Menu, X, User } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
@@ -24,7 +23,6 @@ const MOBILE_NAV_LINKS = [
 ];
 
 export function Header() {
-  const { theme, toggleTheme } = useTheme();
   const { lang, setLang, t } = useLang();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -85,13 +83,6 @@ export function Header() {
                 {lang === 'fr' ? 'EN' : 'FR'}
               </button>
               <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-              <button
                 onClick={() => setAppointmentOpen(true)}
                 className="px-4 py-2 bg-orange text-white text-sm font-semibold rounded-lg hover:bg-orange/90 transition-colors"
               >
@@ -108,13 +99,6 @@ export function Header() {
                 className="px-2 py-1 rounded text-xs font-semibold text-[#B9BBC8] border border-[#17334D]"
               >
                 {lang === 'fr' ? 'EN' : 'FR'}
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg text-[#B9BBC8]"
-                aria-label="Toggle theme"
-              >
-                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               </button>
               <button
                 onClick={() => setMenuOpen(o => !o)}
