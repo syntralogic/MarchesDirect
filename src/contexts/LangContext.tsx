@@ -19,7 +19,7 @@ const frTranslations: Translations = {
   heroLine1: 'Votre prochaine opportunité',
   heroLine2: 'commence ici.',
   heroSub: "Choisissez votre parcours ou échangez avec un conseiller Marchés Direct.",
-  bookAppointment: 'Prendre rendez-vous',
+  bookAppointment: 'Prendre rendez‑vous',
   callBack: 'Être rappelé',
   // Sections
   whoWeAre: 'Qui sommes-nous ?',
@@ -73,7 +73,7 @@ const frTranslations: Translations = {
   footerSectors: "Secteurs d'activité",
   footerFaq: 'FAQ',
   // Modals
-  appointmentTitle: 'Prendre rendez-vous',
+  appointmentTitle: 'Prendre rendez‑vous',
   callbackTitle: 'Être rappelé',
   callbackName: 'Nom',
   callbackCompany: 'Entreprise',
@@ -359,7 +359,7 @@ const frTranslations: Translations = {
   contactTag: 'Contactez-nous',
   contactTitle: 'Comment pouvons-nous vous aider ?',
   contactSub: 'Choisissez le canal le plus adapté à votre besoin.',
-  contactRdv: 'Prendre rendez-vous',
+  contactRdv: 'Prendre rendez‑vous',
   contactRdvSub: 'Planifiez un entretien avec un conseiller.',
   contactCallback: 'Être rappelé',
   contactCallbackSub: 'Un conseiller vous rappelle sous 24h.',

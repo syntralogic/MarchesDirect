@@ -243,7 +243,7 @@ export default function TeamProfilePage() {
                 onClick={() => { setSelectedMember(null); setApptOpen(true); }}
                 className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg hover:bg-orange/90 transition-colors flex items-center justify-center gap-1.5 text-xs"
               >
-                <Calendar size={14} /> Prendre rendez-vous
+                <Calendar size={14} /> Prendre rendez‑vous
               </button>
               <button 
                 onClick={() => { setSelectedMember(null); setCallbackOpen(true); }}

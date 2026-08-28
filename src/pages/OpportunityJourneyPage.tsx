@@ -197,7 +197,7 @@ export default function OpportunityJourneyPage() {
 
             <div className="flex gap-2">
               <button onClick={() => setApptOpen(true)} className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">
-                Prendre rendez-vous
+                Prendre rendez‑vous
               </button>
               <button onClick={() => setCallbackOpen(true)} className="flex-1 border border-orange text-orange font-bold py-2.5 rounded-lg text-xs hover:bg-orange/10 transition-colors">
                 Être rappelé
