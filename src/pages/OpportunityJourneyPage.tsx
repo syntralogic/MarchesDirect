@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building, Building2, Handshake, ChevronRight, ArrowLeft, ArrowRight,
   Search, X, MapPin, CheckCircle2, SlidersHorizontal, Calendar, Target,
@@ -27,9 +27,17 @@ const TRADE_SUGGESTIONS = [
   'Peinture', 'Électricité', 'Plomberie', 'Menuiserie', 'Maçonnerie', 'Couverture / Toiture',
   'Étanchéité', 'Serrurerie / Métallerie', 'Isolation thermique', 'Cloisons / Doublages',
   'Revêtement de sols', 'Nettoyage de chantier', 'Espaces verts',
+  'Rénovation énergétique', 'Rénovation intérieure', 'Réhabilitation de bâtiments',
+  'Construction neuve', 'Aménagement extérieur',
 ];
 
 const RADIUS_OPTIONS = [25, 50, 100, 200];
+
+const TYPE_SLUGS: Record<string, OppType> = {
+  'marches-publics': 'Marchés publics',
+  'appels-doffres': "Appels d'offres",
+  'sous-traitance': 'Sous-traitance',
+};
 
 const STATUS_OPTIONS = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
 const DATE_OPTIONS = ['Toutes', '24 dernières heures', '7 derniers jours', '30 derniers jours'];
@@ -45,12 +53,14 @@ function getIcon(title: string) {
 
 export default function OpportunityJourneyPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialType = TYPE_SLUGS[searchParams.get('type') || ''] || 'Marchés publics';
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
   // Step 1 + 2 shared: selected opportunity types
-  const [types, setTypes] = useState<OppType[]>(['Marchés publics']);
+  const [types, setTypes] = useState<OppType[]>([initialType]);
 
   // Step 2: what the user is looking for
   const [query, setQuery] = useState('');
