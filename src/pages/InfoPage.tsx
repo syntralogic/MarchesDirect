@@ -327,7 +327,7 @@ export default function InfoPage() {
           </p>
         </div>
 
-        {/* Elena - First Contact */}
+        {/* Elena - First Contact with Buttons */}
         <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5 mb-3">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-3 md:gap-4">
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#031B30] border-2 border-orange overflow-hidden shrink-0">
@@ -348,6 +348,22 @@ export default function InfoPage() {
                   <span className="text-xs md:text-sm font-semibold text-white">Votre demande qualifiée</span>
                   <p className="text-[10px] md:text-xs text-[#B9BBC8]">Premier retour sous 48 h ouvrées</p>
                 </div>
+              </div>
+              
+              {/* Action Buttons - Horizontal on all screen sizes */}
+              <div className="flex flex-row gap-2 mt-4 w-full">
+                <button
+                  onClick={() => setApptOpen(true)}
+                  className="flex-1 bg-orange hover:bg-orange/95 active:bg-orange/85 text-white font-bold py-2.5 md:py-3 rounded-xl transition-all text-[11px] md:text-sm shadow-lg hover:shadow-orange/30 hover:shadow-xl whitespace-nowrap"
+                >
+                  Prendre rendez-vous
+                </button>
+                <button
+                  onClick={() => setCallbackOpen(true)}
+                  className="flex-1 border-2 border-orange text-orange hover:bg-orange/5 active:bg-orange/10 font-bold py-2.5 md:py-3 rounded-xl transition-all text-[11px] md:text-sm hover:border-orange/80 whitespace-nowrap"
+                >
+                  Être rappelé
+                </button>
               </div>
             </div>
           </div>
@@ -444,31 +460,6 @@ export default function InfoPage() {
                   <span className="text-[10px] md:text-xs text-[#B9BBC8]">Votre chargé d'affaires reste disponible</span>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Parler à Elena CTA */}
-        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5 text-center">
-          <div className="flex flex-col items-center">
-            <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#031B30] border-2 border-orange overflow-hidden mb-2 md:mb-3">
-              <img src={mem1} alt="Elena Popescu" className="w-full h-full object-cover" />
-            </div>
-            <h4 className="text-base md:text-lg font-bold text-white mb-4 md:mb-5">Parler à Elena</h4>
-            {/* Action Buttons */}
-            <div className="flex gap-2 w-full px-1">
-              <button
-                onClick={() => setApptOpen(true)}
-                className="flex-1 bg-orange hover:bg-orange/95 active:bg-orange/85 text-white font-bold py-2.5 md:py-3.5 rounded-xl transition-all text-[11px] md:text-base shadow-lg hover:shadow-orange/30 hover:shadow-xl whitespace-nowrap"
-              >
-                Prendre rendez‑vous
-              </button>
-              <button
-                onClick={() => setCallbackOpen(true)}
-                className="flex-1 border-2 border-orange text-orange hover:bg-orange/5 active:bg-orange/10 font-bold py-2.5 md:py-3.5 rounded-xl transition-all text-[11px] md:text-base hover:border-orange/80 whitespace-nowrap"
-              >
-                Être rappelé
-              </button>
             </div>
           </div>
         </div>
