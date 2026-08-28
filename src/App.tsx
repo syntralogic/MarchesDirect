@@ -23,6 +23,7 @@ import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
 import MiseEnRelationPage from '@/pages/sous-traitance/MiseEnRelationPage';
 import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
+import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
 import BidWorkspacePage from '@/pages/BidWorkspacePage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
@@ -96,6 +97,7 @@ const App: React.FC = () => {
               <Route path="/sous-traitance/mise-en-relation" element={<RequireAuth><MiseEnRelationPage /></RequireAuth>} />
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
+              <Route path="/parcours" element={<OpportunityJourneyPage />} />
               <Route path="/opportunites/:id" element={<OpportunityDetailPage />} />
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
