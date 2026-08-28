@@ -56,7 +56,10 @@ export default function OpportunityJourneyPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialType = TYPE_SLUGS[searchParams.get('type') || ''] || 'Marchés publics';
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  // If user comes from homepage with a type param, skip to step 2 directly
+  // Otherwise show step 1 for journey selection
+  const hasTypeParam = searchParams.get('type');
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(hasTypeParam ? 2 : 1);
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
