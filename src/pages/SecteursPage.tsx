@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom';
-import { Building2, Zap, Settings, Monitor, Truck, Briefcase, ArrowRight } from 'lucide-react';
-import { sectors } from '@/data/mockData';
+import {
+  Building2, Zap, Settings, Monitor, Truck, Briefcase, ArrowRight,
+  Leaf, Sparkles, ShieldCheck, Home, UtensilsCrossed, HeartPulse,
+  GraduationCap, Megaphone, Wheat, PlusCircle,
+} from 'lucide-react';
+import { allSectors } from '@/data/mockData';
 import { useLang } from '@/contexts/LangContext';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Building2, Zap, Settings, Monitor, Truck, Briefcase,
+  Leaf, Sparkles, ShieldCheck, Home, UtensilsCrossed, HeartPulse,
+  GraduationCap, Megaphone, Wheat, PlusCircle,
 };
 
 const SECTOR_DETAILS: Record<string, { description: string; examples: string[] }> = {
@@ -50,7 +56,7 @@ export default function SecteursPage() {
 
       {/* Sectors grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {sectors.map(sector => {
+        {allSectors.map(sector => {
           const Icon = ICON_MAP[sector.icon] || Building2;
           const details = SECTOR_DETAILS[sector.name];
           return (

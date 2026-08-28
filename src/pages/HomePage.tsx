@@ -9,7 +9,8 @@ import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 're
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
-import { sectors } from '@/data/mockData';
+import { sectors, allSectors } from '@/data/mockData';
+import { frenchCitiesGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 
 import team from "@/assets/team.jpg";
@@ -17,6 +18,17 @@ import team from "@/assets/team.jpg";
 interface GeoFeatureProps { code: string; nom: string }
 interface GeoFeature { rsmKey: string; properties: GeoFeatureProps }
 interface GeoJsonData { type: string; features: unknown[] }
+
+// d3-zoom's gesture filter: on touch devices we only want the map to
+// pan/zoom when the user uses two fingers (pinch), so a normal one-finger
+// swipe keeps scrolling the page instead of dragging the map around and
+// disappearing off-screen. Mouse/wheel interaction on desktop is untouched.
+function touchAwareZoomFilter(event: { type: string; touches?: TouchList; ctrlKey?: boolean; button?: number }) {
+  if (event.type === 'touchstart' || event.type === 'touchmove' || event.type === 'touchend') {
+    return !!(event.touches && event.touches.length > 1);
+  }
+  return !event.ctrlKey && !event.button;
+}
 
 // Strips accents and lowercases so backend region-name strings (which may
 // come from BOAMP's raw text field with different accenting) still match
@@ -38,6 +50,7 @@ function GeographicSection() {
   const [cityTotal, setCityTotal] = useState(0);
   const [cityLoading, setCityLoading] = useState(false);
   const [position, setPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
+  const [citiesPosition, setCitiesPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
 
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({});
   const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
@@ -76,10 +89,12 @@ function GeographicSection() {
   const getRegionCount = (name: string) => regionCounts[normalizeFr(name)] ?? 0;
   const getDeptCount = (code: string, name: string) => deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0;
 
-  const handleCitySearch = async () => {
-    if (!cityQuery.trim()) return;
+  const handleCitySearch = async (override?: string) => {
+    const raw = override ?? cityQuery;
+    if (!raw.trim()) return;
+    if (override) setCityQuery(override);
     setCityLoading(true);
-    const query = cityQuery.trim();
+    const query = raw.trim();
     try {
       const [searchData, geo] = await Promise.all([
         opportunitiesApi.search({ journey: undefined, city: query, limit: 5 }),
@@ -104,6 +119,22 @@ function GeographicSection() {
       setCityLoading(false);
     }
   };
+
+  // Clicking a pin on the Villes map: recenters/zooms in on that city and
+  // runs the same real search as typing its name + hitting the search button.
+  const selectMapCity = (city: { name: string; coords: [number, number] }) => {
+    setCitiesPosition(p => ({ coordinates: city.coords, zoom: Math.max(p.zoom, 4) }));
+    handleCitySearch(city.name);
+  };
+
+  // Progressive reveal: only show more (smaller) towns as the user zooms in,
+  // so the map doesn't start out cluttered with every pin in France.
+  const visibleCities = frenchCitiesGeo.filter(c => {
+    if (c.tier === 1) return true;
+    if (c.tier === 2) return citiesPosition.zoom >= 2;
+    return citiesPosition.zoom >= 4;
+  });
+  const zoomLevelLabel = citiesPosition.zoom >= 4 ? 'Élevé' : citiesPosition.zoom >= 2 ? 'Moyen' : 'Faible';
 
   // Auto-select on an unambiguous search match, so typing a region/department
   // name produces the same highlighted-shape + tooltip + "view opportunities"
@@ -197,7 +228,7 @@ function GeographicSection() {
                 height={720}
                 style={{ width: '100%', height: '100%' }}
               >
-                <ZoomableGroup center={position.coordinates} zoom={position.zoom} onMoveEnd={setPosition} minZoom={1} maxZoom={8}>
+                <ZoomableGroup center={position.coordinates} zoom={position.zoom} onMoveEnd={setPosition} minZoom={1} maxZoom={8} filterZoomEvent={touchAwareZoomFilter as unknown as (element: SVGElement) => boolean}>
                   <Geographies geography={tab === 'regions' ? regionsGeoJson : departementsGeoJson}>
                     {({ geographies }: { geographies: GeoFeature[] }) =>
                       geographies
@@ -282,7 +313,7 @@ function GeographicSection() {
                 />
               </div>
               <button
-                onClick={handleCitySearch}
+                onClick={() => handleCitySearch()}
                 disabled={cityLoading || !cityQuery.trim()}
                 className="px-4 bg-orange text-white font-semibold text-sm rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
               >
@@ -290,10 +321,10 @@ function GeographicSection() {
               </button>
             </div>
             <p className="text-[11px] text-[#B9BBC8] flex items-center gap-1.5 mb-3">
-              <MousePointerClick size={12} /> {t('mapTouchCity')}
+              <MousePointerClick size={12} /> Touchez une ville sur la carte, ou zoomez pour en voir davantage.
             </p>
 
-            {/* Map with city pin */}
+            {/* Zoomable map with progressively-revealed city pins */}
             <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[220px] md:h-[300px] mb-3">
               {geoLoadError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
@@ -312,32 +343,60 @@ function GeographicSection() {
                   height={620}
                   style={{ width: '100%', height: '100%' }}
                 >
-                  <Geographies geography={regionsGeoJson}>
-                    {({ geographies }: { geographies: GeoFeature[] }) =>
-                      geographies.map(geo => (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          style={{
-                            default: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                            hover: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                            pressed: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                          }}
-                        />
-                      ))
-                    }
-                  </Geographies>
-                  {cityResult?.coords && (
-                    <Marker coordinates={cityResult.coords}>
-                      <circle r={6} fill="#FF6500" stroke="#fff" strokeWidth={1.5} />
-                      <text textAnchor="middle" y={-12} style={{ fontSize: 11, fill: '#fff', fontWeight: 700 }}>
-                        {cityResult.name}
-                      </text>
-                    </Marker>
-                  )}
+                  <ZoomableGroup
+                    center={citiesPosition.coordinates}
+                    zoom={citiesPosition.zoom}
+                    onMoveEnd={setCitiesPosition}
+                    minZoom={1}
+                    maxZoom={8}
+                    filterZoomEvent={touchAwareZoomFilter as unknown as (element: SVGElement) => boolean}
+                  >
+                    <Geographies geography={regionsGeoJson}>
+                      {({ geographies }: { geographies: GeoFeature[] }) =>
+                        geographies.map(geo => (
+                          <Geography
+                            key={geo.rsmKey}
+                            geography={geo}
+                            style={{
+                              default: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
+                              hover: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
+                              pressed: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
+                            }}
+                          />
+                        ))
+                      }
+                    </Geographies>
+                    {visibleCities.map(city => {
+                      const isSelected = cityResult?.name === city.name;
+                      return (
+                        <Marker key={city.name} coordinates={city.coords} onClick={() => selectMapCity(city)} style={{ default: { cursor: 'pointer' } }}>
+                          {isSelected && <circle r={11} fill="#FF6500" fillOpacity={0.25} />}
+                          <circle r={isSelected ? 6 : 4} fill="#FF6500" stroke="#fff" strokeWidth={1.2} />
+                          <text textAnchor="middle" y={-9} style={{ fontSize: isSelected ? 11 : 9, fill: '#fff', fontWeight: isSelected ? 700 : 600, pointerEvents: 'none' }}>
+                            {city.name}
+                          </text>
+                        </Marker>
+                      );
+                    })}
+                  </ZoomableGroup>
                 </ComposableMap>
               )}
+
+              {/* Zoom controls */}
+              <div className="absolute top-3 right-3 flex flex-col gap-2">
+                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} className="w-8 h-8 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
+                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} className="w-8 h-8 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
+                <button onClick={() => setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 })} className="w-8 h-8 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
+              </div>
+
+              {/* Zoom level badge */}
+              <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-2.5 py-1.5">
+                <p className="text-[10px] font-semibold text-white">Niveau de zoom : {zoomLevelLabel}</p>
+              </div>
             </div>
+            <p className="text-[11px] text-[#B9BBC8] mb-3">
+              Plus vous zoomez, plus les villes apparaissent.
+            </p>
 
             {/* Results */}
             {cityLoading ? (
@@ -517,7 +576,12 @@ function SectorsSection() {
           );
         })}
       </div>
-      <div className="mt-5 text-center md:text-left"><Link to="/secteurs" className="inline-flex items-center gap-2 text-orange font-semibold text-sm hover:gap-3 transition-all">{t('seeAllSectors')} <ArrowRight size={14} /></Link></div>
+      <div className="mt-5">
+        <Link to="/secteurs" className="w-full md:w-auto md:inline-flex flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm rounded-xl py-3 px-5 hover:bg-orange/10 transition-colors">
+          {t('seeAllSectors')} <ArrowRight size={14} />
+        </Link>
+        <p className="text-xs text-[#B9BBC8] text-center md:text-left mt-2">{allSectors.length} secteurs disponibles</p>
+      </div>
     </section>
   );
 }
