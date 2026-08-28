@@ -145,7 +145,7 @@ export default function TarifsPage() {
       </div>
 
       {/* ========== 3. MAIN CARD (S'abonner Button Linked!) ========== */}
-      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-4 md:mb-6">
+      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-5 md:mb-6">
         <div className="flex flex-col md:flex-row md:items-start md:gap-12">
           <div className="md:w-1/2">
             <div className="flex items-start gap-3 md:block">
@@ -248,7 +248,7 @@ export default function TarifsPage() {
                   onClick={() => setApptOpen(true)} 
                   className="flex-1 md:flex-none bg-orange text-white font-bold py-2.5 md:py-3 px-3 md:px-6 rounded-lg md:rounded-xl hover:bg-orange/90 transition-colors flex items-center justify-center gap-1.5 text-[11px] md:text-sm"
                 >
-                  <CalendarDays size={25} className="md:w-4 md:h-4" /> Prendre rendez-vous
+                  <CalendarDays size={25} className="md:w-4 md:h-4" /> Prendre rendez‑vous
                 </button>
                 <button 
                   onClick={() => setCallbackOpen(true)} 

@@ -202,7 +202,7 @@ export default function InfoPage() {
           <h2 className="text-lg font-bold text-white mb-1">Une question avant de vous lancer ?</h2>
           <p className="text-sm text-orange font-medium mb-4">Elena vous répond directement.</p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm"><Calendar size={16} /> Prendre rendez-vous</button>
+            <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm"><Calendar size={16} /> Prendre rendez‑vous</button>
             <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors text-sm"><Phone size={16} /> Être rappelé</button>
           </div>
         </div>
@@ -456,16 +456,16 @@ export default function InfoPage() {
             </div>
             <h4 className="text-base md:text-lg font-bold text-white mb-4 md:mb-5">Parler à Elena</h4>
             {/* Action Buttons */}
-            <div className="flex gap-2.5 md:gap-3 w-full px-1">
+            <div className="flex gap-2 w-full px-1">
               <button
                 onClick={() => setApptOpen(true)}
-                className="flex-1 bg-orange hover:bg-orange/95 active:bg-orange/85 text-white font-bold py-3 md:py-3.5 rounded-xl md:rounded-2xl transition-all text-sm md:text-base shadow-lg hover:shadow-orange/30 hover:shadow-xl"
+                className="flex-1 bg-orange hover:bg-orange/95 active:bg-orange/85 text-white font-bold py-2.5 md:py-3.5 rounded-xl transition-all text-[11px] md:text-base shadow-lg hover:shadow-orange/30 hover:shadow-xl whitespace-nowrap"
               >
-                Prendre rendez-vous
+                Prendre rendez‑vous
               </button>
               <button
                 onClick={() => setCallbackOpen(true)}
-                className="flex-1 border-2 border-orange text-orange hover:bg-orange/5 active:bg-orange/10 font-bold py-3 md:py-3.5 rounded-xl md:rounded-2xl transition-all text-sm md:text-base hover:border-orange/80"
+                className="flex-1 border-2 border-orange text-orange hover:bg-orange/5 active:bg-orange/10 font-bold py-2.5 md:py-3.5 rounded-xl transition-all text-[11px] md:text-base hover:border-orange/80 whitespace-nowrap"
               >
                 Être rappelé
               </button>
