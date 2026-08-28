@@ -6,6 +6,7 @@ import {
   Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle,
 } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
+import { geoCentroid } from 'd3-geo';
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
@@ -239,19 +240,41 @@ function GeographicSection() {
                             search !== '' &&
                             (geo.properties.nom.toLowerCase().includes(search.toLowerCase()) ||
                               (geo.properties.code?.includes(search) ?? false));
+                          const labelText = tab === 'regions' ? geo.properties.nom : geo.properties.code;
+                          const centroid = geoCentroid(geo as unknown as Parameters<typeof geoCentroid>[0]);
                           return (
-                            <Geography
-                              key={geo.rsmKey}
-                              geography={geo}
-                              onMouseEnter={() => setHovered(key)}
-                              onMouseLeave={() => setHovered(null)}
-                              onClick={() => tab === 'regions' ? setSelectedRegion(geo.properties) : setSelectedDept(geo.properties)}
-                              style={{
-                                default: { fill: isSelected || isSearchMatch ? '#FF6500' : '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
-                                hover: { fill: isSelected || isSearchMatch ? '#FF6500' : '#5A7893', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
-                                pressed: { fill: '#FF6500', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                              }}
-                            />
+                            <g key={geo.rsmKey}>
+                              <Geography
+                                geography={geo}
+                                onMouseEnter={() => setHovered(key)}
+                                onMouseLeave={() => setHovered(null)}
+                                onClick={() => tab === 'regions' ? setSelectedRegion(geo.properties) : setSelectedDept(geo.properties)}
+                                style={{
+                                  default: { fill: isSelected || isSearchMatch ? '#FF6500' : '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
+                                  hover: { fill: isSelected || isSearchMatch ? '#FF6500' : '#5A7893', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
+                                  pressed: { fill: '#FF6500', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
+                                }}
+                              />
+                              {labelText && centroid && !isNaN(centroid[0]) && !isNaN(centroid[1]) && (
+                                <Marker coordinates={centroid} style={{ default: { pointerEvents: 'none' }, hover: { pointerEvents: 'none' }, pressed: { pointerEvents: 'none' } }}>
+                                  <text
+                                    textAnchor="middle"
+                                    style={{
+                                      fontSize: tab === 'regions' ? 6.5 : 8,
+                                      fill: '#fff',
+                                      fontWeight: isSelected || isSearchMatch ? 700 : 500,
+                                      pointerEvents: 'none',
+                                      paintOrder: 'stroke',
+                                      stroke: '#031B30',
+                                      strokeWidth: 2,
+                                      strokeLinejoin: 'round',
+                                    }}
+                                  >
+                                    {labelText}
+                                  </text>
+                                </Marker>
+                              )}
+                            </g>
                           );
                         })
                     }
