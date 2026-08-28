@@ -89,55 +89,7 @@ export default function TarifsPage() {
         </p>
       </div>
 
-      {/* ========== 2. MAIN CARD (S'abonner Button Linked!) ========== */}
-      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-4 md:mb-6">
-        <div className="flex flex-col md:flex-row md:items-start md:gap-12">
-          <div className="md:w-1/2">
-            <div className="flex items-start gap-3 md:block">
-              <div className="w-10 h-10 md:w-16 md:h-16 shrink-0 rounded-lg md:rounded-xl border border-orange flex items-center justify-center">
-                <Monitor size={20} className="text-orange md:hidden" />
-                <Monitor size={30} className="text-orange hidden md:block" />
-              </div>
-              
-              <div className="flex-1 md:mt-4">
-                <h2 className="text-[10px] md:text-xs font-bold text-orange uppercase tracking-wider mb-1">Accès et accompagnement</h2>
-                <p className="text-[10px] md:text-xs text-[#B9BBC8] mb-1">À partir de</p>
-                <div className="flex items-end gap-1 mb-2 md:mb-3">
-                  <span className="text-4xl md:text-6xl font-extrabold text-orange leading-none">29</span>
-                  <span className="text-lg md:text-2xl font-bold text-orange leading-none mb-1">€/mois</span>
-                </div>
-                <p className="text-[11px] md:text-sm text-[#B9BBC8] leading-snug md:leading-relaxed">
-                  Le tarif exact dépend du profil de votre entreprise, des marchés recherchés et du niveau d'accompagnement nécessaire. Il est confirmé avec vous avant tout engagement.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="md:w-1/2 mt-4 md:mt-0">
-            <div className="border-t md:border-t-0 border-[#17334D] pt-4 md:pt-0">
-              <ul className="space-y-2.5 md:space-y-4">
-                {PLANS[1].features.map(f => (
-                  <li key={f} className="flex items-center gap-2.5 md:gap-3">
-                    <Check size={13} className="text-orange shrink-0 md:hidden" />
-                    <Check size={16} className="text-orange shrink-0 hidden md:block" />
-                    <span className="text-xs md:text-base text-white">{f}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              {/* Subscribe Button */}
-              <button 
-                onClick={() => handleSubscribe(PLANS[1])}
-                className="w-full bg-orange text-white font-bold py-3 mt-4 rounded-lg hover:bg-orange/90 transition-colors text-sm"
-              >
-                {PLANS[1].cta}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========== 3. COMMISSION CARD (Button Added!) ========== */}
+      {/* ========== 2. COMMISSION CARD (Button Added!) ========== */}
       <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-4 md:mb-6 relative overflow-hidden">
         
         <div className="absolute top-0 right-0 w-40 h-40 bg-orange/20 rounded-bl-[100%] blur-2xl pointer-events-none" />
@@ -189,6 +141,54 @@ export default function TarifsPage() {
           >
             <Trophy size={14} className="md:w-5 md:h-5" /> Démarrer avec nous
           </button>
+        </div>
+      </div>
+
+      {/* ========== 3. MAIN CARD (S'abonner Button Linked!) ========== */}
+      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-4 md:mb-6">
+        <div className="flex flex-col md:flex-row md:items-start md:gap-12">
+          <div className="md:w-1/2">
+            <div className="flex items-start gap-3 md:block">
+              <div className="w-10 h-10 md:w-16 md:h-16 shrink-0 rounded-lg md:rounded-xl border border-orange flex items-center justify-center">
+                <Monitor size={20} className="text-orange md:hidden" />
+                <Monitor size={30} className="text-orange hidden md:block" />
+              </div>
+              
+              <div className="flex-1 md:mt-4">
+                <h2 className="text-[10px] md:text-xs font-bold text-orange uppercase tracking-wider mb-1">Accès et accompagnement</h2>
+                <p className="text-[10px] md:text-xs text-[#B9BBC8] mb-1">À partir de</p>
+                <div className="flex items-end gap-1 mb-2 md:mb-3">
+                  <span className="text-4xl md:text-6xl font-extrabold text-orange leading-none">29</span>
+                  <span className="text-lg md:text-2xl font-bold text-orange leading-none mb-1">€/mois</span>
+                </div>
+                <p className="text-[11px] md:text-sm text-[#B9BBC8] leading-snug md:leading-relaxed">
+                  Le tarif exact dépend du profil de votre entreprise, des marchés recherchés et du niveau d'accompagnement nécessaire. Il est confirmé avec vous avant tout engagement.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="md:w-1/2 mt-4 md:mt-0">
+            <div className="border-t md:border-t-0 border-[#17334D] pt-4 md:pt-0">
+              <ul className="space-y-2.5 md:space-y-4">
+                {PLANS[1].features.map(f => (
+                  <li key={f} className="flex items-center gap-2.5 md:gap-3">
+                    <Check size={13} className="text-orange shrink-0 md:hidden" />
+                    <Check size={16} className="text-orange shrink-0 hidden md:block" />
+                    <span className="text-xs md:text-base text-white">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              {/* Subscribe Button */}
+              <button 
+                onClick={() => handleSubscribe(PLANS[1])}
+                className="w-full bg-orange text-white font-bold py-3 mt-4 rounded-lg hover:bg-orange/90 transition-colors text-sm"
+              >
+                {PLANS[1].cta}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
