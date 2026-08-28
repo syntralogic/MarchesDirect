@@ -24,7 +24,8 @@ const TYPE_OPTIONS: { id: OppType; sub: string; icon: typeof Building }[] = [
 // Common trade / métier keywords used to power the step-2 autocomplete.
 const TRADE_SUGGESTIONS = [
   'Climatisation', 'Chauffage / CVC', 'Installation et maintenance de climatisation',
-  'Peinture', 'Électricité', 'Plomberie', 'Menuiserie', 'Maçonnerie', 'Couverture / Toiture',
+  'Peinture', 'Électricité', 'Plomberie', 'Plomberie sanitaire', 'Chauffage / plomberie',
+  'Menuiserie', 'Maçonnerie', 'Couverture / Toiture',
   'Étanchéité', 'Serrurerie / Métallerie', 'Isolation thermique', 'Cloisons / Doublages',
   'Revêtement de sols', 'Nettoyage de chantier', 'Espaces verts',
   'Rénovation énergétique', 'Rénovation intérieure', 'Réhabilitation de bâtiments',
@@ -61,6 +62,8 @@ export default function OpportunityJourneyPage() {
 
   // Step 1 + 2 shared: selected opportunity types
   const [types, setTypes] = useState<OppType[]>([initialType]);
+  // Only relevant when "Sous-traitance" is among the selected types
+  const [subRole, setSubRole] = useState<'suis' | 'cherche' | null>(null);
 
   // Step 2: what the user is looking for
   const [query, setQuery] = useState('');
@@ -105,6 +108,7 @@ export default function OpportunityJourneyPage() {
 
   const toggleType = (id: OppType) => {
     setTypes(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+    if (id === 'Sous-traitance') setSubRole(null);
   };
 
   const applyZone = () => {
@@ -231,6 +235,32 @@ export default function OpportunityJourneyPage() {
             })}
           </div>
 
+          {types.includes('Sous-traitance') && (
+            <div className="mb-5">
+              <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">
+                Pour la sous-traitance, vous êtes :
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setSubRole('suis')}
+                  className={`flex items-center gap-1.5 justify-center px-3 py-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                    subRole === 'suis' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
+                  }`}
+                >
+                  {subRole === 'suis' && <CheckCircle2 size={13} />} Je suis sous-traitant
+                </button>
+                <button
+                  onClick={() => setSubRole('cherche')}
+                  className={`flex items-center gap-1.5 justify-center px-3 py-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                    subRole === 'cherche' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
+                  }`}
+                >
+                  {subRole === 'cherche' && <CheckCircle2 size={13} />} Je cherche un sous-traitant
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-5 relative">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
               Que recherchez-vous ?
@@ -287,7 +317,7 @@ export default function OpportunityJourneyPage() {
             </button>
             <button
               onClick={() => setStep(3)}
-              disabled={!query.trim()}
+              disabled={!query.trim() || (types.includes('Sous-traitance') && !subRole)}
               className="flex-1 flex items-center justify-center gap-1.5 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors disabled:opacity-40"
             >
               Continuer <ArrowRight size={14} />
@@ -320,6 +350,32 @@ export default function OpportunityJourneyPage() {
               );
             })}
           </div>
+
+          {types.includes('Sous-traitance') && (
+            <div className="mb-5">
+              <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">
+                Pour la sous-traitance, vous êtes :
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setSubRole('suis')}
+                  className={`flex items-center gap-1.5 justify-center px-3 py-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                    subRole === 'suis' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
+                  }`}
+                >
+                  {subRole === 'suis' && <CheckCircle2 size={13} />} Je suis sous-traitant
+                </button>
+                <button
+                  onClick={() => setSubRole('cherche')}
+                  className={`flex items-center gap-1.5 justify-center px-3 py-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+                    subRole === 'cherche' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
+                  }`}
+                >
+                  {subRole === 'cherche' && <CheckCircle2 size={13} />} Je cherche un sous-traitant
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="mb-5">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
@@ -376,6 +432,11 @@ export default function OpportunityJourneyPage() {
                 <CheckCircle2 size={11} /> {t}
               </span>
             ))}
+            {types.includes('Sous-traitance') && subRole && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-full border border-orange bg-orange/10 text-orange">
+                <CheckCircle2 size={11} /> {subRole === 'suis' ? 'Je suis sous-traitant' : 'Je cherche un sous-traitant'}
+              </span>
+            )}
             {query && (
               <span className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-full border border-orange bg-orange/10 text-orange">
                 <CheckCircle2 size={11} /> {query}

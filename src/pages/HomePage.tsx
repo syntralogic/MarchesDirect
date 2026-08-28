@@ -456,7 +456,7 @@ function OpportunityPaths() {
   const paths = [
     { icon: Building, title: 'Marchés publics', sub: 'Mairies, État, collectivités', href: '/parcours?type=marches-publics' },
     { icon: Building2, title: "Appels d'offres", sub: 'Promoteurs, bailleurs, grandes entreprises', href: '/parcours?type=appels-doffres' },
-    { icon: Handshake, title: 'Sous-traitance', sub: 'Lots entre entreprises du bâtiment', href: '/sous-traitance' },
+    { icon: Handshake, title: 'Sous-traitance', sub: 'Lots entre entreprises du bâtiment', href: '/parcours?type=sous-traitance' },
   ];
   return (
     <div className="grid grid-cols-1 gap-2">
