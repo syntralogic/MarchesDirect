@@ -90,7 +90,7 @@ export default function TarifsPage() {
       </div>
 
       {/* ========== 2. COMMISSION CARD (Button Added!) ========== */}
-      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-4 md:mb-6 relative overflow-hidden">
+      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-6 md:mb-8 relative overflow-hidden">
         
         <div className="absolute top-0 right-0 w-40 h-40 bg-orange/20 rounded-bl-[100%] blur-2xl pointer-events-none" />
         

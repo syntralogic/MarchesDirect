@@ -454,18 +454,18 @@ export default function InfoPage() {
             <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#031B30] border-2 border-orange overflow-hidden mb-2 md:mb-3">
               <img src={mem1} alt="Elena Popescu" className="w-full h-full object-cover" />
             </div>
-            <h4 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4">Parler à Elena</h4>
+            <h4 className="text-base md:text-lg font-bold text-white mb-4 md:mb-5">Parler à Elena</h4>
             {/* Action Buttons */}
-            <div className="flex gap-3 w-full">
+            <div className="flex gap-2.5 md:gap-3 w-full px-1">
               <button
                 onClick={() => setApptOpen(true)}
-                className="flex-1 bg-orange hover:bg-orange/90 text-white font-semibold py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base"
+                className="flex-1 bg-orange hover:bg-orange/95 active:bg-orange/85 text-white font-bold py-3 md:py-3.5 rounded-xl md:rounded-2xl transition-all text-sm md:text-base shadow-lg hover:shadow-orange/30 hover:shadow-xl"
               >
                 Prendre rendez-vous
               </button>
               <button
                 onClick={() => setCallbackOpen(true)}
-                className="flex-1 border-2 border-orange text-orange hover:bg-orange/10 font-semibold py-2 md:py-3 rounded-lg transition-colors text-sm md:text-base"
+                className="flex-1 border-2 border-orange text-orange hover:bg-orange/5 active:bg-orange/10 font-bold py-3 md:py-3.5 rounded-xl md:rounded-2xl transition-all text-sm md:text-base hover:border-orange/80"
               >
                 Être rappelé
               </button>
