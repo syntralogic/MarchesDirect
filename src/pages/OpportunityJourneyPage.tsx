@@ -40,6 +40,13 @@ const TYPE_SLUGS: Record<string, OppType> = {
   'sous-traitance': 'Sous-traitance',
 };
 
+// Map frontend journey types to backend API codes
+const JOURNEY_CODE_MAP: Record<OppType, 'public_procurement' | 'tender' | 'subcontracting'> = {
+  'Marchés publics': 'public_procurement',
+  "Appels d'offres": 'tender',
+  'Sous-traitance': 'subcontracting',
+};
+
 const STATUS_OPTIONS = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
 const DATE_OPTIONS = ['Toutes', '24 dernières heures', '7 derniers jours', '30 derniers jours'];
 const DEADLINE_OPTIONS = ['Toutes', 'Cette semaine', 'Ce mois-ci', 'Dans plus de 30 jours'];
@@ -90,6 +97,7 @@ export default function OpportunityJourneyPage() {
   const cityForApi = pickedCity.split(' — ')[0].split(',')[0].trim();
 
   const { opportunities, loading, error } = useOpportunities({
+    journey: JOURNEY_CODE_MAP[types[0]],
     q: debouncedQuery || undefined,
     city: cityForApi || undefined,
   });
