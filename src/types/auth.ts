@@ -17,6 +17,8 @@ export interface Company {
   legal_form?: string;
   headcount?: number;
   status?: string;
+  subscription_status?: string | null;
+  subscription_tier?: string | null;
   [key: string]: unknown;
 }
 
