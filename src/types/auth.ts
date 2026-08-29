@@ -13,6 +13,7 @@ export interface AuthUser {
     weeklyDigest: boolean;
     mobileNotifs: boolean;
   };
+  avatarUrl: string | null;
 }
 
 export interface Company {

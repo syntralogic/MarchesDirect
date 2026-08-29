@@ -450,6 +450,14 @@ export const uploadsApi = {
     });
     return data;
   },
+  uploadAvatar: async (file: File): Promise<{ avatarUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post('/uploads/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
 };
 
 // Milestone 9 "reusable company file" - documents/certifications/references/
