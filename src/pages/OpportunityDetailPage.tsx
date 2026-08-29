@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, LogIn } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, LogIn, Lock, Crown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SaveButton } from '@/components/SaveButton';
 import {
@@ -24,7 +24,12 @@ const DOC_LABELS: Record<string, string> = {
 export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, company } = useAuth();
+  // Three visibility tiers on this "fiche": (1) anonymous visitor - teaser +
+  // login/register CTA, (2) authenticated visitor whose company profile has
+  // no active subscription - full opportunity read, AI tools locked, (3)
+  // paid/active subscription - full DCE analysis + candidature generation.
+  const isPaid = company?.subscription_status === 'active';
 
   const [opportunity, setOpportunity] = useState<ApiOpportunity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +58,7 @@ export default function OpportunityDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    if (!id || !isAuthenticated) return;
+    if (!id || !isAuthenticated || !isPaid) return;
     setDceLoading(true);
     setDceError(null);
     tendersApi.get(id)
@@ -64,7 +69,7 @@ export default function OpportunityDetailPage() {
       })
       .catch(err => setDceError(getApiErrorMessage(err, "Impossible de charger le dossier.")))
       .finally(() => setDceLoading(false));
-  }, [id, isAuthenticated]);
+  }, [id, isAuthenticated, isPaid]);
 
   const handleAnalyze = async () => {
     if (!tender) return;
@@ -135,9 +140,34 @@ export default function OpportunityDetailPage() {
       {!isAuthenticated ? (
         <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center">
           <p className="text-sm text-white font-semibold mb-1">Analyse du dossier (DCE) et candidature</p>
-          <p className="text-xs text-[#B9BBC8] mb-4">Connectez-vous pour analyser les documents de consultation et générer votre dossier de candidature.</p>
-          <Link to="/connexion" state={{ from: `/opportunites/${id}` }} className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-            <LogIn size={14} /> Se connecter
+          <p className="text-xs text-[#B9BBC8] mb-4">Créez votre profil entreprise ou connectez-vous pour analyser les documents de consultation et générer votre dossier de candidature.</p>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <Link to="/connexion" state={{ from: `/opportunites/${id}` }} className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
+              <LogIn size={14} /> Se connecter
+            </Link>
+            <Link to="/inscription" state={{ from: `/opportunites/${id}` }} className="inline-flex items-center gap-2 border border-[#17334D] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:border-orange/50 transition-colors">
+              Créer mon profil
+            </Link>
+          </div>
+        </div>
+      ) : !isPaid ? (
+        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
+              <Lock size={16} className="text-orange" />
+            </div>
+            <div>
+              <p className="text-sm text-white font-semibold mb-1">Analyse du DCE et candidature : réservées à l'offre payante</p>
+              <p className="text-xs text-[#B9BBC8]">Votre profil entreprise est bien enregistré. L'analyse automatique du dossier de consultation, la génération du mémoire technique et le suivi de candidature nécessitent un abonnement actif.</p>
+            </div>
+          </div>
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><FileText size={13} className="text-orange/70" /> Analyse IA des documents de consultation (critères, pièces demandées)</div>
+            <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Sparkles size={13} className="text-orange/70" /> Génération automatique du dossier de candidature</div>
+            <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><CheckCircle2 size={13} className="text-orange/70" /> Suivi et téléchargement du dossier complet</div>
+          </div>
+          <Link to="/tarifs" className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
+            <Crown size={14} /> Voir les offres
           </Link>
         </div>
       ) : dceLoading ? (
