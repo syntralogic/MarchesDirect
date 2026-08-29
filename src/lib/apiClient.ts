@@ -626,6 +626,18 @@ export type ApiBidResponse = {
   submission_deadline: string | null;
 };
 
+export type ApiBidSummary = {
+  id: string;
+  status: string;
+  submission_deadline: string | null;
+  submitted_at: string | null;
+  total_bid_amount: number | null;
+  opportunity_id: string;
+  title: string;
+  deadline: string | null;
+  location_city: string | null;
+};
+
 export const tendersApi = {
   get: async (opportunityId: string): Promise<ApiTender> => {
     const { data } = await apiClient.get(`/tenders/${opportunityId}`);
@@ -662,5 +674,11 @@ export const tendersApi = {
       return { url: JSON.parse(text).url };
     }
     return { blob: data as Blob };
+  },
+  // Used by the dashboard's "Dossiers en cours" stat/section - every bid
+  // response the company has started or submitted, across all tenders.
+  myBids: async (): Promise<ApiBidSummary[]> => {
+    const { data } = await apiClient.get('/tenders/bids/mine');
+    return data;
   },
 };
