@@ -1,13 +1,17 @@
 import { useParams } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
-import { mockSubcontractingOpportunities } from '@/data/mockData';
+import { ShieldCheck, Loader2 } from 'lucide-react';
+import { useMission } from '@/hooks/use-mission';
 import { TopBar, StepIndicator, Eyebrow, PageTitle, PageSub, Badge, Button, RelationTimeline, type TimelineItem } from '@/components/sous-traitance/ui';
 
 const STEPS = [{ label: 'Missions' }, { label: 'Détail' }, { label: 'Mon profil' }, { label: 'Mise en relation' }];
 
 export default function MissionRelationPage() {
   const { id } = useParams<{ id: string }>();
-  const mission = mockSubcontractingOpportunities.find(o => o.id === id);
+  const { mission, loading } = useMission(id);
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 size={24} className="animate-spin text-orange" /></div>;
+  }
 
   if (!mission) {
     return (

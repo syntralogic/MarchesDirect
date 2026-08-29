@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
-import { mockSubcontractingOpportunities } from '@/data/mockData';
+import { ShieldCheck, Loader2 } from 'lucide-react';
+import { useMission } from '@/hooks/use-mission';
 import { useAuth } from '@/contexts/AuthContext';
 import { TopBar, StepIndicator, Eyebrow, PageTitle, PageSub, Button, KeyValueRow } from '@/components/sous-traitance/ui';
 
@@ -12,11 +12,15 @@ export default function MissionProfilPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { company } = useAuth();
-  const mission = mockSubcontractingOpportunities.find(o => o.id === id);
+  const { mission, loading } = useMission(id);
   const [message, setMessage] = useState(
     (location.state as { message?: string } | null)?.message ||
     'Bonjour, notre équipe est disponible pour cette mission. Nous avons une expérience solide en travaux similaires.'
   );
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 size={24} className="animate-spin text-orange" /></div>;
+  }
 
   if (!mission) {
     return (

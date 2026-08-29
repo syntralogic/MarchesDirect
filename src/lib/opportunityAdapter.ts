@@ -47,5 +47,6 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
     sector: api.trade_name || '',
     saved: false,
     published: api.publication_date || undefined,
+    description: api.description || undefined,
   };
 }
