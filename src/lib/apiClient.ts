@@ -582,6 +582,66 @@ export const adminApi = {
     const { data } = await apiClient.put(`/admin/opportunity-leads/${leadId}/grant-access`);
     return data;
   },
+  brands: async (): Promise<ApiAdminBrand[]> => {
+    const { data } = await apiClient.get('/admin/brands');
+    return data;
+  },
+  createBrand: async (brand: {
+    code: string; name: string; domain: string; logoUrl?: string;
+    colorPrimary?: string; colorSecondary?: string; language?: string; regionFocus?: string;
+  }): Promise<ApiAdminBrand> => {
+    const { data } = await apiClient.post('/admin/brands', brand);
+    return data;
+  },
+  updateBrand: async (id: string, brand: Partial<{
+    name: string; domain: string; logoUrl: string;
+    colorPrimary: string; colorSecondary: string; language: string; regionFocus: string;
+  }>): Promise<ApiAdminBrand> => {
+    const { data } = await apiClient.put(`/admin/brands/${id}`, brand);
+    return data;
+  },
+  subscriptions: async (params: { status?: string; q?: string; page?: number; limit?: number }) => {
+    const { data } = await apiClient.get<{
+      results: ApiAdminSubscription[]; pagination: ApiPagination; statusCounts: Record<string, number>;
+    }>('/admin/subscriptions', { params });
+    return data;
+  },
+  cancelSubscription: async (id: string, immediate = false) => {
+    const { data } = await apiClient.patch(`/admin/subscriptions/${id}/cancel`, { immediate });
+    return data;
+  },
+};
+
+export type ApiAdminBrand = {
+  id: string;
+  code: string;
+  name: string;
+  domain: string;
+  logo_url: string | null;
+  color_primary: string | null;
+  color_secondary: string | null;
+  language: string;
+  region_focus: string | null;
+  created_at: string;
+};
+
+export type ApiAdminSubscription = {
+  id: string;
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  trial_end: string | null;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
+  created_at: string;
+  company_id: string;
+  company_name: string;
+  company_email: string;
+  plan_name: string;
+  plan_code: string;
+  price: number;
+  currency: string;
+  billing_period: string;
 };
 
 export type ApiAdminOpportunityLead = {
