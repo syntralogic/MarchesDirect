@@ -191,7 +191,7 @@ export default function SousTraitancePage() {
                       <span>{t('searchCompatible')}</span>
                     </div>
                     <Link
-                      to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?org=${encodeURIComponent(o.organization)}`}
+                      to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?oid=${o.id}`}
                       className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors"
                     >
                       {t('searchView')} <ArrowRight size={10} />

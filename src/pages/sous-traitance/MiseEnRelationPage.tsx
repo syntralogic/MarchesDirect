@@ -1,18 +1,40 @@
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 import { mockSubcontractingOpportunities } from '@/data/mockData';
+import { opportunitiesApi } from '@/lib/apiClient';
 import { TopBar, StepIndicator, Eyebrow, PageTitle, PageSub, Badge, Button, RelationTimeline, type TimelineItem } from '@/components/sous-traitance/ui';
 
 const STEPS = [{ label: 'Besoin' }, { label: 'Profils' }, { label: 'Sélection' }, { label: 'Mise en relation' }];
 
 export default function MiseEnRelationPage() {
   const [searchParams] = useSearchParams();
-  const orgParam = searchParams.get('org');
+  const oid = searchParams.get('oid');
+  const orgParam = searchParams.get('org'); // legacy links from before `oid` existed
+
   const fallback = mockSubcontractingOpportunities[0];
-  const match = orgParam
-    ? mockSubcontractingOpportunities.find(o => o.organization === orgParam)
-    : fallback;
-  const company = match ?? fallback;
+  const [company, setCompany] = useState<{ organization: string; category?: string }>(() => {
+    const mockMatch = orgParam ? mockSubcontractingOpportunities.find(o => o.organization === orgParam) : undefined;
+    return mockMatch ?? fallback;
+  });
+  const [loading, setLoading] = useState(!!oid);
+
+  useEffect(() => {
+    if (!oid) return;
+    let cancelled = false;
+    opportunitiesApi.getById(oid)
+      .then(o => {
+        if (cancelled) return;
+        // buyer_name isn't populated for every source (TED, some PLACE
+        // records) - fall back to the mock demo company rather than showing
+        // a blank organization name.
+        setCompany({ organization: o.buyer_name || fallback.organization, category: o.trade_name || undefined });
+      })
+      .catch(() => { if (!cancelled) setCompany(fallback); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oid]);
 
   const submittedAt = new Date().toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -22,6 +44,10 @@ export default function MiseEnRelationPage() {
     { title: "Confirmation de l'intérêt", status: 'wait' },
     { title: 'Premier échange organisé', status: 'wait' },
   ];
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-24"><Loader2 size={24} className="animate-spin text-orange" /></div>;
+  }
 
   return (
     <div className="page-fade-in max-w-2xl mx-auto pb-24">
