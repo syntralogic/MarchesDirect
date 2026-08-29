@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Building2, Settings, Bell, Shield, Smartphone, Save, LogOut, Loader2, Info, FolderOpen } from 'lucide-react';
+import { User, Building2, Settings, Bell, Shield, Smartphone, Save, LogOut, Loader2, Info, FolderOpen, Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLang } from '@/contexts/LangContext';
-import { companiesApi, subscriptionsApi, accountApi, getApiErrorMessage, type ApiCompany } from '@/lib/apiClient';
+import { companiesApi, subscriptionsApi, accountApi, uploadsApi, getApiErrorMessage, type ApiCompany } from '@/lib/apiClient';
 import { toast } from 'sonner';
 
 const SECTIONS = [
@@ -68,6 +68,36 @@ export default function ProfilPage() {
   // Preferences that ARE real (working_radius_km lives on companies) vs
   // local-only UI state for things with no backend column yet.
   const [matchThreshold, setMatchThreshold] = useState('60');
+
+  // Profile picture upload
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Formats acceptés : JPG, PNG, WEBP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image trop volumineuse (5 Mo maximum).');
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      await uploadsApi.uploadAvatar(file);
+      await refreshProfile(); // pulls the new avatarUrl from GET /api/auth/me
+      toast.success('Photo de profil mise à jour.');
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Échec de l'envoi de la photo."));
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   // Notification preferences - loaded from the user's real DB row
   // (users.notification_preferences) and saved immediately on toggle.
@@ -220,8 +250,29 @@ export default function ProfilPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-white mb-5">Mon profil</h2>
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-orange/20 border-2 border-orange flex items-center justify-center">
-                <span className="text-xl font-bold text-orange">{initials}</span>
+              <div className="relative w-16 h-16 shrink-0">
+                <div className="w-16 h-16 rounded-full bg-orange/20 border-2 border-orange flex items-center justify-center overflow-hidden">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl font-bold text-orange">{initials}</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-orange flex items-center justify-center border-2 border-[#061426] disabled:opacity-60"
+                  aria-label="Changer la photo de profil"
+                >
+                  {avatarUploading ? <Loader2 size={12} className="animate-spin text-white" /> : <Camera size={12} className="text-white" />}
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarSelect}
+                />
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">{fullName}</p>
