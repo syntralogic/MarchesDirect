@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, FileText, Users, Settings, 
+  LayoutDashboard, FileText, Users, Settings, UserCheck,
   Bell, Search, LogOut, Menu, X, CheckCircle2, XCircle
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
@@ -10,6 +10,7 @@ const ADMIN_LINKS = [
   { key: 'adminDashboard', href: '/admin', icon: LayoutDashboard },
   { key: 'adminTenders', href: '/admin/tenders', icon: FileText },
   { key: 'adminUsers', href: '/admin/users', icon: Users },
+  { key: 'adminLeads', href: '/admin/leads', icon: UserCheck },
   { key: 'adminSettings', href: '/admin/settings', icon: Settings },
 ];
 

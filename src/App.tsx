@@ -46,6 +46,7 @@ import StripeCheckoutPage from '@/pages/StripeCheckoutPage';
 import AdminDashboard from '@/pages/AdminDashboard';
 import AdminTenders from '@/pages/AdminTenders';
 import AdminUsers from '@/pages/AdminUsers';
+import AdminLeads from '@/pages/AdminLeads';
 import AdminSettings from '@/pages/AdminSettings';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
@@ -121,6 +122,7 @@ const App: React.FC = () => {
               <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
               <Route path="/admin/tenders" element={<RequireAuth adminOnly><AdminTenders /></RequireAuth>} />
               <Route path="/admin/users" element={<RequireAuth adminOnly><AdminUsers /></RequireAuth>} />
+              <Route path="/admin/leads" element={<RequireAuth adminOnly><AdminLeads /></RequireAuth>} />
               <Route path="/admin/settings" element={<RequireAuth adminOnly><AdminSettings /></RequireAuth>} />
 
               {/* Fallback */}
