@@ -574,6 +574,29 @@ export const adminApi = {
     const { data } = await apiClient.patch(`/admin/companies/${id}/status`, { status });
     return data;
   },
+  opportunityLeads: async (params: { status?: string; page?: number; limit?: number }) => {
+    const { data } = await apiClient.get<{ results: ApiAdminOpportunityLead[] }>('/admin/opportunity-leads', { params });
+    return data;
+  },
+  grantOpportunityAccess: async (leadId: string) => {
+    const { data } = await apiClient.put(`/admin/opportunity-leads/${leadId}/grant-access`);
+    return data;
+  },
+};
+
+export type ApiAdminOpportunityLead = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  phone: string | null;
+  company_name: string | null;
+  opportunity_id: string;
+  opportunity_title: string | null;
+  journey: string | null;
+  access_level: string | null;
+  status: string;
+  created_at: string;
 };
 
 export type ApiAdminOpportunity = {
