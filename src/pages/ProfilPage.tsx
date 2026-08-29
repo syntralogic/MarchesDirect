@@ -19,9 +19,13 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
   return (
     <button
       onClick={onChange}
-      className={`relative w-11 h-6 shrink-0 rounded-full transition-colors ${checked ? 'bg-orange' : 'bg-[#17334D]'}`}
+      style={{ width: '44px', height: '24px', flex: '0 0 44px' }}
+      className={`relative rounded-full transition-colors ${checked ? 'bg-orange' : 'bg-[#17334D]'}`}
     >
-      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+      <span
+        style={{ width: '16px', height: '16px', transform: checked ? 'translateX(24px)' : 'translateX(4px)' }}
+        className="absolute top-1 left-0 bg-white rounded-full shadow transition-transform"
+      />
     </button>
   );
 }
@@ -370,8 +374,8 @@ export default function ProfilPage() {
               { key: 'weeklyDigest', label: 'Digest hebdomadaire', sub: 'Résumé des opportunités chaque lundi matin' },
               { key: 'mobileNotifs', label: 'Notifications mobiles', sub: 'Notifications push sur votre appareil' },
             ].map(item => (
-              <div key={item.key} className="flex items-center justify-between gap-3 p-4 bg-[#061D32] border border-[#17334D] rounded-xl">
-                <div className="min-w-0 pr-2">
+              <div key={item.key} className="grid grid-cols-[1fr_auto] items-center gap-3 p-4 bg-[#061D32] border border-[#17334D] rounded-xl">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-white">{item.label}</p>
                   <p className="text-xs text-[#B9BBC8] mt-0.5">{item.sub}</p>
                 </div>
