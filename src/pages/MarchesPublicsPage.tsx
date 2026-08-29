@@ -2,36 +2,37 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { SaveButton } from '@/components/SaveButton';
 
-const SECTORS = ['Tous', 'Travaux & construction', 'Énergie & environnement', 'Industrie & maintenance', 'Informatique & télécoms', 'Transport & logistique', 'Services aux entreprises'];
 const STATUSES = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
-const CATEGORIES = ['Toutes', 'Travaux', 'Fournitures', 'Services', 'Construction', 'Informatique'];
 
 export default function MarchesPublicsPage() {
   const { t } = useLang();
   const navigate = useNavigate();
   const { opportunities: mockPublicOpportunities, loading, error } = useOpportunities('public_procurement');
+  const trades = useTrades();
   const [location, setLocation] = useState('');
   const [sector, setSector] = useState('Tous');
   const [status, setStatus] = useState('Tous');
-  const [category, setCategory] = useState('Toutes');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return mockPublicOpportunities.filter(o => {
       if (location && !o.location.toLowerCase().includes(location.toLowerCase())) return false;
+      // Filters against the real trade_name-backed `sector` field - see
+      // useTrades for why the old hardcoded SECTORS/CATEGORIES label lists
+      // never matched real data and silently returned zero results.
       if (sector !== 'Tous' && o.sector !== sector) return false;
       if (status !== 'Tous' && o.status !== status) return false;
-      if (category !== 'Toutes' && o.category !== category) return false;
       return true;
     });
-  }, [location, sector, status, category, mockPublicOpportunities]);
+  }, [location, sector, status, mockPublicOpportunities]);
 
-  const resetFilters = () => { setLocation(''); setSector('Tous'); setStatus('Tous'); setCategory('Toutes'); };
-  const hasFilters = location || sector !== 'Tous' || status !== 'Tous' || category !== 'Toutes';
+  const resetFilters = () => { setLocation(''); setSector('Tous'); setStatus('Tous'); };
+  const hasFilters = location || sector !== 'Tous' || status !== 'Tous';
 
   const getIcon = (title: string) => {
     if (title.toLowerCase().includes('peinture')) return <Paintbrush size={18} className="text-orange" />;
@@ -51,19 +52,14 @@ export default function MarchesPublicsPage() {
       <div>
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('appelsSector')}</label>
         <select value={sector} onChange={e => setSector(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
-          {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+          <option value="Tous">Tous</option>
+          {trades.map(name => <option key={name} value={name}>{name}</option>)}
         </select>
       </div>
       <div>
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('publicStatus')}</label>
         <select value={status} onChange={e => setStatus(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('appelsCategory')}</label>
-        <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
       {hasFilters && (

@@ -2,16 +2,26 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { SaveButton } from '@/components/SaveButton';
 
-const PROFESSIONS = ['Tous', 'Maçonnerie', 'Plomberie', 'Revêtements', 'Métallerie', 'Peinture', 'Électricité'];
-const DEPARTMENTS = ['Tous', 'Hauts-de-Seine (92)', 'Yvelines (78)', 'Alpes-Maritimes (06)', 'Isère (38)', 'Rhône (69)'];
+// label -> raw INSEE department code, since opportunities store the bare
+// code (e.g. "92") in `department`, not this display label.
+const DEPARTMENTS: { label: string; code: string }[] = [
+  { label: 'Tous', code: 'Tous' },
+  { label: 'Hauts-de-Seine (92)', code: '92' },
+  { label: 'Yvelines (78)', code: '78' },
+  { label: 'Alpes-Maritimes (06)', code: '06' },
+  { label: 'Isère (38)', code: '38' },
+  { label: 'Rhône (69)', code: '69' },
+];
 
 export default function SousTraitancePage() {
   const { t } = useLang();
   const { opportunities: mockSubcontractingOpportunities, loading, error } = useOpportunities('subcontracting');
+  const trades = useTrades();
   const [mode, setMode] = useState<'chantier' | 'partenaire'>('chantier');
   const [location, setLocation] = useState('');
   const [dept, setDept] = useState('Tous');
@@ -22,7 +32,10 @@ export default function SousTraitancePage() {
     return mockSubcontractingOpportunities.filter(o => {
       if (location && !o.location.toLowerCase().includes(location.toLowerCase())) return false;
       if (dept !== 'Tous' && o.department !== dept) return false;
-      if (profession !== 'Tous' && o.category !== profession) return false;
+      // Filters against the real trade_name-backed `sector` field - see
+      // useTrades for why `o.category` (never populated by the API adapter)
+      // silently returned zero results for any non-default selection.
+      if (profession !== 'Tous' && o.sector !== profession) return false;
       return true;
     });
   }, [location, dept, profession, mockSubcontractingOpportunities]);
@@ -48,13 +61,14 @@ export default function SousTraitancePage() {
       <div>
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('subDept')}</label>
         <select value={dept} onChange={e => setDept(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
-          {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+          {DEPARTMENTS.map(d => <option key={d.code} value={d.code}>{d.label}</option>)}
         </select>
       </div>
       <div>
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('subJob')}</label>
         <select value={profession} onChange={e => setProfession(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
-          {PROFESSIONS.map(p => <option key={p} value={p}>{p}</option>)}
+          <option value="Tous">Tous</option>
+          {trades.map(name => <option key={name} value={name}>{name}</option>)}
         </select>
       </div>
       {hasFilters && (
