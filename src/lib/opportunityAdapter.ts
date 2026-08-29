@@ -31,10 +31,11 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
   return {
     id: api.id,
     title: api.title,
-    // Buyer/organization name isn't returned by GET /api/opportunities today
-    // (see marchesdirect-backend's routes/opportunities.ts SELECT) - blank
-    // rather than a fabricated placeholder until that route exposes it.
-    organization: '',
+    // Buyer/organization name now comes straight from the API (see
+    // marchesdirect-backend's opportunities.buyer_name), populated for
+    // BOAMP-sourced records and demo/seed data. Still blank for
+    // sources that don't expose it (TED, some PLACE records).
+    organization: api.buyer_name || '',
     location: [api.location_city, api.location_region].filter(Boolean).join(', '),
     department: api.location_department || '',
     distance: '',

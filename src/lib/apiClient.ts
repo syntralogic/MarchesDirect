@@ -113,6 +113,7 @@ export type ApiOpportunity = {
   status: string;
   journey: 'tender' | 'public_procurement' | 'subcontracting';
   trade_name: string | null;
+  buyer_name?: string | null;
   match_score?: number;
 };
 
