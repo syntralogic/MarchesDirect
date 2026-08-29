@@ -17,7 +17,10 @@ const SECTIONS = [
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
-    <button onClick={onChange} className={`relative w-11 h-6 rounded-full transition-colors ${checked ? 'bg-orange' : 'bg-[#17334D]'}`}>
+    <button
+      onClick={onChange}
+      className={`relative w-11 h-6 shrink-0 rounded-full transition-colors ${checked ? 'bg-orange' : 'bg-[#17334D]'}`}
+    >
       <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
   );
@@ -355,7 +358,7 @@ export default function ProfilPage() {
         );
       case 'notifications':
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-20 md:pb-0">
             <h2 className="text-lg font-bold text-white mb-5">Notifications</h2>
             <NotWiredNote>
               Ces préférences sont maintenant sauvegardées sur votre compte. En revanche, aucun service d'envoi d'email ou de notification push n'existe encore côté backend — activer un réglage ici ne déclenche pas encore de véritable envoi.
@@ -367,8 +370,8 @@ export default function ProfilPage() {
               { key: 'weeklyDigest', label: 'Digest hebdomadaire', sub: 'Résumé des opportunités chaque lundi matin' },
               { key: 'mobileNotifs', label: 'Notifications mobiles', sub: 'Notifications push sur votre appareil' },
             ].map(item => (
-              <div key={item.key} className="flex items-center justify-between p-4 bg-[#061D32] border border-[#17334D] rounded-xl">
-                <div>
+              <div key={item.key} className="flex items-center justify-between gap-3 p-4 bg-[#061D32] border border-[#17334D] rounded-xl">
+                <div className="min-w-0 pr-2">
                   <p className="text-sm font-medium text-white">{item.label}</p>
                   <p className="text-xs text-[#B9BBC8] mt-0.5">{item.sub}</p>
                 </div>
@@ -476,11 +479,11 @@ export default function ProfilPage() {
 
   return (
     <div className="page-fade-in">
-      <div className="md:hidden px-4 pt-6 pb-2 overflow-x-auto">
-        <div className="flex gap-2 w-max">
+      <div className="md:hidden px-4 pt-6 pb-2">
+        <div className="grid grid-cols-3 gap-2">
           {SECTIONS.map(s => (
-            <button key={s.key} onClick={() => setActiveSection(s.key)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${activeSection === s.key ? 'bg-orange/10 text-orange border border-orange/30' : 'bg-[#061D32] border border-[#17334D] text-[#B9BBC8]'}`}>
-              <s.icon size={12} /> {s.label}
+            <button key={s.key} onClick={() => setActiveSection(s.key)} className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-medium transition-colors ${activeSection === s.key ? 'bg-orange/10 text-orange border border-orange/30' : 'bg-[#061D32] border border-[#17334D] text-[#B9BBC8]'}`}>
+              <s.icon size={12} className="shrink-0" /> <span className="truncate">{s.label}</span>
             </button>
           ))}
         </div>
