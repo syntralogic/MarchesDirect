@@ -211,7 +211,7 @@ function GeographicSection() {
             </p>
 
             {/* Choropleth map */}
-            <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[280px] md:h-[380px]">
+            <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[280px] md:h-[380px]" style={{ touchAction: 'pan-y' }}>
               {geoLoadError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
                   <AlertCircle size={20} className="text-red-400 mb-2" />
@@ -348,7 +348,7 @@ function GeographicSection() {
             </p>
 
             {/* Zoomable map with progressively-revealed city pins */}
-            <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[220px] md:h-[300px] mb-3">
+            <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[220px] md:h-[300px] mb-3" style={{ touchAction: 'pan-y' }}>
               {geoLoadError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
                   <AlertCircle size={20} className="text-red-400 mb-2" />
