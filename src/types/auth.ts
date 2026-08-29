@@ -6,6 +6,13 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   mfaEnabled: boolean;
+  notificationPreferences: {
+    emailAlerts: boolean;
+    newOpps: boolean;
+    deadlineAlerts: boolean;
+    weeklyDigest: boolean;
+    mobileNotifs: boolean;
+  };
 }
 
 export interface Company {

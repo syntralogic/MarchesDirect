@@ -312,6 +312,12 @@ export const accountApi = {
     const { data } = await apiClient.post('/auth/mfa/confirm', { mfaToken });
     return data;
   },
+  updateNotificationPreferences: async (prefs: Partial<{
+    emailAlerts: boolean; newOpps: boolean; deadlineAlerts: boolean; weeklyDigest: boolean; mobileNotifs: boolean;
+  }>) => {
+    const { data } = await apiClient.put('/auth/me/notification-preferences', prefs);
+    return data as { notificationPreferences: Record<string, boolean> };
+  },
 };
 
 // CRM lead capture is a public endpoint (no auth) - uses a plain axios call

@@ -68,9 +68,27 @@ export default function ProfilPage() {
   // Preferences that ARE real (working_radius_km lives on companies) vs
   // local-only UI state for things with no backend column yet.
   const [matchThreshold, setMatchThreshold] = useState('60');
+
+  // Notification preferences - loaded from the user's real DB row
+  // (users.notification_preferences) and saved immediately on toggle.
   const [notifPrefs, setNotifPrefs] = useState({
     emailAlerts: true, newOpps: true, deadlineAlerts: true, weeklyDigest: false, mobileNotifs: true,
   });
+  useEffect(() => {
+    if (user?.notificationPreferences) setNotifPrefs(user.notificationPreferences);
+  }, [user]);
+
+  const toggleNotifPref = async (key: keyof typeof notifPrefs) => {
+    const previous = notifPrefs;
+    const next = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(next); // optimistic - toggles should feel instant
+    try {
+      await accountApi.updateNotificationPreferences({ [key]: next[key] });
+    } catch (err) {
+      setNotifPrefs(previous); // revert on failure so the UI never lies about what's saved
+      toast.error(getApiErrorMessage(err, "Impossible d'enregistrer cette préférence."));
+    }
+  };
 
   // Security section
   const [currentPassword, setCurrentPassword] = useState('');
@@ -289,7 +307,7 @@ export default function ProfilPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-white mb-5">Notifications</h2>
             <NotWiredNote>
-              Ces préférences ne sont pas encore reliées au backend (aucune table de préférences de notification n'existe) — les changements ci-dessous ne sont pas sauvegardés pour l'instant.
+              Ces préférences sont maintenant sauvegardées sur votre compte. En revanche, aucun service d'envoi d'email ou de notification push n'existe encore côté backend — activer un réglage ici ne déclenche pas encore de véritable envoi.
             </NotWiredNote>
             {[
               { key: 'emailAlerts', label: 'Alertes par email', sub: 'Recevoir les nouvelles opportunités par email' },
@@ -305,7 +323,7 @@ export default function ProfilPage() {
                 </div>
                 <Toggle
                   checked={notifPrefs[item.key as keyof typeof notifPrefs]}
-                  onChange={() => setNotifPrefs(p => ({ ...p, [item.key]: !p[item.key as keyof typeof notifPrefs] }))}
+                  onChange={() => toggleNotifPref(item.key as keyof typeof notifPrefs)}
                 />
               </div>
             ))}
