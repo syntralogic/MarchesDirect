@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Save, CheckCircle2, Download, Plus, Trash2,
-  AlertTriangle, FileText, Euro,
+  AlertTriangle, FileText, Euro, Lock, ShoppingCart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   tendersApi, opportunitiesApi, getApiErrorMessage,
   type ApiBidResponse, type ApiPricingItem, type ApiOpportunityDetail,
 } from '@/lib/apiClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DOC_LABELS: Record<string, string> = {
   kbis: 'Extrait KBIS', insurance: "Attestation d'assurance décennale",
@@ -18,6 +19,8 @@ const DOC_LABELS: Record<string, string> = {
 
 export default function BidWorkspacePage() {
   const { id } = useParams<{ id: string }>();
+  const { company } = useAuth();
+  const isPaid = company?.subscription_status === 'active';
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [bid, setBid] = useState<ApiBidResponse | null>(null);
   const [memoText, setMemoText] = useState('');
@@ -123,6 +126,19 @@ export default function BidWorkspacePage() {
         <h1 className="text-lg md:text-xl font-extrabold text-white mb-1">Dossier de candidature</h1>
         <p className="text-xs text-[#B9BBC8]">{opportunity.title}</p>
       </div>
+
+      {!isPaid && (
+        <div className="bg-[#061D32] border border-orange/40 rounded-2xl p-5 mb-5 text-center">
+          <Lock size={22} className="text-orange mx-auto mb-2" />
+          <h2 className="text-sm font-bold text-white mb-1">Préparation du dossier réservée à l'offre payante</h2>
+          <p className="text-xs text-[#B9BBC8] mb-4">
+            Un abonnement actif est nécessaire pour rédiger, valider et télécharger votre mémoire technique, votre bordereau de prix et le dossier complet.
+          </p>
+          <Link to="/tarifs" className="inline-flex items-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors">
+            <ShoppingCart size={13} /> Voir les offres
+          </Link>
+        </div>
+      )}
 
       {bid.missing_documents && bid.missing_documents.length > 0 && (
         <div className="flex items-start gap-2 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-brand-muted mb-5">
