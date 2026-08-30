@@ -4,8 +4,10 @@ import { Search, MapPin } from 'lucide-react';
 import PageMeta from '@/components/common/PageMeta';
 import { seoPagesApi, getApiErrorMessage, type ApiSeoPage } from '@/lib/apiClient';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
+import { useLang } from '@/contexts/LangContext';
 
 export default function SeoLandingPage() {
+  const { t } = useLang();
   const { slug } = useParams<{ slug: string }>();
   const [page, setPage] = useState<ApiSeoPage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,14 +28,14 @@ export default function SeoLandingPage() {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, 'Page introuvable.'));
+        if (!cancelled) setError(getApiErrorMessage(err, t('seoNotFound')));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
 
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, t]);
 
   if (loading) {
     return (
@@ -46,10 +48,10 @@ export default function SeoLandingPage() {
   if (error || !page) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-xl font-bold text-white mb-2">Page introuvable</h1>
-        <p className="text-[#B9BBC8] text-sm mb-6">Cette page n'existe pas ou n'est plus disponible.</p>
+        <h1 className="text-xl font-bold text-white mb-2">{t('seoNotFound')}</h1>
+        <p className="text-[#B9BBC8] text-sm mb-6">{t('seoNotFoundSub')}</p>
         <Link to="/recherche" className="text-orange font-semibold text-sm hover:underline">
-          Voir toutes les opportunités
+          {t('seoViewAllOpportunities')}
         </Link>
       </div>
     );
@@ -87,7 +89,7 @@ export default function SeoLandingPage() {
         className="inline-flex items-center gap-2 bg-orange text-white font-semibold text-sm px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors"
       >
         <Search size={16} />
-        Voir les opportunités correspondantes
+        {t('seoViewAllOpportunities')}
       </Link>
     </div>
   );

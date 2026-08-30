@@ -13,6 +13,7 @@ import { CallbackModal } from '@/components/CallbackModal';
 import { SaveButton } from '@/components/SaveButton';
 import { subcontractNeedsApi, getApiErrorMessage, type ApiSubcontractNeed } from '@/lib/apiClient';
 import team from '@/assets/team.jpg';
+import { useLang } from '@/contexts/LangContext';
 
 type OppType = 'Marchés publics' | "Appels d'offres" | 'Sous-traitance';
 
@@ -22,7 +23,6 @@ const TYPE_OPTIONS: { id: OppType; sub: string; icon: typeof Building }[] = [
   { id: 'Sous-traitance', sub: 'Entre entreprises du bâtiment', icon: Handshake },
 ];
 
-// Common trade / métier keywords used to power the step-2 autocomplete.
 const TRADE_SUGGESTIONS = [
   'Climatisation', 'Chauffage / CVC', 'Installation et maintenance de climatisation',
   'Peinture', 'Électricité', 'Plomberie', 'Plomberie sanitaire', 'Chauffage / plomberie',
@@ -41,7 +41,6 @@ const TYPE_SLUGS: Record<string, OppType> = {
   'sous-traitance': 'Sous-traitance',
 };
 
-// Map frontend journey types to backend API codes
 const JOURNEY_CODE_MAP: Record<OppType, 'public_procurement' | 'tender' | 'subcontracting'> = {
   'Marchés publics': 'public_procurement',
   "Appels d'offres": 'tender',
@@ -61,34 +60,28 @@ function getIcon(title: string) {
 }
 
 export default function OpportunityJourneyPage() {
+  const { t } = useLang();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialType = TYPE_SLUGS[searchParams.get('type') || ''] || 'Marchés publics';
-  // If user comes from homepage with a type param, skip to step 2 directly
-  // Otherwise show step 1 for journey selection
   const hasTypeParam = searchParams.get('type');
   const [step, setStep] = useState<1 | 2 | 3 | 4>(hasTypeParam ? 2 : 1);
   const [buyerNeed, setBuyerNeed] = useState<ApiSubcontractNeed | null>(null);
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
-  // Step 1 + 2 shared: selected opportunity types
   const [types, setTypes] = useState<OppType[]>([initialType]);
-  // Only relevant when "Sous-traitance" is among the selected types
   const [subRole, setSubRole] = useState<'suis' | 'cherche' | null>(null);
 
-  // Step 2: what the user is looking for
   const [query, setQuery] = useState('');
   const [querySuggestOpen, setQuerySuggestOpen] = useState(false);
 
-  // Step 3: location
   const [locationLabel, setLocationLabel] = useState('');
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
   const [pickedCity, setPickedCity] = useState('');
   const [radius, setRadius] = useState(50);
 
-  // Step 4 filters
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [status, setStatus] = useState('Tous');
   const [dateFilter, setDateFilter] = useState('Toutes');
@@ -96,11 +89,6 @@ export default function OpportunityJourneyPage() {
   const [amountFilter, setAmountFilter] = useState('Tous');
 
   const debouncedQuery = useDebounce(query, 350);
-  // "Département entier" / "Région entière" / "France entière" are
-  // whole-area picks, not literal city names - sending them straight
-  // through as ?city= silently matched zero real opportunities (a real
-  // bug caught while testing: picking "France entière" was returning
-  // 0 results every time because no city is actually named that way).
   const WHOLE_AREA_PICKS = ['Département entier', 'Région entière', 'France entière'];
   const cityForApi = WHOLE_AREA_PICKS.includes(pickedCity) ? '' : pickedCity.split(' — ')[0].split(',')[0].trim();
 
@@ -136,12 +124,17 @@ export default function OpportunityJourneyPage() {
     setStep(4);
   };
 
-  const stepLabels = ['Choisir une opportunité', 'Saisir son métier', 'Choisir une zone', 'Résultats et filtres'];
+  const stepLabels = [
+    t('journeyStep1'),
+    t('journeyStep2'),
+    t('journeyStep3'),
+    t('journeyStep4')
+  ];
 
   return (
     <div className="page-fade-in w-full max-w-md mx-auto px-4 py-5 pb-24">
 
-      {/* ===== Step progress ===== */}
+      {/* Step progress */}
       <div className="flex items-center gap-1.5 mb-4">
         {stepLabels.map((label, i) => {
           const n = (i + 1) as 1 | 2 | 3 | 4;
@@ -164,18 +157,18 @@ export default function OpportunityJourneyPage() {
         })}
       </div>
       <p className="text-[11px] font-semibold text-orange uppercase tracking-widest mb-4">
-        Étape {step} — {stepLabels[step - 1]}
+        {t('journeyStep')} {step} — {stepLabels[step - 1]}
       </p>
 
-      {/* ===== STEP 1: Choisir une opportunité ===== */}
+      {/* STEP 1: Choisir une opportunité */}
       {step === 1 && (
         <div className="page-fade-in">
           <div className="border border-[#17334D] rounded-xl bg-[#061D32] p-4">
             <h1 className="text-lg font-extrabold text-white leading-tight mb-1">
-              Votre prochaine opportunité <span className="text-orange">commence ici.</span>
+              {t('journeyYourNext')} <span className="text-orange">{t('journeyStartsHere')}</span>
             </h1>
             <p className="text-[#B9BBC8] text-xs leading-relaxed mb-4">
-              Choisissez votre parcours ou échangez avec un conseiller Marchés Direct.
+              {t('journeyChoosePath')}
             </p>
 
             <div className="space-y-2 mb-4">
@@ -205,10 +198,10 @@ export default function OpportunityJourneyPage() {
 
             <div className="flex gap-2">
               <button onClick={() => setApptOpen(true)} className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">
-                Prendre rendez‑vous
+                {t('bookAppointment')}
               </button>
               <button onClick={() => setCallbackOpen(true)} className="flex-1 border border-orange text-orange font-bold py-2.5 rounded-lg text-xs hover:bg-orange/10 transition-colors">
-                Être rappelé
+                {t('callBack')}
               </button>
             </div>
           </div>
@@ -219,9 +212,9 @@ export default function OpportunityJourneyPage() {
                 <img src={team} alt="Marchés Direct" className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-xs font-bold text-white mb-0.5">Qui sommes-nous ?</h2>
+                <h2 className="text-xs font-bold text-white mb-0.5">{t('whoWeAre')}</h2>
                 <p className="text-[11px] text-[#B9BBC8] leading-snug">
-                  Une équipe experte à vos côtés, jusqu'à la signature de vos premiers marchés.
+                  {t('whoWeAreSub')}
                 </p>
               </div>
             </div>
@@ -229,13 +222,13 @@ export default function OpportunityJourneyPage() {
         </div>
       )}
 
-      {/* ===== STEP 2: Saisir son métier ===== */}
+      {/* STEP 2: Saisir son métier */}
       {step === 2 && (
         <div className="page-fade-in border border-[#17334D] rounded-xl bg-[#061D32] p-4">
-          <h1 className="text-base font-extrabold text-white mb-4">Trouver une opportunité</h1>
+          <h1 className="text-base font-extrabold text-white mb-4">{t('journeyFindOpportunity')}</h1>
 
           <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">
-            Types d'opportunités — 1, 2 ou 3 choix
+            {t('journeyTypeTitle')}
           </p>
           <div className="flex flex-wrap gap-2 mb-5">
             {TYPE_OPTIONS.map(opt => {
@@ -257,7 +250,7 @@ export default function OpportunityJourneyPage() {
           {types.includes('Sous-traitance') && (
             <div className="mb-5">
               <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">
-                Pour la sous-traitance, vous êtes :
+                {t('journeySubRoleTitle')}
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -266,7 +259,7 @@ export default function OpportunityJourneyPage() {
                     subRole === 'suis' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
                   }`}
                 >
-                  {subRole === 'suis' && <CheckCircle2 size={13} />} Je suis sous-traitant
+                  {subRole === 'suis' && <CheckCircle2 size={13} />} {t('journeySubRoleSuis')}
                 </button>
                 <button
                   onClick={() => setSubRole('cherche')}
@@ -274,7 +267,7 @@ export default function OpportunityJourneyPage() {
                     subRole === 'cherche' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
                   }`}
                 >
-                  {subRole === 'cherche' && <CheckCircle2 size={13} />} Je cherche un sous-traitant
+                  {subRole === 'cherche' && <CheckCircle2 size={13} />} {t('journeySubRoleCherche')}
                 </button>
               </div>
             </div>
@@ -286,7 +279,7 @@ export default function OpportunityJourneyPage() {
           <>
           <div className="mb-5 relative">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
-              Que recherchez-vous ?
+              {t('journeyWhatLookingFor')}
             </label>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
@@ -295,7 +288,7 @@ export default function OpportunityJourneyPage() {
                 value={query}
                 onChange={e => { setQuery(e.target.value); setQuerySuggestOpen(true); }}
                 onFocus={() => setQuerySuggestOpen(true)}
-                placeholder="Métier, mot-clé…"
+                placeholder={t('journeySearchPlaceholder')}
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-9 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
               />
               {query && (
@@ -321,7 +314,7 @@ export default function OpportunityJourneyPage() {
 
           <div className="mb-6">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
-              Où recherchez-vous ?
+              {t('journeyWhereLooking')}
             </label>
             <button
               onClick={() => setLocationModalOpen(true)}
@@ -329,35 +322,34 @@ export default function OpportunityJourneyPage() {
             >
               <MapPin size={14} className="text-[#B9BBC8]" />
               <span className={locationLabel ? 'text-white' : ''}>
-                {locationLabel || 'Ville, département, région ou France entière'}
+                {locationLabel || t('journeyLocationPlaceholder')}
               </span>
             </button>
           </div>
 
           <div className="flex gap-2">
             <button onClick={() => setStep(1)} className="flex items-center justify-center gap-1.5 border border-[#17334D] text-[#B9BBC8] font-semibold py-2.5 px-4 rounded-lg text-xs hover:border-orange/40 transition-colors">
-              <ArrowLeft size={14} /> Retour
+              <ArrowLeft size={14} /> {t('back')}
             </button>
             <button
               onClick={() => setStep(3)}
               disabled={!query.trim() || (types.includes('Sous-traitance') && !subRole)}
               className="flex-1 flex items-center justify-center gap-1.5 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors disabled:opacity-40"
             >
-              Continuer <ArrowRight size={14} />
+              {t('continue')} <ArrowRight size={14} />
             </button>
           </div>
-          </>
-          )}
+          </>)}
         </div>
       )}
 
-      {/* ===== STEP 3: Choisir une zone (same layout as step 2, zone modal opens over it) ===== */}
+      {/* STEP 3: Choisir une zone */}
       {step === 3 && (
         <div className="page-fade-in border border-[#17334D] rounded-xl bg-[#061D32] p-4">
-          <h1 className="text-base font-extrabold text-white mb-4">Trouver une opportunité</h1>
+          <h1 className="text-base font-extrabold text-white mb-4">{t('journeyFindOpportunity')}</h1>
 
           <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">
-            Types d'opportunités — 1, 2 ou 3 choix
+            {t('journeyTypeTitle')}
           </p>
           <div className="flex flex-wrap gap-2 mb-5">
             {TYPE_OPTIONS.map(opt => {
@@ -379,7 +371,7 @@ export default function OpportunityJourneyPage() {
           {types.includes('Sous-traitance') && (
             <div className="mb-5">
               <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">
-                Pour la sous-traitance, vous êtes :
+                {t('journeySubRoleTitle')}
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -388,7 +380,7 @@ export default function OpportunityJourneyPage() {
                     subRole === 'suis' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
                   }`}
                 >
-                  {subRole === 'suis' && <CheckCircle2 size={13} />} Je suis sous-traitant
+                  {subRole === 'suis' && <CheckCircle2 size={13} />} {t('journeySubRoleSuis')}
                 </button>
                 <button
                   onClick={() => setSubRole('cherche')}
@@ -396,7 +388,7 @@ export default function OpportunityJourneyPage() {
                     subRole === 'cherche' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
                   }`}
                 >
-                  {subRole === 'cherche' && <CheckCircle2 size={13} />} Je cherche un sous-traitant
+                  {subRole === 'cherche' && <CheckCircle2 size={13} />} {t('journeySubRoleCherche')}
                 </button>
               </div>
             </div>
@@ -404,7 +396,7 @@ export default function OpportunityJourneyPage() {
 
           <div className="mb-5">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
-              Que recherchez-vous ?
+              {t('journeyWhatLookingFor')}
             </label>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
@@ -422,38 +414,38 @@ export default function OpportunityJourneyPage() {
 
           <div className="mb-4">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
-              Où recherchez-vous ?
+              {t('journeyWhereLooking')}
             </label>
             <button
               onClick={() => setLocationModalOpen(true)}
               className="w-full flex items-center gap-2 bg-[#031B30] border border-orange rounded-lg px-3 py-2.5 text-left text-sm text-white"
             >
               <MapPin size={14} className="text-orange" />
-              {locationLabel || 'Ville, département, région ou France entière'}
+              {locationLabel || t('journeyLocationPlaceholder')}
             </button>
           </div>
 
           <div className="flex gap-2 mt-6">
             <button onClick={() => setStep(2)} className="flex items-center justify-center gap-1.5 border border-[#17334D] text-[#B9BBC8] font-semibold py-2.5 px-4 rounded-lg text-xs hover:border-orange/40 transition-colors">
-              <ArrowLeft size={14} /> Retour
+              <ArrowLeft size={14} /> {t('back')}
             </button>
             <button
               onClick={() => setLocationModalOpen(true)}
               className="flex-1 flex items-center justify-center gap-1.5 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors"
             >
-              Choisir une localisation <ArrowRight size={14} />
+              {t('journeyChooseLocation')} <ArrowRight size={14} />
             </button>
           </div>
         </div>
       )}
 
-      {/* ===== STEP 4: Résultats et filtres ===== */}
+      {/* STEP 4: Résultats et filtres - with Buyer Need */}
       {step === 4 && buyerNeed && (
         <div className="page-fade-in border border-green-500/30 rounded-xl bg-[#061D32] p-5 text-center">
           <PartyPopper size={28} className="text-green-400 mx-auto mb-3" />
-          <h1 className="text-base font-extrabold text-white mb-1.5">Votre besoin est publié !</h1>
+          <h1 className="text-base font-extrabold text-white mb-1.5">{t('journeyNeedPublished')}</h1>
           <p className="text-xs text-[#B9BBC8] mb-4 leading-relaxed">
-            Les entreprises de sous-traitance correspondant au métier, à la zone et aux qualifications demandées peuvent maintenant le consulter et vous contacter.
+            {t('journeyNeedPublishedSub')}
           </p>
           <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 text-left mb-4">
             <h2 className="text-sm font-bold text-white mb-1">{buyerNeed.trade}{buyerNeed.lot ? ` — ${buyerNeed.lot}` : ''}</h2>
@@ -461,14 +453,16 @@ export default function OpportunityJourneyPage() {
               <p className="text-xs text-[#B9BBC8] flex items-center gap-1 mb-1"><MapPin size={11} /> {[buyerNeed.location_city, buyerNeed.location_region].filter(Boolean).join(', ')}</p>
             )}
             {(buyerNeed.budget_min || buyerNeed.budget_max) && (
-              <p className="text-xs text-[#B9BBC8]">Budget : {buyerNeed.budget_min ? `${Number(buyerNeed.budget_min).toLocaleString('fr-FR')} €` : ''}{buyerNeed.budget_min && buyerNeed.budget_max ? ' – ' : ''}{buyerNeed.budget_max ? `${Number(buyerNeed.budget_max).toLocaleString('fr-FR')} €` : ''}</p>
+              <p className="text-xs text-[#B9BBC8]">{t('journeyBudget')} : {buyerNeed.budget_min ? `${Number(buyerNeed.budget_min).toLocaleString('fr-FR')} €` : ''}{buyerNeed.budget_min && buyerNeed.budget_max ? ' – ' : ''}{buyerNeed.budget_max ? `${Number(buyerNeed.budget_max).toLocaleString('fr-FR')} €` : ''}</p>
             )}
           </div>
           <button onClick={() => { setBuyerNeed(null); setStep(1); setSubRole(null); }} className="w-full border border-[#17334D] text-[#B9BBC8] font-semibold py-2.5 rounded-lg text-xs hover:border-orange/40 transition-colors">
-            Publier un autre besoin
+            {t('journeyPublishAnother')}
           </button>
         </div>
       )}
+
+      {/* STEP 4: Results */}
       {step === 4 && !buyerNeed && (
         <div className="page-fade-in">
           {/* Active filter pills */}
@@ -480,7 +474,7 @@ export default function OpportunityJourneyPage() {
             ))}
             {types.includes('Sous-traitance') && subRole && (
               <span className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1.5 rounded-full border border-orange bg-orange/10 text-orange">
-                <CheckCircle2 size={11} /> {subRole === 'suis' ? 'Je suis sous-traitant' : 'Je cherche un sous-traitant'}
+                <CheckCircle2 size={11} /> {subRole === 'suis' ? t('journeySubRoleSuis') : t('journeySubRoleCherche')}
               </span>
             )}
             {query && (
@@ -497,7 +491,7 @@ export default function OpportunityJourneyPage() {
 
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-bold text-white">
-              <span className="text-orange">{filteredResults.length}</span> opportunité{filteredResults.length !== 1 ? 's' : ''}
+              <span className="text-orange">{filteredResults.length}</span> {filteredResults.length !== 1 ? t('journeyResultsPlural') : t('journeyResults')}
             </h2>
             <button
               onClick={() => setFiltersOpen(true)}
@@ -505,14 +499,14 @@ export default function OpportunityJourneyPage() {
                 filtersOpen ? 'border-orange text-orange bg-orange/10' : 'border-[#17334D] text-[#B9BBC8]'
               }`}
             >
-              <SlidersHorizontal size={13} /> Filtres
+              <SlidersHorizontal size={13} /> {t('appelsFilters')}
             </button>
           </div>
 
-          {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
+          {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">{t('journeyLoading')}</div>}
           {!loading && error && <div className="text-center text-[11px] text-[#B9BBC8] py-8">{error}</div>}
           {!loading && !error && filteredResults.length === 0 && (
-            <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
+            <div className="text-center text-[11px] text-[#B9BBC8] py-8">{t('journeyNoResults')}</div>
           )}
 
           <div className="space-y-2.5">
@@ -534,16 +528,16 @@ export default function OpportunityJourneyPage() {
                 <div className="mt-2 pt-2 border-t border-[#17334D]">
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">Échéance</p>
+                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('dashDeadlineLabel')}</p>
                       <p className="text-[11px] font-semibold text-white">{o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : '-'}</p>
                     </div>
                     <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">Montant</p>
+                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
                       <p className="text-[11px] font-semibold text-white">{o.amount}</p>
                     </div>
                   </div>
                   <button onClick={() => navigate(`/opportunites/${o.id}`)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors ml-auto w-fit">
-                    Voir <ArrowRight size={10} />
+                    {t('searchView')} <ArrowRight size={10} />
                   </button>
                 </div>
               </div>
@@ -551,18 +545,18 @@ export default function OpportunityJourneyPage() {
           </div>
 
           <button onClick={() => setStep(3)} className="mt-4 flex items-center justify-center gap-1.5 border border-[#17334D] text-[#B9BBC8] font-semibold py-2.5 px-4 rounded-lg text-xs hover:border-orange/40 transition-colors w-full">
-            <ArrowLeft size={14} /> Modifier ma recherche
+            <ArrowLeft size={14} /> {t('journeyModifySearch')}
           </button>
         </div>
       )}
 
-      {/* ===== "Choisir une localisation" bottom-sheet modal (steps 2 & 3) ===== */}
+      {/* Location Modal */}
       {locationModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLocationModalOpen(false)} />
           <div className="relative w-full md:max-w-md bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10 max-h-[85dvh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-[#17334D]">
-              <h3 className="text-sm font-bold text-white">Choisir une localisation</h3>
+              <h3 className="text-sm font-bold text-white">{t('journeyChooseLocation')}</h3>
               <button onClick={() => setLocationModalOpen(false)}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
 
@@ -573,7 +567,7 @@ export default function OpportunityJourneyPage() {
                   autoFocus
                   value={citySearch}
                   onChange={e => setCitySearch(e.target.value)}
-                  placeholder="Ville, département, région…"
+                  placeholder={t('journeyCitySearchPlaceholder')}
                   className="w-full bg-[#061D32] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
                 />
               </div>
@@ -592,7 +586,7 @@ export default function OpportunityJourneyPage() {
                 ))}
               </div>
 
-              <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">Rayon de recherche</p>
+              <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">{t('journeySearchRadius')}</p>
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {RADIUS_OPTIONS.map(r => (
                   <button
@@ -609,13 +603,13 @@ export default function OpportunityJourneyPage() {
 
               <div className="space-y-1 mb-5">
                 <button onClick={() => setPickedCity('Département entier')} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
-                  Département <ChevronRight size={14} className="text-orange" />
+                  {t('journeyWholeDept')} <ChevronRight size={14} className="text-orange" />
                 </button>
                 <button onClick={() => setPickedCity('Région entière')} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
-                  Région <ChevronRight size={14} className="text-orange" />
+                  {t('journeyWholeRegion')} <ChevronRight size={14} className="text-orange" />
                 </button>
                 <button onClick={() => setPickedCity('France entière')} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
-                  France entière <ChevronRight size={14} className="text-orange" />
+                  {t('journeyWholeFrance')} <ChevronRight size={14} className="text-orange" />
                 </button>
               </div>
 
@@ -624,51 +618,51 @@ export default function OpportunityJourneyPage() {
                 disabled={!pickedCity}
                 className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-40"
               >
-                Appliquer cette zone
+                {t('journeyApplyZone')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ===== Filtres bottom-sheet modal (step 4) ===== */}
+      {/* Filters Modal */}
       {filtersOpen && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setFiltersOpen(false)} />
           <div className="relative w-full md:max-w-md bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10 max-h-[85dvh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-[#17334D]">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2"><Filter size={14} className="text-orange" /> Filtres</h3>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2"><Filter size={14} className="text-orange" /> {t('appelsFilters')}</h3>
               <button onClick={() => setFiltersOpen(false)}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
 
             <div className="p-4 space-y-4">
               <div>
-                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Statut</label>
+                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('publicStatus')}</label>
                 <select value={status} onChange={e => setStatus(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
                   {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block flex items-center gap-1.5"><Calendar size={11} /> Date de publication</label>
+                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block flex items-center gap-1.5"><Calendar size={11} /> {t('journeyDatePublished')}</label>
                 <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
                   {DATE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Échéance</label>
+                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('journeyDeadline')}</label>
                 <select value={deadlineFilter} onChange={e => setDeadlineFilter(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
                   {DEADLINE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block flex items-center gap-1.5"><Target size={11} /> Montant</label>
+                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block flex items-center gap-1.5"><Target size={11} /> {t('searchBudget')}</label>
                 <select value={amountFilter} onChange={e => setAmountFilter(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
                   {AMOUNT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
 
               <button onClick={() => setFiltersOpen(false)} className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors">
-                Afficher {filteredResults.length} résultat{filteredResults.length !== 1 ? 's' : ''}
+                {t('journeyShowResults', { count: filteredResults.length })}
               </button>
             </div>
           </div>
@@ -681,11 +675,9 @@ export default function OpportunityJourneyPage() {
   );
 }
 
-// "Je cherche un sous-traitant" - a company posting its own need instead of
-// browsing existing opportunities. Requires an account (tied to the
-// poster's company on the backend), so anonymous visitors are prompted to
-// sign in/up rather than shown the form.
+// Buyer Need Form component - Optimized for mobile
 function BuyerNeedForm({ onPublished }: { onPublished: (need: ApiSubcontractNeed) => void }) {
+  const { t } = useLang();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     trade: '', lot: '', description: '', locationCity: '', budgetMin: '', budgetMax: '',
@@ -719,7 +711,7 @@ function BuyerNeedForm({ onPublished }: { onPublished: (need: ApiSubcontractNeed
       });
       onPublished(need);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Impossible de publier votre besoin pour le moment."));
+      setError(getApiErrorMessage(err, t('journeyPublishError')));
     } finally {
       setSubmitting(false);
     }
@@ -729,77 +721,77 @@ function BuyerNeedForm({ onPublished }: { onPublished: (need: ApiSubcontractNeed
     return (
       <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-5 text-center mb-2">
         <Handshake size={24} className="text-orange mx-auto mb-2" />
-        <h2 className="text-sm font-bold text-white mb-1">Créez votre profil pour publier un besoin</h2>
-        <p className="text-xs text-[#B9BBC8] mb-4">La publication d'un besoin de sous-traitance est réservée aux entreprises inscrites.</p>
+        <h2 className="text-sm font-bold text-white mb-1">{t('journeyCreateProfile')}</h2>
+        <p className="text-xs text-[#B9BBC8] mb-4">{t('journeyCreateProfileSub')}</p>
         <div className="flex gap-2">
-          <button onClick={() => navigate('/connexion')} className="flex-1 border border-[#17334D] text-white font-semibold py-2.5 rounded-lg text-xs hover:border-orange/40 transition-colors">Se connecter</button>
-          <button onClick={() => navigate('/inscription')} className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">Créer mon profil</button>
+          <button onClick={() => navigate('/connexion')} className="flex-1 border border-[#17334D] text-white font-semibold py-2.5 rounded-lg text-xs hover:border-orange/40 transition-colors">{t('loginButton')}</button>
+          <button onClick={() => navigate('/inscription')} className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">{t('signupButton')}</button>
         </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5 mb-2">
+    <form onSubmit={handleSubmit} className="space-y-3 mb-2">
       <div>
-        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Métier recherché *</label>
-        <input required value={form.trade} onChange={update('trade')} placeholder="Ex : Plomberie" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyTradeRequired')}</label>
+        <input required value={form.trade} onChange={update('trade')} placeholder={t('journeyTradePlaceholder')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
       </div>
       <div>
-        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Lot / intitulé de la mission</label>
-        <input value={form.lot} onChange={update('lot')} placeholder="Ex : Plomberie sanitaire - 24 logements" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyLot')}</label>
+        <input value={form.lot} onChange={update('lot')} placeholder={t('journeyLotPlaceholder')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
       </div>
       <div>
-        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Description</label>
-        <textarea value={form.description} onChange={update('description')} rows={3} placeholder="Décrivez le chantier, les travaux attendus..." className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange resize-none" />
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyDescription')}</label>
+        <textarea value={form.description} onChange={update('description')} rows={3} placeholder={t('journeyDescriptionPlaceholder')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange resize-none" />
       </div>
       <div>
-        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Ville</label>
-        <input value={form.locationCity} onChange={update('locationCity')} placeholder="Ex : Bordeaux" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyCity')}</label>
+        <input value={form.locationCity} onChange={update('locationCity')} placeholder={t('journeyCityPlaceholder')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Budget min (€)</label>
-          <input type="number" min="0" value={form.budgetMin} onChange={update('budgetMin')} placeholder="15000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyBudgetMin')}</label>
+          <input type="number" min="0" value={form.budgetMin} onChange={update('budgetMin')} placeholder="15000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
         </div>
         <div>
-          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Budget max (€)</label>
-          <input type="number" min="0" value={form.budgetMax} onChange={update('budgetMax')} placeholder="25000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyBudgetMax')}</label>
+          <input type="number" min="0" value={form.budgetMax} onChange={update('budgetMax')} placeholder="25000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Effectif recherché</label>
-          <input value={form.teamSize} onChange={update('teamSize')} placeholder="2 à 3" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyTeamSize')}</label>
+          <input value={form.teamSize} onChange={update('teamSize')} placeholder="2 à 3" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
         </div>
         <div>
-          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Démarrage souhaité</label>
-          <input type="date" value={form.startDate} onChange={update('startDate')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange" />
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyStartDate')}</label>
+          <input type="date" value={form.startDate} onChange={update('startDate')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
         </div>
       </div>
       <div>
-        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Durée estimée</label>
-        <input value={form.duration} onChange={update('duration')} placeholder="Ex : 6 semaines" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyDuration')}</label>
+        <input value={form.duration} onChange={update('duration')} placeholder="Ex : 6 semaines" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
       </div>
       <div>
-        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Qualifications demandées</label>
-        <input value={form.qualifications} onChange={update('qualifications')} placeholder="Ex : Qualifelec, RGE..." className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyQualifications')}</label>
+        <input value={form.qualifications} onChange={update('qualifications')} placeholder="Ex : Qualifelec, RGE..." className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">E-mail de contact</label>
-          <input type="email" value={form.contactEmail} onChange={update('contactEmail')} placeholder="vous@entreprise.fr" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyContactEmail')}</label>
+          <input type="email" value={form.contactEmail} onChange={update('contactEmail')} placeholder="vous@entreprise.fr" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
         </div>
         <div>
-          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Téléphone</label>
-          <input type="tel" value={form.contactPhone} onChange={update('contactPhone')} placeholder="06 00 00 00 00" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyContactPhone')}</label>
+          <input type="tel" value={form.contactPhone} onChange={update('contactPhone')} placeholder="06 00 00 00 00" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
         </div>
       </div>
 
       {error && <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{error}</p>}
 
       <button type="submit" disabled={submitting || !form.trade.trim()} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-lg text-sm hover:bg-orange/90 transition-colors disabled:opacity-40">
-        {submitting && <Loader2 size={16} className="animate-spin" />} Publier mon besoin
+        {submitting && <Loader2 size={16} className="animate-spin" />} {t('journeyPublishNeed')}
       </button>
     </form>
   );

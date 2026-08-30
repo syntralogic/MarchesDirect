@@ -12,16 +12,7 @@ export default function RecherchePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Seeded from the URL so a link like /recherche?city=Bordeaux&journey=tender
-  // (e.g. from an SEO landing page) lands here already filtered, instead of
-  // a generic unfiltered list. Still fully editable afterwards.
   const [query, setQuery] = useState('');
-  // Kept as one text field for the location input, but region/city are
-  // different backend columns (ILIKE location_region vs location_city) - so
-  // which one came in from the URL has to stay tracked separately rather
-  // than always being sent as `region`, or a city-based SEO link (the exact
-  // case this was built for) would filter against the wrong column and
-  // always return zero results.
   const initialCity = searchParams.get('city') || '';
   const initialRegion = searchParams.get('region') || '';
   const [location, setLocation] = useState(initialRegion || initialCity);
@@ -40,9 +31,6 @@ export default function RecherchePage() {
     journey: journeyParam,
   });
 
-  // Only track once there's an actual query or location typed in - a bare
-  // page visit with no criteria isn't a "search" a chargé d'affaires would
-  // find useful in a lead's journey summary.
   useEffect(() => {
     if (!debouncedQuery && !debouncedLocation) return;
     const parts = [debouncedQuery, debouncedLocation].filter(Boolean);
@@ -143,10 +131,10 @@ export default function RecherchePage() {
         </h2>
       </div>
 
-      {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
+      {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">{t('searchLoading')}</div>}
       {!loading && error && <div className="text-center text-[11px] text-orange py-8">{error}</div>}
       {!loading && !error && filtered.length === 0 && (
-        <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
+        <div className="text-center text-[11px] text-[#B9BBC8] py-8">{t('searchNoResults')}</div>
       )}
 
       {/* Cards */}

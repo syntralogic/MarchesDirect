@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     adminApi.stats()
       .then(setStats)
-      .catch((err) => setError(getApiErrorMessage(err, 'Impossible de charger les statistiques.')))
+      .catch((err) => setError(getApiErrorMessage(err, t('adminStatsLoadError') || 'Impossible de charger les statistiques.')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -73,7 +73,7 @@ export default function AdminDashboard() {
               </Link>
             </div>
             {stats && stats.recentActivity.length === 0 ? (
-              <p className="text-xs text-[#B9BBC8] py-4 text-center">Aucune activité récente.</p>
+              <p className="text-xs text-[#B9BBC8] py-4 text-center">{t('adminNoActivity') || 'Aucune activité récente.'}</p>
             ) : (
               <div className="space-y-4">
                 {stats?.recentActivity.map((item, i) => (

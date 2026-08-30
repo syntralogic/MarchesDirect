@@ -51,7 +51,7 @@ export default function AdminSettings() {
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
-    showToast('Settings saved successfully');
+    showToast(t('adminSettingsSaved') || 'Settings saved successfully');
   };
 
   return (
@@ -68,8 +68,8 @@ export default function AdminSettings() {
           </h2>
           <p className="text-xs text-[#B9BBC8] mb-4">{t('adminDataSourcesDesc')}</p>
 
-          {sourcesError && <p className="text-xs text-red-400">Erreur de chargement.</p>}
-          {!sourcesError && !sources && <p className="text-xs text-[#B9BBC8]">{lang === 'en' ? 'Loading...' : 'Chargement...'}</p>}
+          {sourcesError && <p className="text-xs text-red-400">{t('adminLoadError') || 'Erreur de chargement.'}</p>}
+          {!sourcesError && !sources && <p className="text-xs text-[#B9BBC8]">{t('adminLoading') || 'Chargement...'}</p>}
 
           {sources && (
             <div className="flex flex-col gap-3">
@@ -124,7 +124,7 @@ export default function AdminSettings() {
             </div>
             {maintenance && (
               <div>
-                <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Message</label>
+                <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('adminMaintenanceMessage') || 'Message'}</label>
                 <input value={maintenanceMessage} onChange={e => setMaintenanceMessage(e.target.value)} className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange" />
               </div>
             )}

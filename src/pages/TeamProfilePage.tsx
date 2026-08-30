@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { X, ShieldCheck, GraduationCap, Briefcase, Search, Calendar, Phone, Users } from 'lucide-react';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
+import { useLang } from '@/contexts/LangContext';
 
 import mem1 from "@/assets/1.jpeg";
 import mem2 from "@/assets/2.jpeg";
@@ -24,7 +25,7 @@ interface TeamMember {
   experience: string;
   expertiseTitle: string;
   expertise: string[];
-  image: string; // Added image property
+  image: string;
 }
 
 const TEAM: TeamMember[] = [
@@ -121,6 +122,7 @@ const TEAM: TeamMember[] = [
 ];
 
 export default function TeamProfilePage() {
+  const { t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -140,7 +142,7 @@ export default function TeamProfilePage() {
     <>
       {/* Team Grid */}
       <div className="page-fade-in max-w-5xl mx-auto px-4 py-10">
-        <h1 className="text-3xl font-extrabold text-white mb-6">Rencontrez nos experts</h1>
+        <h1 className="text-3xl font-extrabold text-white mb-6">{t('teamTitle')}</h1>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {TEAM.map((member) => (
@@ -158,13 +160,13 @@ export default function TeamProfilePage() {
               </div>
               <p className="text-sm font-semibold text-orange mb-1">{member.role}</p>
               <h3 className="text-lg font-bold text-white mb-2">{member.name}</h3>
-              <span className="text-xs text-orange font-medium group-hover:underline">Voir son profil</span>
+              <span className="text-xs text-orange font-medium group-hover:underline">{t('teamSeeProfile')}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Compact Bottom Sheet for Mobile & Small Centered Card for Desktop */}
+      {/* Member Detail Modal */}
       {selectedMember && (
         <div className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm flex items-end md:items-center md:justify-center">
           
@@ -178,7 +180,7 @@ export default function TeamProfilePage() {
               <X size={16} />
             </button>
 
-            {/* Header - Compact with Image */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row items-center md:items-start gap-3 mt-4 md:mt-0 mb-4">
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#031B30] border-2 border-orange flex items-center justify-center shrink-0 overflow-hidden">
                 <img 
@@ -198,7 +200,7 @@ export default function TeamProfilePage() {
               </div>
             </div>
 
-            {/* Strength - Compact */}
+            {/* Strength */}
             <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3 mb-3">
               <div className="flex items-start gap-2">
                 <ShieldCheck size={16} className="text-orange shrink-0 mt-0.5" />
@@ -209,7 +211,7 @@ export default function TeamProfilePage() {
               </div>
             </div>
 
-            {/* Formation & Experience - Compact */}
+            {/* Formation & Experience */}
             <div className="mb-3">
               <h3 className="text-sm font-bold text-white mb-2">{selectedMember.formationTitle}</h3>
               <div className="flex items-center gap-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 mb-1.5">
@@ -224,7 +226,7 @@ export default function TeamProfilePage() {
               </div>
             </div>
 
-            {/* How can they help - Compact */}
+            {/* Expertise */}
             <div className="mb-4">
               <h3 className="text-sm font-bold text-white mb-2">{selectedMember.expertiseTitle}</h3>
               <div className="space-y-1.5">
@@ -237,19 +239,19 @@ export default function TeamProfilePage() {
               </div>
             </div>
 
-            {/* CTA Buttons - Compact */}
+            {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-2">
               <button 
                 onClick={() => { setSelectedMember(null); setApptOpen(true); }}
                 className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg hover:bg-orange/90 transition-colors flex items-center justify-center gap-1.5 text-xs"
               >
-                <Calendar size={14} /> Prendre rendez‑vous
+                <Calendar size={14} /> {t('bookAppointment')}
               </button>
               <button 
                 onClick={() => { setSelectedMember(null); setCallbackOpen(true); }}
                 className="flex-1 border border-orange text-orange font-bold py-2.5 rounded-lg hover:bg-orange/10 transition-colors flex items-center justify-center gap-1.5 text-xs"
               >
-                <Phone size={14} /> Être rappelé
+                <Phone size={14} /> {t('callBack')}
               </button>
             </div>
           </div>

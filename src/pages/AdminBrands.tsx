@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { Loader2, Plus, Globe, X } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { adminApi, getApiErrorMessage, type ApiAdminBrand } from '@/lib/apiClient';
+import { useLang } from '@/contexts/LangContext';
 
 const emptyForm = { code: '', name: '', domain: '', language: 'fr', regionFocus: '', colorPrimary: '', colorSecondary: '' };
 
 export default function AdminBrands() {
+  const { t } = useLang();
   const [brands, setBrands] = useState<ApiAdminBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export default function AdminBrands() {
     setError(null);
     adminApi.brands()
       .then(setBrands)
-      .catch(err => setError(getApiErrorMessage(err, 'Impossible de charger les marques.')))
+      .catch(err => setError(getApiErrorMessage(err, t('adminLoadError') || 'Impossible de charger les marques.')))
       .finally(() => setLoading(false));
   };
 
@@ -38,11 +40,11 @@ export default function AdminBrands() {
         colorSecondary: form.colorSecondary || undefined,
       });
       setBrands(prev => [...prev, created]);
-      showToast('Marque créée');
+      showToast(t('adminBrandsCreated') || 'Marque créée');
       setModalOpen(false);
       setForm(emptyForm);
     } catch (err) {
-      showToast(getApiErrorMessage(err, 'Échec de la création.'), 'error');
+      showToast(getApiErrorMessage(err, t('adminBrandsCreateFailed') || 'Échec de la création.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -52,16 +54,16 @@ export default function AdminBrands() {
     <AdminLayout>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-white">Gestion des marques</h1>
-          <p className="text-sm text-[#B9BBC8]">Une nouvelle marque partage le même code, seuls le domaine, la charte et la portée régionale changent</p>
+          <h1 className="text-2xl font-extrabold text-white">{t('adminBrandsTitle')}</h1>
+          <p className="text-sm text-[#B9BBC8]">{t('adminBrandsSub')}</p>
         </div>
         <button onClick={() => setModalOpen(true)} className="flex items-center justify-center gap-2 bg-orange text-white font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-orange/90 transition-colors shrink-0">
-          <Plus size={16} /> Nouvelle marque
+          <Plus size={16} /> {t('adminBrandsNew')}
         </button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> Chargement...</div>
+        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> {t('adminLoading') || 'Chargement...'}</div>
       ) : error ? (
         <div className="p-6 text-center text-sm text-red-400 bg-[#061D32] border border-[#17334D] rounded-xl">{error}</div>
       ) : (
@@ -84,7 +86,7 @@ export default function AdminBrands() {
               </div>
             </div>
           ))}
-          {brands.length === 0 && <div className="sm:col-span-2 bg-[#061D32] border border-[#17334D] rounded-xl p-10 text-center"><p className="text-sm text-[#B9BBC8]">Aucune marque pour le moment.</p></div>}
+          {brands.length === 0 && <div className="sm:col-span-2 bg-[#061D32] border border-[#17334D] rounded-xl p-10 text-center"><p className="text-sm text-[#B9BBC8]">{t('adminBrandsEmpty')}</p></div>}
         </div>
       )}
 
@@ -93,39 +95,39 @@ export default function AdminBrands() {
           <div className="absolute inset-0 bg-black/70" onClick={() => setModalOpen(false)} />
           <form onSubmit={handleCreate} className="relative w-full max-w-md bg-[#061D32] border border-[#17334D] rounded-2xl p-6 z-10">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-white">Nouvelle marque</h2>
+              <h2 className="text-base font-bold text-white">{t('adminBrandsNew')}</h2>
               <button type="button" onClick={() => setModalOpen(false)}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-[#B9BBC8] mb-1 block">Code (unique)</label>
+                <label className="text-xs text-[#B9BBC8] mb-1 block">{t('adminBrandsCode')}</label>
                 <input required value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="brand_3" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
               </div>
               <div>
-                <label className="text-xs text-[#B9BBC8] mb-1 block">Nom</label>
+                <label className="text-xs text-[#B9BBC8] mb-1 block">{t('adminBrandsName')}</label>
                 <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Marchés Sud" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
               </div>
               <div>
-                <label className="text-xs text-[#B9BBC8] mb-1 block">Domaine</label>
+                <label className="text-xs text-[#B9BBC8] mb-1 block">{t('adminBrandsDomain')}</label>
                 <input required value={form.domain} onChange={e => setForm(f => ({ ...f, domain: e.target.value }))} placeholder="marches-sud.fr" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
               </div>
               <div>
-                <label className="text-xs text-[#B9BBC8] mb-1 block">Portée régionale (optionnel)</label>
+                <label className="text-xs text-[#B9BBC8] mb-1 block">{t('adminBrandsRegion')}</label>
                 <input value={form.regionFocus} onChange={e => setForm(f => ({ ...f, regionFocus: e.target.value }))} placeholder="Occitanie" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-[#B9BBC8] mb-1 block">Couleur primaire</label>
+                  <label className="text-xs text-[#B9BBC8] mb-1 block">{t('adminBrandsPrimaryColor')}</label>
                   <input type="color" value={form.colorPrimary || '#FF6500'} onChange={e => setForm(f => ({ ...f, colorPrimary: e.target.value }))} className="w-full h-9 bg-[#031B30] border border-[#17334D] rounded-lg" />
                 </div>
                 <div>
-                  <label className="text-xs text-[#B9BBC8] mb-1 block">Couleur secondaire</label>
+                  <label className="text-xs text-[#B9BBC8] mb-1 block">{t('adminBrandsSecondaryColor')}</label>
                   <input type="color" value={form.colorSecondary || '#061D32'} onChange={e => setForm(f => ({ ...f, colorSecondary: e.target.value }))} className="w-full h-9 bg-[#031B30] border border-[#17334D] rounded-lg" />
                 </div>
               </div>
             </div>
             <button type="submit" disabled={saving} className="w-full mt-5 bg-orange text-white font-bold py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
-              {saving && <Loader2 size={14} className="animate-spin" />} Créer la marque
+              {saving && <Loader2 size={14} className="animate-spin" />} {t('adminBrandsCreate')}
             </button>
           </form>
         </div>

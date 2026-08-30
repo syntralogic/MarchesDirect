@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Building2, Handshake, ChevronRight, Globe,
   Building, ArrowRight, Zap, Settings, Monitor, Truck, Briefcase, Headset,
-  Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle,
+  Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X,
 } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid } from 'd3-geo';
@@ -43,8 +43,9 @@ function GeographicSection() {
   const { t } = useLang();
   const [tab, setTab] = useState<'regions' | 'departments' | 'cities'>('regions');
   const [search, setSearch] = useState('');
-  const [selectedRegion, setSelectedRegion] = useState<GeoFeatureProps | null>(null);
-  const [selectedDept, setSelectedDept] = useState<GeoFeatureProps | null>(null);
+  const [selectedRegions, setSelectedRegions] = useState<GeoFeatureProps[]>([]);
+  const [selectedDepts, setSelectedDepts] = useState<GeoFeatureProps[]>([]);
+  const [selectedCities, setSelectedCities] = useState<{name: string; coords: [number, number]}[]>([]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [cityQuery, setCityQuery] = useState('');
   const [cityResult, setCityResult] = useState<{ name: string; coords: [number, number] | null } | null>(null);
@@ -100,10 +101,6 @@ function GeographicSection() {
     try {
       const [searchData, geo] = await Promise.all([
         opportunitiesApi.search({ journey: undefined, city: query, limit: 5 }),
-        // Real, free, no-key French government geocoding (Base Adresse
-        // Nationale) - only used to place a pin at the city's actual
-        // location, never for distance/radius math (see note above on
-        // why opportunities can't be geo-filtered yet).
         fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=1`)
           .then(r => r.ok ? r.json() : null)
           .catch(() => null),
@@ -122,15 +119,17 @@ function GeographicSection() {
     }
   };
 
-  // Clicking a pin on the Villes map: recenters/zooms in on that city and
-  // runs the same real search as typing its name + hitting the search button.
   const selectMapCity = (city: { name: string; coords: [number, number] }) => {
     setCitiesPosition(p => ({ coordinates: city.coords, zoom: Math.max(p.zoom, 4) }));
+    setSelectedCities(prev => {
+      const exists = prev.some(c => c.name === city.name);
+      return exists
+        ? prev.filter(c => c.name !== city.name)
+        : [...prev, city];
+    });
     handleCitySearch(city.name);
   };
 
-  // Progressive reveal: only show more (smaller) towns as the user zooms in,
-  // so the map doesn't start out cluttered with every pin in France.
   const visibleCities = frenchCitiesGeo.filter(c => {
     if (c.tier === 1) return true;
     if (c.tier === 2) return citiesPosition.zoom >= 2;
@@ -138,11 +137,6 @@ function GeographicSection() {
   });
   const zoomLevelLabel = citiesPosition.zoom >= 4 ? 'Élevé' : citiesPosition.zoom >= 2 ? 'Moyen' : 'Faible';
 
-  // Auto-select on an unambiguous search match, so typing a region/department
-  // name produces the same highlighted-shape + tooltip + "view opportunities"
-  // button as clicking it directly on the map - previously the search box
-  // only filtered which shapes were drawn (see the fix in the Geographies
-  // render below) and never actually selected anything itself.
   useEffect(() => {
     if (!search.trim()) return;
     const query = search.trim().toLowerCase();
@@ -150,26 +144,67 @@ function GeographicSection() {
       const matches = (regionsGeoJson.features as { properties: GeoFeatureProps }[]).filter(f =>
         f.properties.nom.toLowerCase().includes(query)
       );
-      if (matches.length === 1) setSelectedRegion(matches[0].properties);
+      if (matches.length === 1) {
+        const match = matches[0].properties;
+        setSelectedRegions(prev => {
+          const exists = prev.some(r => r.code === match.code);
+          return exists ? prev : [...prev, match];
+        });
+      }
     } else if (tab === 'departments' && departementsGeoJson) {
       const matches = (departementsGeoJson.features as { properties: GeoFeatureProps }[]).filter(
         f => f.properties.nom.toLowerCase().includes(query) || f.properties.code?.includes(search.trim())
       );
-      if (matches.length === 1) setSelectedDept(matches[0].properties);
+      if (matches.length === 1) {
+        const match = matches[0].properties;
+        setSelectedDepts(prev => {
+          const exists = prev.some(d => d.code === match.code);
+          return exists ? prev : [...prev, match];
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, tab, regionsGeoJson, departementsGeoJson]);
 
-  const selected = tab === 'regions' ? selectedRegion : tab === 'departments' ? selectedDept : null;
-  const selectedCount = tab === 'regions' && selectedRegion
-    ? getRegionCount(selectedRegion.nom)
-    : tab === 'departments' && selectedDept
-    ? getDeptCount(selectedDept.code, selectedDept.nom)
-    : null;
-  const searchTarget = tab === 'departments' ? '/marches-publics' : '/recherche';
-  const searchParam = tab === 'regions'
-    ? `region=${encodeURIComponent(selectedRegion?.nom || '')}`
-    : `department=${encodeURIComponent(selectedDept?.code || '')}`;
+  const getSelectedItems = () => {
+    if (tab === 'regions') return selectedRegions;
+    if (tab === 'departments') return selectedDepts;
+    return selectedCities;
+  };
+
+  const clearAllSelections = () => {
+    if (tab === 'regions') setSelectedRegions([]);
+    else if (tab === 'departments') setSelectedDepts([]);
+    else setSelectedCities([]);
+  };
+
+  const removeSelection = (item: any) => {
+    if (tab === 'regions') {
+      setSelectedRegions(prev => prev.filter(r => r.code !== item.code));
+    } else if (tab === 'departments') {
+      setSelectedDepts(prev => prev.filter(d => d.code !== item.code));
+    } else {
+      setSelectedCities(prev => prev.filter(c => c.name !== item.name));
+    }
+  };
+
+  const selected = getSelectedItems();
+  const selectedCount = selected.length;
+
+  // Build the search URL based on selected items
+  const buildSearchUrl = () => {
+    if (tab === 'regions' && selectedRegions.length > 0) {
+      const params = selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&');
+      return `/recherche?${params}`;
+    } else if (tab === 'departments' && selectedDepts.length > 0) {
+      const params = selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&');
+      return `/recherche?${params}`;
+    } else if (tab === 'cities' && selectedCities.length > 0) {
+      const params = selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&');
+      return `/recherche?${params}`;
+    }
+    return '/recherche';
+  };
 
   return (
     <section className="px-4 md:px-6 py-6 md:py-10 max-w-7xl mx-auto w-full">
@@ -181,18 +216,33 @@ function GeographicSection() {
 
       <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-6">
         {/* Tabs */}
-        <div className="flex gap-1 mb-3 border border-[#17334D] rounded-xl p-1 w-fit">
-          {(['regions', 'departments', 'cities'] as const).map(k => (
-            <button
-              key={k}
-              onClick={() => { setTab(k); setSearch(''); }}
-              className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
-                tab === k ? 'bg-orange/15 text-orange border border-orange' : 'text-[#B9BBC8] hover:text-white'
-              }`}
-            >
-              {t(k)}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <div className="flex gap-1 border border-[#17334D] rounded-xl p-1 w-fit">
+            {(['regions', 'departments', 'cities'] as const).map(k => (
+              <button
+                key={k}
+                onClick={() => { setTab(k); setSearch(''); }}
+                className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
+                  tab === k ? 'bg-orange/15 text-orange border border-orange' : 'text-[#B9BBC8] hover:text-white'
+                }`}
+              >
+                {t(k)}
+              </button>
+            ))}
+          </div>
+          {selectedCount > 0 && (
+            <div className="flex items-center gap-2 ml-2">
+              <span className="bg-orange/10 text-orange px-2 py-0.5 rounded-full text-xs">
+                {selectedCount} sélectionné{selectedCount > 1 ? 's' : ''}
+              </span>
+              <button
+                onClick={clearAllSelections}
+                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+              >
+                Effacer tout
+              </button>
+            </div>
+          )}
         </div>
 
         {tab !== 'cities' ? (
@@ -235,8 +285,11 @@ function GeographicSection() {
                     {({ geographies }: { geographies: GeoFeature[] }) =>
                       geographies
                         .map(geo => {
-                          const key = tab === 'regions' ? geo.properties.nom : geo.properties.code;
-                          const isSelected = tab === 'regions' ? selectedRegion?.nom === geo.properties.nom : selectedDept?.code === geo.properties.code;
+                          const isSelected = tab === 'regions' 
+                            ? selectedRegions.some(r => r.code === geo.properties.code)
+                            : tab === 'departments'
+                            ? selectedDepts.some(d => d.code === geo.properties.code)
+                            : false;
                           const isSearchMatch =
                             search !== '' &&
                             (geo.properties.nom.toLowerCase().includes(search.toLowerCase()) ||
@@ -247,9 +300,25 @@ function GeographicSection() {
                             <g key={geo.rsmKey}>
                               <Geography
                                 geography={geo}
-                                onMouseEnter={() => setHovered(key)}
+                                onMouseEnter={() => setHovered(geo.properties.nom)}
                                 onMouseLeave={() => setHovered(null)}
-                                onClick={() => tab === 'regions' ? setSelectedRegion(geo.properties) : setSelectedDept(geo.properties)}
+                                onClick={() => {
+                                  if (tab === 'regions') {
+                                    setSelectedRegions(prev => {
+                                      const exists = prev.some(r => r.code === geo.properties.code);
+                                      return exists
+                                        ? prev.filter(r => r.code !== geo.properties.code)
+                                        : [...prev, geo.properties];
+                                    });
+                                  } else {
+                                    setSelectedDepts(prev => {
+                                      const exists = prev.some(d => d.code === geo.properties.code);
+                                      return exists
+                                        ? prev.filter(d => d.code !== geo.properties.code)
+                                        : [...prev, geo.properties];
+                                    });
+                                  }
+                                }}
                                 style={{
                                   default: { fill: isSelected || isSearchMatch ? '#FF6500' : '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
                                   hover: { fill: isSelected || isSearchMatch ? '#FF6500' : '#5A7893', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
@@ -291,25 +360,49 @@ function GeographicSection() {
                 <button onClick={() => setPosition({ coordinates: [2.4, 46.6], zoom: 1 })} className="w-8 h-8 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
               </div>
 
-              {/* Hover/selected tooltip */}
-              {(hovered || selected) && (
-                <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-3 py-2">
-                  <p className="text-sm font-bold text-white">{selected ? selected.nom : hovered}</p>
-                  {selected && (
-                    <p className="text-[11px] text-[#B9BBC8]">
-                      {selectedCount ?? 0} {t('mapOpportunitiesCount')}
-                    </p>
-                  )}
+              {/* Selection tooltip */}
+              {selectedCount > 0 && (
+                <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-3 py-2 max-h-32 overflow-y-auto min-w-[150px] max-w-[250px]">
+                  {selected.map((item, index) => {
+                    const isRegion = 'nom' in item && 'code' in item;
+                    const name = isRegion ? item.nom : item.name;
+                    const code = isRegion ? item.code : undefined;
+                    const count = isRegion 
+                      ? (tab === 'regions' ? getRegionCount(item.nom) : getDeptCount(item.code, item.nom))
+                      : undefined;
+                    return (
+                      <div key={code || name || index} className="flex items-center justify-between gap-2 py-0.5 border-b border-[#17334D]/50 last:border-0">
+                        <p className="text-xs font-semibold text-white truncate">{name}</p>
+                        {count !== undefined && <p className="text-[10px] text-[#B9BBC8] shrink-0">{count}</p>}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeSelection(item);
+                          }}
+                          className="text-red-400 hover:text-red-300 shrink-0 ml-1"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {selected ? (
+            {selectedCount > 0 ? (
               <Link
-                to={`${searchTarget}?${searchParam}`}
+                to={buildSearchUrl()}
                 className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 rounded-xl hover:bg-orange/10 transition-colors"
               >
-                {t('mapViewOpportunitiesIn')} {selected.nom} <ArrowRight size={14} />
+                {t('mapViewOpportunitiesIn')} 
+                {selected.map((item, i) => (
+                  <span key={i}>
+                    {i > 0 && ', '}
+                    {'nom' in item ? item.nom : item.name}
+                  </span>
+                ))}
+                <ArrowRight size={14} />
               </Link>
             ) : (
               <div className="mt-3 flex flex-col items-center text-center py-4">
@@ -321,10 +414,7 @@ function GeographicSection() {
           </>
         ) : (
           <>
-            {/* Villes tab - real geocoded pin (Base Adresse Nationale) for the
-                map, and real opportunity results below (not just a count).
-                No radius/distance filtering - see note above on why that
-                can't be honest yet (opportunities have no lat/lng). */}
+            {/* Villes tab */}
             <div className="flex gap-2 mb-3">
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
@@ -348,7 +438,7 @@ function GeographicSection() {
               <MousePointerClick size={12} /> Touchez une ville sur la carte, ou zoomez pour en voir davantage.
             </p>
 
-            {/* Zoomable map with progressively-revealed city pins */}
+            {/* Zoomable map with city pins */}
             <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[220px] md:h-[300px] mb-3" style={{ touchAction: 'pan-y' }}>
               {geoLoadError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
@@ -391,7 +481,7 @@ function GeographicSection() {
                       }
                     </Geographies>
                     {visibleCities.map(city => {
-                      const isSelected = cityResult?.name === city.name;
+                      const isSelected = selectedCities.some(c => c.name === city.name);
                       return (
                         <Marker key={city.name} coordinates={city.coords} onClick={() => selectMapCity(city)} style={{ default: { cursor: 'pointer' } }}>
                           {isSelected && <circle r={11} fill="#FF6500" fillOpacity={0.25} />}
@@ -456,12 +546,16 @@ function GeographicSection() {
               </div>
             )}
 
-            {cityResult && cityTotal > 0 && (
+            {selectedCities.length > 0 && (
               <Link
-                to={`/recherche?city=${encodeURIComponent(cityResult.name)}`}
+                to={buildSearchUrl()}
                 className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 rounded-xl hover:bg-orange/10 transition-colors"
               >
-                {t('mapViewOpportunitiesAround')} {cityResult.name} ({cityTotal}) <ArrowRight size={14} />
+                {t('mapViewOpportunitiesAround')} 
+                {selectedCities.map((c, i) => (
+                  <span key={i}>{i > 0 && ', '}{c.name}</span>
+                ))}
+                ({cityTotal}) <ArrowRight size={14} />
               </Link>
             )}
           </>

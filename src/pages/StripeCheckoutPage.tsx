@@ -4,8 +4,10 @@ import { Loader2, CreditCard, ArrowLeft, ShieldCheck, Lock } from 'lucide-react'
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscriptionsApi, getApiErrorMessage, type ApiSubscriptionPlan } from '@/lib/apiClient';
+import { useLang } from '@/contexts/LangContext';
 
 export default function StripeCheckoutPage() {
+  const { t } = useLang();
   const { planId } = useParams<{ planId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -15,7 +17,6 @@ export default function StripeCheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  // Fetch plan details
   useEffect(() => {
     if (!planId) return;
     
@@ -23,34 +24,31 @@ export default function StripeCheckoutPage() {
       .then(plans => {
         const foundPlan = plans.find(p => String(p.id) === planId);
         if (!foundPlan) {
-          toast.error('Plan not found');
+          toast.error(t('checkoutPlanNotFound') || 'Plan not found');
           navigate('/tarifs');
           return;
         }
         setPlan(foundPlan);
       })
       .catch(() => {
-        toast.error('Could not load plan details');
+        toast.error(t('checkoutLoadError') || 'Could not load plan details');
       })
       .finally(() => setLoading(false));
-  }, [planId, navigate]);
+  }, [planId, navigate, t]);
 
-  // If user arrives from Stripe after payment
   useEffect(() => {
     const status = searchParams.get('status');
     if (status === 'success') {
-      toast.success('Payment successful! Welcome aboard!');
-      // Redirect to dashboard after a moment
+      toast.success(t('checkoutPaymentSuccess') || 'Payment successful! Welcome aboard!');
       setTimeout(() => navigate('/tableau-de-bord'), 3000);
     } else if (status === 'cancel') {
-      toast.info('Payment cancelled. You can try again.');
+      toast.info(t('checkoutPaymentCancel') || 'Payment cancelled. You can try again.');
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, t]);
 
-  // Start Stripe Checkout
   const handleStartCheckout = async () => {
     if (!isAuthenticated) {
-      toast.info('Please log in to subscribe.');
+      toast.info(t('checkoutLoginRequired') || 'Please log in to subscribe.');
       navigate('/connexion', { state: { from: `/checkout/${planId}` } });
       return;
     }
@@ -60,10 +58,9 @@ export default function StripeCheckoutPage() {
     setCheckoutLoading(true);
     try {
       const { checkoutUrl } = await subscriptionsApi.checkout(String(plan.id));
-      // Redirect to Stripe's hosted checkout page
       window.location.href = checkoutUrl;
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Could not start payment.'));
+      toast.error(getApiErrorMessage(err, t('checkoutError') || 'Could not start payment.'));
       setCheckoutLoading(false);
     }
   };
@@ -78,44 +75,38 @@ export default function StripeCheckoutPage() {
 
   return (
     <div className="page-fade-in max-w-lg mx-auto px-4 py-8">
-      {/* Back Button */}
       <button 
         onClick={() => navigate('/tarifs')}
         className="flex items-center gap-2 text-[#B9BBC8] hover:text-white transition-colors mb-6 text-sm"
       >
-        <ArrowLeft size={16} /> Retour aux tarifs
+        <ArrowLeft size={16} /> {t('checkoutBack')}
       </button>
 
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
-        <h1 className="text-2xl font-extrabold text-white mb-2">Finaliser votre abonnement</h1>
-        <p className="text-sm text-[#B9BBC8] mb-6">
-          Vous allez être redirigé vers Stripe pour un paiement sécurisé.
-        </p>
+        <h1 className="text-2xl font-extrabold text-white mb-2">{t('checkoutTitle')}</h1>
+        <p className="text-sm text-[#B9BBC8] mb-6">{t('checkoutSub')}</p>
 
-        {/* Plan Details */}
         <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-orange uppercase tracking-wider">{plan?.name}</span>
+            <span className="text-xs font-bold text-orange uppercase tracking-wider">{t('checkoutPlan')}</span>
             <span className="text-sm font-bold text-white">
-              {plan?.price ? `${plan.price} € / mois` : 'Sur devis'}
+              {plan?.name} {plan?.price ? `- ${plan.price} € / ${t('checkoutMonthly') || 'month'}` : ''}
             </span>
           </div>
-          <p className="text-xs text-[#B9BBC8]">Abonnement mensuel, résiliable à tout moment.</p>
+          <p className="text-xs text-[#B9BBC8]">{t('checkoutMonthly')}</p>
         </div>
 
-        {/* Security Badges */}
         <div className="flex items-center gap-3 mb-6">
           <div className="flex items-center gap-2 text-xs text-[#B9BBC8]">
             <ShieldCheck size={16} className="text-green-400" />
-            Paiement 100% sécurisé
+            {t('checkoutSecure')}
           </div>
           <div className="flex items-center gap-2 text-xs text-[#B9BBC8]">
             <Lock size={16} className="text-orange" />
-            Données chiffrées
+            {t('checkoutEncrypted')}
           </div>
         </div>
 
-        {/* Checkout Button */}
         <button
           onClick={handleStartCheckout}
           disabled={checkoutLoading}
@@ -124,18 +115,18 @@ export default function StripeCheckoutPage() {
           {checkoutLoading ? (
             <>
               <Loader2 size={18} className="animate-spin" />
-              Redirection vers Stripe...
+              {t('checkoutRedirecting')}
             </>
           ) : (
             <>
               <CreditCard size={18} />
-              Payer avec Stripe
+              {t('checkoutPay')}
             </>
           )}
         </button>
 
         <p className="text-center text-xs text-[#B9BBC8] mt-4">
-          En cliquant, vous acceptez nos conditions générales d'utilisation.
+          {t('checkoutAcceptTerms')}
         </p>
       </div>
     </div>

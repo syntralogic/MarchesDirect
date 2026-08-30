@@ -44,7 +44,7 @@ export default function AdminContacts() {
     setError(null);
     adminApi.contactLeads({ status: status === 'all' ? undefined : status, limit: 100 })
       .then(data => setLeads(data.results))
-      .catch(err => setError(getApiErrorMessage(err, 'Impossible de charger les contacts.')))
+      .catch(err => setError(getApiErrorMessage(err, t('adminLoadError') || 'Impossible de charger les contacts.')))
       .finally(() => setLoading(false));
   };
 
@@ -55,8 +55,9 @@ export default function AdminContacts() {
     try {
       await adminApi.updateContactLeadStatus(lead.id, newStatus);
       setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: newStatus } : l));
+      showToast(t('adminStatusUpdated') || 'Statut mis à jour');
     } catch (err) {
-      showToast(getApiErrorMessage(err, "Échec de la mise à jour."), 'error');
+      showToast(getApiErrorMessage(err, t('adminStatusUpdateFailed') || "Échec de la mise à jour."), 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -74,7 +75,7 @@ export default function AdminContacts() {
       const { events } = await adminApi.leadJourney(leadId);
       setJourneys(prev => ({ ...prev, [leadId]: events }));
     } catch (err) {
-      showToast(getApiErrorMessage(err, "Impossible de charger le parcours."), 'error');
+      showToast(getApiErrorMessage(err, t('adminJourneyLoadError') || "Impossible de charger le parcours."), 'error');
       setOpenJourneyId(null);
     } finally {
       setJourneyLoading(null);
@@ -91,14 +92,14 @@ export default function AdminContacts() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
-        <button onClick={() => setStatus('all')} className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${status === 'all' ? 'border-orange text-orange bg-orange/10' : 'border-[#17334D] text-[#B9BBC8]'}`}>Tous</button>
+        <button onClick={() => setStatus('all')} className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${status === 'all' ? 'border-orange text-orange bg-orange/10' : 'border-[#17334D] text-[#B9BBC8]'}`}>{t('all')}</button>
         {STATUS_OPTIONS.map(s => (
           <button key={s} onClick={() => setStatus(s)} className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors capitalize ${status === s ? 'border-orange text-orange bg-orange/10' : 'border-[#17334D] text-[#B9BBC8]'}`}>{s}</button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> Chargement...</div>
+        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> {t('adminLoading') || 'Chargement...'}</div>
       ) : error ? (
         <div className="p-6 text-center text-sm text-red-400 bg-[#061D32] border border-[#17334D] rounded-xl">{error}</div>
       ) : leads.length === 0 ? (
@@ -136,7 +137,7 @@ export default function AdminContacts() {
                       className="flex items-center justify-center gap-1.5 border border-[#17334D] text-[#B9BBC8] font-bold text-xs px-4 py-2.5 rounded-lg hover:border-orange/50 hover:text-white transition-colors"
                     >
                       {journeyLoading === lead.id ? <Loader2 size={14} className="animate-spin" /> : <History size={14} />}
-                      {openJourneyId === lead.id ? 'Masquer le parcours' : 'Voir le parcours'}
+                      {openJourneyId === lead.id ? t('adminContactsHideJourney') : t('adminContactsShowJourney')}
                     </button>
                     <select
                       value={lead.status}
@@ -152,9 +153,9 @@ export default function AdminContacts() {
                 {openJourneyId === lead.id && (
                   <div className="mt-4 pt-4 border-t border-[#17334D]">
                     {journeyLoading === lead.id ? (
-                      <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Loader2 size={13} className="animate-spin" /> Chargement du parcours...</div>
+                      <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Loader2 size={13} className="animate-spin" /> {t('adminContactsLoading')}</div>
                     ) : !journeys[lead.id] || journeys[lead.id].length === 0 ? (
-                      <p className="text-xs text-[#B9BBC8]">Aucun parcours enregistré pour ce contact (session non identifiée ou aucune activité suivie avant la demande).</p>
+                      <p className="text-xs text-[#B9BBC8]">{t('adminContactsNoJourney')}</p>
                     ) : (
                       <div className="space-y-2">
                         {journeys[lead.id].map((ev, i) => {

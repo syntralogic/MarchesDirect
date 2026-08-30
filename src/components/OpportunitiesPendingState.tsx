@@ -1,4 +1,5 @@
 import { Clock3 } from 'lucide-react';
+import { useLang } from '@/contexts/LangContext';
 
 /**
  * Shown instead of the raw fetch-error text when the opportunities API call
@@ -9,16 +10,15 @@ import { Clock3 } from 'lucide-react';
  * useOpportunities stops firing and this never renders.
  */
 export function OpportunitiesPendingState() {
+  const { t } = useLang();
+
   return (
     <div className="flex flex-col items-center gap-2 text-center py-10 px-4">
       <div className="w-10 h-10 rounded-full bg-[#061D32] border border-[#17334D] flex items-center justify-center text-orange">
         <Clock3 size={17} />
       </div>
-      <p className="text-xs font-semibold text-white">Nouvelles annonces bientôt en ligne</p>
-      <p className="text-[11px] text-[#B9BBC8] max-w-[38ch]">
-        La connexion aux sources officielles est en cours de mise en place. Revenez très bientôt pour voir les
-        premières opportunités.
-      </p>
+      <p className="text-xs font-semibold text-white">{t('pendingTitle')}</p>
+      <p className="text-[11px] text-[#B9BBC8] max-w-[38ch]">{t('pendingSub')}</p>
     </div>
   );
 }

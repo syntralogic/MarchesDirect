@@ -13,6 +13,7 @@ import {
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse,
   type ApiOpportunityAccess, type ApiMatchScore,
 } from '@/lib/apiClient';
+import { useLang } from '@/contexts/LangContext';
 
 function formatAmount(value: number | null, currency: string | null) {
   if (value == null) return 'Montant non communiqué';
@@ -36,15 +37,10 @@ const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = 
 type Tab = 'resume' | 'score' | 'dossier';
 
 export default function OpportunityDetailPage() {
+  const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user } = useAuth();
-  // Three visibility tiers on the DCE/candidature tools specifically: (1)
-  // anonymous - login/register CTA, (2) authenticated but no active
-  // subscription - tools locked, (3) active subscription - full DCE
-  // analysis + candidature generation. Separate from the content-level
-  // `access` gating below, which controls whether the opportunity's own
-  // description is visible at all on private/sous-traitance fiches.
   const isPaid = company?.subscription_status === 'active';
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
@@ -52,27 +48,16 @@ export default function OpportunityDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('resume');
 
-  // Graduated access (level1/level2/level3/full) - only meaningful for
-  // private tender / sous-traitance fiches, which start hidden behind a
-  // teaser until a visitor leaves their coordinates (level2) or a chargé
-  // d'affaires reviews the lead (level3). Public-market fiches are always
-  // 'full' server-side.
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
   const [leadForm, setLeadForm] = useState({ email: user?.email || '', phone: '', firstName: user?.firstName || '', lastName: user?.lastName || '', companyName: company?.name || '' });
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
 
-  // "Analyse stratégique" tab
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
 
-  // DCE / bid section - only fetched for authenticated users, since
-  // /api/tenders/* requires a company_id (see backend server.ts route
-  // mounting: authenticate is applied to /api/tenders but not
-  // /api/opportunities, matching the public-browse / auth-for-tools split
-  // used elsewhere in the app).
   const [tender, setTender] = useState<ApiTender | null>(null);
   const [bid, setBid] = useState<ApiBidResponse | null>(null);
   const [dceLoading, setDceLoading] = useState(false);
@@ -89,9 +74,9 @@ export default function OpportunityDetailPage() {
         setOpportunity(o);
         trackVisitorEvent('view_opportunity', o.title, undefined, { opportunityId: id, journey: o.journey });
       })
-      .catch(err => setError(getApiErrorMessage(err, "Impossible de charger cette opportunité.")))
+      .catch(err => setError(getApiErrorMessage(err, t('detailLoadError'))))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (!id) return;
@@ -108,23 +93,23 @@ export default function OpportunityDetailPage() {
     setScoreError(null);
     opportunitiesApi.getMatchScore(id)
       .then(setMatchScore)
-      .catch(err => setScoreError(getApiErrorMessage(err, "Impossible de calculer le score pour cette opportunité.")))
+      .catch(err => setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité.")))
       .finally(() => setScoreLoading(false));
-  }, [id, tab, matchScore, scoreLoading]);
+  }, [id, tab, matchScore, scoreLoading, t]);
 
   useEffect(() => {
     if (!id || !isAuthenticated || !isPaid) return;
     setDceLoading(true);
     setDceError(null);
     tendersApi.get(id)
-      .then(async t => {
-        setTender(t);
-        const b = await tendersApi.getBid(t.id);
+      .then(async tData => {
+        setTender(tData);
+        const b = await tendersApi.getBid(tData.id);
         setBid(b);
       })
-      .catch(err => setDceError(getApiErrorMessage(err, "Impossible de charger le dossier.")))
+      .catch(err => setDceError(getApiErrorMessage(err, t('detailDCEAnalysisFailed') || "Impossible de charger le dossier.")))
       .finally(() => setDceLoading(false));
-  }, [id, isAuthenticated, isPaid]);
+  }, [id, isAuthenticated, isPaid, t]);
 
   const handleAnalyze = async () => {
     if (!tender) return;
@@ -134,7 +119,7 @@ export default function OpportunityDetailPage() {
       const updated = await tendersApi.analyze(tender.id);
       setTender(updated);
     } catch (err) {
-      setDceError(getApiErrorMessage(err, "L'analyse du DCE a échoué."));
+      setDceError(getApiErrorMessage(err, t('detailDCEAnalysisFailed')));
     } finally {
       setAnalyzing(false);
     }
@@ -148,7 +133,7 @@ export default function OpportunityDetailPage() {
       const result = await tendersApi.generateBidDocuments(bid.id);
       setBid(result.bid);
     } catch (err) {
-      setDceError(getApiErrorMessage(err, "La génération des documents a échoué."));
+      setDceError(getApiErrorMessage(err, t('detailBidGenerationFailed')));
     } finally {
       setGenerating(false);
     }
@@ -163,7 +148,7 @@ export default function OpportunityDetailPage() {
       const result = await opportunitiesApi.requestAccess(id, { ...leadForm, sessionId: getSessionId() });
       setAccess({ level: result.level as ApiOpportunityAccess['level'] });
     } catch (err) {
-      setLeadError(getApiErrorMessage(err, "L'envoi a échoué. Vérifiez votre email et réessayez."));
+      setLeadError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
     } finally {
       setLeadSubmitting(false);
     }
@@ -175,8 +160,8 @@ export default function OpportunityDetailPage() {
   if (error || !opportunity) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-sm text-red-400 mb-4">{error || 'Opportunité introuvable.'}</p>
-        <button onClick={() => navigate(-1)} className="text-sm text-orange hover:underline">Retour</button>
+        <p className="text-sm text-red-400 mb-4">{error || t('detailNotFound')}</p>
+        <button onClick={() => navigate(-1)} className="text-sm text-orange hover:underline">{t('detailBack')}</button>
       </div>
     );
   }
@@ -186,8 +171,6 @@ export default function OpportunityDetailPage() {
   const journeyMeta = JOURNEY_LABEL[journey] || JOURNEY_LABEL.tender;
   const JourneyIcon = journeyMeta.icon;
 
-  // Content-level gating only applies to non-public fiches: public-market
-  // listings are open data, always readable in full regardless of access.
   const contentLocked = !isPublic && !accessLoading && (access?.level === 'level1' || !access);
   const hasEnrichedAccess = isPublic || access?.level === 'level2' || access?.level === 'level3' || access?.level === 'full';
 
@@ -198,7 +181,7 @@ export default function OpportunityDetailPage() {
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
       <PageMeta title={`${opportunity.title} — Marchés Direct`} description={metaDescription.slice(0, 300)} />
       <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors">
-        <ArrowLeft size={14} /> Retour aux résultats
+        <ArrowLeft size={14} /> {t('detailBack')}
       </button>
 
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
@@ -215,7 +198,7 @@ export default function OpportunityDetailPage() {
           {(opportunity.location_city || opportunity.location_region) && (
             <span className="flex items-center gap-1.5"><MapPin size={13} /> {[opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ')}</span>
           )}
-          <span className="flex items-center gap-1.5"><Calendar size={13} /> Échéance : {formatDate(opportunity.deadline)}</span>
+          <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('detailDeadline')} : {formatDate(opportunity.deadline)}</span>
           {hasEnrichedAccess && (
             <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
           )}
@@ -225,18 +208,18 @@ export default function OpportunityDetailPage() {
       {/* TABS */}
       <div className="flex gap-1 mb-4 border-b border-[#17334D]">
         {([
-          { key: 'resume' as Tab, label: 'Résumé' },
-          { key: 'score' as Tab, label: 'Analyse stratégique' },
-          { key: 'dossier' as Tab, label: 'Dossier & candidature' },
-        ]).map(t => (
+          { key: 'resume' as Tab, label: t('detailResume') || 'Résumé' },
+          { key: 'score' as Tab, label: t('detailScore') || 'Analyse stratégique' },
+          { key: 'dossier' as Tab, label: t('detailDossier') || 'Dossier & candidature' },
+        ]).map(tabItem => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tabItem.key}
+            onClick={() => setTab(tabItem.key)}
             className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-              tab === t.key ? 'text-orange border-orange' : 'text-[#B9BBC8] border-transparent hover:text-white'
+              tab === tabItem.key ? 'text-orange border-orange' : 'text-[#B9BBC8] border-transparent hover:text-white'
             }`}
           >
-            {t.label}
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -250,7 +233,7 @@ export default function OpportunityDetailPage() {
                 {(opportunity.ai_summary || opportunity.description || '').slice(0, 160)}
                 {(opportunity.ai_summary || opportunity.description || '').length > 160 ? '…' : ''}
               </p>
-              <p className="text-xs text-orange font-semibold mt-3">Description complète, montant estimé et coordonnées de l'acheteur réservés à l'aperçu enrichi.</p>
+              <p className="text-xs text-orange font-semibold mt-3">{t('accessLockedMessage')}</p>
             </div>
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
@@ -258,21 +241,21 @@ export default function OpportunityDetailPage() {
                   <Lock size={16} className="text-orange" />
                 </div>
                 <div>
-                  <p className="text-sm text-white font-semibold mb-1">Débloquer l'aperçu enrichi</p>
-                  <p className="text-xs text-[#B9BBC8]">Laissez vos coordonnées pour accéder immédiatement à la description complète, au montant estimé et à l'analyse de compatibilité.</p>
+                  <p className="text-sm text-white font-semibold mb-1">{t('accessUnlockTitle')}</p>
+                  <p className="text-xs text-[#B9BBC8]">{t('accessUnlockSub')}</p>
                 </div>
               </div>
               <form onSubmit={handleRequestAccess} className="space-y-2.5">
                 <div className="grid grid-cols-2 gap-2.5">
-                  <input required value={leadForm.firstName} onChange={e => setLeadForm(f => ({ ...f, firstName: e.target.value }))} placeholder="Prénom" className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                  <input required value={leadForm.lastName} onChange={e => setLeadForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Nom" className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                  <input required value={leadForm.firstName} onChange={e => setLeadForm(f => ({ ...f, firstName: e.target.value }))} placeholder={t('accessFirstName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                  <input required value={leadForm.lastName} onChange={e => setLeadForm(f => ({ ...f, lastName: e.target.value }))} placeholder={t('accessLastName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
                 </div>
-                <input value={leadForm.companyName} onChange={e => setLeadForm(f => ({ ...f, companyName: e.target.value }))} placeholder="Entreprise" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                <input required type="email" value={leadForm.email} onChange={e => setLeadForm(f => ({ ...f, email: e.target.value }))} placeholder="Email professionnel" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                <input value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))} placeholder="Téléphone (optionnel)" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                <input value={leadForm.companyName} onChange={e => setLeadForm(f => ({ ...f, companyName: e.target.value }))} placeholder={t('accessCompany')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                <input required type="email" value={leadForm.email} onChange={e => setLeadForm(f => ({ ...f, email: e.target.value }))} placeholder={t('accessEmail')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                <input value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))} placeholder={t('accessPhoneOptional')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
                 {leadError && <p className="text-xs text-red-400">{leadError}</p>}
                 <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                  {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Voir l'aperçu enrichi
+                  {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {t('accessViewEnriched')}
                 </button>
               </form>
             </div>
@@ -286,12 +269,12 @@ export default function OpportunityDetailPage() {
               <p className="text-sm text-[#B9BBC8] leading-relaxed">{opportunity.description}</p>
             )}
             {!opportunity.ai_summary && !opportunity.description && (
-              <p className="text-sm text-[#B9BBC8]">Aucune description disponible pour cette opportunité.</p>
+              <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
             )}
             {access?.level === 'level2' && !isPublic && (
               <div className="flex items-start gap-2 mt-4 pt-4 border-t border-[#17334D] text-xs text-[#B9BBC8]">
                 <HelpCircle size={14} className="text-orange shrink-0 mt-0.5" />
-                <span>Un chargé d'affaires étudie votre demande pour vous donner accès aux documents complets et vous mettre en relation.</span>
+                <span>{t('accessPendingReview')}</span>
               </div>
             )}
           </div>
@@ -301,7 +284,7 @@ export default function OpportunityDetailPage() {
       {/* ANALYSE STRATÉGIQUE TAB */}
       {tab === 'score' && (
         scoreLoading ? (
-          <div className="flex items-center justify-center py-16 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> Calcul du score...</div>
+          <div className="flex items-center justify-center py-16 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('scoreCalculating')}</div>
         ) : scoreError ? (
           <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
         ) : matchScore ? (
@@ -326,7 +309,7 @@ export default function OpportunityDetailPage() {
 
             {matchScore.positiveFactors.length > 0 && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><Gauge size={15} className="text-orange" /> Facteurs de compatibilité</h2>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><Gauge size={15} className="text-orange" /> {t('scoreCompatibilityFactors')}</h2>
                 <div className="space-y-2">
                   {matchScore.positiveFactors.map((f, i) => (
                     <div key={i} className="flex items-center justify-between text-xs">
@@ -339,7 +322,7 @@ export default function OpportunityDetailPage() {
             )}
 
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white mb-3">Pondération des critères de l'acheteur</h2>
+              <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
               <div className="space-y-2.5">
                 {matchScore.criteria.map((c, i) => (
                   <div key={i}>
@@ -357,7 +340,7 @@ export default function OpportunityDetailPage() {
 
             {matchScore.eligibility.length > 0 && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                <h2 className="text-sm font-bold text-white mb-3">Pièces attendues pour candidater</h2>
+                <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
                 <div className="space-y-2.5">
                   {matchScore.eligibility.map((el, i) => (
                     <div key={i} className="flex items-start gap-2.5 text-xs">
@@ -372,7 +355,7 @@ export default function OpportunityDetailPage() {
                   ))}
                 </div>
                 {!isAuthenticated && (
-                  <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">Connectez-vous pour vérifier automatiquement ces pièces contre votre dossier entreprise.</p>
+                  <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
                 )}
               </div>
             )}
@@ -384,14 +367,14 @@ export default function OpportunityDetailPage() {
       {tab === 'dossier' && (
         !isAuthenticated ? (
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center">
-            <p className="text-sm text-white font-semibold mb-1">Analyse du dossier (DCE) et candidature</p>
-            <p className="text-xs text-[#B9BBC8] mb-4">Créez votre profil entreprise ou connectez-vous pour analyser les documents de consultation et générer votre dossier de candidature.</p>
+            <p className="text-sm text-white font-semibold mb-1">{t('dossierAnalysisTitle')}</p>
+            <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierLoginRequired')}</p>
             <div className="flex items-center justify-center gap-2 flex-wrap">
               <Link to="/connexion" state={{ from: `/opportunites/${id}` }} className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-                <LogIn size={14} /> Se connecter
+                <LogIn size={14} /> {t('loginButton')}
               </Link>
               <Link to="/inscription" state={{ from: `/opportunites/${id}` }} className="inline-flex items-center gap-2 border border-[#17334D] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:border-orange/50 transition-colors">
-                Créer mon profil
+                {t('signupCreateProfile')}
               </Link>
             </div>
           </div>
@@ -402,40 +385,40 @@ export default function OpportunityDetailPage() {
                 <Lock size={16} className="text-orange" />
               </div>
               <div>
-                <p className="text-sm text-white font-semibold mb-1">Analyse du DCE et candidature : réservées à l'offre payante</p>
-                <p className="text-xs text-[#B9BBC8]">Votre profil entreprise est bien enregistré. L'analyse automatique du dossier de consultation, la génération du mémoire technique et le suivi de candidature nécessitent un abonnement actif.</p>
+                <p className="text-sm text-white font-semibold mb-1">{t('dossierLockedTitle')}</p>
+                <p className="text-xs text-[#B9BBC8]">{t('dossierLockedSub')}</p>
               </div>
             </div>
             <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><FileText size={13} className="text-orange/70" /> Analyse IA des documents de consultation (critères, pièces demandées)</div>
-              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Sparkles size={13} className="text-orange/70" /> Génération automatique du dossier de candidature</div>
-              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><CheckCircle2 size={13} className="text-orange/70" /> Suivi et téléchargement du dossier complet</div>
+              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><FileText size={13} className="text-orange/70" /> {t('dossierFeature1')}</div>
+              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Sparkles size={13} className="text-orange/70" /> {t('dossierFeature2')}</div>
+              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><CheckCircle2 size={13} className="text-orange/70" /> {t('dossierFeature3')}</div>
             </div>
             <Link to="/tarifs" className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-              <Crown size={14} /> Voir les offres
+              <Crown size={14} /> {t('pricingViewPlans')}
             </Link>
           </div>
         ) : dceLoading ? (
-          <div className="flex items-center justify-center py-10 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> Chargement du dossier...</div>
+          <div className="flex items-center justify-center py-10 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('dossierLoading')}</div>
         ) : (
           <div className="space-y-4">
             {/* DCE analysis */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2"><FileText size={15} className="text-orange" /> Analyse du DCE</h2>
+                <h2 className="text-sm font-bold text-white flex items-center gap-2"><FileText size={15} className="text-orange" /> {t('dossierDCEAnalysis')}</h2>
                 {tender?.dce_analysis_status !== 'analyzed' && (
                   <button onClick={handleAnalyze} disabled={analyzing} className="flex items-center gap-1.5 text-xs text-orange border border-orange px-3 py-1.5 rounded-lg hover:bg-orange/10 transition-colors disabled:opacity-40">
-                    {analyzing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} Analyser le DCE
+                    {analyzing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} {t('dossierAnalyzeDCE')}
                   </button>
                 )}
               </div>
               {tender?.dce_analysis_status === 'analyzed' ? (
                 <div className="space-y-2 text-xs text-[#B9BBC8]">
-                  {tender.complexity_assessment && <p>Complexité estimée : <span className="text-white font-semibold">{tender.complexity_assessment}</span></p>}
-                  {tender.estimated_effort_hours != null && <p>Effort estimé : <span className="text-white font-semibold">{tender.estimated_effort_hours} h</span></p>}
+                  {tender.complexity_assessment && <p>{t('dossierComplexity')} : <span className="text-white font-semibold">{tender.complexity_assessment}</span></p>}
+                  {tender.estimated_effort_hours != null && <p>{t('dossierEstimatedEffort')} : <span className="text-white font-semibold">{tender.estimated_effort_hours} h</span></p>}
                   {tender.required_documents && tender.required_documents.length > 0 && (
                     <div className="pt-2">
-                      <p className="text-[#B9BBC8] mb-1">Documents demandés par l'acheteur :</p>
+                      <p className="text-[#B9BBC8] mb-1">{t('dossierRequiredDocs')}</p>
                       <ul className="list-disc list-inside space-y-0.5 text-white">
                         {tender.required_documents.map((d, i) => <li key={i}>{d}</li>)}
                       </ul>
@@ -443,39 +426,33 @@ export default function OpportunityDetailPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-[#B9BBC8]">{tender?.dce_analysis_status === 'processing' ? 'Analyse en cours...' : "Le dossier n'a pas encore été analysé."}</p>
+                <p className="text-xs text-[#B9BBC8]">{tender?.dce_analysis_status === 'processing' ? t('dossierProcessing') : t('dossierNotAnalyzed')}</p>
               )}
             </div>
 
             {/* Bid package */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><FileText size={15} className="text-orange" /> Dossier de candidature</h2>
+              <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><FileText size={15} className="text-orange" /> {t('dossierBidPackage')}</h2>
 
               {bid?.missing_documents && bid.missing_documents.length > 0 && (
                 <div className="flex items-start gap-2 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-brand-muted mb-3">
                   <AlertTriangle size={14} className="text-orange shrink-0 mt-0.5" />
                   <span>
-                    Documents manquants dans votre profil : {bid.missing_documents.map(d => DOC_LABELS[d] || d).join(', ')}.{' '}
-                    <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline">Ajoutez-les depuis votre dossier entreprise</Link> avant de soumettre.
+                    {t('dossierMissingDocs')} : {bid.missing_documents.map(d => DOC_LABELS[d] || d).join(', ')}.{' '}
+                    <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline">{t('dossierAddDocs')}</Link>
                   </span>
                 </div>
               )}
               {bid?.technical_memo_text && (
-                <div className="flex items-center gap-2 text-xs text-green-400 mb-3"><CheckCircle2 size={14} /> Documents générés.</div>
+                <div className="flex items-center gap-2 text-xs text-green-400 mb-3"><CheckCircle2 size={14} /> {t('dossierDocsGenerated')}</div>
               )}
 
               <div className="flex flex-wrap gap-2">
                 <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-1.5 text-xs text-white bg-[#031B30] border border-[#17334D] px-3 py-2 rounded-lg hover:border-orange/50 transition-colors disabled:opacity-40">
-                  {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Générer les documents
+                  {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {t('dossierGenerateDocs')}
                 </button>
-                {/* Always reachable once a (draft) bid exists - GET /api/tenders/:id/bid
-                    auto-creates one on first load, so this doesn't need to wait on a
-                    successful AI generation first. Previously this link only appeared
-                    after `bid?.technical_memo_text` was set, meaning if AI generation
-                    wasn't configured/working, there was no way to reach the bid
-                    workspace page at all - it would look like the page didn't exist. */}
                 <Link to={`/opportunites/${id}/candidature`} className="flex items-center gap-1.5 text-xs text-white bg-orange px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors">
-                  <FileText size={13} /> {bid?.technical_memo_text ? 'Relire, valider et télécharger' : 'Gérer ma candidature'}
+                  <FileText size={13} /> {bid?.technical_memo_text ? t('dossierReviewValidate') : t('dossierManageBid')}
                 </Link>
               </div>
             </div>
