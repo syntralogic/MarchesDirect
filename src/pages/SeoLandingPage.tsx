@@ -53,7 +53,10 @@ export default function SeoLandingPage() {
 
   const searchParams = new URLSearchParams();
   if (page.filter_region) searchParams.set('region', page.filter_region);
+  if (page.filter_city) searchParams.set('city', page.filter_city);
+  if (page.filter_department) searchParams.set('department', page.filter_department);
   if (page.filter_trade_id) searchParams.set('trade_id', String(page.filter_trade_id));
+  if (page.filter_journey) searchParams.set('journey', page.filter_journey);
 
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-16">

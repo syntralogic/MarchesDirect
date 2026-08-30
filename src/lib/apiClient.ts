@@ -546,6 +546,7 @@ export type ApiSeoPage = {
   filter_region: string | null;
   filter_city: string | null;
   filter_department: string | null;
+  filter_journey: 'tender' | 'public_procurement' | 'subcontracting' | null;
 };
 
 // Public - no auth. Backs the /pages/:slug landing pages generated daily by

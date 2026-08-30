@@ -11,20 +11,32 @@ export default function RecherchePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Seeded from the URL so a link like /recherche?region=Ile-de-France&trade_id=3
+  // Seeded from the URL so a link like /recherche?city=Bordeaux&journey=tender
   // (e.g. from an SEO landing page) lands here already filtered, instead of
   // a generic unfiltered list. Still fully editable afterwards.
   const [query, setQuery] = useState('');
-  const [location, setLocation] = useState(searchParams.get('region') || searchParams.get('city') || '');
+  // Kept as one text field for the location input, but region/city are
+  // different backend columns (ILIKE location_region vs location_city) - so
+  // which one came in from the URL has to stay tracked separately rather
+  // than always being sent as `region`, or a city-based SEO link (the exact
+  // case this was built for) would filter against the wrong column and
+  // always return zero results.
+  const initialCity = searchParams.get('city') || '';
+  const initialRegion = searchParams.get('region') || '';
+  const [location, setLocation] = useState(initialRegion || initialCity);
+  const [locationField] = useState<'region' | 'city'>(initialCity && !initialRegion ? 'city' : 'region');
   const tradeId = searchParams.get('trade_id') || undefined;
+  const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
 
   const debouncedQuery = useDebounce(query, 400);
   const debouncedLocation = useDebounce(location, 400);
 
   const { opportunities: filtered, loading, error } = useOpportunities({
     q: debouncedQuery || undefined,
-    region: debouncedLocation || undefined,
+    region: locationField === 'region' ? (debouncedLocation || undefined) : undefined,
+    city: locationField === 'city' ? (debouncedLocation || undefined) : undefined,
     trade_id: tradeId,
+    journey: journeyParam,
   });
 
   const getIcon = (title: string) => {

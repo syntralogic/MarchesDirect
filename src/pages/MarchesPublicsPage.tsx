@@ -6,6 +6,7 @@ import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { SaveButton } from '@/components/SaveButton';
+import PageMeta from '@/components/common/PageMeta';
 
 const STATUSES = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
 
@@ -72,6 +73,7 @@ export default function MarchesPublicsPage() {
 
   return (
     <div className="page-fade-in max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 pb-24">
+      <PageMeta title="Marchés publics — Marchés Direct" description="Consultez les marchés publics ouverts partout en France : appels d'offres des collectivités et administrations. Suivez et candidatez directement en ligne." />
       
       {/* MOBILE FILTER MODAL (AT THE TOP) */}
       {filtersOpen && (

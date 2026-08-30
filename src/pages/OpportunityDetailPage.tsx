@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SaveButton } from '@/components/SaveButton';
+import PageMeta from '@/components/common/PageMeta';
 import {
   opportunitiesApi, tendersApi, getApiErrorMessage,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse,
@@ -186,8 +187,12 @@ export default function OpportunityDetailPage() {
   const contentLocked = !isPublic && !accessLoading && (access?.level === 'level1' || !access);
   const hasEnrichedAccess = isPublic || access?.level === 'level2' || access?.level === 'level3' || access?.level === 'full';
 
+  const metaDescription = (hasEnrichedAccess ? (opportunity.ai_summary || opportunity.description) : null)
+    || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`;
+
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
+      <PageMeta title={`${opportunity.title} — Marchés Direct`} description={metaDescription.slice(0, 300)} />
       <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors">
         <ArrowLeft size={14} /> Retour aux résultats
       </button>

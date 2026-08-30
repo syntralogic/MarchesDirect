@@ -6,6 +6,7 @@ import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { SaveButton } from '@/components/SaveButton';
+import PageMeta from '@/components/common/PageMeta';
 
 export default function AppelsPage() {
   const { t } = useLang();
@@ -64,6 +65,7 @@ export default function AppelsPage() {
 
   return (
     <div className="page-fade-in max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 pb-24">
+      <PageMeta title="Appels d'offres privés — Marchés Direct" description="Consultez les appels d'offres privés ouverts partout en France : BTP, industrie, services. Analysez votre compatibilité et candidatez directement." />
       
       {/* MOBILE FILTER MODAL (AT THE TOP) */}
       {filtersOpen && (
