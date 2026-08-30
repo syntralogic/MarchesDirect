@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Search, MapPin } from 'lucide-react';
 import PageMeta from '@/components/common/PageMeta';
 import { seoPagesApi, getApiErrorMessage, type ApiSeoPage } from '@/lib/apiClient';
+import { trackVisitorEvent } from '@/lib/visitorTracking';
 
 export default function SeoLandingPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -19,7 +20,10 @@ export default function SeoLandingPage() {
     seoPagesApi
       .getBySlug(slug)
       .then((data) => {
-        if (!cancelled) setPage(data);
+        if (!cancelled) {
+          setPage(data);
+          trackVisitorEvent('view_seo_page', data.page_title || slug, undefined, { slug });
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(getApiErrorMessage(err, 'Page introuvable.'));
@@ -63,10 +67,10 @@ export default function SeoLandingPage() {
       <PageMeta title={page.page_title || page.page_slug} description={page.page_meta_description || ''} />
 
       <div className="mb-6">
-        {page.filter_region && (
+        {(page.filter_region || page.filter_city) && (
           <span className="inline-flex items-center gap-1 text-xs font-bold text-orange uppercase tracking-widest mb-3">
             <MapPin size={12} />
-            {page.filter_region}
+            {page.filter_region || page.filter_city}
           </span>
         )}
         <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-snug">

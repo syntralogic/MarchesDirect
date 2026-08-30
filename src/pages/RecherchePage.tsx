@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
+import { trackVisitorEvent } from '@/lib/visitorTracking';
 
 export default function RecherchePage() {
   const { t } = useLang();
@@ -38,6 +39,15 @@ export default function RecherchePage() {
     trade_id: tradeId,
     journey: journeyParam,
   });
+
+  // Only track once there's an actual query or location typed in - a bare
+  // page visit with no criteria isn't a "search" a chargé d'affaires would
+  // find useful in a lead's journey summary.
+  useEffect(() => {
+    if (!debouncedQuery && !debouncedLocation) return;
+    const parts = [debouncedQuery, debouncedLocation].filter(Boolean);
+    trackVisitorEvent('search', `Recherche : ${parts.join(' · ')}`, undefined, { q: debouncedQuery, location: debouncedLocation, journey: journeyParam });
+  }, [debouncedQuery, debouncedLocation, journeyParam]);
 
   const getIcon = (title: string) => {
     if (title.toLowerCase().includes('peinture')) return <Paintbrush size={16} className="text-orange" />;

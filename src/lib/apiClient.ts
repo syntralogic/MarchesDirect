@@ -2,7 +2,7 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 // Base URL for the marchesdirect-backend Express API. Configure via
 // VITE_API_URL in .env (see .env.example) — falls back to local dev.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const ACCESS_TOKEN_KEY = 'md_access_token';
 const REFRESH_TOKEN_KEY = 'md_refresh_token';
@@ -190,7 +190,7 @@ export const opportunitiesApi = {
     return data;
   },
   requestAccess: async (id: string, payload: {
-    email: string; phone?: string; firstName?: string; lastName?: string; companyName?: string;
+    email: string; phone?: string; firstName?: string; lastName?: string; companyName?: string; sessionId?: string;
   }): Promise<{ level: string; leadId: string }> => {
     const { data } = await apiClient.post(`/opportunities/${id}/request-access`, payload);
     return data;
@@ -422,6 +422,7 @@ export const crmApi = {
     locationRegion?: string;
     leadSource?: string;
     message?: string;
+    sessionId?: string;
   }) => {
     const { data } = await axios.post(`${API_URL}/api/crm/leads`, payload);
     return data;
@@ -663,6 +664,10 @@ export const adminApi = {
     const { data } = await apiClient.put(`/admin/opportunity-leads/${leadId}/grant-access`);
     return data;
   },
+  leadJourney: async (leadId: string): Promise<{ events: ApiVisitorEvent[] }> => {
+    const { data } = await apiClient.get(`/admin/leads/${leadId}/journey`);
+    return data;
+  },
   brands: async (): Promise<ApiAdminBrand[]> => {
     const { data } = await apiClient.get('/admin/brands');
     return data;
@@ -723,6 +728,13 @@ export type ApiAdminSubscription = {
   price: number;
   currency: string;
   billing_period: string;
+};
+
+export type ApiVisitorEvent = {
+  event_type: 'search' | 'view_opportunity' | 'view_seo_page';
+  event_label: string | null;
+  event_data: Record<string, unknown> | null;
+  created_at: string;
 };
 
 export type ApiAdminOpportunityLead = {

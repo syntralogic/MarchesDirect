@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Mail, Phone, Building2, ExternalLink, ShieldCheck, Clock } from 'lucide-react';
+import { Loader2, Mail, Phone, Building2, ExternalLink, ShieldCheck, Clock, History, Search, FileSearch, Globe } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
-import { adminApi, getApiErrorMessage, type ApiAdminOpportunityLead } from '@/lib/apiClient';
+import { adminApi, getApiErrorMessage, type ApiAdminOpportunityLead, type ApiVisitorEvent } from '@/lib/apiClient';
 
 const STATUS_OPTIONS = ['pending', 'converted', 'lost'] as const;
 
@@ -12,6 +12,12 @@ const journeyLabel: Record<string, string> = {
   subcontracting: 'Sous-traitance',
 };
 
+const EVENT_ICON: Record<string, typeof Search> = {
+  search: Search,
+  view_opportunity: FileSearch,
+  view_seo_page: Globe,
+};
+
 export default function AdminLeads() {
   const { t } = useLang();
   const [status, setStatus] = useState('all');
@@ -19,6 +25,32 @@ export default function AdminLeads() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [grantingId, setGrantingId] = useState<string | null>(null);
+
+  // Journey panel: which lead is expanded, its events once fetched, and a
+  // per-lead loading flag. Fetched on demand (not for every row up front) -
+  // a staff member only needs this right before calling someone back.
+  const [openJourneyId, setOpenJourneyId] = useState<string | null>(null);
+  const [journeys, setJourneys] = useState<Record<string, ApiVisitorEvent[]>>({});
+  const [journeyLoading, setJourneyLoading] = useState<string | null>(null);
+
+  const toggleJourney = async (leadId: string) => {
+    if (openJourneyId === leadId) {
+      setOpenJourneyId(null);
+      return;
+    }
+    setOpenJourneyId(leadId);
+    if (journeys[leadId]) return;
+    setJourneyLoading(leadId);
+    try {
+      const { events } = await adminApi.leadJourney(leadId);
+      setJourneys(prev => ({ ...prev, [leadId]: events }));
+    } catch (err) {
+      showToast(getApiErrorMessage(err, "Impossible de charger le parcours."), 'error');
+      setOpenJourneyId(null);
+    } finally {
+      setJourneyLoading(null);
+    }
+  };
 
   const load = () => {
     setLoading(true);
@@ -99,15 +131,49 @@ export default function AdminLeads() {
                       <span className="flex items-center gap-1"><Clock size={12} /> {new Date(lead.created_at).toLocaleDateString('fr-FR')}</span>
                     </div>
                   </div>
-                  <button
-                    disabled={isLevel3 || grantingId === lead.id}
-                    onClick={() => handleGrant(lead)}
-                    className="shrink-0 flex items-center justify-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors disabled:opacity-40"
-                  >
-                    {grantingId === lead.id ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-                    {isLevel3 ? 'Accès déjà accordé' : "Accorder l'accès complet"}
-                  </button>
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <button
+                      onClick={() => toggleJourney(lead.id)}
+                      className="flex items-center justify-center gap-1.5 border border-[#17334D] text-[#B9BBC8] font-bold text-xs px-4 py-2.5 rounded-lg hover:border-orange/50 hover:text-white transition-colors"
+                    >
+                      {journeyLoading === lead.id ? <Loader2 size={14} className="animate-spin" /> : <History size={14} />}
+                      {openJourneyId === lead.id ? 'Masquer le parcours' : 'Voir le parcours'}
+                    </button>
+                    <button
+                      disabled={isLevel3 || grantingId === lead.id}
+                      onClick={() => handleGrant(lead)}
+                      className="flex items-center justify-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors disabled:opacity-40"
+                    >
+                      {grantingId === lead.id ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                      {isLevel3 ? 'Accès déjà accordé' : "Accorder l'accès complet"}
+                    </button>
+                  </div>
                 </div>
+
+                {openJourneyId === lead.id && (
+                  <div className="mt-4 pt-4 border-t border-[#17334D]">
+                    {journeyLoading === lead.id ? (
+                      <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Loader2 size={13} className="animate-spin" /> Chargement du parcours...</div>
+                    ) : !journeys[lead.id] || journeys[lead.id].length === 0 ? (
+                      <p className="text-xs text-[#B9BBC8]">Aucun parcours enregistré pour ce contact (session non identifiée ou aucune activité suivie avant la demande).</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {journeys[lead.id].map((ev, i) => {
+                          const Icon = EVENT_ICON[ev.event_type] || Search;
+                          return (
+                            <div key={i} className="flex items-start gap-2.5 text-xs">
+                              <Icon size={13} className="text-orange shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-white">{ev.event_label || ev.event_type}</span>
+                                <span className="text-[#5B6B80] ml-2">{new Date(ev.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

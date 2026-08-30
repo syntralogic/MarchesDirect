@@ -7,6 +7,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { SaveButton } from '@/components/SaveButton';
 import PageMeta from '@/components/common/PageMeta';
+import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, getApiErrorMessage,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse,
@@ -84,7 +85,10 @@ export default function OpportunityDetailPage() {
     setLoading(true);
     setError(null);
     opportunitiesApi.getById(id)
-      .then(setOpportunity)
+      .then(o => {
+        setOpportunity(o);
+        trackVisitorEvent('view_opportunity', o.title, undefined, { opportunityId: id, journey: o.journey });
+      })
       .catch(err => setError(getApiErrorMessage(err, "Impossible de charger cette opportunité.")))
       .finally(() => setLoading(false));
   }, [id]);
@@ -156,7 +160,7 @@ export default function OpportunityDetailPage() {
     setLeadSubmitting(true);
     setLeadError(null);
     try {
-      const result = await opportunitiesApi.requestAccess(id, leadForm);
+      const result = await opportunitiesApi.requestAccess(id, { ...leadForm, sessionId: getSessionId() });
       setAccess({ level: result.level as ApiOpportunityAccess['level'] });
     } catch (err) {
       setLeadError(getApiErrorMessage(err, "L'envoi a échoué. Vérifiez votre email et réessayez."));
