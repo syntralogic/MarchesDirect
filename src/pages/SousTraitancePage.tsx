@@ -6,6 +6,7 @@ import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { SaveButton } from '@/components/SaveButton';
+import PageMeta from '@/components/common/PageMeta';
 
 // label -> raw INSEE department code, since opportunities store the bare
 // code (e.g. "92") in `department`, not this display label.
@@ -81,6 +82,7 @@ export default function SousTraitancePage() {
 
   return (
     <div className="page-fade-in max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 pb-24">
+      <PageMeta title="Sous-traitance BTP — Marchés Direct" description="Trouvez une mission de sous-traitance ou publiez un besoin de renfort partout en France. Mettez-vous en relation directement avec des entreprises du bâtiment." />
       
       {/* MOBILE FILTER MODAL (AT THE TOP) */}
       {filtersOpen && (

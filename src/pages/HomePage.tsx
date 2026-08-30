@@ -8,6 +8,7 @@ import {
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid } from 'd3-geo';
 import { useLang } from '@/contexts/LangContext';
+import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { sectors, allSectors } from '@/data/mockData';
@@ -660,6 +661,10 @@ export default function HomePage() {
 
   return (
     <div className="page-fade-in">
+      <PageMeta
+        title="Marchés Direct — Marchés publics, appels d'offres privés et sous-traitance"
+        description="Trouvez et candidatez aux marchés publics, appels d'offres privés et missions de sous-traitance partout en France. Analyse IA du DCE, scoring de compatibilité et génération de dossier."
+      />
       <HeroSection onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
       <WhoWeAre />
       <GeographicSection />
