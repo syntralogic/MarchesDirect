@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useBrand } from '@/hooks/use-brand';
@@ -52,7 +53,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative w-full max-w-[calc(100%-0px)] md:max-w-md bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10">
@@ -136,6 +137,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useBrand } from '@/hooks/use-brand';
@@ -75,7 +76,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
       <div className="relative w-full max-w-[calc(100%-0px)] md:max-w-lg bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10 max-h-[90dvh] overflow-y-auto">
@@ -268,6 +269,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
