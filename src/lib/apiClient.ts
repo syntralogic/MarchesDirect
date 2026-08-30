@@ -228,6 +228,51 @@ export const favoritesApi = {
   },
 };
 
+// Self-published subcontracting needs ("Je cherche un sous-traitant" buyer
+// flow) - backed by /api/subcontract-needs.
+export type ApiSubcontractNeed = {
+  id: string;
+  trade: string;
+  lot: string | null;
+  description: string | null;
+  location_city: string | null;
+  location_region: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  team_size: string | null;
+  start_date: string | null;
+  duration: string | null;
+  qualifications: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  status: string;
+  published_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+};
+
+export const subcontractNeedsApi = {
+  list: async (params: { trade?: string; city?: string; region?: string; page?: number; limit?: number } = {}) => {
+    const { data } = await apiClient.get<{ results: ApiSubcontractNeed[]; pagination: ApiPagination }>('/subcontract-needs', { params });
+    return data;
+  },
+  mine: async () => {
+    const { data } = await apiClient.get<{ results: ApiSubcontractNeed[] }>('/subcontract-needs/mine');
+    return data.results;
+  },
+  create: async (need: {
+    trade: string; lot?: string; description?: string; locationCity?: string; locationRegion?: string;
+    budgetMin?: number; budgetMax?: number; teamSize?: string; startDate?: string; duration?: string;
+    qualifications?: string; contactEmail?: string; contactPhone?: string;
+  }): Promise<ApiSubcontractNeed> => {
+    const { data } = await apiClient.post('/subcontract-needs', need);
+    return data;
+  },
+  withdraw: async (id: string) => {
+    await apiClient.delete(`/subcontract-needs/${id}`);
+  },
+};
+
 export const tradesApi = {
   list: async () => {
     const { data } = await apiClient.get('/trades');

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building, Building2, Handshake, ChevronRight, ArrowLeft, ArrowRight,
   Search, X, MapPin, CheckCircle2, SlidersHorizontal, Calendar, Target,
-  Paintbrush, Zap, Filter,
+  Paintbrush, Zap, Filter, Loader2, PartyPopper,
 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -11,6 +11,7 @@ import { cities } from '@/data/mockData';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { SaveButton } from '@/components/SaveButton';
+import { subcontractNeedsApi, getApiErrorMessage, type ApiSubcontractNeed } from '@/lib/apiClient';
 import team from '@/assets/team.jpg';
 
 type OppType = 'Marchés publics' | "Appels d'offres" | 'Sous-traitance';
@@ -67,6 +68,7 @@ export default function OpportunityJourneyPage() {
   // Otherwise show step 1 for journey selection
   const hasTypeParam = searchParams.get('type');
   const [step, setStep] = useState<1 | 2 | 3 | 4>(hasTypeParam ? 2 : 1);
+  const [buyerNeed, setBuyerNeed] = useState<ApiSubcontractNeed | null>(null);
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
@@ -278,6 +280,10 @@ export default function OpportunityJourneyPage() {
             </div>
           )}
 
+          {types.includes('Sous-traitance') && subRole === 'cherche' ? (
+            <BuyerNeedForm onPublished={need => { setBuyerNeed(need); setStep(4); }} />
+          ) : (
+          <>
           <div className="mb-5 relative">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
               Que recherchez-vous ?
@@ -340,6 +346,8 @@ export default function OpportunityJourneyPage() {
               Continuer <ArrowRight size={14} />
             </button>
           </div>
+          </>
+          )}
         </div>
       )}
 
@@ -440,7 +448,28 @@ export default function OpportunityJourneyPage() {
       )}
 
       {/* ===== STEP 4: Résultats et filtres ===== */}
-      {step === 4 && (
+      {step === 4 && buyerNeed && (
+        <div className="page-fade-in border border-green-500/30 rounded-xl bg-[#061D32] p-5 text-center">
+          <PartyPopper size={28} className="text-green-400 mx-auto mb-3" />
+          <h1 className="text-base font-extrabold text-white mb-1.5">Votre besoin est publié !</h1>
+          <p className="text-xs text-[#B9BBC8] mb-4 leading-relaxed">
+            Les entreprises de sous-traitance correspondant au métier, à la zone et aux qualifications demandées peuvent maintenant le consulter et vous contacter.
+          </p>
+          <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 text-left mb-4">
+            <h2 className="text-sm font-bold text-white mb-1">{buyerNeed.trade}{buyerNeed.lot ? ` — ${buyerNeed.lot}` : ''}</h2>
+            {(buyerNeed.location_city || buyerNeed.location_region) && (
+              <p className="text-xs text-[#B9BBC8] flex items-center gap-1 mb-1"><MapPin size={11} /> {[buyerNeed.location_city, buyerNeed.location_region].filter(Boolean).join(', ')}</p>
+            )}
+            {(buyerNeed.budget_min || buyerNeed.budget_max) && (
+              <p className="text-xs text-[#B9BBC8]">Budget : {buyerNeed.budget_min ? `${Number(buyerNeed.budget_min).toLocaleString('fr-FR')} €` : ''}{buyerNeed.budget_min && buyerNeed.budget_max ? ' – ' : ''}{buyerNeed.budget_max ? `${Number(buyerNeed.budget_max).toLocaleString('fr-FR')} €` : ''}</p>
+            )}
+          </div>
+          <button onClick={() => { setBuyerNeed(null); setStep(1); setSubRole(null); }} className="w-full border border-[#17334D] text-[#B9BBC8] font-semibold py-2.5 rounded-lg text-xs hover:border-orange/40 transition-colors">
+            Publier un autre besoin
+          </button>
+        </div>
+      )}
+      {step === 4 && !buyerNeed && (
         <div className="page-fade-in">
           {/* Active filter pills */}
           <div className="flex flex-wrap gap-2 mb-3">
@@ -649,5 +678,129 @@ export default function OpportunityJourneyPage() {
       <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
       <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
+  );
+}
+
+// "Je cherche un sous-traitant" - a company posting its own need instead of
+// browsing existing opportunities. Requires an account (tied to the
+// poster's company on the backend), so anonymous visitors are prompted to
+// sign in/up rather than shown the form.
+function BuyerNeedForm({ onPublished }: { onPublished: (need: ApiSubcontractNeed) => void }) {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    trade: '', lot: '', description: '', locationCity: '', budgetMin: '', budgetMax: '',
+    teamSize: '', startDate: '', duration: '', qualifications: '', contactEmail: '', contactPhone: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isLoggedIn = !!localStorage.getItem('md_access_token');
+
+  const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const need = await subcontractNeedsApi.create({
+        trade: form.trade.trim(),
+        lot: form.lot.trim() || undefined,
+        description: form.description.trim() || undefined,
+        locationCity: form.locationCity.trim() || undefined,
+        budgetMin: form.budgetMin ? Number(form.budgetMin) : undefined,
+        budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
+        teamSize: form.teamSize.trim() || undefined,
+        startDate: form.startDate || undefined,
+        duration: form.duration.trim() || undefined,
+        qualifications: form.qualifications.trim() || undefined,
+        contactEmail: form.contactEmail.trim() || undefined,
+        contactPhone: form.contactPhone.trim() || undefined,
+      });
+      onPublished(need);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Impossible de publier votre besoin pour le moment."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-5 text-center mb-2">
+        <Handshake size={24} className="text-orange mx-auto mb-2" />
+        <h2 className="text-sm font-bold text-white mb-1">Créez votre profil pour publier un besoin</h2>
+        <p className="text-xs text-[#B9BBC8] mb-4">La publication d'un besoin de sous-traitance est réservée aux entreprises inscrites.</p>
+        <div className="flex gap-2">
+          <button onClick={() => navigate('/connexion')} className="flex-1 border border-[#17334D] text-white font-semibold py-2.5 rounded-lg text-xs hover:border-orange/40 transition-colors">Se connecter</button>
+          <button onClick={() => navigate('/inscription')} className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">Créer mon profil</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3.5 mb-2">
+      <div>
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Métier recherché *</label>
+        <input required value={form.trade} onChange={update('trade')} placeholder="Ex : Plomberie" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+      </div>
+      <div>
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Lot / intitulé de la mission</label>
+        <input value={form.lot} onChange={update('lot')} placeholder="Ex : Plomberie sanitaire - 24 logements" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+      </div>
+      <div>
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Description</label>
+        <textarea value={form.description} onChange={update('description')} rows={3} placeholder="Décrivez le chantier, les travaux attendus..." className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange resize-none" />
+      </div>
+      <div>
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Ville</label>
+        <input value={form.locationCity} onChange={update('locationCity')} placeholder="Ex : Bordeaux" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Budget min (€)</label>
+          <input type="number" min="0" value={form.budgetMin} onChange={update('budgetMin')} placeholder="15000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Budget max (€)</label>
+          <input type="number" min="0" value={form.budgetMax} onChange={update('budgetMax')} placeholder="25000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Effectif recherché</label>
+          <input value={form.teamSize} onChange={update('teamSize')} placeholder="2 à 3" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Démarrage souhaité</label>
+          <input type="date" value={form.startDate} onChange={update('startDate')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange" />
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Durée estimée</label>
+        <input value={form.duration} onChange={update('duration')} placeholder="Ex : 6 semaines" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+      </div>
+      <div>
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Qualifications demandées</label>
+        <input value={form.qualifications} onChange={update('qualifications')} placeholder="Ex : Qualifelec, RGE..." className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">E-mail de contact</label>
+          <input type="email" value={form.contactEmail} onChange={update('contactEmail')} placeholder="vous@entreprise.fr" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Téléphone</label>
+          <input type="tel" value={form.contactPhone} onChange={update('contactPhone')} placeholder="06 00 00 00 00" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+        </div>
+      </div>
+
+      {error && <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{error}</p>}
+
+      <button type="submit" disabled={submitting || !form.trade.trim()} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-lg text-sm hover:bg-orange/90 transition-colors disabled:opacity-40">
+        {submitting && <Loader2 size={16} className="animate-spin" />} Publier mon besoin
+      </button>
+    </form>
   );
 }
