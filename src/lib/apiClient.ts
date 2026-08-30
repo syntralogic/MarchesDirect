@@ -79,12 +79,19 @@ apiClient.interceptors.response.use(
 
 export interface ApiError {
   error: string;
+  message?: string;
   details?: unknown;
 }
 
 export function getApiErrorMessage(err: unknown, fallback = 'Une erreur est survenue.'): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as ApiError | undefined;
+    // Some backend error responses (e.g. requireActiveSubscription) send a
+    // machine-readable `error` code alongside a human-readable `message` -
+    // prefer the message so the person sees "Cette action nécessite un
+    // abonnement actif." instead of the literal code
+    // "active_subscription_required".
+    if (data?.message) return data.message;
     if (data?.error) return data.error;
   }
   return fallback;
