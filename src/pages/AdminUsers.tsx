@@ -4,11 +4,6 @@ import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
 import { adminApi, getApiErrorMessage, type ApiAdminCompany } from '@/lib/apiClient';
 
-// Same story as AdminTenders: there's no "create a company account" admin
-// endpoint (accounts are created via /auth/register, not by an admin), so
-// the old Add/Edit-user modal here only ever mutated local state and is
-// gone. What's real: search, filter by status, and suspend/reactivate via
-// PATCH /admin/companies/:id/status.
 const STATUS_OPTIONS = ['active', 'suspended', 'pending'] as const;
 
 export default function AdminUsers() {
@@ -26,7 +21,7 @@ export default function AdminUsers() {
     setError(null);
     adminApi.companies({ q: query || undefined, status: status === 'all' ? undefined : status, limit: 50 })
       .then(data => setCompanies(data.results))
-      .catch(err => setError(getApiErrorMessage(err, 'Impossible de charger les comptes.')))
+      .catch(err => setError(getApiErrorMessage(err, t('adminLoadError') || 'Impossible de charger les comptes.')))
       .finally(() => setLoading(false));
   };
 
@@ -40,9 +35,9 @@ export default function AdminUsers() {
     try {
       await adminApi.updateCompanyStatus(company.id, newStatus);
       setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, status: newStatus } : c));
-      showToast(newStatus === 'active' ? 'Compte réactivé' : 'Compte suspendu');
+      showToast(newStatus === 'active' ? t('adminUsersActivated') : t('adminUsersSuspended'));
     } catch (err) {
-      showToast(getApiErrorMessage(err, 'Échec de la mise à jour.'), 'error');
+      showToast(getApiErrorMessage(err, t('adminUsersStatusUpdateFailed')), 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -86,20 +81,19 @@ export default function AdminUsers() {
       </form>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> Chargement...</div>
+        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> {t('adminLoading') || 'Chargement...'}</div>
       ) : error ? (
         <div className="p-6 text-center text-sm text-red-400 bg-[#061D32] border border-[#17334D] rounded-xl">{error}</div>
       ) : (
         <>
-          {/* DESKTOP TABLE VIEW */}
           <div className="hidden md:block bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-[#17334D]">
-                    <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminName')}</th>
+                    <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminUsersMobileName')}</th>
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminCompany')}</th>
-                    <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminEmail')}</th>
+                    <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminUsersMobileEmail')}</th>
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminPlan')}</th>
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminStatus')}</th>
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase"></th>
@@ -136,7 +130,7 @@ export default function AdminUsers() {
                               className="flex items-center gap-2 text-sm text-yellow-400 bg-[#061D32] border border-yellow-400/20 px-3 py-2 rounded-lg hover:border-yellow-400/50 transition-colors disabled:opacity-40"
                             >
                               {updatingId === c.id ? <Loader2 size={14} className="animate-spin" /> : c.status === 'active' ? <Ban size={14} /> : <CheckCircle2 size={14} />}
-                              {c.status === 'active' ? t('adminSuspend') : t('adminActivate')}
+                              {c.status === 'active' ? t('adminUsersSuspend') : t('adminUsersActivate')}
                             </button>
                           </td>
                         </tr>
@@ -149,7 +143,6 @@ export default function AdminUsers() {
             {companies.length === 0 && <div className="p-10 text-center"><p className="text-sm text-[#B9BBC8]">{t('adminNoResults')}</p></div>}
           </div>
 
-          {/* MOBILE CARD VIEW */}
           <div className="md:hidden space-y-3">
             {companies.map(c => (
               <div key={c.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-4">
@@ -169,11 +162,11 @@ export default function AdminUsers() {
                 </div>
                 {expandedId === c.id && (
                   <div className="mt-4 pt-4 border-t border-[#17334D]">
-                    <p className="text-[10px] text-[#B9BBC8] mb-0.5">{t('adminEmail')}</p>
+                    <p className="text-[10px] text-[#B9BBC8] mb-0.5">{t('adminUsersMobileEmail')}</p>
                     <p className="text-xs font-semibold text-white break-all mb-3">{c.email}</p>
                     <button disabled={updatingId === c.id} onClick={() => handleToggleStatus(c)} className="flex items-center gap-1.5 text-xs text-yellow-400 bg-[#031B30] border border-yellow-400/20 px-3 py-2 rounded-lg disabled:opacity-40">
                       {updatingId === c.id ? <Loader2 size={14} className="animate-spin" /> : c.status === 'active' ? <Ban size={14} /> : <CheckCircle2 size={14} />}
-                      {c.status === 'active' ? t('adminSuspend') : t('adminActivate')}
+                      {c.status === 'active' ? t('adminUsersSuspend') : t('adminUsersActivate')}
                     </button>
                   </div>
                 )}

@@ -4,13 +4,6 @@ import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
 import { adminApi, getApiErrorMessage, type ApiAdminOpportunity } from '@/lib/apiClient';
 
-// There is no "create/edit a tender" endpoint on the backend, by design:
-// opportunities are collected automatically from BOAMP/PLACE/TED, not
-// manually authored (see backend admin.ts comment on PATCH .../status). The
-// only real admin action here is hiding a bad/duplicate/expired listing or
-// reactivating one - so the old Add/Edit modal (which only ever mutated
-// local React state) is gone; this is a status toggle against
-// PATCH /admin/opportunities/:id/status instead.
 const STATUS_OPTIONS = ['active', 'inactive', 'expired', 'cancelled'] as const;
 
 export default function AdminTenders() {
@@ -28,7 +21,7 @@ export default function AdminTenders() {
     setError(null);
     adminApi.opportunities({ q: query || undefined, status: status === 'all' ? undefined : status, limit: 50 })
       .then(data => setOpportunities(data.results))
-      .catch(err => setError(getApiErrorMessage(err, 'Impossible de charger les opportunités.')))
+      .catch(err => setError(getApiErrorMessage(err, t('adminLoadError') || 'Impossible de charger les opportunités.')))
       .finally(() => setLoading(false));
   };
 
@@ -41,9 +34,9 @@ export default function AdminTenders() {
     try {
       await adminApi.updateOpportunityStatus(opp.id, newStatus);
       setOpportunities(prev => prev.map(o => o.id === opp.id ? { ...o, status: newStatus } : o));
-      showToast(`Statut mis à jour : ${newStatus}`);
+      showToast(t('adminTendersStatusUpdate', { status: newStatus }) || `Statut mis à jour : ${newStatus}`);
     } catch (err) {
-      showToast(getApiErrorMessage(err, 'Échec de la mise à jour.'), 'error');
+      showToast(getApiErrorMessage(err, t('adminTendersStatusUpdateFailed')), 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -85,19 +78,18 @@ export default function AdminTenders() {
       </form>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> Chargement...</div>
+        <div className="flex items-center justify-center py-16 text-[#B9BBC8]"><Loader2 size={20} className="animate-spin mr-2" /> {t('adminLoading') || 'Chargement...'}</div>
       ) : error ? (
         <div className="p-6 text-center text-sm text-red-400 bg-[#061D32] border border-[#17334D] rounded-xl">{error}</div>
       ) : (
         <>
-          {/* DESKTOP TABLE VIEW */}
           <div className="hidden md:block bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-[#17334D]">
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminTitle')}</th>
-                    <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">Ville</th>
+                    <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminTendersCity')}</th>
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminBudget')}</th>
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminDeadline')}</th>
                     <th className="px-4 py-3 text-xs font-bold text-[#B9BBC8] uppercase">{t('adminStatus')}</th>
@@ -126,7 +118,7 @@ export default function AdminTenders() {
                         <tr className="bg-[#031B30]">
                           <td colSpan={6} className="px-4 py-4">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs text-[#B9BBC8] mr-1">Changer le statut :</span>
+                              <span className="text-xs text-[#B9BBC8] mr-1">{t('adminTendersChangeStatus')}</span>
                               {STATUS_OPTIONS.map(s => (
                                 <button
                                   key={s}
@@ -152,7 +144,6 @@ export default function AdminTenders() {
             )}
           </div>
 
-          {/* MOBILE CARD VIEW */}
           <div className="md:hidden space-y-3">
             {opportunities.map(item => (
               <div key={item.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-4">
@@ -169,8 +160,8 @@ export default function AdminTenders() {
                 {expandedId === item.id && (
                   <div className="mt-4 pt-4 border-t border-[#17334D]">
                     <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div><p className="text-[10px] text-[#B9BBC8] mb-0.5">{t('adminBudget')}</p><p className="text-xs font-semibold text-white">{formatBudget(item)}</p></div>
-                      <div><p className="text-[10px] text-[#B9BBC8] mb-0.5">{t('adminDeadline')}</p><p className="text-xs font-semibold text-white">{formatDeadline(item)}</p></div>
+                      <div><p className="text-[10px] text-[#B9BBC8] mb-0.5">{t('adminTendersMobileBudget')}</p><p className="text-xs font-semibold text-white">{formatBudget(item)}</p></div>
+                      <div><p className="text-[10px] text-[#B9BBC8] mb-0.5">{t('adminTendersMobileDeadline')}</p><p className="text-xs font-semibold text-white">{formatDeadline(item)}</p></div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {STATUS_OPTIONS.map(s => (

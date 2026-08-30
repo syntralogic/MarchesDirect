@@ -3,8 +3,10 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, tokenStorage } from '@/lib/apiClient';
+import { useLang } from '@/contexts/LangContext';
 
 export default function LoginPage() {
+  const { t } = useLang();
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation() as { state?: { from?: string } };
@@ -35,9 +37,9 @@ export default function LoginPage() {
   return (
     <div className="page-fade-in max-w-sm mx-auto px-4 py-10 md:py-16 min-h-screen">
       <div className="mb-6">
-        <span className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1 block">Connexion</span>
-        <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">Accedez a votre espace.</h1>
-        <p className="text-[#B9BBC8] text-xs leading-snug">Retrouvez vos opportunites et le suivi de vos dossiers.</p>
+        <span className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1 block">{t('loginTitle') || 'Connexion'}</span>
+        <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">{t('loginTitle')}</h1>
+        <p className="text-[#B9BBC8] text-xs leading-snug">{t('loginSub')}</p>
       </div>
 
       {mfa ? (
@@ -48,7 +50,7 @@ export default function LoginPage() {
             <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
           )}
           <div>
-            <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Email</label>
+            <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('loginEmail')}</label>
             <div className="relative">
               <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
               <input
@@ -62,7 +64,7 @@ export default function LoginPage() {
             </div>
           </div>
           <div>
-            <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Mot de passe</label>
+            <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('loginPassword')}</label>
             <div className="relative">
               <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
               <input
@@ -80,19 +82,20 @@ export default function LoginPage() {
             disabled={submitting}
             className="w-full flex items-center justify-center gap-2 bg-orange text-white font-semibold text-sm py-2.5 rounded-lg disabled:opacity-50"
           >
-            <LogIn size={14} /> {submitting ? 'Connexion...' : 'Se connecter'}
+            <LogIn size={14} /> {submitting ? t('loginConnecting') : t('loginButton')}
           </button>
         </form>
       )}
 
       <p className="text-[11px] text-[#B9BBC8] text-center mt-5">
-        Pas encore de compte ? <Link to="/inscription" className="text-orange font-semibold hover:underline">Creer un compte</Link>
+        {t('loginNoAccount')} <Link to="/inscription" className="text-orange font-semibold hover:underline">{t('loginCreateAccount')}</Link>
       </p>
     </div>
   );
 }
 
 function MfaStep({ mfaToken, userId, onDone }: { mfaToken: string; userId: string; onDone: () => void }) {
+  const { t } = useLang();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -106,18 +109,17 @@ function MfaStep({ mfaToken, userId, onDone }: { mfaToken: string; userId: strin
       tokenStorage.setTokens(data.accessToken, data.refreshToken);
       onDone();
     } catch {
-      setError('Code invalide.');
+      setError(t('loginMfaInvalid') || 'Code invalide.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // mfaToken is only used to identify the pending session server-side via userId; kept for clarity.
   void mfaToken;
 
   return (
     <form onSubmit={handleVerify} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
-      <p className="text-xs text-[#B9BBC8]">Entrez le code de verification a deux facteurs.</p>
+      <p className="text-xs text-[#B9BBC8]">{t('loginMfaTitle')}</p>
       {error && <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>}
       <input
         type="text"
@@ -129,7 +131,7 @@ function MfaStep({ mfaToken, userId, onDone }: { mfaToken: string; userId: strin
         maxLength={6}
       />
       <button type="submit" disabled={submitting} className="w-full bg-orange text-white font-semibold text-sm py-2.5 rounded-lg disabled:opacity-50">
-        {submitting ? 'Verification...' : 'Verifier'}
+        {submitting ? t('loginVerifying') : t('loginMfaVerify')}
       </button>
     </form>
   );
