@@ -94,7 +94,13 @@ export default function OpportunityJourneyPage() {
   const [amountFilter, setAmountFilter] = useState('Tous');
 
   const debouncedQuery = useDebounce(query, 350);
-  const cityForApi = pickedCity.split(' — ')[0].split(',')[0].trim();
+  // "Département entier" / "Région entière" / "France entière" are
+  // whole-area picks, not literal city names - sending them straight
+  // through as ?city= silently matched zero real opportunities (a real
+  // bug caught while testing: picking "France entière" was returning
+  // 0 results every time because no city is actually named that way).
+  const WHOLE_AREA_PICKS = ['Département entier', 'Région entière', 'France entière'];
+  const cityForApi = WHOLE_AREA_PICKS.includes(pickedCity) ? '' : pickedCity.split(' — ')[0].split(',')[0].trim();
 
   const { opportunities, loading, error } = useOpportunities({
     journey: JOURNEY_CODE_MAP[types[0]],
@@ -500,7 +506,7 @@ export default function OpportunityJourneyPage() {
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
                       <p className="text-[8px] text-[#B9BBC8] mb-0.5">Échéance</p>
-                      <p className="text-[11px] font-semibold text-white">{o.deadline || '-'}</p>
+                      <p className="text-[11px] font-semibold text-white">{o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : '-'}</p>
                     </div>
                     <div>
                       <p className="text-[8px] text-[#B9BBC8] mb-0.5">Montant</p>
