@@ -4,6 +4,7 @@ import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
+import { getSessionId } from '@/lib/visitorTracking';
 
 interface CallbackModalProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
         companyName: form.entreprise || undefined,
         leadSource: 'callback_modal',
         message: form.moment ? `Créneau souhaité : ${MOMENT_LABELS[form.moment] || form.moment}` : undefined,
+        sessionId: getSessionId(),
       });
       setSubmitted(true);
     } catch (err) {

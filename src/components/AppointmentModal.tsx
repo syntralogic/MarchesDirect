@@ -4,6 +4,7 @@ import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail
 import { useLang } from '@/contexts/LangContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
+import { getSessionId } from '@/lib/visitorTracking';
 
 interface AppointmentModalProps {
   open: boolean;
@@ -67,6 +68,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
         companyName: form.entreprise || undefined,
         leadSource: 'appointment_modal',
         message: `Motif : ${motif}\nCréneau souhaité : ${selectedDate} à ${selectedSlot}`,
+        sessionId: getSessionId(),
       });
       setStep(5);
     } catch (err) {

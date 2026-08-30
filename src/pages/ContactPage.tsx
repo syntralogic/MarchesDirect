@@ -5,6 +5,7 @@ import { CallbackModal } from '@/components/CallbackModal';
 import { useLang } from '@/contexts/LangContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
+import { getSessionId } from '@/lib/visitorTracking';
 
 type ContactOption = 'rdv' | 'rappel' | 'message';
 
@@ -57,6 +58,7 @@ export default function ContactPage() {
         companyName: entreprise || undefined,
         leadSource: 'contact_form',
         message: `Sujet : ${subject}\n\n${message}`,
+        sessionId: getSessionId(),
       });
       setSubmitted(true);
     } catch (err) {
