@@ -668,6 +668,17 @@ export const adminApi = {
     const { data } = await apiClient.get(`/admin/leads/${leadId}/journey`);
     return data;
   },
+  // Plain contact/appointment/callback leads (opportunity_id IS NULL on the
+  // backend) - distinct from opportunityLeads() above, which is the
+  // graduated-access review queue for opportunity fiches specifically.
+  contactLeads: async (params: { status?: string; lead_source?: string; page?: number; limit?: number }) => {
+    const { data } = await apiClient.get<{ results: ApiCrmLead[]; pagination: ApiPagination }>('/crm/leads', { params });
+    return data;
+  },
+  updateContactLeadStatus: async (id: string, status: string) => {
+    const { data } = await apiClient.put(`/crm/leads/${id}/status`, { status });
+    return data;
+  },
   brands: async (): Promise<ApiAdminBrand[]> => {
     const { data } = await apiClient.get('/admin/brands');
     return data;
@@ -734,6 +745,22 @@ export type ApiVisitorEvent = {
   event_type: 'search' | 'view_opportunity' | 'view_seo_page';
   event_label: string | null;
   event_data: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type ApiCrmLead = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  company_name: string | null;
+  industry_trade: string | null;
+  location_city: string | null;
+  location_region: string | null;
+  lead_source: string | null;
+  message: string | null;
+  status: string;
   created_at: string;
 };
 
