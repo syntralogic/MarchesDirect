@@ -152,6 +152,21 @@ export type OpportunitySearchParams = {
   limit?: number;
 };
 
+export type ApiOpportunityAccess = {
+  level: 'level1' | 'level2' | 'level3' | 'full';
+};
+
+export type ApiMatchScore = {
+  score: number;
+  scoreTitle: string;
+  scoreNote: string;
+  positiveFactors: { label: string; points: number }[];
+  warning: string | null;
+  criteria: { label: string; weight: number }[];
+  eligibility: { label: string; note: string; required: boolean; met: boolean | null }[];
+  whyRespond: string;
+};
+
 export const opportunitiesApi = {
   search: async (params: OpportunitySearchParams) => {
     const { data } = await apiClient.get<{ results: ApiOpportunity[]; pagination: ApiPagination }>(
@@ -162,6 +177,26 @@ export const opportunitiesApi = {
   },
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
+    return data;
+  },
+  // Graduated access for private tender / sous-traitance fiches: level1
+  // (anonymous/no lead yet) -> teaser only, level2 (coordinates left via
+  // requestAccess) -> full read, level3 (staff-reviewed) -> documents too.
+  // Public-market listings always come back 'full'. Unauthenticated callers
+  // are matched by the `email` query param (no account needed yet); logged-in
+  // callers are matched by their token automatically.
+  getAccess: async (id: string, email?: string): Promise<ApiOpportunityAccess> => {
+    const { data } = await apiClient.get(`/opportunities/${id}/access`, { params: email ? { email } : undefined });
+    return data;
+  },
+  requestAccess: async (id: string, payload: {
+    email: string; phone?: string; firstName?: string; lastName?: string; companyName?: string;
+  }): Promise<{ level: string; leadId: string }> => {
+    const { data } = await apiClient.post(`/opportunities/${id}/request-access`, payload);
+    return data;
+  },
+  getMatchScore: async (id: string): Promise<ApiMatchScore> => {
+    const { data } = await apiClient.get(`/opportunities/${id}/match-score`);
     return data;
   },
   statsByRegion: async (): Promise<{ regions: { region: string; count: number }[] }> => {
