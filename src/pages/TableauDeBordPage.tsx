@@ -78,7 +78,7 @@ export default function TableauDeBordPage() {
         const { matches: m } = await dashboardApi.matches();
         if (!cancelled) setMatches(m);
       } catch (err) {
-        if (!cancelled) setMatchesError(getApiErrorMessage(err, 'Impossible de charger vos opportunités recommandées.'));
+        if (!cancelled) setMatchesError(getApiErrorMessage(err, t('dashMatchesError') || 'Impossible de charger vos opportunités recommandées.'));
       } finally {
         if (!cancelled) setMatchesLoading(false);
       }
@@ -137,8 +137,8 @@ export default function TableauDeBordPage() {
             {initial}
           </div>
           <div>
-            <h1 className="text-lg font-extrabold text-white">Bonjour{firstName ? ` ${firstName}` : ''}</h1>
-            <p className="text-xs text-[#B9BBC8]">Voici vos opportunités et vos prochaines actions.</p>
+            <h1 className="text-lg font-extrabold text-white">{t('dashWelcome')}{firstName ? ` ${firstName}` : ''}</h1>
+            <p className="text-xs text-[#B9BBC8]">{t('dashOverview')}</p>
           </div>
         </div>
       ) : (
@@ -147,7 +147,7 @@ export default function TableauDeBordPage() {
           onClick={() => setSection('overview')}
           className="flex items-center gap-1.5 text-xs font-semibold text-[#B9BBC8] hover:text-white transition-colors mb-4"
         >
-          <ArrowLeft size={14} /> Retour au tableau de bord
+          <ArrowLeft size={14} /> {t('dashBackToDashboard') || 'Retour au tableau de bord'}
         </button>
       )}
 
@@ -164,19 +164,19 @@ export default function TableauDeBordPage() {
               <StatCard
                 loading={statsLoading}
                 value={summary?.activeOpportunities ?? 0}
-                label="Nouvelles opportunités"
+                label={t('dashNewOpportunities') || 'Nouvelles opportunités'}
                 onClick={() => openSection('new')}
               />
               <StatCard
                 loading={statsLoading}
                 value={savedIds.size}
-                label="Annonces enregistrées"
+                label={t('dashSaved') || 'Annonces enregistrées'}
                 onClick={() => openSection('saved')}
               />
               <StatCard
                 loading={bidsLoading}
                 value={isPaid ? dossiersInProgress : bids.length}
-                label={isPaid ? 'Dossiers en cours' : 'Demandes en cours'}
+                label={isPaid ? (t('dashDossiersInProgress') || 'Dossiers en cours') : (t('dashPendingRequests') || 'Demandes en cours')}
                 onClick={() => openSection('dossiers')}
               />
             </div>
@@ -186,11 +186,11 @@ export default function TableauDeBordPage() {
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-orange" />
-              <h2 className="text-base font-bold text-white">À ne pas manquer</h2>
+              <h2 className="text-base font-bold text-white">{t('dashDontMiss') || 'À ne pas manquer'}</h2>
             </div>
             {matches.length > 1 && (
               <button type="button" onClick={() => openSection('new')} className="text-xs font-semibold text-orange hover:underline">
-                Voir tout
+                {t('dashViewAll') || 'Voir tout'}
               </button>
             )}
           </div>
@@ -208,10 +208,10 @@ export default function TableauDeBordPage() {
           ) : !featured ? (
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center mb-6">
               <Sparkles size={24} className="text-orange mx-auto mb-2" />
-              <p className="text-sm font-semibold text-white mb-1">Aucune opportunité correspondante pour le moment.</p>
-              <p className="text-xs text-[#B9BBC8]">Complétez votre profil entreprise pour améliorer vos recommandations.</p>
+              <p className="text-sm font-semibold text-white mb-1">{t('dashNoMatches') || 'Aucune opportunité correspondante pour le moment.'}</p>
+              <p className="text-xs text-[#B9BBC8]">{t('dashCompleteProfile') || 'Complétez votre profil entreprise pour améliorer vos recommandations.'}</p>
               <Link to="/profil/dossier-entreprise" className="inline-block mt-3 text-xs font-semibold text-orange hover:underline">
-                Compléter mon profil →
+                {t('dashCompleteProfileLink') || 'Compléter mon profil →'}
               </Link>
             </div>
           ) : (
@@ -238,7 +238,7 @@ export default function TableauDeBordPage() {
                 )}
               </div>
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange">
-                Consulter cette opportunité <ArrowRight size={12} />
+                {t('dashViewOpportunity') || 'Consulter cette opportunité'} <ArrowRight size={12} />
               </span>
             </Link>
           )}
@@ -251,13 +251,13 @@ export default function TableauDeBordPage() {
                   <div className="flex items-start gap-3">
                     <ClipboardCheck size={18} className="text-orange shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white mb-1">Prochaine action : compléter le dossier</p>
+                      <p className="text-sm font-bold text-white mb-1">{t('dashNextAction') || 'Prochaine action : compléter le dossier'}</p>
                       <p className="text-xs text-[#B9BBC8] mb-3">{b.title}</p>
                       <Link
                         to={`/opportunites/${b.opportunity_id}/candidature`}
                         className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-orange/90 transition-colors"
                       >
-                        Continuer mon dossier <ArrowRight size={12} />
+                        {t('dashContinueFile') || 'Continuer mon dossier'} <ArrowRight size={12} />
                       </Link>
                     </div>
                   </div>
@@ -268,11 +268,11 @@ export default function TableauDeBordPage() {
                   <FolderCheck size={18} className="text-orange shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-white mb-1">
-                      Dossier entreprise : {statsLoading ? '…' : (summary?.validDocuments ?? 0)} pièce{(summary?.validDocuments ?? 0) > 1 ? 's' : ''} valide{(summary?.validDocuments ?? 0) > 1 ? 's' : ''}
+                      {t('dashCompanyFile') || 'Dossier entreprise'} : {statsLoading ? '…' : (summary?.validDocuments ?? 0)} {t('dashDocument') || 'pièce'}{(summary?.validDocuments ?? 0) > 1 ? 's' : ''} {t('dashValid') || 'valide'}{(summary?.validDocuments ?? 0) > 1 ? 's' : ''}
                     </p>
-                    <p className="text-xs text-[#B9BBC8] mb-3">Le mémoire réutilise vos assurances, qualifications et références pour chaque candidature.</p>
+                    <p className="text-xs text-[#B9BBC8] mb-3">{t('dashMemoReuse') || 'Le mémoire réutilise vos assurances, qualifications et références pour chaque candidature.'}</p>
                     <Link to="/profil/dossier-entreprise" className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-4 py-2 rounded-lg hover:border-orange/50 transition-colors">
-                      Gérer mes documents
+                      {t('dashManageDocuments') || 'Gérer mes documents'}
                     </Link>
                   </div>
                 </div>
@@ -283,10 +283,10 @@ export default function TableauDeBordPage() {
               <div className="flex items-start gap-3">
                 <PhoneCall size={18} className="text-orange shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-bold text-white mb-1">Votre profil est actif</p>
-                  <p className="text-xs text-[#B9BBC8] mb-3">Enregistrez les annonces qui vous intéressent. Passez à l'offre payante pour analyser les dossiers et générer vos candidatures.</p>
+                  <p className="text-sm font-bold text-white mb-1">{t('dashProfileActive') || 'Votre profil est actif'}</p>
+                  <p className="text-xs text-[#B9BBC8] mb-3">{t('dashSaveOpportunities') || 'Enregistrez les annonces qui vous intéressent. Passez à l\'offre payante pour analyser les dossiers et générer vos candidatures.'}</p>
                   <Link to="/tarifs" className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-orange/90 transition-colors">
-                    Voir les offres
+                    {t('dashViewPlans') || 'Voir les offres'}
                   </Link>
                 </div>
               </div>
@@ -295,22 +295,22 @@ export default function TableauDeBordPage() {
 
           {/* QUICK LINKS */}
           <div className="mb-3">
-            <h2 className="text-base font-bold text-white">Accès rapides</h2>
+            <h2 className="text-base font-bold text-white">{t('dashQuickLinks') || 'Accès rapides'}</h2>
           </div>
           <div className="space-y-2">
-            <QuickLink to="/recherche" icon={Search} label="Rechercher d'autres opportunités" />
-            <QuickLink to="/profil" icon={UserRound} label="Voir et compléter mon profil" />
+            <QuickLink to="/recherche" icon={Search} label={t('dashSearchOpportunities') || 'Rechercher d\'autres opportunités'} />
+            <QuickLink to="/profil" icon={UserRound} label={t('dashViewProfile') || 'Voir et compléter mon profil'} />
           </div>
         </>
       )}
 
       {section === 'new' && (
         <SectionList
-          title="Nouvelles opportunités"
-          sub="Une sélection correspondant à votre métier et votre zone."
+          title={t('dashNewOpportunities') || 'Nouvelles opportunités'}
+          sub={t('dashNewSelection') || 'Une sélection correspondant à votre métier et votre zone.'}
           loading={matchesLoading}
           empty={matches.length === 0}
-          emptyText="Aucune opportunité correspondante pour le moment."
+          emptyText={t('dashNoMatches') || 'Aucune opportunité correspondante pour le moment.'}
         >
           {matches.map(m => (
             <Link
@@ -332,11 +332,11 @@ export default function TableauDeBordPage() {
 
       {section === 'saved' && (
         <SectionList
-          title="Annonces enregistrées"
-          sub="Retrouvez ici toutes les opportunités mises de côté."
+          title={t('dashSaved') || 'Annonces enregistrées'}
+          sub={t('dashSavedSub') || 'Retrouvez ici toutes les opportunités mises de côté.'}
           loading={savedLoading}
           empty={savedList.length === 0}
-          emptyText="Aucune annonce enregistrée. Utilisez le cœur sur une fiche pour la retrouver ici."
+          emptyText={t('dashSavedEmpty') || 'Aucune annonce enregistrée. Utilisez le cœur sur une fiche pour la retrouver ici.'}
           emptyIcon={Bookmark}
         >
           {savedList.map(o => (
@@ -357,11 +357,11 @@ export default function TableauDeBordPage() {
 
       {section === 'dossiers' && (
         <SectionList
-          title={isPaid ? 'Mes dossiers' : 'Mes demandes'}
-          sub="Suivez les candidatures et réponses en préparation."
+          title={isPaid ? (t('dashMyFiles') || 'Mes dossiers') : (t('dashMyRequests') || 'Mes demandes')}
+          sub={t('dashBidsSub') || 'Suivez les candidatures et réponses en préparation.'}
           loading={bidsLoading}
           empty={bids.length === 0}
-          emptyText={isPaid ? "Aucun dossier en cours. Ouvrez une opportunité pour lancer l'analyse du DCE." : "Aucune demande en cours. Passez à l'offre payante pour candidater."}
+          emptyText={isPaid ? (t('dashNoBidsPaid') || "Aucun dossier en cours. Ouvrez une opportunité pour lancer l'analyse du DCE.") : (t('dashNoBidsFree') || "Aucune demande en cours. Passez à l'offre payante pour candidater.")}
         >
           {bids.map(b => (
             <Link
