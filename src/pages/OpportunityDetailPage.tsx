@@ -282,6 +282,35 @@ export default function OpportunityDetailPage() {
             )}
           </div>
 
+          {/* DÉTAILS DU DOSSIER — spec section 3.2/3.4: this stays visible on
+              every fiche, public or private, even before the buyer's
+              identity is unlocked (only buyer_name/contact_email are ever
+              redacted, both excluded from this list on purpose since the
+              "Donneur d'ordre" card below already owns those). */}
+          {opportunity.ai_extracted_facts && (() => {
+            const facts = opportunity.ai_extracted_facts;
+            const rows: { label: string; value: string }[] = [];
+            if (facts.contract_object?.available) rows.push({ label: t('dossierFactObject'), value: facts.contract_object.value });
+            if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: facts.procedure_type.value });
+            if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: facts.submission_deadline.value });
+            if (facts.estimated_value?.available) rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
+            if (facts.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
+            if (rows.length === 0) return null;
+            return (
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                <h2 className="text-sm font-bold text-white mb-3">{t('dossierFactsTitle')}</h2>
+                <div className="space-y-2.5">
+                  {rows.map((r, i) => (
+                    <div key={i} className="flex justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
+                      <span className="text-[#B9BBC8] shrink-0">{r.label}</span>
+                      <span className="text-white text-right">{r.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* DONNEUR D'ORDRE — the only thing ever locked. Public markets are
               always open (legal transparency obligation); private tender /
               sous-traitance only reveals the buyer's name once a callback
