@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
-  CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Crown, Gauge, Landmark, Briefcase, Handshake, Send,
+  CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Crown, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { SaveButton } from '@/components/SaveButton';
@@ -36,6 +36,10 @@ const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = 
 
 type Tab = 'resume' | 'score' | 'dossier';
 
+// Placeholder near-term slots, matching the client's prototype (e.g.
+// "Aujourd'hui · 17h30"). Not backed by a real staff calendar yet.
+const CALLBACK_SLOTS = ["Aujourd'hui · 17h30", "Demain · 08h30", "Demain · 14h00", 'Après-demain · 10h00'];
+
 export default function OpportunityDetailPage() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
@@ -50,9 +54,11 @@ export default function OpportunityDetailPage() {
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
-  const [leadForm, setLeadForm] = useState({ email: user?.email || '', phone: '', firstName: user?.firstName || '', lastName: user?.lastName || '', companyName: company?.name || '' });
-  const [leadSubmitting, setLeadSubmitting] = useState(false);
-  const [leadError, setLeadError] = useState<string | null>(null);
+  const [slotForm, setSlotForm] = useState({ email: user?.email || '', phone: '', firstName: user?.firstName || '', lastName: user?.lastName || '', companyName: company?.name || '' });
+  const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
+  const [slotError, setSlotError] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [callbackConfirmed, setCallbackConfirmed] = useState(false);
 
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
@@ -81,9 +87,9 @@ export default function OpportunityDetailPage() {
   useEffect(() => {
     if (!id) return;
     setAccessLoading(true);
-    opportunitiesApi.getAccess(id)
+    opportunitiesApi.getAccess(id, getSessionId(), user?.email)
       .then(setAccess)
-      .catch(() => setAccess({ level: 'level1' }))
+      .catch(() => setAccess({ identityUnlocked: false }))
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
 
@@ -139,18 +145,33 @@ export default function OpportunityDetailPage() {
     }
   };
 
-  const handleRequestAccess = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id || !leadForm.email) return;
-    setLeadSubmitting(true);
-    setLeadError(null);
+  const handleBookSlot = async (slotLabel: string) => {
+    if (!id || !slotForm.email) return;
+    setSelectedSlot(slotLabel);
+    setSlotSubmitting('slot');
+    setSlotError(null);
     try {
-      const result = await opportunitiesApi.requestAccess(id, { ...leadForm, sessionId: getSessionId() });
-      setAccess({ level: result.level as ApiOpportunityAccess['level'] });
+      const result = await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'slot', slotLabel });
+      setAccess({ identityUnlocked: result.identityUnlocked });
     } catch (err) {
-      setLeadError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
+      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
+      setSelectedSlot(null);
     } finally {
-      setLeadSubmitting(false);
+      setSlotSubmitting(null);
+    }
+  };
+
+  const handleCallback = async () => {
+    if (!id || !slotForm.email) return;
+    setSlotSubmitting('callback');
+    setSlotError(null);
+    try {
+      await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'callback' });
+      setCallbackConfirmed(true);
+    } catch (err) {
+      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
+    } finally {
+      setSlotSubmitting(null);
     }
   };
 
@@ -171,10 +192,13 @@ export default function OpportunityDetailPage() {
   const journeyMeta = JOURNEY_LABEL[journey] || JOURNEY_LABEL.tender;
   const JourneyIcon = journeyMeta.icon;
 
-  const contentLocked = !isPublic && !accessLoading && (access?.level === 'level1' || !access);
-  const hasEnrichedAccess = isPublic || access?.level === 'level2' || access?.level === 'level3' || access?.level === 'full';
+  // Prototype V17 rule: a private tender / sous-traitance fiche is exactly
+  // as open as a public one - amount, tasks, deadline, criteria, score are
+  // never gated. Only the buyer's identity (name) is, and only until a
+  // callback slot is booked (see the "Donneur d'ordre" block below).
+  const identityUnlocked = isPublic || !!access?.identityUnlocked;
 
-  const metaDescription = (hasEnrichedAccess ? (opportunity.ai_summary || opportunity.description) : null)
+  const metaDescription = (opportunity.ai_summary || opportunity.description)
     || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`;
 
   return (
@@ -199,9 +223,7 @@ export default function OpportunityDetailPage() {
             <span className="flex items-center gap-1.5"><MapPin size={13} /> {[opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ')}</span>
           )}
           <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('detailDeadline')} : {formatDate(opportunity.deadline)}</span>
-          {hasEnrichedAccess && (
-            <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
-          )}
+          <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
         </div>
       </div>
 
@@ -226,41 +248,7 @@ export default function OpportunityDetailPage() {
 
       {/* RÉSUMÉ TAB */}
       {tab === 'resume' && (
-        contentLocked ? (
-          <div className="space-y-4">
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <p className="text-sm text-[#B9BBC8] leading-relaxed">
-                {(opportunity.ai_summary || opportunity.description || '').slice(0, 160)}
-                {(opportunity.ai_summary || opportunity.description || '').length > 160 ? '…' : ''}
-              </p>
-              <p className="text-xs text-orange font-semibold mt-3">{t('accessLockedMessage')}</p>
-            </div>
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
-                  <Lock size={16} className="text-orange" />
-                </div>
-                <div>
-                  <p className="text-sm text-white font-semibold mb-1">{t('accessUnlockTitle')}</p>
-                  <p className="text-xs text-[#B9BBC8]">{t('accessUnlockSub')}</p>
-                </div>
-              </div>
-              <form onSubmit={handleRequestAccess} className="space-y-2.5">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <input required value={leadForm.firstName} onChange={e => setLeadForm(f => ({ ...f, firstName: e.target.value }))} placeholder={t('accessFirstName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                  <input required value={leadForm.lastName} onChange={e => setLeadForm(f => ({ ...f, lastName: e.target.value }))} placeholder={t('accessLastName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                </div>
-                <input value={leadForm.companyName} onChange={e => setLeadForm(f => ({ ...f, companyName: e.target.value }))} placeholder={t('accessCompany')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                <input required type="email" value={leadForm.email} onChange={e => setLeadForm(f => ({ ...f, email: e.target.value }))} placeholder={t('accessEmail')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                <input value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))} placeholder={t('accessPhoneOptional')} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                {leadError && <p className="text-xs text-red-400">{leadError}</p>}
-                <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                  {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {t('accessViewEnriched')}
-                </button>
-              </form>
-            </div>
-          </div>
-        ) : (
+        <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && (
               <p className="text-sm text-white leading-relaxed">{opportunity.ai_summary}</p>
@@ -271,14 +259,73 @@ export default function OpportunityDetailPage() {
             {!opportunity.ai_summary && !opportunity.description && (
               <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
             )}
-            {access?.level === 'level2' && !isPublic && (
-              <div className="flex items-start gap-2 mt-4 pt-4 border-t border-[#17334D] text-xs text-[#B9BBC8]">
-                <HelpCircle size={14} className="text-orange shrink-0 mt-0.5" />
-                <span>{t('accessPendingReview')}</span>
+          </div>
+
+          {/* DONNEUR D'ORDRE — the only thing ever locked. Public markets are
+              always open (legal transparency obligation); private tender /
+              sous-traitance only reveals the buyer's name once a callback
+              slot is booked. */}
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+            <h2 className="text-sm font-bold text-white mb-3">{t('accessBuyerTitle')}</h2>
+            {identityUnlocked ? (
+              <div className="flex items-center gap-2 text-sm text-white">
+                <ShieldCheck size={15} className="text-green-400 shrink-0" />
+                {opportunity.buyer_name || (isPublic ? t('accessPublicBuyer') : t('accessUnlockedGeneric'))}
+              </div>
+            ) : accessLoading ? (
+              <div className="h-5 w-40 bg-[#17334D] rounded animate-pulse" />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="shrink-0 w-9 h-9 rounded-full bg-[#31283a] border border-[#5e5266] flex items-center justify-center">
+                    <Lock size={16} className="text-[#d3c7dc]" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-white font-semibold mb-1">{t('accessProtectedTitle')}</p>
+                    <p className="text-xs text-[#B9BBC8]">{t('accessProtectedSub')}{opportunity.location_city ? ` · ${opportunity.location_city}` : ''}.</p>
+                  </div>
+                </div>
+
+                {callbackConfirmed ? (
+                  <p className="text-xs text-[#B9BBC8]">{t('accessCallbackConfirmed')}</p>
+                ) : (
+                  <>
+                    <p className="text-xs text-[#B9BBC8]">{t('accessHowToContinue')}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {CALLBACK_SLOTS.map(slotLabel => (
+                        <button
+                          key={slotLabel}
+                          type="button"
+                          disabled={!!slotSubmitting}
+                          onClick={() => handleBookSlot(slotLabel)}
+                          className={`min-h-[46px] text-xs font-semibold rounded-xl border px-2 transition-colors disabled:opacity-50 ${selectedSlot === slotLabel ? 'border-orange bg-orange/10 text-white' : 'border-[#5b6d7d] text-white hover:border-orange/50'}`}
+                        >
+                          {slotSubmitting === 'slot' && selectedSlot === slotLabel ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!!slotSubmitting}
+                      onClick={handleCallback}
+                      className="w-full flex items-center justify-center gap-2 border border-[#5b6d7d] text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:border-orange/50 transition-colors disabled:opacity-50"
+                    >
+                      {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : <PhoneCall size={13} />} {t('accessCallbackNoSlot')}
+                    </button>
+                  </>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <input required value={slotForm.firstName} onChange={e => setSlotForm(f => ({ ...f, firstName: e.target.value }))} placeholder={t('accessFirstName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                  <input required value={slotForm.lastName} onChange={e => setSlotForm(f => ({ ...f, lastName: e.target.value }))} placeholder={t('accessLastName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                  <input required type="email" value={slotForm.email} onChange={e => setSlotForm(f => ({ ...f, email: e.target.value }))} placeholder={t('accessEmail')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                  <input required value={slotForm.phone} onChange={e => setSlotForm(f => ({ ...f, phone: e.target.value }))} placeholder={t('accessPhone')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                </div>
+                {slotError && <p className="text-xs text-red-400">{slotError}</p>}
               </div>
             )}
           </div>
-        )
+        </div>
       )}
 
       {/* ANALYSE STRATÉGIQUE TAB */}
