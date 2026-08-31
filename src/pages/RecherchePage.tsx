@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, Loader2 } from 'lucide-react';
+import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, HelpCircle, Loader2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
+import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
 
 export default function RecherchePage() {
   const { t } = useLang();
+  const { companyKnown } = useCompanyKnown();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -202,10 +204,17 @@ export default function RecherchePage() {
 
               <div className="flex items-center justify-between gap-2">
                 {/* Status Badge */}
-                <div className="flex items-center gap-1 text-[9px] font-medium text-[#3FA96E]">
-                  <CheckCircle2 size={10} />
-                  <span>{t('searchCompatible')}</span>
-                </div>
+                {companyKnown ? (
+                  <div className="flex items-center gap-1 text-[9px] font-medium text-[#3FA96E]">
+                    <CheckCircle2 size={10} />
+                    <span>{t('searchCompatible')}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-[9px] font-medium text-[#B9BBC8]">
+                    <HelpCircle size={10} />
+                    <span>{t('searchIdentifyPrompt')}</span>
+                  </div>
+                )}
                 {/* CTA Button */}
                 <button onClick={() => navigate(`/opportunites/${o.id}`)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
                   {t('searchView')} <ArrowRight size={10} />

@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, SlidersHorizontal, X, Filter } from 'lucide-react';
+import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, HelpCircle, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
+import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { SaveButton } from '@/components/SaveButton';
 import PageMeta from '@/components/common/PageMeta';
@@ -21,6 +22,7 @@ const DEPARTMENTS: { label: string; code: string }[] = [
 
 export default function SousTraitancePage() {
   const { t } = useLang();
+  const { companyKnown } = useCompanyKnown();
   const { opportunities: mockSubcontractingOpportunities, loading, error } = useOpportunities('subcontracting');
   const trades = useTrades();
   const [mode, setMode] = useState<'chantier' | 'partenaire'>('chantier');
@@ -188,10 +190,17 @@ export default function SousTraitancePage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1 text-[9px] font-medium text-[#3FA96E]">
-                      <CheckCircle2 size={10} />
-                      <span>{t('searchCompatible')}</span>
-                    </div>
+                    {companyKnown ? (
+                      <div className="flex items-center gap-1 text-[9px] font-medium text-[#3FA96E]">
+                        <CheckCircle2 size={10} />
+                        <span>{t('searchCompatible')}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-[9px] font-medium text-[#B9BBC8]">
+                        <HelpCircle size={10} />
+                        <span>{t('searchIdentifyPrompt')}</span>
+                      </div>
+                    )}
                     <Link
                       to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?oid=${o.id}`}
                       className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors"

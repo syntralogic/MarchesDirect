@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { useMission } from '@/hooks/use-mission';
+import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { TopBar, StepIndicator, Eyebrow, PageTitle, PageSub, Badge, Button, InfoBox } from '@/components/sous-traitance/ui';
 
 const STEPS = [{ label: 'Missions' }, { label: 'Détail' }, { label: 'Mon profil' }, { label: 'Mise en relation' }];
@@ -10,6 +11,7 @@ export default function MissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { mission, loading } = useMission(id);
+  const { companyKnown } = useCompanyKnown();
   const [message, setMessage] = useState('');
 
   if (loading) {
@@ -42,7 +44,8 @@ export default function MissionDetailPage() {
         <PageSub>{mission.organization}</PageSub>
 
         {mission.category && <Badge tone="orange">{mission.category.toUpperCase()}</Badge>}
-        {mission.match >= 75 && <Badge tone="green" className="ml-2">✓ Compatible ({mission.match}%)</Badge>}
+        {companyKnown && mission.match >= 75 && <Badge tone="green" className="ml-2">✓ Compatible ({mission.match}%)</Badge>}
+        {!companyKnown && <Badge tone="orange" className="ml-2">Identifiez votre entreprise pour voir la compatibilité</Badge>}
 
         <div className="my-4 grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-[#17334D] bg-[#061D32] p-3 text-center">
