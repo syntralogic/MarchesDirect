@@ -35,6 +35,20 @@ const DOC_TYPES = [
   { value: 'other', label: 'Autre document' },
 ];
 
+// Allowed file types for upload
+const ALLOWED_FILE_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+];
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
 }
@@ -255,23 +269,63 @@ function Row({ children, onDelete }: { children: React.ReactNode; onDelete?: () 
   );
 }
 
+// ==================== ADD DOCUMENT MODAL ====================
 function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [documentType, setDocumentType] = useState(DOC_TYPES[0].value);
   const [expiryDate, setExpiryDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    setFileError(null);
+    
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    // Validate file type
+    if (!ALLOWED_FILE_TYPES.includes(selectedFile.type)) {
+      setFileError('Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX.');
+      setFile(null);
+      return;
+    }
+
+    // Validate file size
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setFileError(`Le fichier est trop volumineux (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB). Taille maximale : 10 MB.`);
+      setFile(null);
+      return;
+    }
+
+    setFile(selectedFile);
+  };
+
   const handleSave = async () => {
-    if (!file) { toast.error('Sélectionnez un fichier.'); return; }
+    if (!file) { 
+      toast.error('Sélectionnez un fichier.'); 
+      return; 
+    }
+    if (fileError) {
+      toast.error(fileError);
+      return;
+    }
+    
     setSaving(true);
     try {
       const uploaded = await uploadsApi.upload(file);
       await companyVaultApi.documents.create({
-        documentType, fileUrl: uploaded.url, fileSizeBytes: uploaded.sizeBytes,
-        fileMimeType: uploaded.mimeType, documentName: uploaded.originalName,
+        documentType, 
+        fileUrl: uploaded.url, 
+        fileSizeBytes: uploaded.sizeBytes,
+        fileMimeType: uploaded.mimeType, 
+        documentName: uploaded.originalName,
         expiryDate: expiryDate || undefined,
       });
+      toast.success('Document ajouté avec succès.');
       onSaved();
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Échec de l'ajout du document."));
@@ -288,21 +342,53 @@ function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
-      <FormInput label="Date d'expiration (optionnel)" type="date" value={expiryDate} onChange={setExpiryDate} />
+      
+      <FormInput 
+        label="Date d'expiration (optionnel)" 
+        type="date" 
+        value={expiryDate} 
+        onChange={setExpiryDate} 
+      />
+      
       <div className="mb-4">
         <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">Fichier</label>
-        <input ref={fileInputRef} type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="hidden" />
-        <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-2 border border-dashed border-[#17334D] rounded-lg py-3 text-xs text-[#B9BBC8] hover:border-orange/40 transition-colors">
-          <Upload size={14} /> {file ? file.name : 'Choisir un fichier (PDF, image)'}
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx"
+          onChange={handleFileChange} 
+          className="hidden" 
+        />
+        <button 
+          onClick={() => fileInputRef.current?.click()} 
+          className="w-full flex items-center justify-center gap-2 border border-dashed border-[#17334D] rounded-lg py-3 text-xs text-[#B9BBC8] hover:border-orange/40 transition-colors"
+        >
+          <Upload size={14} /> 
+          {file ? file.name : 'Choisir un fichier (PDF, image, Word, Excel)'}
         </button>
+        {file && (
+          <p className="text-[10px] text-[#B9BBC8] mt-1">
+            Taille : {(file.size / 1024).toFixed(1)} KB
+          </p>
+        )}
+        {fileError && (
+          <p className="text-[10px] text-red-400 mt-1">{fileError}</p>
+        )}
       </div>
-      <button onClick={handleSave} disabled={saving} className="w-full bg-orange text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
-        {saving && <Loader2 size={14} className="animate-spin" />} Enregistrer
+      
+      <button 
+        onClick={handleSave} 
+        disabled={saving || !file || !!fileError} 
+        className="w-full bg-orange text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+      >
+        {saving && <Loader2 size={14} className="animate-spin" />} 
+        Enregistrer
       </button>
     </Modal>
   );
 }
 
+// ==================== ADD CERTIFICATION MODAL ====================
 function AddCertificationModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState('');
   const [issuedBy, setIssuedBy] = useState('');
@@ -314,6 +400,7 @@ function AddCertificationModal({ onClose, onSaved }: { onClose: () => void; onSa
     setSaving(true);
     try {
       await companyVaultApi.certifications.create({ certificationName: name, issuedBy: issuedBy || undefined, expiryDate: expiryDate || undefined });
+      toast.success('Certification ajoutée avec succès.');
       onSaved();
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Échec de l'ajout de la certification."));
@@ -334,6 +421,7 @@ function AddCertificationModal({ onClose, onSaved }: { onClose: () => void; onSa
   );
 }
 
+// ==================== ADD REFERENCE MODAL ====================
 function AddReferenceModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [projectName, setProjectName] = useState('');
   const [clientName, setClientName] = useState('');
@@ -351,6 +439,7 @@ function AddReferenceModal({ onClose, onSaved }: { onClose: () => void; onSaved:
         contractValue: contractValue ? Number(contractValue) : undefined,
         completionDate: completionDate || undefined,
       });
+      toast.success('Référence ajoutée avec succès.');
       onSaved();
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Échec de l'ajout de la référence."));
@@ -376,6 +465,7 @@ function AddReferenceModal({ onClose, onSaved }: { onClose: () => void; onSaved:
   );
 }
 
+// ==================== ADD RESOURCE MODAL ====================
 function AddResourceModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [resourceType, setResourceType] = useState<'staff' | 'equipment' | 'facility'>('staff');
   const [name, setName] = useState('');
@@ -387,6 +477,7 @@ function AddResourceModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
     setSaving(true);
     try {
       await companyVaultApi.resources.create({ resourceType, name, quantity: quantity ? Number(quantity) : undefined });
+      toast.success('Ressource ajoutée avec succès.');
       onSaved();
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Échec de l'ajout de la ressource."));
@@ -414,6 +505,7 @@ function AddResourceModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   );
 }
 
+// ==================== ADD POLICY MODAL ====================
 function AddPolicyModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [policyType, setPolicyType] = useState<'quality' | 'safety' | 'environment'>('quality');
   const [policyText, setPolicyText] = useState('');
@@ -424,6 +516,7 @@ function AddPolicyModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     setSaving(true);
     try {
       await companyVaultApi.policies.create({ policyType, policyText });
+      toast.success('Politique ajoutée avec succès.');
       onSaved();
     } catch (err) {
       toast.error(getApiErrorMessage(err, "Échec de l'ajout de la politique."));

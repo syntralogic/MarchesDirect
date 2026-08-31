@@ -5,16 +5,21 @@ import { useLang } from '@/contexts/LangContext';
 
 export default function ActualitesPage() {
   const { t } = useLang();
+  
+  // Use the actual category names from the data
   const [activeCat, setActiveCat] = useState('Tous');
 
-  const CATS = [t('newsCat1'), t('newsCat2'), t('newsCat3'), t('newsCat4')];
+  // Get unique categories from articles for filter buttons
+  const uniqueCategories = ['Tous', ...new Set(mockArticles.map(a => a.category))];
 
-  const filtered = activeCat === 'Tous' ? mockArticles : mockArticles.filter(a => a.category === activeCat);
+  const filtered = activeCat === 'Tous' 
+    ? mockArticles 
+    : mockArticles.filter(a => a.category === activeCat);
 
   const CAT_COLORS: Record<string, string> = {
-    [t('newsCat2')]: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-    [t('newsCat3')]: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
-    [t('newsCat4')]: 'text-green-400 bg-green-400/10 border-green-400/20',
+    'Réglementation': 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+    'Tendances': 'text-purple-400 bg-purple-400/10 border-purple-400/20',
+    'Opportunités': 'text-green-400 bg-green-400/10 border-green-400/20',
   };
 
   return (
@@ -25,9 +30,8 @@ export default function ActualitesPage() {
         <p className="text-[#B9BBC8] text-sm">{t('newsPageSub')}</p>
       </div>
 
-      {/* Category filter */}
       <div className="flex flex-wrap gap-2 mb-7">
-        {CATS.map(cat => (
+        {uniqueCategories.map(cat => (
           <button
             key={cat}
             onClick={() => setActiveCat(cat)}
@@ -37,12 +41,11 @@ export default function ActualitesPage() {
                 : 'bg-[#061D32] border border-[#17334D] text-[#B9BBC8] hover:text-white hover:border-orange/40'
             }`}
           >
-            {cat}
+            {cat === 'Tous' ? t('newsCat1') : cat}
           </button>
         ))}
       </div>
 
-      {/* Articles grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filtered.map(article => (
           <div

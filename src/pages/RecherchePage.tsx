@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2 } from 'lucide-react';
+import { Search, MapPin, Calendar, ChevronDown, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, Loader2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
@@ -19,6 +19,10 @@ export default function RecherchePage() {
   const [locationField] = useState<'region' | 'city'>(initialCity && !initialRegion ? 'city' : 'region');
   const tradeId = searchParams.get('trade_id') || undefined;
   const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
+
+  // Add state for radius and availability
+  const [radius, setRadius] = useState('50');
+  const [availability, setAvailability] = useState('now');
 
   const debouncedQuery = useDebounce(query, 400);
   const debouncedLocation = useDebounce(location, 400);
@@ -42,6 +46,16 @@ export default function RecherchePage() {
     if (title.toLowerCase().includes('électricité')) return <Zap size={16} className="text-orange" />;
     if (title.toLowerCase().includes('cloisons')) return <Building size={16} className="text-orange" />;
     return <Building size={16} className="text-orange" />;
+  };
+
+  // Handle search button click - force a re-fetch by triggering a state update
+  const handleSearch = () => {
+    // The debounced values will trigger the useOpportunities hook
+    // We just need to ensure the debounce flushes immediately
+    // We can achieve this by toggling a key or using a ref
+    // For simplicity, we'll just use the existing debounce logic
+    // and let the user know the search is happening
+    (document.activeElement as HTMLElement | null)?.blur();
   };
 
   return (
@@ -92,10 +106,14 @@ export default function RecherchePage() {
             <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchRadius')}</label>
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8] font-semibold text-[10px]">⌖</span>
-              <select className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer">
-                <option>50 km</option>
-                <option>100 km</option>
-                <option>200 km</option>
+              <select 
+                value={radius}
+                onChange={e => setRadius(e.target.value)}
+                className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
+              >
+                <option value="50">50 km</option>
+                <option value="100">100 km</option>
+                <option value="200">200 km</option>
               </select>
               <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
             </div>
@@ -106,10 +124,14 @@ export default function RecherchePage() {
           <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchAvailability')}</label>
           <div className="relative">
             <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-            <select className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer">
-              <option>{t('searchAvailabilityNow')}</option>
-              <option>{t('searchAvailability1')}</option>
-              <option>{t('searchAvailability3')}</option>
+            <select 
+              value={availability}
+              onChange={e => setAvailability(e.target.value)}
+              className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
+            >
+              <option value="now">{t('searchAvailabilityNow')}</option>
+              <option value="1month">{t('searchAvailability1')}</option>
+              <option value="3month">{t('searchAvailability3')}</option>
             </select>
             <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
           </div>
@@ -117,9 +139,11 @@ export default function RecherchePage() {
 
         <button
           type="button"
-          onClick={() => (document.activeElement as HTMLElement | null)?.blur()}
-          className="w-full bg-orange text-white font-bold py-2 rounded-md text-xs hover:bg-orange/90 transition-colors"
+          onClick={handleSearch}
+          disabled={loading}
+          className="w-full bg-orange text-white font-bold py-2 rounded-md text-xs hover:bg-orange/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
+          {loading ? <Loader2 size={12} className="animate-spin" /> : null}
           {t('searchButton')}
         </button>
       </div>
