@@ -10,13 +10,14 @@ import {
   type ApiCompanyDocument, type ApiCompanyCertification, type ApiCompanyReference,
   type ApiCompanyResource, type ApiCompanyPolicy,
 } from '@/lib/apiClient';
+import { useLang } from '@/contexts/LangContext';
 
 const TABS = [
-  { key: 'documents', label: 'Documents', icon: FileText },
-  { key: 'certifications', label: 'Certifications', icon: Award },
-  { key: 'references', label: 'Références', icon: Briefcase },
-  { key: 'resources', label: 'Ressources', icon: Users },
-  { key: 'policies', label: 'Politiques', icon: ShieldCheck },
+  { key: 'documents', labelKey: 'companyVaultDocuments', icon: FileText },
+  { key: 'certifications', labelKey: 'companyVaultCertifications', icon: Award },
+  { key: 'references', labelKey: 'companyVaultReferences', icon: Briefcase },
+  { key: 'resources', labelKey: 'companyVaultResources', icon: Users },
+  { key: 'policies', labelKey: 'companyVaultPolicies', icon: ShieldCheck },
 ] as const;
 type TabKey = typeof TABS[number]['key'];
 
@@ -95,6 +96,7 @@ function FormInput({ label, value, onChange, type = 'text', required = false }: 
 }
 
 export default function CompanyVaultPage() {
+  const { t } = useLang();
   const [activeTab, setActiveTab] = useState<TabKey>('documents');
 
   const [documents, setDocuments] = useState<ApiCompanyDocument[]>([]);
@@ -120,7 +122,7 @@ export default function CompanyVaultPage() {
       .then(([d, c, r, res, p]) => {
         setDocuments(d); setCertifications(c); setReferences(r); setResources(res); setPolicies(p);
       })
-      .catch(err => setError(getApiErrorMessage(err, 'Impossible de charger le dossier entreprise.')))
+      .catch(err => setError(getApiErrorMessage(err, t('companyVaultLoadError') || 'Impossible de charger le dossier entreprise.')))
       .finally(() => setLoading(false));
   };
   useEffect(loadAll, []);
@@ -128,13 +130,13 @@ export default function CompanyVaultPage() {
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10 pb-24">
       <Link to="/profil" className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors w-fit">
-        <ArrowLeft size={14} /> Retour au profil
+        <ArrowLeft size={14} /> {t('backToProfile') || 'Retour au profil'}
       </Link>
 
       <div className="mb-5">
-        <h1 className="text-lg md:text-xl font-extrabold text-white mb-1">Dossier entreprise</h1>
+        <h1 className="text-lg md:text-xl font-extrabold text-white mb-1">{t('companyVaultTitle') || 'Dossier entreprise'}</h1>
         <p className="text-xs text-[#B9BBC8]">
-          Renseignez vos documents, certifications et références une fois — ils seront automatiquement réutilisés dans chaque dossier de candidature.
+          {t('companyVaultSub') || 'Renseignez vos documents, certifications et références une fois — ils seront automatiquement réutilisés dans chaque dossier de candidature.'}
         </p>
       </div>
 
@@ -147,7 +149,7 @@ export default function CompanyVaultPage() {
               activeTab === tab.key ? 'bg-orange text-white' : 'text-[#B9BBC8] hover:text-white border border-[#17334D]'
             }`}
           >
-            <tab.icon size={13} /> {tab.label}
+            <tab.icon size={13} /> {t(tab.labelKey)}
           </button>
         ))}
       </div>
@@ -159,31 +161,31 @@ export default function CompanyVaultPage() {
       ) : (
         <>
           {activeTab === 'documents' && (
-            <Section title="Documents" onAdd={() => setModal('documents')} addLabel="Ajouter un document">
-              {documents.length === 0 ? <EmptyState label="Aucun document. KBIS, assurances, attestations..." /> : documents.map(doc => (
+            <Section title={t('companyVaultDocuments') || 'Documents'} onAdd={() => setModal('documents')} addLabel={t('companyVaultAddDocument') || 'Ajouter un document'}>
+              {documents.length === 0 ? <EmptyState label={t('companyVaultNoDocuments') || 'Aucun document. KBIS, assurances, attestations...'} /> : documents.map(doc => (
                 <Row key={doc.id} onDelete={() => companyVaultApi.documents.remove(doc.id).then(loadAll)}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-semibold truncate">{DOC_TYPES.find(t => t.value === doc.document_type)?.label || doc.document_type}</p>
                     <p className="text-xs text-[#B9BBC8]">
-                      {doc.expiry_date ? `Expire le ${formatDate(doc.expiry_date)}` : 'Sans expiration'}
-                      {doc.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> Expiré</span>}
+                      {doc.expiry_date ? `${t('companyVaultExpiresOn') || 'Expire le'} ${formatDate(doc.expiry_date)}` : t('companyVaultNoExpiry') || 'Sans expiration'}
+                      {doc.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expiré'}</span>}
                     </p>
                   </div>
-                  <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-xs text-orange hover:underline shrink-0">Voir</a>
+                  <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-xs text-orange hover:underline shrink-0">{t('companyVaultView') || 'Voir'}</a>
                 </Row>
               ))}
             </Section>
           )}
 
           {activeTab === 'certifications' && (
-            <Section title="Certifications" onAdd={() => setModal('certifications')} addLabel="Ajouter une certification">
-              {certifications.length === 0 ? <EmptyState label="Aucune certification. Qualibat, RGE, ISO 9001..." /> : certifications.map(c => (
+            <Section title={t('companyVaultCertifications') || 'Certifications'} onAdd={() => setModal('certifications')} addLabel={t('companyVaultAddCertification') || 'Ajouter une certification'}>
+              {certifications.length === 0 ? <EmptyState label={t('companyVaultNoCertifications') || 'Aucune certification. Qualibat, RGE, ISO 9001...'} /> : certifications.map(c => (
                 <Row key={c.id}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-semibold truncate">{c.certification_name}</p>
                     <p className="text-xs text-[#B9BBC8]">
-                      {c.issued_by && `${c.issued_by} · `}{c.expiry_date ? `Expire le ${formatDate(c.expiry_date)}` : 'Sans expiration'}
-                      {c.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> Expirée</span>}
+                      {c.issued_by && `${c.issued_by} · `}{c.expiry_date ? `${t('companyVaultExpiresOn') || 'Expire le'} ${formatDate(c.expiry_date)}` : t('companyVaultNoExpiry') || 'Sans expiration'}
+                      {c.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expirée'}</span>}
                     </p>
                   </div>
                 </Row>
@@ -192,8 +194,8 @@ export default function CompanyVaultPage() {
           )}
 
           {activeTab === 'references' && (
-            <Section title="Références (projets réalisés)" onAdd={() => setModal('references')} addLabel="Ajouter une référence">
-              {references.length === 0 ? <EmptyState label="Aucune référence. Ajoutez vos projets passés pour enrichir vos mémoires techniques." /> : references.map(r => (
+            <Section title={t('companyVaultReferences') || 'Références (projets réalisés)'} onAdd={() => setModal('references')} addLabel={t('companyVaultAddReference') || 'Ajouter une référence'}>
+              {references.length === 0 ? <EmptyState label={t('companyVaultNoReferences') || 'Aucune référence. Ajoutez vos projets passés pour enrichir vos mémoires techniques.'} /> : references.map(r => (
                 <Row key={r.id}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-semibold truncate">{r.project_name}</p>
@@ -208,12 +210,12 @@ export default function CompanyVaultPage() {
           )}
 
           {activeTab === 'resources' && (
-            <Section title="Moyens humains & matériels" onAdd={() => setModal('resources')} addLabel="Ajouter une ressource">
-              {resources.length === 0 ? <EmptyState label="Aucune ressource. Effectifs, équipements, véhicules..." /> : resources.map(r => (
+            <Section title={t('companyVaultResources') || 'Moyens humains & matériels'} onAdd={() => setModal('resources')} addLabel={t('companyVaultAddResource') || 'Ajouter une ressource'}>
+              {resources.length === 0 ? <EmptyState label={t('companyVaultNoResources') || 'Aucune ressource. Effectifs, équipements, véhicules...'} /> : resources.map(r => (
                 <Row key={r.id}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-semibold truncate">{r.name}</p>
-                    <p className="text-xs text-[#B9BBC8]">{r.resource_type === 'staff' ? 'Personnel' : r.resource_type === 'equipment' ? 'Équipement' : 'Installation'}{r.quantity != null && ` · Quantité : ${r.quantity}`}</p>
+                    <p className="text-xs text-[#B9BBC8]">{r.resource_type === 'staff' ? t('companyVaultStaff') || 'Personnel' : r.resource_type === 'equipment' ? t('companyVaultEquipment') || 'Équipement' : t('companyVaultFacility') || 'Installation'}{r.quantity != null && ` · ${t('companyVaultQuantity') || 'Quantité'} : ${r.quantity}`}</p>
                   </div>
                 </Row>
               ))}
@@ -221,11 +223,11 @@ export default function CompanyVaultPage() {
           )}
 
           {activeTab === 'policies' && (
-            <Section title="Politiques qualité / sécurité / environnement" onAdd={() => setModal('policies')} addLabel="Ajouter une politique">
-              {policies.length === 0 ? <EmptyState label="Aucune politique. Ce texte sera réutilisé dans vos mémoires techniques." /> : policies.map(p => (
+            <Section title={t('companyVaultPolicies') || 'Politiques qualité / sécurité / environnement'} onAdd={() => setModal('policies')} addLabel={t('companyVaultAddPolicy') || 'Ajouter une politique'}>
+              {policies.length === 0 ? <EmptyState label={t('companyVaultNoPolicies') || 'Aucune politique. Ce texte sera réutilisé dans vos mémoires techniques.'} /> : policies.map(p => (
                 <Row key={p.id}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-semibold">{p.policy_type === 'quality' ? 'Qualité' : p.policy_type === 'safety' ? 'Sécurité' : p.policy_type === 'environment' ? 'Environnement' : p.policy_type}</p>
+                    <p className="text-sm text-white font-semibold">{p.policy_type === 'quality' ? t('companyVaultQuality') || 'Qualité' : p.policy_type === 'safety' ? t('companyVaultSafety') || 'Sécurité' : p.policy_type === 'environment' ? t('companyVaultEnvironment') || 'Environnement' : p.policy_type}</p>
                     <p className="text-xs text-[#B9BBC8] line-clamp-2">{p.policy_text}</p>
                   </div>
                 </Row>
@@ -271,6 +273,7 @@ function Row({ children, onDelete }: { children: React.ReactNode; onDelete?: () 
 
 // ==================== ADD DOCUMENT MODAL ====================
 function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { t } = useLang();
   const [documentType, setDocumentType] = useState(DOC_TYPES[0].value);
   const [expiryDate, setExpiryDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -289,14 +292,14 @@ function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
 
     // Validate file type
     if (!ALLOWED_FILE_TYPES.includes(selectedFile.type)) {
-      setFileError('Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX.');
+      setFileError(t('companyVaultFileTypeError') || 'Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX.');
       setFile(null);
       return;
     }
 
     // Validate file size
     if (selectedFile.size > MAX_FILE_SIZE) {
-      setFileError(`Le fichier est trop volumineux (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB). Taille maximale : 10 MB.`);
+      setFileError(t('companyVaultFileSizeError', { size: (selectedFile.size / 1024 / 1024).toFixed(1) }) || `Le fichier est trop volumineux (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB). Taille maximale : 10 MB.`);
       setFile(null);
       return;
     }
@@ -306,7 +309,7 @@ function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
 
   const handleSave = async () => {
     if (!file) { 
-      toast.error('Sélectionnez un fichier.'); 
+      toast.error(t('companyVaultSelectFile') || 'Sélectionnez un fichier.'); 
       return; 
     }
     if (fileError) {
@@ -325,33 +328,33 @@ function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         documentName: uploaded.originalName,
         expiryDate: expiryDate || undefined,
       });
-      toast.success('Document ajouté avec succès.');
+      toast.success(t('companyVaultDocumentAdded') || 'Document ajouté avec succès.');
       onSaved();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Échec de l'ajout du document."));
+      toast.error(getApiErrorMessage(err, t('companyVaultDocumentAddFailed') || "Échec de l'ajout du document."));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title="Ajouter un document" onClose={onClose}>
+    <Modal title={t('companyVaultAddDocument') || 'Ajouter un document'} onClose={onClose}>
       <div className="mb-3">
-        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">Type de document</label>
+        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyVaultDocumentType') || 'Type de document'}</label>
         <select value={documentType} onChange={e => setDocumentType(e.target.value)} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange">
           {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
       
       <FormInput 
-        label="Date d'expiration (optionnel)" 
+        label={t('companyVaultExpiryDateOptional') || "Date d'expiration (optionnel)"} 
         type="date" 
         value={expiryDate} 
         onChange={setExpiryDate} 
       />
       
       <div className="mb-4">
-        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">Fichier</label>
+        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyVaultFile') || 'Fichier'}</label>
         <input 
           ref={fileInputRef} 
           type="file" 
@@ -364,11 +367,11 @@ function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           className="w-full flex items-center justify-center gap-2 border border-dashed border-[#17334D] rounded-lg py-3 text-xs text-[#B9BBC8] hover:border-orange/40 transition-colors"
         >
           <Upload size={14} /> 
-          {file ? file.name : 'Choisir un fichier (PDF, image, Word, Excel)'}
+          {file ? file.name : t('companyVaultChooseFile') || 'Choisir un fichier (PDF, image, Word, Excel)'}
         </button>
         {file && (
           <p className="text-[10px] text-[#B9BBC8] mt-1">
-            Taille : {(file.size / 1024).toFixed(1)} KB
+            {t('companyVaultFileSize') || 'Taille'} : {(file.size / 1024).toFixed(1)} KB
           </p>
         )}
         {fileError && (
@@ -382,7 +385,7 @@ function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         className="w-full bg-orange text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
       >
         {saving && <Loader2 size={14} className="animate-spin" />} 
-        Enregistrer
+        {t('companyVaultSave') || 'Enregistrer'}
       </button>
     </Modal>
   );
@@ -390,32 +393,33 @@ function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
 
 // ==================== ADD CERTIFICATION MODAL ====================
 function AddCertificationModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { t } = useLang();
   const [name, setName] = useState('');
   const [issuedBy, setIssuedBy] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!name) { toast.error('Le nom de la certification est requis.'); return; }
+    if (!name) { toast.error(t('companyVaultCertificationNameRequired') || 'Le nom de la certification est requis.'); return; }
     setSaving(true);
     try {
       await companyVaultApi.certifications.create({ certificationName: name, issuedBy: issuedBy || undefined, expiryDate: expiryDate || undefined });
-      toast.success('Certification ajoutée avec succès.');
+      toast.success(t('companyVaultCertificationAdded') || 'Certification ajoutée avec succès.');
       onSaved();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Échec de l'ajout de la certification."));
+      toast.error(getApiErrorMessage(err, t('companyVaultCertificationAddFailed') || "Échec de l'ajout de la certification."));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title="Ajouter une certification" onClose={onClose}>
-      <FormInput label="Nom (ex : Qualibat, RGE)" value={name} onChange={setName} required />
-      <FormInput label="Délivrée par" value={issuedBy} onChange={setIssuedBy} />
-      <FormInput label="Date d'expiration" type="date" value={expiryDate} onChange={setExpiryDate} />
+    <Modal title={t('companyVaultAddCertification') || 'Ajouter une certification'} onClose={onClose}>
+      <FormInput label={t('companyVaultCertificationName') || 'Nom (ex : Qualibat, RGE)'} value={name} onChange={setName} required />
+      <FormInput label={t('companyVaultIssuedBy') || 'Délivrée par'} value={issuedBy} onChange={setIssuedBy} />
+      <FormInput label={t('companyVaultExpiryDate') || "Date d'expiration"} type="date" value={expiryDate} onChange={setExpiryDate} />
       <button onClick={handleSave} disabled={saving} className="w-full bg-orange text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 mt-1">
-        {saving && <Loader2 size={14} className="animate-spin" />} Enregistrer
+        {saving && <Loader2 size={14} className="animate-spin" />} {t('companyVaultSave') || 'Enregistrer'}
       </button>
     </Modal>
   );
@@ -423,6 +427,7 @@ function AddCertificationModal({ onClose, onSaved }: { onClose: () => void; onSa
 
 // ==================== ADD REFERENCE MODAL ====================
 function AddReferenceModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { t } = useLang();
   const [projectName, setProjectName] = useState('');
   const [clientName, setClientName] = useState('');
   const [contractValue, setContractValue] = useState('');
@@ -431,7 +436,7 @@ function AddReferenceModal({ onClose, onSaved }: { onClose: () => void; onSaved:
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!projectName) { toast.error('Le nom du projet est requis.'); return; }
+    if (!projectName) { toast.error(t('companyVaultProjectNameRequired') || 'Le nom du projet est requis.'); return; }
     setSaving(true);
     try {
       await companyVaultApi.references.create({
@@ -439,27 +444,27 @@ function AddReferenceModal({ onClose, onSaved }: { onClose: () => void; onSaved:
         contractValue: contractValue ? Number(contractValue) : undefined,
         completionDate: completionDate || undefined,
       });
-      toast.success('Référence ajoutée avec succès.');
+      toast.success(t('companyVaultReferenceAdded') || 'Référence ajoutée avec succès.');
       onSaved();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Échec de l'ajout de la référence."));
+      toast.error(getApiErrorMessage(err, t('companyVaultReferenceAddFailed') || "Échec de l'ajout de la référence."));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title="Ajouter une référence" onClose={onClose}>
-      <FormInput label="Nom du projet" value={projectName} onChange={setProjectName} required />
-      <FormInput label="Client" value={clientName} onChange={setClientName} />
-      <FormInput label="Montant du contrat (€)" type="number" value={contractValue} onChange={setContractValue} />
-      <FormInput label="Date de fin" type="date" value={completionDate} onChange={setCompletionDate} />
+    <Modal title={t('companyVaultAddReference') || 'Ajouter une référence'} onClose={onClose}>
+      <FormInput label={t('companyVaultProjectName') || 'Nom du projet'} value={projectName} onChange={setProjectName} required />
+      <FormInput label={t('companyVaultClient') || 'Client'} value={clientName} onChange={setClientName} />
+      <FormInput label={t('companyVaultContractValue') || "Montant du contrat (€)"} type="number" value={contractValue} onChange={setContractValue} />
+      <FormInput label={t('companyVaultCompletionDate') || 'Date de fin'} type="date" value={completionDate} onChange={setCompletionDate} />
       <div className="mb-3">
-        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">Description</label>
+        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyVaultDescription') || 'Description'}</label>
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
       </div>
       <button onClick={handleSave} disabled={saving} className="w-full bg-orange text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
-        {saving && <Loader2 size={14} className="animate-spin" />} Enregistrer
+        {saving && <Loader2 size={14} className="animate-spin" />} {t('companyVaultSave') || 'Enregistrer'}
       </button>
     </Modal>
   );
@@ -467,39 +472,40 @@ function AddReferenceModal({ onClose, onSaved }: { onClose: () => void; onSaved:
 
 // ==================== ADD RESOURCE MODAL ====================
 function AddResourceModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { t } = useLang();
   const [resourceType, setResourceType] = useState<'staff' | 'equipment' | 'facility'>('staff');
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!name) { toast.error('Le nom est requis.'); return; }
+    if (!name) { toast.error(t('companyVaultResourceNameRequired') || 'Le nom est requis.'); return; }
     setSaving(true);
     try {
       await companyVaultApi.resources.create({ resourceType, name, quantity: quantity ? Number(quantity) : undefined });
-      toast.success('Ressource ajoutée avec succès.');
+      toast.success(t('companyVaultResourceAdded') || 'Ressource ajoutée avec succès.');
       onSaved();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Échec de l'ajout de la ressource."));
+      toast.error(getApiErrorMessage(err, t('companyVaultResourceAddFailed') || "Échec de l'ajout de la ressource."));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title="Ajouter une ressource" onClose={onClose}>
+    <Modal title={t('companyVaultAddResource') || 'Ajouter une ressource'} onClose={onClose}>
       <div className="mb-3">
-        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">Type</label>
+        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyVaultResourceType') || 'Type'}</label>
         <select value={resourceType} onChange={e => setResourceType(e.target.value as typeof resourceType)} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange">
-          <option value="staff">Personnel</option>
-          <option value="equipment">Équipement</option>
-          <option value="facility">Installation</option>
+          <option value="staff">{t('companyVaultStaff') || 'Personnel'}</option>
+          <option value="equipment">{t('companyVaultEquipment') || 'Équipement'}</option>
+          <option value="facility">{t('companyVaultFacility') || 'Installation'}</option>
         </select>
       </div>
-      <FormInput label="Nom / poste" value={name} onChange={setName} required />
-      <FormInput label="Quantité" type="number" value={quantity} onChange={setQuantity} />
+      <FormInput label={t('companyVaultName') || 'Nom / poste'} value={name} onChange={setName} required />
+      <FormInput label={t('companyVaultQuantity') || 'Quantité'} type="number" value={quantity} onChange={setQuantity} />
       <button onClick={handleSave} disabled={saving} className="w-full bg-orange text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
-        {saving && <Loader2 size={14} className="animate-spin" />} Enregistrer
+        {saving && <Loader2 size={14} className="animate-spin" />} {t('companyVaultSave') || 'Enregistrer'}
       </button>
     </Modal>
   );
@@ -507,40 +513,41 @@ function AddResourceModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
 
 // ==================== ADD POLICY MODAL ====================
 function AddPolicyModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { t } = useLang();
   const [policyType, setPolicyType] = useState<'quality' | 'safety' | 'environment'>('quality');
   const [policyText, setPolicyText] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!policyText.trim()) { toast.error('Le texte est requis.'); return; }
+    if (!policyText.trim()) { toast.error(t('companyVaultPolicyTextRequired') || 'Le texte est requis.'); return; }
     setSaving(true);
     try {
       await companyVaultApi.policies.create({ policyType, policyText });
-      toast.success('Politique ajoutée avec succès.');
+      toast.success(t('companyVaultPolicyAdded') || 'Politique ajoutée avec succès.');
       onSaved();
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Échec de l'ajout de la politique."));
+      toast.error(getApiErrorMessage(err, t('companyVaultPolicyAddFailed') || "Échec de l'ajout de la politique."));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title="Ajouter une politique" onClose={onClose}>
+    <Modal title={t('companyVaultAddPolicy') || 'Ajouter une politique'} onClose={onClose}>
       <div className="mb-3">
-        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">Type</label>
+        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyVaultPolicyType') || 'Type'}</label>
         <select value={policyType} onChange={e => setPolicyType(e.target.value as typeof policyType)} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange">
-          <option value="quality">Qualité</option>
-          <option value="safety">Sécurité</option>
-          <option value="environment">Environnement</option>
+          <option value="quality">{t('companyVaultQuality') || 'Qualité'}</option>
+          <option value="safety">{t('companyVaultSafety') || 'Sécurité'}</option>
+          <option value="environment">{t('companyVaultEnvironment') || 'Environnement'}</option>
         </select>
       </div>
       <div className="mb-4">
-        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">Texte (réutilisé dans vos mémoires techniques)</label>
+        <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyVaultPolicyText') || 'Texte (réutilisé dans vos mémoires techniques)'}</label>
         <textarea value={policyText} onChange={e => setPolicyText(e.target.value)} rows={5} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
       </div>
       <button onClick={handleSave} disabled={saving} className="w-full bg-orange text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
-        {saving && <Loader2 size={14} className="animate-spin" />} Enregistrer
+        {saving && <Loader2 size={14} className="animate-spin" />} {t('companyVaultSave') || 'Enregistrer'}
       </button>
     </Modal>
   );
