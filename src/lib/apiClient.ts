@@ -137,6 +137,7 @@ export type ApiOpportunityDetail = ApiOpportunity & {
   journey_name?: string | null;
   cpv_display?: string | null;
   source_reference?: string | null;
+  identity_unlocked?: boolean;
 };
 
 export type ApiPagination = {
@@ -160,7 +161,7 @@ export type OpportunitySearchParams = {
 };
 
 export type ApiOpportunityAccess = {
-  level: 'level1' | 'level2' | 'level3' | 'full';
+  identityUnlocked: boolean;
 };
 
 export type ApiMatchScore = {
@@ -192,13 +193,18 @@ export const opportunitiesApi = {
   // Public-market listings always come back 'full'. Unauthenticated callers
   // are matched by the `email` query param (no account needed yet); logged-in
   // callers are matched by their token automatically.
-  getAccess: async (id: string, email?: string): Promise<ApiOpportunityAccess> => {
-    const { data } = await apiClient.get(`/opportunities/${id}/access`, { params: email ? { email } : undefined });
+  // Prototype V17 rule: a public-market fiche is always unlocked. A private
+  // tender / sous-traitance fiche unlocks its buyer's identity only once a
+  // specific callback slot is booked for it (see requestAccess). Matched by
+  // sessionId before an account exists, or by email once one does.
+  getAccess: async (id: string, sessionId?: string, email?: string): Promise<ApiOpportunityAccess> => {
+    const { data } = await apiClient.get(`/opportunities/${id}/access`, { params: { sessionId, email } });
     return data;
   },
   requestAccess: async (id: string, payload: {
     email: string; phone?: string; firstName?: string; lastName?: string; companyName?: string; sessionId?: string;
-  }): Promise<{ level: string; leadId: string }> => {
+    mode: 'slot' | 'callback'; slotLabel?: string; slotAt?: string;
+  }): Promise<{ identityUnlocked: boolean; leadId: string }> => {
     const { data } = await apiClient.post(`/opportunities/${id}/request-access`, payload);
     return data;
   },

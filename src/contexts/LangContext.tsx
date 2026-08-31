@@ -542,7 +542,7 @@ const frTranslations: Translations = {
   // Profile Page
   profileTitle: 'Mon profil entreprise',
   profileAccessDiscovery: 'Accès Découverte',
-  profileCompanyName: 'BâtiNova',
+  profileSampleCompanyName: 'BâtiNova',
   profileUserName: 'Julien Martin',
   profileCompletion: 'Profil complété à 60 %',
   profileCompleteProfile: 'Compléter mon profil',
@@ -878,7 +878,7 @@ const frTranslations: Translations = {
   journeyApplyZone: 'Appliquer cette zone',
   journeyDatePublished: 'Date de publication',
   journeyDeadline: 'Échéance',
-  journeyShowResults: 'Afficher {count} résultat{count !== 1 ? "s" : ""}',
+  journeyShowResults: 'Afficher {count} résultat{plural}',
   journeyResults: 'opportunité',
   journeyResultsPlural: 'opportunités',
   journeyLoading: 'Chargement des opportunités...',
@@ -1692,7 +1692,7 @@ const enTranslations: Translations = {
   // Profile Page
   profileTitle: 'My business profile',
   profileAccessDiscovery: 'Discovery access',
-  profileCompanyName: 'BâtiNova',
+  profileSampleCompanyName: 'BâtiNova',
   profileUserName: 'Julien Martin',
   profileCompletion: 'Profile 60% completed',
   profileCompleteProfile: 'Complete my profile',
@@ -2028,7 +2028,7 @@ const enTranslations: Translations = {
   journeyApplyZone: 'Apply this zone',
   journeyDatePublished: 'Publication date',
   journeyDeadline: 'Deadline',
-  journeyShowResults: 'Show {count} result{count !== 1 ? "s" : ""}',
+  journeyShowResults: 'Show {count} result{plural}',
   journeyResults: 'opportunity',
   journeyResultsPlural: 'opportunities',
   journeyLoading: 'Loading opportunities...',
@@ -2307,7 +2307,7 @@ const enTranslations: Translations = {
 interface LangContextType {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   tList: (key: string) => string[];
 }
 
@@ -2321,10 +2321,12 @@ const LangContext = createContext<LangContextType>({
 export function LangProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Lang>('en');
 
-  const t = (key: string): string => {
+  const t = (key: string, params?: Record<string, string | number>): string => {
     const dict = lang === 'fr' ? frTranslations : enTranslations;
     const value = dict[key] ?? key;
-    return Array.isArray(value) ? value.join(' ') : value;
+    const str = Array.isArray(value) ? value.join(' ') : value;
+    if (!params) return str;
+    return str.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
   };
 
   const tList = (key: string): string[] => {

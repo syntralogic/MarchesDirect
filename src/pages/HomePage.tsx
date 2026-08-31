@@ -46,7 +46,7 @@ function GeographicSection() {
   const [selectedRegions, setSelectedRegions] = useState<GeoFeatureProps[]>([]);
   const [selectedDepts, setSelectedDepts] = useState<GeoFeatureProps[]>([]);
   const [selectedCities, setSelectedCities] = useState<{name: string; coords: [number, number]}[]>([]);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [, setHovered] = useState<string | null>(null);
   const [cityQuery, setCityQuery] = useState('');
   const [cityResult, setCityResult] = useState<{ name: string; coords: [number, number] | null } | null>(null);
   const [cityOpportunities, setCityOpportunities] = useState<ApiOpportunity[]>([]);
