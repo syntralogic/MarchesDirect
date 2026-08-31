@@ -138,6 +138,20 @@ export type ApiOpportunityDetail = ApiOpportunity & {
   cpv_display?: string | null;
   source_reference?: string | null;
   identity_unlocked?: boolean;
+  // Structured extraction pass (see backend aiService.extractOpportunityFacts).
+  // Each field is either present or explicitly {available:false} - never a
+  // guessed value - so the UI must check `.available` before rendering.
+  // buyer_name/contact_email come back redacted server-side on a locked
+  // private tender, same as the top-level buyer_name field.
+  ai_extracted_facts?: {
+    buyer_name?: { value: string; available: boolean };
+    contract_object?: { value: string; available: boolean };
+    procedure_type?: { value: string; available: boolean };
+    submission_deadline?: { value: string; available: boolean };
+    estimated_value?: { value: string; available: boolean };
+    contact_email?: { value: string; available: boolean };
+    required_qualifications?: { value: string; available: boolean };
+  } | null;
 };
 
 export type ApiPagination = {
