@@ -5,6 +5,7 @@ import {
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Crown, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { SaveButton } from '@/components/SaveButton';
 import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
@@ -45,6 +46,7 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user } = useAuth();
+  const { companyKnown, company: siretCompany, lookup: lookupSiret } = useCompanyKnown();
   const isPaid = company?.subscription_status === 'active';
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
@@ -63,6 +65,9 @@ export default function OpportunityDetailPage() {
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
+  const [siretInput, setSiretInput] = useState('');
+  const [siretSubmitting, setSiretSubmitting] = useState(false);
+  const [siretError, setSiretError] = useState<string | null>(null);
 
   const [tender, setTender] = useState<ApiTender | null>(null);
   const [bid, setBid] = useState<ApiBidResponse | null>(null);
@@ -95,13 +100,27 @@ export default function OpportunityDetailPage() {
 
   useEffect(() => {
     if (!id || tab !== 'score' || matchScore || scoreLoading) return;
+    if (!companyKnown && !isAuthenticated) return; // gate: nothing to fetch until identified
     setScoreLoading(true);
     setScoreError(null);
-    opportunitiesApi.getMatchScore(id)
+    opportunitiesApi.getMatchScore(id, getSessionId())
       .then(setMatchScore)
       .catch(err => setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité.")))
       .finally(() => setScoreLoading(false));
-  }, [id, tab, matchScore, scoreLoading, t]);
+  }, [id, tab, matchScore, scoreLoading, t, companyKnown, isAuthenticated]);
+
+  const handleSiretSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{14}$/.test(siretInput)) {
+      setSiretError('Le SIRET doit contenir 14 chiffres.');
+      return;
+    }
+    setSiretSubmitting(true);
+    setSiretError(null);
+    const { error } = await lookupSiret(siretInput);
+    if (error) setSiretError(error);
+    setSiretSubmitting(false);
+  };
 
   useEffect(() => {
     if (!id || !isAuthenticated || !isPaid) return;
@@ -330,7 +349,51 @@ export default function OpportunityDetailPage() {
 
       {/* ANALYSE STRATÉGIQUE TAB */}
       {tab === 'score' && (
-        scoreLoading ? (
+        !companyKnown && !isAuthenticated ? (
+          <div className="space-y-4">
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
+                  <Gauge size={16} className="text-orange" />
+                </div>
+                <div>
+                  <p className="text-sm text-white font-semibold mb-1">{t('siretGateTitle')}</p>
+                  <p className="text-xs text-[#B9BBC8]">{t('siretGateSub')}</p>
+                </div>
+              </div>
+              <form onSubmit={handleSiretSubmit} className="flex flex-col sm:flex-row gap-2.5">
+                <input
+                  value={siretInput}
+                  onChange={e => setSiretInput(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                  placeholder={t('siretPlaceholder')}
+                  inputMode="numeric"
+                  className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50 tracking-wide"
+                />
+                <button type="submit" disabled={siretSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
+                  {siretSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('siretSubmit')}
+                </button>
+              </form>
+              {siretError && <p className="text-xs text-red-400 mt-2">{siretError}</p>}
+            </div>
+          </div>
+        ) : (
+          <>
+            {siretCompany && (
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldCheck size={15} className="text-green-400 shrink-0" />
+                  <p className="text-sm font-bold text-white">{t('siretRecognizedTitle')}{siretCompany.name ? ` — ${siretCompany.name}` : ''}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  {siretCompany.legal && <p className="text-[#B9BBC8]">{t('siretLegalForm')} : <span className="text-white">{siretCompany.legal}</span></p>}
+                  {siretCompany.created && <p className="text-[#B9BBC8]">{t('siretCreated')} : <span className="text-white">{formatDate(siretCompany.created)}</span></p>}
+                  {(siretCompany.address || siretCompany.city) && <p className="text-[#B9BBC8] col-span-2">{t('siretAddress')} : <span className="text-white">{[siretCompany.address, siretCompany.postal, siretCompany.city].filter(Boolean).join(', ')}</span></p>}
+                  {siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">{siretCompany.employees}</span></p>}
+                  {siretCompany.ape && <p className="text-[#B9BBC8]">{t('siretApe')} : <span className="text-white">{siretCompany.ape}{siretCompany.activity ? ` — ${siretCompany.activity}` : ''}</span></p>}
+                </div>
+              </div>
+            )}
+            {scoreLoading ? (
           <div className="flex items-center justify-center py-16 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('scoreCalculating')}</div>
         ) : scoreError ? (
           <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
@@ -407,7 +470,9 @@ export default function OpportunityDetailPage() {
               </div>
             )}
           </div>
-        ) : null
+            ) : null}
+          </>
+        )
       )}
 
       {/* DOSSIER & CANDIDATURE TAB */}

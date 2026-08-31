@@ -208,8 +208,8 @@ export const opportunitiesApi = {
     const { data } = await apiClient.post(`/opportunities/${id}/request-access`, payload);
     return data;
   },
-  getMatchScore: async (id: string): Promise<ApiMatchScore> => {
-    const { data } = await apiClient.get(`/opportunities/${id}/match-score`);
+  getMatchScore: async (id: string, sessionId?: string): Promise<ApiMatchScore> => {
+    const { data } = await apiClient.get(`/opportunities/${id}/match-score`, { params: sessionId ? { sessionId } : undefined });
     return data;
   },
   statsByRegion: async (): Promise<{ regions: { region: string; count: number }[] }> => {
@@ -289,6 +289,40 @@ export const subcontractNeedsApi = {
 export const tradesApi = {
   list: async () => {
     const { data } = await apiClient.get('/trades');
+    return data;
+  },
+};
+
+export type ApiSiretCompany = {
+  name: string | null;
+  legal: string | null;
+  created: string | null;
+  capital: number | null;
+  address: string | null;
+  city: string | null;
+  postal: string | null;
+  director: string | null;
+  employees: string | null;
+  ape: string | null;
+  activity: string | null;
+};
+
+export type ApiSiretStatus = {
+  companyKnown: boolean;
+  siret?: string;
+  company?: ApiSiretCompany;
+};
+
+// Prototype V17 "reconnaissance d'entreprise" flow (see backend
+// routes/siret.ts). Session-scoped: companyKnown is a single flag per
+// browser, not per opportunity.
+export const siretApi = {
+  status: async (sessionId: string): Promise<ApiSiretStatus> => {
+    const { data } = await apiClient.get('/siret/status', { params: { sessionId } });
+    return data;
+  },
+  lookup: async (siret: string, sessionId: string): Promise<ApiSiretStatus> => {
+    const { data } = await apiClient.post('/siret/lookup', { siret, sessionId });
     return data;
   },
 };
