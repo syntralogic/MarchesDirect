@@ -138,6 +138,11 @@ export type ApiOpportunityDetail = ApiOpportunity & {
   cpv_display?: string | null;
   source_reference?: string | null;
   identity_unlocked?: boolean;
+  // Aggregated buyer stat, computed server-side from the real (unredacted)
+  // buyer_name - safe to show even on a locked private tender/sous-
+  // traitance fiche per spec (name-free), so it's a plain top-level field,
+  // not inside ai_extracted_facts.
+  buyer_history_count?: number | null;
   // Structured extraction pass (see backend aiService.extractOpportunityFacts).
   // Each field is either present or explicitly {available:false} - never a
   // guessed value - so the UI must check `.available` before rendering.
@@ -151,6 +156,8 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     estimated_value?: { value: string; available: boolean };
     contact_email?: { value: string; available: boolean };
     required_qualifications?: { value: string; available: boolean };
+    team_size_estimate?: { value: string; available: boolean };
+    key_risks?: { value: string[]; available: boolean };
   } | null;
 };
 

@@ -294,7 +294,9 @@ export default function OpportunityDetailPage() {
             if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: facts.procedure_type.value });
             if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: facts.submission_deadline.value });
             if (facts.estimated_value?.available) rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
+            if (facts.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
             if (facts.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
+            if (opportunity.buyer_history_count != null) rows.push({ label: t('dossierFactBuyerHistory'), value: t('dossierBuyerHistoryValue').replace('{n}', String(opportunity.buyer_history_count)) });
             if (rows.length === 0) return null;
             return (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
@@ -310,6 +312,20 @@ export default function OpportunityDetailPage() {
               </div>
             );
           })()}
+
+          {/* POINTS DE VIGILANCE — warn-styled, only rendered when the
+              source actually stated risks (key_risks.available); never a
+              generic boilerplate list. */}
+          {opportunity.ai_extracted_facts?.key_risks?.available && opportunity.ai_extracted_facts.key_risks.value.length > 0 && (
+            <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
+              <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
+              <ul className="space-y-1.5 text-xs text-[#B9BBC8]">
+                {opportunity.ai_extracted_facts.key_risks.value.map((risk, i) => (
+                  <li key={i} className="flex items-start gap-2"><span className="text-orange shrink-0">△</span> {risk}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* DONNEUR D'ORDRE — the only thing ever locked. Public markets are
               always open (legal transparency obligation); private tender /
