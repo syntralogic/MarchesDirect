@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
-  CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Crown, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
+  CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { SaveButton } from '@/components/SaveButton';
+import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
@@ -61,6 +62,7 @@ export default function OpportunityDetailPage() {
   const [slotError, setSlotError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [callbackConfirmed, setCallbackConfirmed] = useState(false);
+  const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
 
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
@@ -506,9 +508,13 @@ export default function OpportunityDetailPage() {
               <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Sparkles size={13} className="text-orange/70" /> {t('dossierFeature2')}</div>
               <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><CheckCircle2 size={13} className="text-orange/70" /> {t('dossierFeature3')}</div>
             </div>
-            <Link to="/tarifs" className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-              <Crown size={14} /> {t('pricingViewPlans')}
-            </Link>
+            <button
+              type="button"
+              onClick={() => setShowAccountManagerModal(true)}
+              className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
+            >
+              <PhoneCall size={14} /> {t('pricingViewPlans')}
+            </button>
           </div>
         ) : dceLoading ? (
           <div className="flex items-center justify-center py-10 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('dossierLoading')}</div>
@@ -573,6 +579,8 @@ export default function OpportunityDetailPage() {
           </div>
         )
       )}
+
+      <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
     </div>
   );
 }

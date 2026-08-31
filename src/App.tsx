@@ -64,7 +64,11 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen w-full">
       <Header />
-      <main className="flex-1 pb-16 md:pb-0 min-w-0">
+      {/* pb-40 (not just pb-16 for the bottom nav) also clears the fixed
+          chatbot launcher button (bottom-20 + h-14 ≈ 136px from the bottom
+          on mobile), which was overlapping the last card on pages like the
+          opportunity detail "Analyse stratégique" tab. */}
+      <main className="flex-1 pb-40 md:pb-0 min-w-0">
         {children}
       </main>
       <Footer />
