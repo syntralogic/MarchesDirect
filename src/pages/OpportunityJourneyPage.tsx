@@ -662,7 +662,7 @@ export default function OpportunityJourneyPage() {
               </div>
 
               <button onClick={() => setFiltersOpen(false)} className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors">
-                {t('journeyShowResults', { count: filteredResults.length })}
+                {t('journeyShowResults', { count: filteredResults.length, plural: filteredResults.length !== 1 ? 's' : '' })}
               </button>
             </div>
           </div>
