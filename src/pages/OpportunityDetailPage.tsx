@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
+  ChevronDown, KeyRound,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -46,7 +47,7 @@ export default function OpportunityDetailPage() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, company, user } = useAuth();
+  const { isAuthenticated, company, user, register } = useAuth();
   const { companyKnown, company: siretCompany, lookup: lookupSiret } = useCompanyKnown();
   const isPaid = company?.subscription_status === 'active';
 
@@ -62,6 +63,11 @@ export default function OpportunityDetailPage() {
   const [slotError, setSlotError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [callbackConfirmed, setCallbackConfirmed] = useState(false);
+  const [quickPassword, setQuickPassword] = useState('');
+  const [quickPasswordSubmitting, setQuickPasswordSubmitting] = useState(false);
+  const [quickPasswordError, setQuickPasswordError] = useState<string | null>(null);
+  const [quickPasswordDone, setQuickPasswordDone] = useState(false);
+  const [quickPasswordDismissed, setQuickPasswordDismissed] = useState(false);
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
 
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
@@ -193,6 +199,36 @@ export default function OpportunityDetailPage() {
       setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
     } finally {
       setSlotSubmitting(null);
+    }
+  };
+
+  // Lightweight account finalisation (prototype V17, section 3.5) - shown
+  // once a slot/callback has already captured phone+email. Reuses the
+  // existing full register() flow (same as SignupPage) rather than a new
+  // endpoint: companyName defaults to the SIRET-recognized name when known,
+  // since re-typing it would contradict "single password field, nothing
+  // else to fill in" from the spec. Never blocks navigation - "Plus tard"
+  // just dismisses this block, per rule 6/7 of the spec.
+  const handleQuickPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quickPassword.length < 8) {
+      setQuickPasswordError(t('quickPasswordTooShort') || 'Le mot de passe doit contenir au moins 8 caractères.');
+      return;
+    }
+    setQuickPasswordSubmitting(true);
+    setQuickPasswordError(null);
+    const result = await register({
+      companyName: siretCompany?.name || slotForm.companyName || `${slotForm.firstName} ${slotForm.lastName}`.trim() || 'Mon entreprise',
+      firstName: slotForm.firstName,
+      lastName: slotForm.lastName,
+      email: slotForm.email,
+      password: quickPassword,
+    });
+    setQuickPasswordSubmitting(false);
+    if (result.error) {
+      setQuickPasswordError(result.error);
+    } else {
+      setQuickPasswordDone(true);
     }
   };
 
@@ -391,6 +427,47 @@ export default function OpportunityDetailPage() {
               </div>
             )}
           </div>
+
+          {(selectedSlot || callbackConfirmed) && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+              {quickPasswordDone ? (
+                <div className="flex items-center gap-2 text-sm text-white">
+                  <ShieldCheck size={15} className="text-green-400 shrink-0" />
+                  {t('quickPasswordSecuredSpace') || 'Espace sécurisé'} — {slotForm.email}
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
+                      <KeyRound size={16} className="text-orange" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-white font-semibold mb-1">{t('quickPasswordTitle') || 'Créer mon mot de passe'}</p>
+                      <p className="text-xs text-[#B9BBC8]">{t('quickPasswordSub') || 'Retrouvez cette opportunité et vos rendez-vous depuis votre tableau de bord.'}</p>
+                    </div>
+                  </div>
+                  <form onSubmit={handleQuickPassword} className="flex flex-col sm:flex-row gap-2.5">
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={quickPassword}
+                      onChange={e => setQuickPassword(e.target.value)}
+                      placeholder={t('quickPasswordPlaceholder') || 'Mot de passe (8 caractères min.)'}
+                      className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                    />
+                    <button type="submit" disabled={quickPasswordSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
+                      {quickPasswordSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('quickPasswordSubmit') || 'Créer mon mot de passe'}
+                    </button>
+                  </form>
+                  {quickPasswordError && <p className="text-xs text-red-400 mt-2">{quickPasswordError}</p>}
+                  <button type="button" onClick={() => setQuickPasswordDismissed(true)} className="text-xs text-[#B9BBC8] hover:text-white underline mt-3">
+                    {t('quickPasswordLater') || 'Plus tard'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -516,6 +593,8 @@ export default function OpportunityDetailPage() {
                 )}
               </div>
             )}
+
+            <RefineAnalysisAccordion t={t} />
           </div>
             ) : null}
           </>
@@ -626,6 +705,80 @@ export default function OpportunityDetailPage() {
       )}
 
       <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
+    </div>
+  );
+}
+
+// "Affinez votre analyse" (prototype V17, section 3.4) - an optional,
+// collapsed-by-default refinement block. Three questions, each its own
+// sub-accordion, each answered with Oui / Non / Je ne sais pas buttons only
+// - the spec is explicit that there's no free-text field here. Purely local
+// UI state: the spec describes the interaction, not a backend contract for
+// storing the answers, so nothing is invented server-side for this.
+type RefineAnswer = 'oui' | 'non' | 'nsp' | null;
+
+function RefineAnalysisAccordion({ t }: { t: (key: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, RefineAnswer>>({ q1: null, q2: null, q3: null });
+  const [expandedQ, setExpandedQ] = useState<string | null>(null);
+
+  const questions = [
+    { key: 'q1', label: t('refineQ1') || 'Disposez-vous de la qualification professionnelle requise ?' },
+    { key: 'q2', label: t('refineQ2') || 'Avez-vous une référence récente sur un chantier comparable ?' },
+    { key: 'q3', label: t('refineQ3') || "Pouvez-vous mobiliser l'équipe nécessaire sur ce délai ?" },
+  ];
+
+  return (
+    <div className="bg-[#061D32] border border-[#17334D] rounded-2xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between p-5 text-left"
+      >
+        <div>
+          <h2 className="text-sm font-bold text-white">{t('refineTitle') || 'Affinez votre analyse'}</h2>
+          <p className="text-[11px] text-[#B9BBC8] mt-0.5">{t('refineOptional') || 'Optionnel · 3 questions'}</p>
+        </div>
+        <ChevronDown size={16} className={`text-[#B9BBC8] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-2">
+          {questions.map(q => (
+            <div key={q.key} className="border border-[#17334D] rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setExpandedQ(cur => (cur === q.key ? null : q.key))}
+                className="w-full flex items-center justify-between p-3 text-left bg-[#031B30]"
+              >
+                <span className="text-xs text-white font-medium pr-2">{q.label}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {answers[q.key] && (
+                    <span className="text-[10px] font-semibold text-orange uppercase">
+                      {answers[q.key] === 'oui' ? (t('refineYes') || 'Oui') : answers[q.key] === 'non' ? (t('refineNo') || 'Non') : (t('refineUnsure') || 'Je ne sais pas')}
+                    </span>
+                  )}
+                  <ChevronDown size={13} className={`text-[#5B6B80] transition-transform ${expandedQ === q.key ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              {expandedQ === q.key && (
+                <div className="flex gap-2 p-3 bg-[#061D32]">
+                  {(['oui', 'non', 'nsp'] as const).map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setAnswers(a => ({ ...a, [q.key]: val }))}
+                      className={`flex-1 text-xs font-semibold rounded-lg py-2 border transition-colors ${answers[q.key] === val ? 'border-orange bg-orange/10 text-white' : 'border-[#5b6d7d] text-white hover:border-orange/50'}`}
+                    >
+                      {val === 'oui' ? (t('refineYes') || 'Oui') : val === 'non' ? (t('refineNo') || 'Non') : (t('refineUnsure') || 'Je ne sais pas')}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
