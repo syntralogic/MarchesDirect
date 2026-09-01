@@ -48,5 +48,6 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
     saved: false,
     published: api.publication_date || undefined,
     description: api.description || undefined,
+    identityUnlocked: api.identity_unlocked,
   };
 }
