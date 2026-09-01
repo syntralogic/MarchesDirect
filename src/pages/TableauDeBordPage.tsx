@@ -14,6 +14,7 @@ import {
 } from '@/lib/apiClient';
 import { apiOpportunityToDisplay } from '@/lib/opportunityAdapter';
 import type { Opportunity } from '@/data/mockData';
+import { AppointmentModal } from '@/components/AppointmentModal';
 
 interface DashboardSummary {
   activeOpportunities: number;
@@ -54,6 +55,7 @@ export default function TableauDeBordPage() {
   const [savedList, setSavedList] = useState<Opportunity[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
   const [savedLoaded, setSavedLoaded] = useState(false);
+  const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -284,10 +286,14 @@ export default function TableauDeBordPage() {
                 <PhoneCall size={18} className="text-orange shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-bold text-white mb-1">{t('dashProfileActive') || 'Votre profil est actif'}</p>
-                  <p className="text-xs text-[#B9BBC8] mb-3">{t('dashSaveOpportunities') || 'Enregistrez les annonces qui vous intéressent. Passez à l\'offre payante pour analyser les dossiers et générer vos candidatures.'}</p>
-                  <Link to="/tarifs" className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-orange/90 transition-colors">
-                    {t('dashViewPlans') || 'Voir les offres'}
-                  </Link>
+                  <p className="text-xs text-[#B9BBC8] mb-3">{t('dashSaveOpportunities') || 'Enregistrez les annonces qui vous intéressent. Un chargé d\'affaires vous accompagne pour analyser les dossiers et préparer vos candidatures.'}</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAccountManagerModal(true)}
+                    className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+                  >
+                    {t('dashViewPlans') || 'Contacter un chargé d\'affaires'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -378,6 +384,8 @@ export default function TableauDeBordPage() {
           ))}
         </SectionList>
       )}
+
+      <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
     </div>
   );
 }
