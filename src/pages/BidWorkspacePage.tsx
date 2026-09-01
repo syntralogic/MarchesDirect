@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Loader2, Save, CheckCircle2, Download, Plus, Trash2,
-  AlertTriangle, FileText, Euro, Lock, ShoppingCart,
+  AlertTriangle, FileText, Euro, Lock, PhoneCall,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -10,6 +10,7 @@ import {
   type ApiBidResponse, type ApiPricingItem, type ApiOpportunityDetail,
 } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { AppointmentModal } from '@/components/AppointmentModal';
 
 const DOC_LABELS: Record<string, string> = {
   kbis: 'Extrait KBIS', insurance: "Attestation d'assurance décennale",
@@ -30,6 +31,7 @@ export default function BidWorkspacePage() {
   const [savingMemo, setSavingMemo] = useState(false);
   const [savingPricing, setSavingPricing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -130,13 +132,17 @@ export default function BidWorkspacePage() {
       {!isPaid && (
         <div className="bg-[#061D32] border border-orange/40 rounded-2xl p-5 mb-5 text-center">
           <Lock size={22} className="text-orange mx-auto mb-2" />
-          <h2 className="text-sm font-bold text-white mb-1">Préparation du dossier réservée à l'offre payante</h2>
+          <h2 className="text-sm font-bold text-white mb-1">Mémoire technique et dépôt : accompagnement dédié</h2>
           <p className="text-xs text-[#B9BBC8] mb-4">
-            Un abonnement actif est nécessaire pour rédiger, valider et télécharger votre mémoire technique, votre bordereau de prix et le dossier complet.
+            Un chargé d'affaires Marchés Direct vous accompagne pour rédiger, valider et déposer votre mémoire technique, votre bordereau de prix et le dossier complet.
           </p>
-          <Link to="/tarifs" className="inline-flex items-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors">
-            <ShoppingCart size={13} /> Voir les offres
-          </Link>
+          <button
+            type="button"
+            onClick={() => setShowAccountManagerModal(true)}
+            className="inline-flex items-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors"
+          >
+            <PhoneCall size={13} /> Contacter un chargé d'affaires
+          </button>
         </div>
       )}
 
@@ -249,6 +255,8 @@ export default function BidWorkspacePage() {
           {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Télécharger le dossier (ZIP)
         </button>
       </div>
+
+      <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
     </div>
   );
 }
