@@ -362,6 +362,8 @@ export type ApiDashboardMatch = {
   location_city: string | null;
   location_region: string | null;
   ai_summary: string | null;
+  journey?: 'tender' | 'public_procurement' | 'subcontracting' | null;
+  identity_unlocked?: boolean;
 };
 
 export const dashboardApi = {
