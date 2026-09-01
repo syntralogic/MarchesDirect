@@ -907,6 +907,10 @@ const frTranslations: Translations = {
 
   // Opportunity Journey
   journeyStep: 'Étape',
+  journeyStep1: 'Type d\'opportunité',
+  journeyStep2: 'Votre métier',
+  journeyStep3: 'Zone géographique',
+  journeyStep4: 'Résultats',
   journeyFindOpportunity: 'Trouver une opportunité',
   journeyTypeTitle: "Types d'opportunités — 1, 2 ou 3 choix",
   journeySubRoleTitle: 'Pour la sous-traitance, vous êtes :',
@@ -1104,6 +1108,7 @@ const frTranslations: Translations = {
 
   // Auth Pages
   loginTitle: 'Accédez à votre espace.',
+  loginEyebrow: 'Connexion',
   loginSub: 'Retrouvez vos opportunités et le suivi de vos dossiers.',
   loginEmail: 'Email',
   loginPassword: 'Mot de passe',
@@ -1117,6 +1122,7 @@ const frTranslations: Translations = {
   loginVerifying: 'Vérification...',
 
   signupTitle: 'Créez votre compte entreprise.',
+  signupEyebrow: 'Inscription',
   signupSub: 'Un seul profil, réutilisé à chaque réponse.',
   signupCompanyName: "Nom de l'entreprise",
   signupFirstName: 'Prénom',
@@ -2107,6 +2113,10 @@ const enTranslations: Translations = {
 
   // Opportunity Journey - English
   journeyStep: 'Step',
+  journeyStep1: 'Opportunity type',
+  journeyStep2: 'Your trade',
+  journeyStep3: 'Location',
+  journeyStep4: 'Results',
   journeyFindOpportunity: 'Find an opportunity',
   journeyTypeTitle: 'Opportunity types — 1, 2 or 3 choices',
   journeySubRoleTitle: 'For subcontracting, you are:',
@@ -2304,6 +2314,7 @@ const enTranslations: Translations = {
 
   // Auth Pages - English
   loginTitle: 'Access your workspace.',
+  loginEyebrow: 'Login',
   loginSub: 'Find your opportunities and track your files.',
   loginEmail: 'Email',
   loginPassword: 'Password',
@@ -2317,6 +2328,7 @@ const enTranslations: Translations = {
   loginVerifying: 'Verifying...',
 
   signupTitle: 'Create your business account.',
+  signupEyebrow: 'Sign up',
   signupSub: 'One profile, reused for every response.',
   signupCompanyName: 'Company name',
   signupFirstName: 'First name',

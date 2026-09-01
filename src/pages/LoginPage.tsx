@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="page-fade-in max-w-sm mx-auto px-4 py-10 md:py-16 min-h-screen">
       <div className="mb-6">
-        <span className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1 block">{t('loginTitle') || 'Connexion'}</span>
+        <span className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1 block">{t('loginEyebrow') || 'Connexion'}</span>
         <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">{t('loginTitle')}</h1>
         <p className="text-[#B9BBC8] text-xs leading-snug">{t('loginSub')}</p>
       </div>
