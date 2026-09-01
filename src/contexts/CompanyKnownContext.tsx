@@ -7,7 +7,7 @@ interface CompanyKnownContextType {
   company: ApiSiretCompany | null;
   siret: string | null;
   loading: boolean;
-  lookup: (siret: string) => Promise<{ error: string | null }>;
+  lookup: (query: string) => Promise<{ error: string | null }>;
 }
 
 const CompanyKnownContext = createContext<CompanyKnownContextType | undefined>(undefined);
@@ -35,9 +35,12 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  const lookup = useCallback(async (siretValue: string) => {
+  // Accepts either a 14-digit SIRET or a free-text company name (client's
+  // ask: "SIRET ou entreprise" - either should work) - the backend resolves
+  // a name to a SIRET via Pappers search before doing the normal lookup.
+  const lookup = useCallback(async (query: string) => {
     try {
-      const result = await siretApi.lookup(siretValue, getSessionId());
+      const result = await siretApi.lookup(query, getSessionId());
       setCompanyKnown(result.companyKnown);
       setCompany(result.company || null);
       setSiret(result.siret || null);
