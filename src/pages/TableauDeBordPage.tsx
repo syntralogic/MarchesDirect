@@ -318,21 +318,40 @@ export default function TableauDeBordPage() {
           empty={matches.length === 0}
           emptyText={t('dashNoMatches') || 'Aucune opportunité correspondante pour le moment.'}
         >
-          {matches.map(m => (
-            <Link
-              key={m.id}
-              to={`/opportunites/${m.id}`}
-              className="flex items-center gap-3 bg-[#061D32] border border-[#17334D] rounded-2xl p-4 hover:border-orange/40 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">{m.title}</p>
-                <p className="text-xs text-[#B9BBC8] mt-0.5">
-                  {[m.location_city, m.deadline ? new Date(m.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}
-                </p>
+          {matches.map(m => {
+            const isPrivate = m.journey && m.journey !== 'public_procurement';
+            const locked = isPrivate && !m.identity_unlocked;
+            return (
+              <div key={m.id} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
+                <Link to={`/opportunites/${m.id}`} className="block mb-3">
+                  <p className="text-sm font-bold text-white truncate">{m.title}</p>
+                  <p className="text-xs text-[#B9BBC8] mt-0.5">
+                    {[m.location_city, m.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(m.estimated_value)} €` : null, m.deadline ? new Date(m.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}
+                  </p>
+                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  {locked ? (
+                    <Link
+                      to={`/opportunites/${m.id}`}
+                      className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+                    >
+                      <PhoneCall size={12} /> {t('dashIdentityMaskedCta') || "Identité du donneur d'ordre masquée · Prendre rendez-vous pour déverrouiller"}
+                    </Link>
+                  ) : (
+                    <Link
+                      to={m.journey === 'public_procurement' ? `/opportunites/${m.id}` : `/opportunites/${m.id}/candidature`}
+                      className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+                    >
+                      <FolderCheck size={12} /> {m.journey === 'public_procurement' ? (t('dashPrepareFile') || 'Préparer mon dossier') : (t('dashViewPrivateFile') || 'Voir le dossier privé')}
+                    </Link>
+                  )}
+                  <Link to={`/opportunites/${m.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
+                    <Sparkles size={12} /> {t('dashReviewAnalysis') || "Revoir l'analyse"}
+                  </Link>
+                </div>
               </div>
-              <ChevronRight size={16} className="text-[#B9BBC8] shrink-0" />
-            </Link>
-          ))}
+            );
+          })}
         </SectionList>
       )}
 
