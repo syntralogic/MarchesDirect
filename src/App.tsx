@@ -42,7 +42,6 @@ import ContactPage from '@/pages/ContactPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import { RequireAuth } from '@/components/common/RequireAuth';
-import StripeCheckoutPage from '@/pages/StripeCheckoutPage';
 
 import AdminDashboard from '@/pages/AdminDashboard';
 import AdminTenders from '@/pages/AdminTenders';
@@ -122,7 +121,13 @@ const App: React.FC = () => {
               <Route path="/confidentialite" element={<ConfidentialitePage />} />
               <Route path="/cgu" element={<CguPage />} />
               <Route path="/contact" element={<ContactPage />} />
-              <Route path="/checkout/:planId" element={<StripeCheckoutPage />} />
+              {/* No self-serve checkout route: per client's explicit
+                  instruction (WhatsApp), the site is a lead-capture tool,
+                  not a place to actually buy a subscription - real pricing
+                  is negotiated and sold by phone. A live, reachable
+                  /checkout/:planId page would let a visitor buy online
+                  regardless of what the pricing page's buttons do, so the
+                  route itself is gone, not just its buttons. */}
 
               <Route path="/connexion" element={<LoginPage />} />
               <Route path="/inscription" element={<SignupPage />} />

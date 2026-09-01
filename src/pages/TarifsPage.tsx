@@ -1,27 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Check, Monitor, FileText, Trophy, 
   Ban, CalendarDays, Target, Search, ClipboardCheck, Phone, User 
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { CallbackModal } from '@/components/CallbackModal';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { useLang } from '@/contexts/LangContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { subscriptionsApi, type ApiSubscriptionPlan } from '@/lib/apiClient';
 
 export default function TarifsPage() {
   const { t } = useLang();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
-  const [backendPlans, setBackendPlans] = useState<ApiSubscriptionPlan[]>([]);
-
-  useEffect(() => {
-    subscriptionsApi.plans().then(setBackendPlans).catch(() => setBackendPlans([]));
-  }, []);
 
   const PLANS = [
     {
@@ -42,7 +33,13 @@ export default function TarifsPage() {
       badge: t('planProBadge'),
       features: [t('planProFeat1'), t('planProFeat2'), t('planProFeat3'), t('planProFeat4'), t('planProFeat5')],
       cta: t('planProCta'),
-      ctaType: 'checkout' as const,
+      // Not 'checkout': per the client's explicit instruction (WhatsApp),
+      // this site never sells a subscription directly - it's a lead-capture
+      // tool for a phone sales team. The displayed 89€ is described the
+      // same way ("tarif d'appel" - a symbolic anchor price quoted to build
+      // trust, not what's actually charged after negotiation), so every
+      // plan's CTA leads to a human conversation, never a card form.
+      ctaType: 'appt' as const,
     },
     {
       id: 'entreprise',
@@ -56,21 +53,10 @@ export default function TarifsPage() {
     },
   ];
 
-  const handleSubscribe = async (plan: (typeof PLANS)[number]) => {
-    if (!isAuthenticated) {
-      toast.info('Connectez-vous pour souscrire.');
-      navigate('/connexion', { state: { from: '/tarifs' } });
-      return;
-    }
-
-    const match = backendPlans.find((p) => p.plan_code === plan.id);
-    if (!match) {
-      toast.error("Ce forfait n'est pas encore disponible à la souscription en ligne.");
-      return;
-    }
-
-    // REDIRECT TO STRIPE CHECKOUT PAGE
-    navigate(`/checkout/${match.id}`);
+  const handleSubscribe = (_plan: (typeof PLANS)[number]) => {
+    // Every plan's CTA opens the appointment modal - see the ctaType note on
+    // the 'pro' plan above for why there is no self-serve checkout path.
+    setApptOpen(true);
   };
 
   return (
