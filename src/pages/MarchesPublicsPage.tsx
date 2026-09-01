@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, HelpCircle, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useTrades } from '@/hooks/use-trades';
+import { useMatchScores } from '@/hooks/use-match-scores';
 import { useLang } from '@/contexts/LangContext';
-import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { SaveButton } from '@/components/SaveButton';
 import PageMeta from '@/components/common/PageMeta';
@@ -13,7 +13,6 @@ const STATUSES = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
 
 export default function MarchesPublicsPage() {
   const { t } = useLang();
-  const { companyKnown } = useCompanyKnown();
   const navigate = useNavigate();
   const { opportunities: mockPublicOpportunities, loading, error } = useOpportunities('public_procurement');
   const trades = useTrades();
@@ -36,6 +35,7 @@ export default function MarchesPublicsPage() {
 
   const resetFilters = () => { setLocation(''); setSector('Tous'); setStatus('Tous'); };
   const hasFilters = location || sector !== 'Tous' || status !== 'Tous';
+  const { scores: matchScores, canScore } = useMatchScores(filtered.map(o => o.id));
 
   const getIcon = (title: string) => {
     if (title.toLowerCase().includes('peinture')) return <Paintbrush size={18} className="text-orange" />;
@@ -171,17 +171,18 @@ export default function MarchesPublicsPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-2">
-                    {companyKnown ? (
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-[#3FA96E]">
-                        <CheckCircle2 size={10} />
-                        <span>{t('searchCompatible')}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-[#B9BBC8]">
-                        <HelpCircle size={10} />
-                        <span>{t('searchIdentifyPrompt')}</span>
-                      </div>
-                    )}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1 text-[9px] font-medium min-w-0">
+                      {canScore ? (
+                        matchScores[o.id] ? (
+                          <span className="flex items-center gap-1 text-[#3FA96E]"><CheckCircle2 size={10} /> {matchScores[o.id].score}%</span>
+                        ) : (
+                          <span className="text-[#5B6B80]">…</span>
+                        )
+                      ) : (
+                        <span className="flex items-center gap-1 text-[#B9BBC8] truncate"><HelpCircle size={10} /> {t('searchIdentifyPrompt')}</span>
+                      )}
+                    </div>
                     <button onClick={() => navigate(`/opportunites/${o.id}`)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
                       {t('searchView')} <ArrowRight size={10} />
                     </button>

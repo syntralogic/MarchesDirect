@@ -233,6 +233,12 @@ export const opportunitiesApi = {
     const { data } = await apiClient.get(`/opportunities/${id}/match-score`, { params: sessionId ? { sessionId } : undefined });
     return data;
   },
+  // Bulk scores for a results list (prototype V17 section 3.1) - 403s if
+  // the caller isn't identified yet, same gate as the single-fiche version.
+  matchScores: async (ids: string[], sessionId: string): Promise<Record<string, { score: number; scoreTitle: string }>> => {
+    const { data } = await apiClient.post('/opportunities/match-scores', { ids, sessionId });
+    return data.scores;
+  },
   statsByRegion: async (): Promise<{ regions: { region: string; count: number }[] }> => {
     const { data } = await axios.get(`${API_URL}/api/opportunities/stats/regions`);
     return data;
