@@ -133,13 +133,18 @@ export default function OpportunityDetailPage() {
 
   const handleSiretSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{14}$/.test(siretInput)) {
-      setSiretError('Le SIRET doit contenir 14 chiffres.');
+    // Accept a 14-digit SIRET OR a company name (client's ask: label the
+    // field "SIRET ou entreprise" so either works) - only reject genuinely
+    // too-short input, the backend resolves a name to a SIRET via Pappers
+    // search before doing the actual lookup.
+    const trimmed = siretInput.trim();
+    if (trimmed.length < 2) {
+      setSiretError(t('siretInputTooShort') || "Indiquez un SIRET (14 chiffres) ou le nom de l'entreprise.");
       return;
     }
     setSiretSubmitting(true);
     setSiretError(null);
-    const { error } = await lookupSiret(siretInput);
+    const { error } = await lookupSiret(trimmed);
     if (error) setSiretError(error);
     setSiretSubmitting(false);
   };
@@ -518,9 +523,8 @@ export default function OpportunityDetailPage() {
               <form onSubmit={handleSiretSubmit} className="flex flex-col sm:flex-row gap-2.5">
                 <input
                   value={siretInput}
-                  onChange={e => setSiretInput(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                  onChange={e => setSiretInput(e.target.value)}
                   placeholder={t('siretPlaceholder')}
-                  inputMode="numeric"
                   className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50 tracking-wide"
                 />
                 <button type="submit" disabled={siretSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">

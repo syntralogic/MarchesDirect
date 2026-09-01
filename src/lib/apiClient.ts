@@ -349,8 +349,8 @@ export const siretApi = {
     const { data } = await apiClient.get('/siret/status', { params: { sessionId } });
     return data;
   },
-  lookup: async (siret: string, sessionId: string): Promise<ApiSiretStatus> => {
-    const { data } = await apiClient.post('/siret/lookup', { siret, sessionId });
+  lookup: async (query: string, sessionId: string): Promise<ApiSiretStatus> => {
+    const { data } = await apiClient.post('/siret/lookup', { query, sessionId });
     return data;
   },
 };
