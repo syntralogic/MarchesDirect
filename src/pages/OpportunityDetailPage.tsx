@@ -12,12 +12,22 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
-  opportunitiesApi, tendersApi, getApiErrorMessage,
+  opportunitiesApi, tendersApi, companyVaultApi, getApiErrorMessage,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse,
-  type ApiOpportunityAccess, type ApiMatchScore,
+  type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument,
 } from '@/lib/apiClient';
 import { useLang } from '@/contexts/LangContext';
 
+// Spec 3.7: "Fin du parcours" company-document checklist - always addable
+// once logged in, regardless of subscription (only the AI-assisted mémoire
+// technique below it is gated). Same document_type values CompanyVaultPage
+// already writes, so ticking one off here and there never disagree.
+const CHECKLIST_DOCS: { type: string; labelKey: string }[] = [
+  { type: 'kbis', labelKey: 'checklistKbis' },
+  { type: 'insurance', labelKey: 'checklistInsurance' },
+  { type: 'attestation_fiscale', labelKey: 'checklistFiscale' },
+  { type: 'attestation_sociale', labelKey: 'checklistSociale' },
+];
 function formatAmount(value: number | null, currency: string | null) {
   if (value == null) return 'Montant non communiqué';
   return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value) + ' ' + (currency || 'EUR');
@@ -80,6 +90,10 @@ export default function OpportunityDetailPage() {
   const [tender, setTender] = useState<ApiTender | null>(null);
   const [bid, setBid] = useState<ApiBidResponse | null>(null);
   const [dceLoading, setDceLoading] = useState(false);
+  const [checklistDocs, setChecklistDocs] = useState<ApiCompanyDocument[]>([]);
+  const [checklistCertCount, setChecklistCertCount] = useState(0);
+  const [checklistRefCount, setChecklistRefCount] = useState(0);
+  const [checklistLoading, setChecklistLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [dceError, setDceError] = useState<string | null>(null);
@@ -143,6 +157,22 @@ export default function OpportunityDetailPage() {
       .catch(err => setDceError(getApiErrorMessage(err, t('detailDCEAnalysisFailed') || "Impossible de charger le dossier.")))
       .finally(() => setDceLoading(false));
   }, [id, isAuthenticated, isPaid, t]);
+
+  // Checklist fetch is independent of isPaid on purpose - spec 3.7 keeps
+  // the company-document checklist addable regardless of subscription,
+  // only the AI-assisted mémoire technique below it is gated.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setChecklistLoading(true);
+    Promise.all([companyVaultApi.documents.list(), companyVaultApi.certifications.list(), companyVaultApi.references.list()])
+      .then(([docs, certs, refs]) => {
+        setChecklistDocs(docs);
+        setChecklistCertCount(certs.length);
+        setChecklistRefCount(refs.length);
+      })
+      .catch(() => {})
+      .finally(() => setChecklistLoading(false));
+  }, [isAuthenticated]);
 
   const handleAnalyze = async () => {
     if (!tender) return;
@@ -616,7 +646,50 @@ export default function OpportunityDetailPage() {
               </Link>
             </div>
           </div>
-        ) : !isPaid ? (
+        ) : (
+          <div className="space-y-4">
+            {/* Spec 3.7: dossier entreprise checklist - always addable, not
+                behind the subscription gate below. */}
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+              <h2 className="text-sm font-bold text-white mb-3">{t('checklistTitle')}</h2>
+              {checklistLoading ? (
+                <div className="h-16 bg-[#17334D]/40 rounded-lg animate-pulse" />
+              ) : (
+                <div className="space-y-2">
+                  {CHECKLIST_DOCS.map(item => {
+                    const done = checklistDocs.some(d => d.document_type === item.type);
+                    return (
+                      <div key={item.type} className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
+                        <span className="text-[#B9BBC8]">{t(item.labelKey)}</span>
+                        {done ? (
+                          <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
+                        ) : (
+                          <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
+                    <span className="text-[#B9BBC8]">{t('checklistQualification')}</span>
+                    {checklistCertCount > 0 ? (
+                      <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
+                    ) : (
+                      <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="text-[#B9BBC8]">{t('checklistReferences')}</span>
+                    {checklistRefCount > 0 ? (
+                      <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
+                    ) : (
+                      <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!isPaid ? (
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
@@ -700,6 +773,8 @@ export default function OpportunityDetailPage() {
             </div>
 
             {dceError && <p className="text-xs text-red-400">{dceError}</p>}
+          </div>
+        )}
           </div>
         )
       )}

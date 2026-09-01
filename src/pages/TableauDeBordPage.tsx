@@ -364,19 +364,38 @@ export default function TableauDeBordPage() {
           emptyText={t('dashSavedEmpty') || 'Aucune annonce enregistrée. Utilisez le cœur sur une fiche pour la retrouver ici.'}
           emptyIcon={Bookmark}
         >
-          {savedList.map(o => (
-            <Link
-              key={o.id}
-              to={`/opportunites/${o.id}`}
-              className="flex items-center gap-3 bg-[#061D32] border border-[#17334D] rounded-2xl p-4 hover:border-orange/40 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">{o.title}</p>
-                <p className="text-xs text-[#B9BBC8] mt-0.5">{[o.location, o.amount, o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}</p>
+          {savedList.map(o => {
+            const isPrivate = o.type && o.type !== 'public';
+            const locked = isPrivate && !o.identityUnlocked;
+            return (
+              <div key={o.id} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
+                <Link to={`/opportunites/${o.id}`} className="block mb-3">
+                  <p className="text-sm font-bold text-white truncate">{o.title}</p>
+                  <p className="text-xs text-[#B9BBC8] mt-0.5">{[o.location, o.amount, o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}</p>
+                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  {locked ? (
+                    <Link
+                      to={`/opportunites/${o.id}`}
+                      className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+                    >
+                      <PhoneCall size={12} /> {t('dashIdentityMaskedCta') || "Identité du donneur d'ordre masquée · Prendre rendez-vous pour déverrouiller"}
+                    </Link>
+                  ) : (
+                    <Link
+                      to={o.type === 'public' ? `/opportunites/${o.id}` : `/opportunites/${o.id}/candidature`}
+                      className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+                    >
+                      <FolderCheck size={12} /> {o.type === 'public' ? (t('dashPrepareFile') || 'Préparer mon dossier') : (t('dashViewPrivateFile') || 'Voir le dossier privé')}
+                    </Link>
+                  )}
+                  <Link to={`/opportunites/${o.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
+                    <Sparkles size={12} /> {t('dashReviewAnalysis') || "Revoir l'analyse"}
+                  </Link>
+                </div>
               </div>
-              <ChevronRight size={16} className="text-[#B9BBC8] shrink-0" />
-            </Link>
-          ))}
+            );
+          })}
         </SectionList>
       )}
 
