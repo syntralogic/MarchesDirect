@@ -19,6 +19,7 @@ export interface Opportunity {
   published?: string;
   description?: string;
   profileRequired?: string[];
+  identityUnlocked?: boolean;
 }
 
 export const mockPublicOpportunities: Opportunity[] = [
