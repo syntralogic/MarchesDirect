@@ -122,6 +122,7 @@ export type ApiOpportunity = {
   trade_name: string | null;
   buyer_name?: string | null;
   match_score?: number;
+  identity_unlocked?: boolean;
 };
 
 // Extra fields only returned by GET /opportunities/:id (SELECT o.*, ...), not
