@@ -27,6 +27,7 @@ export interface Company {
   status?: string;
   subscription_status?: string | null;
   subscription_tier?: string | null;
+  trial_ends_at?: string | null;
   [key: string]: unknown;
 }
 

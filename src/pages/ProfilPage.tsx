@@ -435,7 +435,22 @@ export default function ProfilPage() {
               ) : subscription === null || !subscription.plan_name ? (
                 <>
                   <p className="text-xs text-[#B9BBC8] mb-1">{t('profileCurrentPlan')}</p>
-                  <p className="text-sm font-bold text-white">{t('profileNoSubscription')}</p>
+                  {(() => {
+                    const trialEndsAt = company?.trial_ends_at ? new Date(company.trial_ends_at) : null;
+                    const daysLeft = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - Date.now()) / 86400000) : null;
+                    if (daysLeft != null && daysLeft > 0) {
+                      return (
+                        <>
+                          <p className="text-sm font-bold text-white">{t('profileTrialDaysLeft') || 'Essai gratuit'} — {daysLeft} {daysLeft > 1 ? (t('profileDaysPlural') || 'jours restants') : (t('profileDaySingular') || 'jour restant')}</p>
+                          <p className="text-xs text-[#B9BBC8] mt-0.5">{t('profileTrialEndsOn') || 'Se termine le'} {trialEndsAt!.toLocaleDateString('fr-FR')}</p>
+                        </>
+                      );
+                    }
+                    if (daysLeft != null && daysLeft <= 0) {
+                      return <p className="text-sm font-bold text-orange">{t('profileTrialExpired') || 'Essai gratuit terminé — passez à une formule payante pour continuer'}</p>;
+                    }
+                    return <p className="text-sm font-bold text-white">{t('profileNoSubscription')}</p>;
+                  })()}
                   <button onClick={() => navigate('/tarifs')} className="text-xs text-orange border border-orange px-3 py-1.5 rounded-lg hover:bg-orange/10 transition-colors mt-3">{t('profileViewPlans')}</button>
                 </>
               ) : (
