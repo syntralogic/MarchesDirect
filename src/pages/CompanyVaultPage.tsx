@@ -140,16 +140,16 @@ export default function CompanyVaultPage() {
         </p>
       </div>
 
-      <div className="flex gap-1 mb-5 overflow-x-auto pb-1">
+      <div className="grid grid-cols-3 gap-1.5 mb-5">
         {TABS.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg text-[11px] font-semibold text-center transition-colors ${
               activeTab === tab.key ? 'bg-orange text-white' : 'text-[#B9BBC8] hover:text-white border border-[#17334D]'
             }`}
           >
-            <tab.icon size={13} /> {t(tab.labelKey)}
+            <tab.icon size={13} className="shrink-0" /> <span className="truncate">{t(tab.labelKey)}</span>
           </button>
         ))}
       </div>
