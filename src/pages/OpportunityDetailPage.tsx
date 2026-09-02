@@ -58,7 +58,7 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, register } = useAuth();
-  const { companyKnown, company: siretCompany, lookup: lookupSiret } = useCompanyKnown();
+  const { companyKnown, company: siretCompany, lookup: lookupSiret, leadCaptured, captureLead } = useCompanyKnown();
   const isPaid = company?.subscription_status === 'active';
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
@@ -79,6 +79,33 @@ export default function OpportunityDetailPage() {
   const [quickPasswordDone, setQuickPasswordDone] = useState(false);
   const [quickPasswordDismissed, setQuickPasswordDismissed] = useState(false);
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
+  // Phone+email gate (client's newest brief, Écran 7): shown once SIRET is
+  // known but leadCaptured is still false, in place of the fuller analysis
+  // breakdown (criteria/eligibility/refine accordion) - global per session
+  // via CompanyKnownContext, so once given it never reappears anywhere.
+  const [leadPhone, setLeadPhone] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadError, setLeadError] = useState<string | null>(null);
+  const [justUnlockedAnalysis, setJustUnlockedAnalysis] = useState(false);
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{10}$/.test(leadPhone)) {
+      setLeadError(t('leadPhoneInvalid') || 'Le téléphone doit contenir 10 chiffres.');
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(leadEmail)) {
+      setLeadError(t('leadEmailInvalid') || "L'e-mail n'est pas valide.");
+      return;
+    }
+    setLeadSubmitting(true);
+    setLeadError(null);
+    const { error } = await captureLead(leadPhone, leadEmail, id);
+    if (error) setLeadError(error);
+    else setJustUnlockedAnalysis(true);
+    setLeadSubmitting(false);
+  };
 
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
@@ -592,46 +619,91 @@ export default function OpportunityDetailPage() {
               </div>
             )}
 
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
-              <div className="space-y-2.5">
-                {matchScore.criteria.map((c, i) => (
-                  <div key={i}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-[#B9BBC8]">{c.label}</span>
-                      <span className="text-white font-semibold">{c.weight}%</span>
-                    </div>
-                    <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
-                      <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
-                    </div>
+            {(isAuthenticated || leadCaptured) ? (
+              <>
+                {justUnlockedAnalysis && (
+                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                    <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {matchScore.eligibility.length > 0 && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
-                <div className="space-y-2.5">
-                  {matchScore.eligibility.map((el, i) => (
-                    <div key={i} className="flex items-start gap-2.5 text-xs">
-                      {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-                        : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                        : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
-                      <div>
-                        <p className="text-white font-semibold">{el.label}</p>
-                        <p className="text-[#B9BBC8]">{el.note}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {!isAuthenticated && (
-                  <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
                 )}
+
+                <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                  <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
+                  <div className="space-y-2.5">
+                    {matchScore.criteria.map((c, i) => (
+                      <div key={i}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-[#B9BBC8]">{c.label}</span>
+                          <span className="text-white font-semibold">{c.weight}%</span>
+                        </div>
+                        <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
+                          <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {matchScore.eligibility.length > 0 && (
+                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                    <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
+                    <div className="space-y-2.5">
+                      {matchScore.eligibility.map((el, i) => (
+                        <div key={i} className="flex items-start gap-2.5 text-xs">
+                          {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
+                            : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                            : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
+                          <div>
+                            <p className="text-white font-semibold">{el.label}</p>
+                            <p className="text-[#B9BBC8]">{el.note}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {!isAuthenticated && (
+                      <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
+                    )}
+                  </div>
+                )}
+
+                <RefineAnalysisAccordion t={t} />
+              </>
+            ) : (
+              // Phone+email gate (client's newest brief, Écran 7): the
+              // visitor has already seen the score + why-it-matches above
+              // (the value obtained), coordinates are requested only now,
+              // before the fuller breakdown - never before.
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                <p className="text-sm font-bold text-white mb-1">{t('leadGateTitle') || "Votre entreprise a été identifiée et son indice de correspondance est disponible."}</p>
+                <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub') || 'Enregistrez vos coordonnées pour conserver cette opportunité et accéder à l\'analyse complète.'}</p>
+                <form onSubmit={handleLeadSubmit} className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadPhoneLabel') || 'Téléphone professionnel'}</label>
+                    <input
+                      value={leadPhone}
+                      onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      inputMode="numeric"
+                      placeholder="06 12 34 56 78"
+                      className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadEmailLabel') || 'E-mail professionnel'}</label>
+                    <input
+                      value={leadEmail}
+                      onChange={e => setLeadEmail(e.target.value)}
+                      type="email"
+                      placeholder="vous@entreprise.fr"
+                      className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                    />
+                  </div>
+                  {leadError && <p className="text-xs text-red-400">{leadError}</p>}
+                  <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                    {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit') || 'Voir mon analyse complète'}
+                  </button>
+                </form>
               </div>
             )}
-
-            <RefineAnalysisAccordion t={t} />
           </div>
             ) : null}
           </>

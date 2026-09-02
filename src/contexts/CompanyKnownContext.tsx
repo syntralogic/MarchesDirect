@@ -7,7 +7,9 @@ interface CompanyKnownContextType {
   company: ApiSiretCompany | null;
   siret: string | null;
   loading: boolean;
+  leadCaptured: boolean;
   lookup: (query: string) => Promise<{ error: string | null }>;
+  captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null }>;
 }
 
 const CompanyKnownContext = createContext<CompanyKnownContextType | undefined>(undefined);
@@ -16,6 +18,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
   const [companyKnown, setCompanyKnown] = useState(false);
   const [company, setCompany] = useState<ApiSiretCompany | null>(null);
   const [siret, setSiret] = useState<string | null>(null);
+  const [leadCaptured, setLeadCaptured] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,6 +29,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
         setCompanyKnown(status.companyKnown);
         setCompany(status.company || null);
         setSiret(status.siret || null);
+        setLeadCaptured(!!status.leadCaptured);
       })
       .catch(() => {
         // Non-fatal: just stays unidentified until the visitor tries the
@@ -44,14 +48,27 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
       setCompanyKnown(result.companyKnown);
       setCompany(result.company || null);
       setSiret(result.siret || null);
+      setLeadCaptured(!!result.leadCaptured);
       return { error: null };
     } catch (err) {
       return { error: getApiErrorMessage(err, "La vérification du SIRET a échoué.") };
     }
   }, []);
 
+  // "lead" gate (client's newest brief): global per session once given,
+  // never re-asked on another opportunity.
+  const captureLead = useCallback(async (phone: string, email: string, opportunityId?: string) => {
+    try {
+      await siretApi.captureLead(phone, email, getSessionId(), opportunityId);
+      setLeadCaptured(true);
+      return { error: null };
+    } catch (err) {
+      return { error: getApiErrorMessage(err, "L'enregistrement de vos coordonnées a échoué.") };
+    }
+  }, []);
+
   return (
-    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, loading, lookup }}>
+    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, loading, leadCaptured, lookup, captureLead }}>
       {children}
     </CompanyKnownContext.Provider>
   );
