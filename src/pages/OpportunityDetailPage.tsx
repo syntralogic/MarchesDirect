@@ -413,14 +413,35 @@ export default function OpportunityDetailPage() {
 
           {/* POINTS DE VIGILANCE — warn-styled, only rendered when the
               source actually stated risks (key_risks.available); never a
-              generic boilerplate list. */}
+              generic boilerplate list. Each item is tagged 'obligatoire' or
+              'recommandee' by the extraction itself (client's rule: never
+              show a recommended item as if it were mandatory). Older
+              opportunities may still have the pre-severity shape (a flat
+              string) until re-extracted - handled defensively below rather
+              than assuming every record has been reprocessed. */}
           {opportunity.ai_extracted_facts?.key_risks?.available && opportunity.ai_extracted_facts.key_risks.value.length > 0 && (
             <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
               <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
-              <ul className="space-y-1.5 text-xs text-[#B9BBC8]">
-                {opportunity.ai_extracted_facts.key_risks.value.map((risk, i) => (
-                  <li key={i} className="flex items-start gap-2"><span className="text-orange shrink-0">△</span> {risk}</li>
-                ))}
+              <ul className="space-y-2 text-xs text-[#B9BBC8]">
+                {opportunity.ai_extracted_facts.key_risks.value.map((risk, i) => {
+                  const isStructured = typeof risk === 'object' && risk !== null;
+                  const label = isStructured ? risk.label : risk;
+                  const severity = isStructured ? risk.severity : null;
+                  return (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className={severity === 'obligatoire' ? 'text-red-400 shrink-0' : 'text-orange shrink-0'}>△</span>
+                      <span>
+                        {label}
+                        {severity === 'obligatoire' && (
+                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-red-400 bg-red-400/10 border border-red-400/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskMandatory') || 'Obligatoire'}</span>
+                        )}
+                        {severity === 'recommandee' && (
+                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-orange bg-orange/10 border border-orange/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskRecommended') || 'Recommandé'}</span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
