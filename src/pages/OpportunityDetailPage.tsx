@@ -14,7 +14,7 @@ import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, getApiErrorMessage,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse,
-  type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument,
+  type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
 } from '@/lib/apiClient';
 import { useLang } from '@/contexts/LangContext';
 
@@ -667,6 +667,23 @@ export default function OpportunityDetailPage() {
                 )}
 
                 <RefineAnalysisAccordion t={t} />
+
+                {/* Client's newest brief: "Votre candidature peut déjà commencer" -
+                    a single new screen/block inserted after the full analysis,
+                    reusing real signals already on this page rather than
+                    fabricating readiness. DC1/DC2/DUME/mémoire technique/prix
+                    are never marked ready here - no free draft-generation
+                    pipeline runs pre-payment, and the client's rule is explicit
+                    ("aucune information inventée... aucun document présenté
+                    comme définitif sans vérification"). */}
+                <DossierPrepBlock
+                  t={t}
+                  siretCompany={siretCompany}
+                  matchScore={matchScore}
+                  checklistDocs={checklistDocs}
+                  checklistRefCount={checklistRefCount}
+                  onContactManager={() => setShowAccountManagerModal(true)}
+                />
               </>
             ) : (
               // Phone+email gate (client's newest brief, Écran 7): the
@@ -859,6 +876,68 @@ export default function OpportunityDetailPage() {
       )}
 
       <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
+    </div>
+  );
+}
+
+type DossierPrepItem = { label: string; ready: boolean; readyText: string; pendingText: string };
+
+function DossierPrepBlock({
+  t, siretCompany, matchScore, checklistDocs, checklistRefCount, onContactManager,
+}: {
+  t: (key: string) => string;
+  siretCompany: ApiSiretCompany | null;
+  matchScore: ApiMatchScore | null;
+  checklistDocs: ApiCompanyDocument[];
+  checklistRefCount: number;
+  onContactManager: () => void;
+}) {
+  const hasDoc = (type: string) => checklistDocs.some(d => d.document_type === type);
+
+  const items: DossierPrepItem[] = [
+    { label: t('prepIdentity') || "Identité de l'entreprise", ready: !!siretCompany?.name, readyText: t('prepPrefilled') || 'Préremplie', pendingText: t('prepToIdentify') || 'À identifier' },
+    { label: t('prepPresentation') || "Présentation de l'entreprise", ready: !!siretCompany?.activity, readyText: t('prepPrepared') || 'Préparée', pendingText: t('prepToComplete') || 'À compléter' },
+    { label: t('prepRequirements') || 'Exigences du marché', ready: !!matchScore, readyText: t('prepAnalyzed') || 'Analysées', pendingText: t('prepToAnalyze') || 'À analyser' },
+    { label: t('prepKbis') || 'Extrait KBIS', ready: hasDoc('kbis'), readyText: t('checklistAdded') || 'Ajouté', pendingText: t('checklistAdd') || 'À ajouter' },
+    { label: t('prepInsurance') || 'Assurance décennale', ready: hasDoc('insurance'), readyText: t('checklistAdded') || 'Ajouté', pendingText: t('checklistAdd') || 'À ajouter' },
+    { label: t('prepReferences') || 'Références similaires', ready: checklistRefCount > 0, readyText: t('checklistAdded') || 'Ajouté', pendingText: t('prepToComplete') || 'À compléter' },
+    // Never marked ready here: no free draft-generation runs before a
+    // chargé d'affaires is involved (client's explicit rule against
+    // inventing documents or auto-picking a price).
+    { label: t('prepDc1') || 'Brouillon DC1', ready: false, readyText: '', pendingText: t('prepWithManager') || 'À préparer avec un chargé d\'affaires' },
+    { label: t('prepDc2') || 'Brouillon DC2', ready: false, readyText: '', pendingText: t('prepWithManager') || 'À préparer avec un chargé d\'affaires' },
+    { label: t('prepMemo') || 'Trame du mémoire technique', ready: false, readyText: '', pendingText: t('prepWithManager') || 'À préparer avec un chargé d\'affaires' },
+    { label: t('prepPrice') || "Prix de l'offre", ready: false, readyText: '', pendingText: t('prepToValidate') || 'À valider' },
+  ];
+  const readyCount = items.filter(i => i.ready).length;
+
+  return (
+    <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+      <h2 className="text-sm font-bold text-white mb-1">{t('prepTitle') || 'Votre candidature peut déjà commencer'}</h2>
+      <p className="text-xs text-orange font-semibold mb-4">
+        {(t('prepSummary') || '{ready} éléments déjà préparés — {pending} informations à compléter')
+          .replace('{ready}', String(readyCount)).replace('{pending}', String(items.length - readyCount))}
+      </p>
+      <div className="space-y-2 mb-4">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
+            <span className="text-[#B9BBC8]">{item.label}</span>
+            {item.ready ? (
+              <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {item.readyText}</span>
+            ) : (
+              <span className="text-[#5B6B80] shrink-0">{item.pendingText}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={onContactManager}
+        className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
+      >
+        <PhoneCall size={14} /> {t('prepCta') || 'Finaliser ce dossier avec un chargé d\'affaires'}
+      </button>
+      <p className="text-[11px] text-[#5B6B80] text-center mt-2.5">{t('prepPromise') || 'Aucun dossier lancé sans votre accord.'}</p>
     </div>
   );
 }
