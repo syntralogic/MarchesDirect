@@ -181,7 +181,7 @@ export default function SousTraitancePage() {
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
                       <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('dashDeadlineLabel')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.deadline || '-'}</p>
+                      <p className="text-[11px] font-semibold text-white">{o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : '-'}</p>
                     </div>
                     <div>
                       <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
