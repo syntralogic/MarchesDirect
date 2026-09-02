@@ -1,9 +1,17 @@
 // Vercel serverless function -> GET /sitemap.xml
-// Static marketing routes + every published /pages/:slug SEO page pulled
-// live from the backend. This is what was actually missing for Milestone 11:
-// the /pages/:slug route (SeoLandingPage.tsx) can render a page once you
-// know its slug, but Google has no way to discover any slug without a
-// sitemap linking to them - nothing else on the site links to these pages.
+// Static marketing routes + every published SEO page pulled live from the
+// backend. Links use the clean local-SEO URL structure
+// (/marches-publics/bordeaux, /marches-publics/bordeaux/electricite,
+// /appels-doffres/bordeaux, /sous-traitance/bordeaux,
+// /marches-publics/departement/gironde) per the client's brief, rather than
+// the flat /pages/:slug fallback route - that route still exists and still
+// works for direct visits, but Google should discover the clean paths.
+const JOURNEY_BASE_PATH: Record<string, string> = {
+  public_procurement: '/marches-publics',
+  tender: '/appels-doffres',
+  subcontracting: '/sous-traitance',
+};
+
 export default async function handler(req: any, res: any) {
   const siteUrl = (process.env.FRONTEND_URL || 'https://marchesdirect.vercel.app').replace(/\/$/, '');
   const apiUrl = (process.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
@@ -18,10 +26,31 @@ export default async function handler(req: any, res: any) {
     const r = await fetch(`${apiUrl}/api/seo-pages`);
     if (r.ok) {
       const data = await r.json();
-      seoUrls = (data.pages || []).map((p: { page_slug: string; updated_at: string }) => ({
-        loc: `${siteUrl}/pages/${p.page_slug}`,
-        lastmod: p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : undefined,
-      }));
+      seoUrls = (data.pages || []).map((p: {
+        page_slug: string; updated_at: string; page_type?: string;
+        filter_city?: string; filter_department?: string; filter_trade_name?: string; filter_journey?: string;
+      }) => {
+        const lastmod = p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : undefined;
+        const base = p.filter_journey ? JOURNEY_BASE_PATH[p.filter_journey] : undefined;
+
+        // Build the clean nested path from real structured filters when we
+        // have enough of them - city (+trade) or department-only. Anything
+        // that doesn't cleanly map (e.g. the older trade_region page type)
+        // falls back to the flat /pages/:slug route rather than guessing
+        // wrong and linking a 404.
+        let loc: string;
+        if (base && p.filter_city && p.filter_trade_name) {
+          loc = `${siteUrl}${base}/${encodeURIComponent(p.filter_city)}/${encodeURIComponent(p.filter_trade_name)}`;
+        } else if (base && p.filter_city) {
+          loc = `${siteUrl}${base}/${encodeURIComponent(p.filter_city)}`;
+        } else if (base && p.filter_department) {
+          loc = `${siteUrl}${base}/departement/${encodeURIComponent(p.filter_department)}`;
+        } else {
+          loc = `${siteUrl}/pages/${p.page_slug}`;
+        }
+
+        return { loc, lastmod };
+      });
     }
   } catch {
     // Backend unreachable - still serve the static URLs rather than a 500,
