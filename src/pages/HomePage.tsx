@@ -570,18 +570,18 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
   const { t } = useLang();
   const [demoOpen, setDemoOpen] = useState(false);
   return (
-    <section className="px-4 md:px-6 pt-4 md:pt-16 pb-6 md:pb-16 max-w-7xl mx-auto w-full">
+    <section className="px-4 md:px-6 pt-2 md:pt-16 pb-0 md:pb-16 max-w-7xl mx-auto w-full">
       <div className="flex flex-col md:flex-row md:items-center md:gap-16">
         <div className="flex-1 min-w-0">
           {/* Mobile hero card */}
-          <div className="md:hidden border border-orange/40 rounded-xl bg-[#061D32] p-4 orange-glow mb-4 relative overflow-hidden">
+          <div className="md:hidden border border-orange/40 rounded-xl bg-[#061D32] p-3 md:p-4 orange-glow mb-3 relative overflow-hidden">
             <div className="relative z-10">
-              <h1 className="text-2xl font-extrabold leading-tight mb-2">
+              <h1 className="text-2xl font-extrabold leading-tight mb-1">
                 <span className="text-white">{t('heroLine1')}</span>
                 <br />
                 <span className="text-orange">{t('heroLine2')}</span>
               </h1>
-              <p className="text-[#B9BBC8] text-xs leading-relaxed mb-4">{t('heroSub')}</p>
+              <p className="text-[#B9BBC8] text-xs leading-relaxed mb-1">{t('heroSub')}</p>
               <div className="mb-3"><OpportunityPaths /></div>
               <div className="flex gap-2 mb-2">
                 <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">{t('bookAppointment')}</button>
@@ -649,7 +649,7 @@ function OpportunityPaths() {
   return (
     <div className="grid grid-cols-1 gap-2">
       {paths.map(p => (
-        <Link key={p.href} to={p.href} className="flex items-center gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-lg p-3 hover:border-orange/50 group transition-all">
+        <Link key={p.href} to={p.href} className="flex items-center gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-lg p-2 hover:border-orange/50 group transition-all">
           <div className="w-10 h-10 rounded-lg bg-orange/10 flex items-center justify-center shrink-0"><p.icon size={20} className="text-orange" /></div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
@@ -665,8 +665,8 @@ function OpportunityPaths() {
 function WhoWeAre() {
   const { t } = useLang();
   return (
-    <section className="px-4 md:px-6 py-1 md:py-2 max-w-7xl mx-auto w-full">
-      <div className="border border-[#17334D] rounded-xl bg-[#061D32] p-2 md:p-4 hover:border-orange/30 transition-all">
+    <section className="px-4 md:px-6 py-0 md:py-2 max-w-7xl mx-auto w-full">
+      <div className="border border-[#17334D] rounded-xl bg-[#061D32] p-1.5 md:p-4 hover:border-orange/30 transition-all">
         <div className="flex items-center gap-2 md:gap-4">
           <div className="flex-shrink-0">
             <div className="relative w-10 h-10 md:w-14 md:h-14">
@@ -675,8 +675,8 @@ function WhoWeAre() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xs md:text-base font-bold text-white mb-0">{t('whoWeAre')}</h2>
-            <p className="text-[#B9BBC8] leading-relaxed text-[10px] md:text-sm mb-1">{t('whoWeAreSub')}</p>
-            <Link to="/a-propos" className="inline-flex items-center gap-1 text-orange font-semibold text-[10px] md:text-xs hover:gap-2 transition-all">{t('discoverUs')}</Link>
+            <p className="text-[#B9BBC8] leading-relaxed text-[10px] md:text-sm mb-0 md:mb-1">{t('whoWeAreSub')}</p>
+            <Link to="/a-propos" className="inline-flex items-center gap-1 text-orange font-semibold text-[10px] md:text-xs hover:gap-2 transition-all leading-none md:leading-normal">{t('discoverUs')}</Link>
           </div>
         </div>
       </div>
