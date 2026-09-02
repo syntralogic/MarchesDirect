@@ -190,6 +190,8 @@ export type ApiMatchScore = {
   score: number;
   scoreTitle: string;
   scoreNote: string;
+  scoreDisclaimer: string;
+  matchLabel: string;
   positiveFactors: { label: string; points: number }[];
   warning: string | null;
   criteria: { label: string; weight: number }[];
