@@ -18,6 +18,13 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    // Matches backend's default FRONTEND_URL / CORS origin (localhost:3000,
+    // see backend/.env.example). Vite's own default is 5173 - without this,
+    // a fresh clone of both repos fails CORS out of the box because the
+    // frontend runs on a different port than the backend expects.
+    port: 3000,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
