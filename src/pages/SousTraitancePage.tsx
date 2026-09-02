@@ -160,6 +160,7 @@ export default function SousTraitancePage() {
                 opportunity={o}
                 compatible={companyKnown}
                 to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?oid=${o.id}`}
+                ctaLabel={t('searchView')}
               />
             ))}
           </div>
