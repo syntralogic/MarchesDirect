@@ -144,6 +144,11 @@ const frTranslations: Translations = {
   searchIdentifyPrompt: 'Identifiez votre entreprise sur la fiche pour voir la compatibilité',
   searchView: 'Voir la mission',  searchLoading: 'Chargement des opportunités...',
   searchNoResults: 'Aucune opportunité ne correspond à ces critères.',
+  listingViewOpportunity: 'Voir l\u2019opportunité',
+  listingClosesInLabel: 'Avant clôture',
+  listingClosedLabel: 'Clôturé',
+  listingDaySingular: 'jour',
+  listingDaysPlural: 'jours',
 
   // Generic
   all: 'Tous',
@@ -1392,6 +1397,11 @@ const enTranslations: Translations = {
   searchView: 'View mission',
   searchLoading: 'Loading opportunities...',
   searchNoResults: 'No opportunities match these criteria.',
+  listingViewOpportunity: 'View opportunity',
+  listingClosesInLabel: 'Before closing',
+  listingClosedLabel: 'Closed',
+  listingDaySingular: 'day',
+  listingDaysPlural: 'days',
 
   // Generic
   all: 'All',
