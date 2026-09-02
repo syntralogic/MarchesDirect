@@ -1,17 +1,15 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, HelpCircle, SlidersHorizontal, X, Filter } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useTrades } from '@/hooks/use-trades';
 import { useMatchScores } from '@/hooks/use-match-scores';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
-import { SaveButton } from '@/components/SaveButton';
+import { OpportunityListCard } from '@/components/OpportunityListCard';
 import PageMeta from '@/components/common/PageMeta';
 
 export default function AppelsPage() {
   const { t } = useLang();
-  const navigate = useNavigate();
   const { opportunities: mockPrivateOpportunities, loading, error } = useOpportunities('tender');
   const trades = useTrades();
   const [location, setLocation] = useState('');
@@ -33,13 +31,6 @@ export default function AppelsPage() {
   const resetFilters = () => { setLocation(''); setSector('Tous'); };
   const hasFilters = location || sector !== 'Tous';
   const { scores: matchScores, canScore } = useMatchScores(filtered.map(o => o.id));
-
-  const getIcon = (title: string) => {
-    if (title.toLowerCase().includes('peinture')) return <Paintbrush size={18} className="text-orange" />;
-    if (title.toLowerCase().includes('électricité')) return <Zap size={18} className="text-orange" />;
-    if (title.toLowerCase().includes('cloisons')) return <Building size={18} className="text-orange" />;
-    return <Building size={18} className="text-orange" />;
-  };
 
   const FilterPanel = () => (
     <div className="space-y-5">
@@ -135,54 +126,12 @@ export default function AppelsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map((o) => (
-              <div key={o.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-3">
-                <div className="flex items-start gap-2.5">
-                  <div className="shrink-0 w-10 h-10 rounded-full bg-[#031B30] border border-[#17334D] flex items-center justify-center">
-                    {getIcon(o.title)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs md:text-sm font-bold text-white leading-tight mb-0.5">{o.title}</h3>
-                    <p className="text-[10px] text-[#B9BBC8] mb-1">{o.organization}</p>
-                    <div className="flex items-center gap-2 text-[9px] text-[#B9BBC8]">
-                      <span className="flex items-center gap-0.5"><MapPin size={9} className="text-[#B9BBC8]" /> {o.location}</span>
-                    </div>
-                    {o.description && (
-                      <p className="text-[10px] text-[#B9BBC8] mt-1.5 line-clamp-2 leading-snug">{o.description}</p>
-                    )}
-                  </div>
-                  <SaveButton opportunityId={o.id} />
-                </div>
-
-                <div className="mt-2 pt-2 border-t border-[#17334D]">
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('dashDeadlineLabel')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.amount}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1 text-[9px] font-medium min-w-0">
-                      {canScore ? (
-                        matchScores[o.id] ? (
-                          <span className="flex items-center gap-1 text-[#3FA96E]"><CheckCircle2 size={10} /> {matchScores[o.id].score}%</span>
-                        ) : (
-                          <span className="text-[#5B6B80]">…</span>
-                        )
-                      ) : (
-                        <span className="flex items-center gap-1 text-[#B9BBC8] truncate"><HelpCircle size={10} /> {t('searchIdentifyPrompt')}</span>
-                      )}
-                    </div>
-                    <button onClick={() => navigate(`/opportunites/${o.id}`)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors">
-                      {t('searchView')} <ArrowRight size={10} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <OpportunityListCard
+                key={o.id}
+                opportunity={o}
+                matchScore={matchScores[o.id]?.score}
+                canScore={canScore}
+              />
             ))}
           </div>
         </div>

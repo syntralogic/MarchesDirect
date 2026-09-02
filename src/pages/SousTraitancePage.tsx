@@ -1,12 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, MapPin, ArrowRight, Zap, Paintbrush, Building, CheckCircle2, HelpCircle, SlidersHorizontal, X, Filter } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
-import { SaveButton } from '@/components/SaveButton';
+import { OpportunityListCard } from '@/components/OpportunityListCard';
 import PageMeta from '@/components/common/PageMeta';
 
 // label -> raw INSEE department code, since opportunities store the bare
@@ -45,12 +44,6 @@ export default function SousTraitancePage() {
 
   const resetFilters = () => { setLocation(''); setDept('Tous'); setProfession('Tous'); };
   const hasFilters = location || dept !== 'Tous' || profession !== 'Tous';
-
-  const getIcon = (title: string) => {
-    if (title.toLowerCase().includes('peinture')) return <Paintbrush size={18} className="text-orange" />;
-    if (title.toLowerCase().includes('électricité')) return <Zap size={18} className="text-orange" />;
-    return <Building size={18} className="text-orange" />;
-  };
 
   const FilterPanel = () => (
     <div className="space-y-5">
@@ -162,54 +155,12 @@ export default function SousTraitancePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map((o) => (
-              <div key={o.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-3">
-                <div className="flex items-start gap-2.5">
-                  <div className="shrink-0 w-10 h-10 rounded-full bg-[#031B30] border border-[#17334D] flex items-center justify-center">
-                    {getIcon(o.title)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs md:text-sm font-bold text-white leading-tight mb-0.5">{o.title}</h3>
-                    <p className="text-[10px] text-[#B9BBC8] mb-1">{o.organization}</p>
-                    <div className="flex items-center gap-2 text-[9px] text-[#B9BBC8]">
-                      <span className="flex items-center gap-0.5"><MapPin size={9} className="text-[#B9BBC8]" /> {o.location}</span>
-                    </div>
-                  </div>
-                  <SaveButton opportunityId={o.id} />
-                </div>
-
-                <div className="mt-2 pt-2 border-t border-[#17334D]">
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('dashDeadlineLabel')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[8px] text-[#B9BBC8] mb-0.5">{t('searchBudget')}</p>
-                      <p className="text-[11px] font-semibold text-white">{o.amount}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    {companyKnown ? (
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-[#3FA96E]">
-                        <CheckCircle2 size={10} />
-                        <span>{t('searchCompatible')}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-[#B9BBC8]">
-                        <HelpCircle size={10} />
-                        <span>{t('searchIdentifyPrompt')}</span>
-                      </div>
-                    )}
-                    <Link
-                      to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?oid=${o.id}`}
-                      className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors"
-                    >
-                      {t('searchView')} <ArrowRight size={10} />
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              <OpportunityListCard
+                key={o.id}
+                opportunity={o}
+                compatible={companyKnown}
+                to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?oid=${o.id}`}
+              />
             ))}
           </div>
         </div>
