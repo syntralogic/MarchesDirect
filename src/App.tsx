@@ -18,6 +18,7 @@ import SousTraitancePage from '@/pages/SousTraitancePage';
 import InfoPage from '@/pages/InfoPage';
 import TeamProfilePage from '@/pages/TeamProfilePage'; // <-- Added import
 import SeoLandingPage from '@/pages/SeoLandingPage';
+import SeoLocalPage from '@/pages/SeoLocalPage';
 import MissionDetailPage from '@/pages/sous-traitance/MissionDetailPage';
 import MissionProfilPage from '@/pages/sous-traitance/MissionProfilPage';
 import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
@@ -92,6 +93,18 @@ const App: React.FC = () => {
               <Route path="/appels-doffres" element={<AppelsPage />} />
               <Route path="/marches-publics" element={<MarchesPublicsPage />} />
               <Route path="/sous-traitance" element={<SousTraitancePage />} />
+              {/* Local SEO landing pages (client brief, gap #4) - clean nested
+                  URLs matching real generated content: journey x city,
+                  journey x city x trade, journey x department. */}
+              <Route path="/marches-publics/departement/:department" element={<SeoLocalPage journey="public_procurement" />} />
+              <Route path="/marches-publics/:city/:trade" element={<SeoLocalPage journey="public_procurement" />} />
+              <Route path="/marches-publics/:city" element={<SeoLocalPage journey="public_procurement" />} />
+              <Route path="/appels-doffres/departement/:department" element={<SeoLocalPage journey="tender" />} />
+              <Route path="/appels-doffres/:city/:trade" element={<SeoLocalPage journey="tender" />} />
+              <Route path="/appels-doffres/:city" element={<SeoLocalPage journey="tender" />} />
+              <Route path="/sous-traitance/departement/:department" element={<SeoLocalPage journey="subcontracting" />} />
+              <Route path="/sous-traitance/:city/:trade" element={<SeoLocalPage journey="subcontracting" />} />
+              <Route path="/sous-traitance/:city" element={<SeoLocalPage journey="subcontracting" />} />
               <Route path="/info" element={<InfoPage />} />
               <Route path="/team-profile" element={<TeamProfilePage />} /> {/* <-- Added Route */}
               <Route path="/pages/:slug" element={<SeoLandingPage />} />

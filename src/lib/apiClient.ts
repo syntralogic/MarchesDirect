@@ -689,6 +689,11 @@ export type ApiSeoPage = {
   filter_city: string | null;
   filter_department: string | null;
   filter_journey: 'tender' | 'public_procurement' | 'subcontracting' | null;
+  filter_trade_name?: string | null;
+  updated_at?: string;
+  local_buyers?: string[];
+  related_trades?: { name: string; opp_count: string }[];
+  neighboring_cities?: string[];
 };
 
 // Public - no auth. Backs the /pages/:slug landing pages generated daily by
@@ -700,6 +705,14 @@ export const seoPagesApi = {
   },
   getBySlug: async (slug: string): Promise<ApiSeoPage> => {
     const { data } = await axios.get(`${API_URL}/api/seo-pages/${slug}`);
+    return data;
+  },
+  // Backs the clean local-SEO URLs the client asked for by name
+  // (/marches-publics/bordeaux, /marches-publics/bordeaux/electricite,
+  // /appels-offres/bordeaux, /sous-traitance/bordeaux) - resolves by
+  // structural filters instead of a precomputed slug string.
+  getByFilters: async (params: { journey: string; city?: string; trade?: string; department?: string }): Promise<ApiSeoPage> => {
+    const { data } = await axios.get(`${API_URL}/api/seo-pages/lookup`, { params });
     return data;
   },
 };
