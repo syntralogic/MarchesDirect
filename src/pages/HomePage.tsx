@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import {
   Building2, Handshake, ChevronRight, Globe,
   Building, ArrowRight, Zap, Settings, Monitor, Truck, Briefcase, Headset,
-  Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X,
+  Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, BookOpen,
 } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid } from 'd3-geo';
 import { useLang } from '@/contexts/LangContext';
 import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
+import DemoVideoModal from '@/components/DemoVideoModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { sectors, allSectors } from '@/data/mockData';
 import { frenchCitiesGeo } from '@/data/frenchCitiesGeo';
@@ -567,6 +568,7 @@ function GeographicSection() {
 
 function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
   const { t } = useLang();
+  const [demoOpen, setDemoOpen] = useState(false);
   return (
     <section className="px-4 md:px-6 pt-4 md:pt-16 pb-6 md:pb-16 max-w-7xl mx-auto w-full">
       <div className="flex flex-col md:flex-row md:items-center md:gap-16">
@@ -581,12 +583,21 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
               </h1>
               <p className="text-[#B9BBC8] text-xs leading-relaxed mb-4">{t('heroSub')}</p>
               <div className="mb-3"><OpportunityPaths /></div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-2">
                 <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">{t('bookAppointment')}</button>
                 <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-2.5 rounded-lg text-xs hover:bg-orange/10 transition-colors">{t('callBack')}</button>
               </div>
+              <div className="flex gap-2">
+                <button onClick={() => setDemoOpen(true)} className="flex-1 flex items-center justify-center gap-1.5 border border-[#17334D] text-white font-medium py-2 rounded-lg text-[11px] hover:border-orange/40 transition-colors">
+                  <PlayCircle size={13} className="text-orange" /> Voir la démo — 40 sec
+                </button>
+                <Link to="/how-it-works" className="flex-1 flex items-center justify-center gap-1.5 border border-[#17334D] text-white font-medium py-2 rounded-lg text-[11px] hover:border-orange/40 transition-colors">
+                  <BookOpen size={13} className="text-orange" /> Guide d'utilisation
+                </Link>
+              </div>
             </div>
           </div>
+          <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
 
           {/* Desktop hero text */}
           <div className="hidden md:block">
