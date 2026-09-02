@@ -341,6 +341,12 @@ export type ApiSiretStatus = {
   companyKnown: boolean;
   siret?: string;
   company?: ApiSiretCompany;
+  // "lead" gate (client's newest brief): phone + email captured after SIRET
+  // recognition, before the fuller analysis breakdown - global per session,
+  // never re-asked once true.
+  leadCaptured?: boolean;
+  phone?: string | null;
+  email?: string | null;
 };
 
 // Prototype V17 "reconnaissance d'entreprise" flow (see backend
@@ -353,6 +359,14 @@ export const siretApi = {
   },
   lookup: async (query: string, sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.post('/siret/lookup', { query, sessionId });
+    return data;
+  },
+  // Client's newest brief: phone + email requested after the visitor has
+  // already seen the score/why-it-matches, gating the fuller breakdown.
+  // opportunityId links the CRM lead to the specific opportunity being
+  // viewed so the account manager knows why to call.
+  captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string): Promise<{ leadCaptured: boolean }> => {
+    const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId });
     return data;
   },
 };
