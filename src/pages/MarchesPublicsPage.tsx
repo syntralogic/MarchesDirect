@@ -154,6 +154,9 @@ export default function MarchesPublicsPage() {
                     <div className="flex items-center gap-2 text-[9px] text-[#B9BBC8]">
                       <span className="flex items-center gap-0.5"><MapPin size={9} className="text-[#B9BBC8]" /> {o.location}</span>
                     </div>
+                    {o.description && (
+                      <p className="text-[10px] text-[#B9BBC8] mt-1.5 line-clamp-2 leading-snug">{o.description}</p>
+                    )}
                   </div>
                   <SaveButton opportunityId={o.id} />
                 </div>
