@@ -2517,14 +2517,33 @@ interface LangContextType {
 }
 
 const LangContext = createContext<LangContextType>({
-  lang: 'en',
+  lang: 'fr',
   setLang: () => {},
   t: (k) => k,
   tList: (k) => [k],
 });
 
+// Marchés Direct targets French artisans exclusively (client's brief, every
+// screen, every business rule) - defaulting to English was showing English
+// tab labels/UI chrome ("Summary", "Requesting party", "Submission
+// deadline") to every first-time visitor, with only the raw opportunity
+// data (title/description) appearing in French since that's untranslated
+// content, not a t() key. Confirmed via a client screenshot of the live
+// site. Persisted via localStorage so an explicit switch to EN (or back)
+// survives a reload/new tab, rather than reverting to the default.
+const LANG_STORAGE_KEY = 'md_lang';
+
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Lang>('en');
+  const [lang, setLangState] = useState<Lang>(() => {
+    if (typeof window === 'undefined') return 'fr';
+    const stored = window.localStorage.getItem(LANG_STORAGE_KEY);
+    return stored === 'en' || stored === 'fr' ? stored : 'fr';
+  });
+
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    try { window.localStorage.setItem(LANG_STORAGE_KEY, l); } catch { /* private browsing etc. - non-fatal, just won't persist */ }
+  };
 
   const t = (key: string, params?: Record<string, string | number>): string => {
     const dict = lang === 'fr' ? frTranslations : enTranslations;
