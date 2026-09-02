@@ -563,10 +563,13 @@ export default function OpportunityDetailPage() {
                   <span className="text-xl font-extrabold text-orange">{matchScore.score}</span>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-white">{matchScore.scoreTitle}</p>
+                  <p className="text-sm font-bold text-white">{matchScore.scoreTitle} — {matchScore.score} %</p>
                   <p className="text-xs text-[#B9BBC8]">{matchScore.scoreNote}</p>
                 </div>
               </div>
+              {/* Fixed disclaimer (client's exact wording): this is never
+                  an odds-of-winning estimate, only a fit measurement. */}
+              <p className="text-[11px] text-[#5B6B80] leading-relaxed mb-3">{matchScore.scoreDisclaimer}</p>
               <p className="text-xs text-[#B9BBC8] leading-relaxed pt-3 border-t border-[#17334D]">{matchScore.whyRespond}</p>
               {matchScore.warning && (
                 <div className="flex items-start gap-2 mt-3 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-[#B9BBC8]">
