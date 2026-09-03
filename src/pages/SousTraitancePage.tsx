@@ -6,6 +6,7 @@ import { useLang } from '@/contexts/LangContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
+import { LoadMoreButton } from '@/components/LoadMoreButton';
 import PageMeta from '@/components/common/PageMeta';
 
 // label -> raw INSEE department code, since opportunities store the bare
@@ -22,7 +23,7 @@ const DEPARTMENTS: { label: string; code: string }[] = [
 export default function SousTraitancePage() {
   const { t } = useLang();
   const { companyKnown } = useCompanyKnown();
-  const { opportunities: mockSubcontractingOpportunities, loading, error } = useOpportunities('subcontracting');
+  const { opportunities: mockSubcontractingOpportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities('subcontracting');
   const trades = useTrades();
   const [mode, setMode] = useState<'chantier' | 'partenaire'>('chantier');
   const [location, setLocation] = useState('');
@@ -164,6 +165,14 @@ export default function SousTraitancePage() {
               />
             ))}
           </div>
+
+          <LoadMoreButton
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
+            total={total}
+            shown={mockSubcontractingOpportunities.length}
+          />
         </div>
       </div>
     </div>
