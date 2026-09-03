@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, KeyRound,
+  ChevronDown, KeyRound, Globe, Facebook, Star, BadgeCheck,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -565,6 +565,44 @@ export default function OpportunityDetailPage() {
                   {(siretCompany.address || siretCompany.city) && <p className="text-[#B9BBC8] col-span-2">{t('siretAddress')} : <span className="text-white">{[siretCompany.address, siretCompany.postal, siretCompany.city].filter(Boolean).join(', ')}</span></p>}
                   {siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">{siretCompany.employees}</span></p>}
                   {siretCompany.ape && <p className="text-[#B9BBC8]">{t('siretApe')} : <span className="text-white">{siretCompany.ape}{siretCompany.activity ? ` — ${siretCompany.activity}` : ''}</span></p>}
+                </div>
+              </div>
+            )}
+            {/* "Présence détectée" (client reference screens 5-6): digital
+                footprint checklist shown right after SIRET recognition,
+                before the compatibility score. Backend already resolves
+                these fields (routes/siret.ts) - only ever real signals from
+                Pappers/INSEE/demo data, never fabricated, so a missing
+                signal renders as "Non détecté" rather than being hidden or
+                guessed. */}
+            {siretCompany && (
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
+                <h2 className="text-sm font-bold text-white mb-3">{t('presenceDetectedTitle')}</h2>
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-[#B9BBC8]"><Globe size={14} className="text-[#5B6B80]" /> {t('presenceWebsite')}</span>
+                    {siretCompany.website
+                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {siretCompany.website}</span>
+                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-[#B9BBC8]"><Facebook size={14} className="text-[#5B6B80]" /> {t('presenceFacebook')}</span>
+                    {siretCompany.facebook
+                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {siretCompany.facebook}</span>
+                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-[#B9BBC8]"><Star size={14} className="text-[#5B6B80]" /> {t('presenceGoogleReviews')}</span>
+                    {siretCompany.googleRating
+                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {siretCompany.googleRating} · {siretCompany.googleReviewCount ?? 0} avis</span>
+                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-[#B9BBC8]"><BadgeCheck size={14} className="text-[#5B6B80]" /> {t('presenceRge')}</span>
+                    {siretCompany.certifications?.includes('RGE')
+                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {t('presenceRgeDetected')}</span>
+                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                  </div>
                 </div>
               </div>
             )}
