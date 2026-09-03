@@ -419,7 +419,7 @@ export default function OpportunityDetailPage() {
               opportunities may still have the pre-severity shape (a flat
               string) until re-extracted - handled defensively below rather
               than assuming every record has been reprocessed. */}
-          {opportunity.ai_extracted_facts?.key_risks?.available && opportunity.ai_extracted_facts.key_risks.value.length > 0 && (
+          {Array.isArray(opportunity.ai_extracted_facts?.key_risks?.value) && opportunity.ai_extracted_facts.key_risks.available && opportunity.ai_extracted_facts.key_risks.value.length > 0 && (
             <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
               <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
               <ul className="space-y-2 text-xs text-[#B9BBC8]">
