@@ -158,6 +158,10 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     contact_email?: { value: string; available: boolean };
     required_qualifications?: { value: string; available: boolean };
     team_size_estimate?: { value: string; available: boolean };
+    contract_duration?: { value: string; available: boolean };
+    submission_method?: { value: string; available: boolean };
+    allotment?: { value: string; available: boolean };
+    technical_visit?: { value: string; available: boolean };
     // Newer opportunities: structured {label, severity}. Older ones not yet
     // re-extracted after the severity upgrade may still be a plain string -
     // the component rendering this checks the shape defensively.
