@@ -47,7 +47,7 @@ const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = 
   subcontracting: { label: 'Sous-traitance', icon: Handshake },
 };
 
-type Tab = 'resume' | 'score' | 'dossier';
+type Tab = 'main' | 'dossier';
 
 // Placeholder near-term slots, matching the client's prototype (e.g.
 // "Aujourd'hui · 17h30"). Not backed by a real staff calendar yet.
@@ -64,7 +64,7 @@ export default function OpportunityDetailPage() {
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('resume');
+  const [tab, setTab] = useState<Tab>('main');
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -349,8 +349,7 @@ export default function OpportunityDetailPage() {
       {/* TABS */}
       <div className="flex gap-1 mb-4 border-b border-[#17334D]">
         {([
-          { key: 'resume' as Tab, label: t('detailResume') || 'Résumé' },
-          { key: 'score' as Tab, label: t('detailScore') || 'Analyse stratégique' },
+          { key: 'main' as Tab, label: t('detailResume') || 'Le marché' },
           { key: 'dossier' as Tab, label: t('detailDossier') || 'Dossier & candidature' },
         ]).map(tabItem => (
           <button
@@ -365,8 +364,14 @@ export default function OpportunityDetailPage() {
         ))}
       </div>
 
-      {/* RÉSUMÉ TAB */}
-      {tab === 'resume' && (
+      {/* PARCOURS COMPLET — client's brief (dix images de référence): one
+          continuous scroll from "le marché en 30 secondes" through
+          l'identification de l'entreprise jusqu'au rappel, no tab switch in
+          between. Order below matches the reference screenshots: résumé →
+          points de vigilance → donneur d'ordre → détails du dossier →
+          identification SIRET → fiche entreprise → indice de correspondance
+          → coordonnées → dossier prep → suivi/rappel. */}
+      {tab === 'main' && (
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && (
@@ -380,11 +385,67 @@ export default function OpportunityDetailPage() {
             )}
           </div>
 
+          {/* POINTS DE VIGILANCE — moved ahead of "Détails du dossier" to
+              match the reference order (risks read right after the summary,
+              before the drier requirement list). */}
+          {Array.isArray(opportunity.ai_extracted_facts?.key_risks?.value) && opportunity.ai_extracted_facts.key_risks.available && opportunity.ai_extracted_facts.key_risks.value.length > 0 && (
+            <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
+              <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
+              <ul className="space-y-2 text-xs text-[#B9BBC8]">
+                {opportunity.ai_extracted_facts.key_risks.value.map((risk, i) => {
+                  const isStructured = typeof risk === 'object' && risk !== null;
+                  const label = isStructured ? risk.label : risk;
+                  const severity = isStructured ? risk.severity : null;
+                  return (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className={severity === 'obligatoire' ? 'text-red-400 shrink-0' : 'text-orange shrink-0'}>△</span>
+                      <span>
+                        {label}
+                        {severity === 'obligatoire' && (
+                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-red-400 bg-red-400/10 border border-red-400/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskMandatory') || 'Obligatoire'}</span>
+                        )}
+                        {severity === 'recommandee' && (
+                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-orange bg-orange/10 border border-orange/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskRecommended') || 'Recommandé'}</span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* DONNEUR D'ORDRE — info only here (public markets show it
+              outright, private ones show the locked placeholder); the
+              actual booking form lives in the "suivi & rappel" block at the
+              very end of the journey, matching the reference order. */}
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+            <h2 className="text-sm font-bold text-white mb-3">{t('accessBuyerTitle')}</h2>
+            {identityUnlocked ? (
+              <div className="flex items-center gap-2 text-sm text-white">
+                <ShieldCheck size={15} className="text-green-400 shrink-0" />
+                {opportunity.buyer_name || (isPublic ? t('accessPublicBuyer') : t('accessUnlockedGeneric'))}
+              </div>
+            ) : accessLoading ? (
+              <div className="h-5 w-40 bg-[#17334D] rounded animate-pulse" />
+            ) : (
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-9 h-9 rounded-full bg-[#31283a] border border-[#5e5266] flex items-center justify-center">
+                  <Lock size={16} className="text-[#d3c7dc]" />
+                </div>
+                <div>
+                  <p className="text-sm text-white font-semibold mb-1">{t('accessProtectedTitle')}</p>
+                  <p className="text-xs text-[#B9BBC8]">{t('accessProtectedSub')}{opportunity.location_city ? ` · ${opportunity.location_city}` : ''}.</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* DÉTAILS DU DOSSIER — spec section 3.2/3.4: this stays visible on
               every fiche, public or private, even before the buyer's
               identity is unlocked (only buyer_name/contact_email are ever
               redacted, both excluded from this list on purpose since the
-              "Donneur d'ordre" card below already owns those). */}
+              "Donneur d'ordre" card above already owns those). */}
           {opportunity.ai_extracted_facts && (() => {
             const facts = opportunity.ai_extracted_facts;
             const rows: { label: string; value: string }[] = [];
@@ -415,151 +476,13 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
-          {/* POINTS DE VIGILANCE — warn-styled, only rendered when the
-              source actually stated risks (key_risks.available); never a
-              generic boilerplate list. Each item is tagged 'obligatoire' or
-              'recommandee' by the extraction itself (client's rule: never
-              show a recommended item as if it were mandatory). Older
-              opportunities may still have the pre-severity shape (a flat
-              string) until re-extracted - handled defensively below rather
-              than assuming every record has been reprocessed. */}
-          {Array.isArray(opportunity.ai_extracted_facts?.key_risks?.value) && opportunity.ai_extracted_facts.key_risks.available && opportunity.ai_extracted_facts.key_risks.value.length > 0 && (
-            <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
-              <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
-              <ul className="space-y-2 text-xs text-[#B9BBC8]">
-                {opportunity.ai_extracted_facts.key_risks.value.map((risk, i) => {
-                  const isStructured = typeof risk === 'object' && risk !== null;
-                  const label = isStructured ? risk.label : risk;
-                  const severity = isStructured ? risk.severity : null;
-                  return (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className={severity === 'obligatoire' ? 'text-red-400 shrink-0' : 'text-orange shrink-0'}>△</span>
-                      <span>
-                        {label}
-                        {severity === 'obligatoire' && (
-                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-red-400 bg-red-400/10 border border-red-400/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskMandatory') || 'Obligatoire'}</span>
-                        )}
-                        {severity === 'recommandee' && (
-                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-orange bg-orange/10 border border-orange/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskRecommended') || 'Recommandé'}</span>
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
-          {/* DONNEUR D'ORDRE — the only thing ever locked. Public markets are
-              always open (legal transparency obligation); private tender /
-              sous-traitance only reveals the buyer's name once a callback
-              slot is booked. */}
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            <h2 className="text-sm font-bold text-white mb-3">{t('accessBuyerTitle')}</h2>
-            {identityUnlocked ? (
-              <div className="flex items-center gap-2 text-sm text-white">
-                <ShieldCheck size={15} className="text-green-400 shrink-0" />
-                {opportunity.buyer_name || (isPublic ? t('accessPublicBuyer') : t('accessUnlockedGeneric'))}
-              </div>
-            ) : accessLoading ? (
-              <div className="h-5 w-40 bg-[#17334D] rounded animate-pulse" />
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="shrink-0 w-9 h-9 rounded-full bg-[#31283a] border border-[#5e5266] flex items-center justify-center">
-                    <Lock size={16} className="text-[#d3c7dc]" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-white font-semibold mb-1">{t('accessProtectedTitle')}</p>
-                    <p className="text-xs text-[#B9BBC8]">{t('accessProtectedSub')}{opportunity.location_city ? ` · ${opportunity.location_city}` : ''}.</p>
-                  </div>
-                </div>
-
-                {callbackConfirmed ? (
-                  <p className="text-xs text-[#B9BBC8]">{t('accessCallbackConfirmed')}</p>
-                ) : (
-                  <>
-                    <p className="text-xs text-[#B9BBC8]">{t('accessHowToContinue')}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {CALLBACK_SLOTS.map(slotLabel => (
-                        <button
-                          key={slotLabel}
-                          type="button"
-                          disabled={!!slotSubmitting}
-                          onClick={() => handleBookSlot(slotLabel)}
-                          className={`min-h-[46px] text-xs font-semibold rounded-xl border px-2 transition-colors disabled:opacity-50 ${selectedSlot === slotLabel ? 'border-orange bg-orange/10 text-white' : 'border-[#5b6d7d] text-white hover:border-orange/50'}`}
-                        >
-                          {slotSubmitting === 'slot' && selectedSlot === slotLabel ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      disabled={!!slotSubmitting}
-                      onClick={handleCallback}
-                      className="w-full flex items-center justify-center gap-2 border border-[#5b6d7d] text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:border-orange/50 transition-colors disabled:opacity-50"
-                    >
-                      {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : <PhoneCall size={13} />} {t('accessCallbackNoSlot')}
-                    </button>
-                  </>
-                )}
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <input required value={slotForm.firstName} onChange={e => setSlotForm(f => ({ ...f, firstName: e.target.value }))} placeholder={t('accessFirstName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                  <input required value={slotForm.lastName} onChange={e => setSlotForm(f => ({ ...f, lastName: e.target.value }))} placeholder={t('accessLastName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                  <input required type="email" value={slotForm.email} onChange={e => setSlotForm(f => ({ ...f, email: e.target.value }))} placeholder={t('accessEmail')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                  <input required value={slotForm.phone} onChange={e => setSlotForm(f => ({ ...f, phone: e.target.value }))} placeholder={t('accessPhone')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                </div>
-                {slotError && <p className="text-xs text-red-400">{slotError}</p>}
-              </div>
-            )}
-          </div>
-
-          {(selectedSlot || callbackConfirmed) && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              {quickPasswordDone ? (
-                <div className="flex items-center gap-2 text-sm text-white">
-                  <ShieldCheck size={15} className="text-green-400 shrink-0" />
-                  {t('quickPasswordSecuredSpace') || 'Espace sécurisé'} — {slotForm.email}
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
-                      <KeyRound size={16} className="text-orange" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-white font-semibold mb-1">{t('quickPasswordTitle') || 'Créer mon mot de passe'}</p>
-                      <p className="text-xs text-[#B9BBC8]">{t('quickPasswordSub') || 'Retrouvez cette opportunité et vos rendez-vous depuis votre tableau de bord.'}</p>
-                    </div>
-                  </div>
-                  <form onSubmit={handleQuickPassword} className="flex flex-col sm:flex-row gap-2.5">
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      value={quickPassword}
-                      onChange={e => setQuickPassword(e.target.value)}
-                      placeholder={t('quickPasswordPlaceholder') || 'Mot de passe (8 caractères min.)'}
-                      className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                    />
-                    <button type="submit" disabled={quickPasswordSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
-                      {quickPasswordSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('quickPasswordSubmit') || 'Créer mon mot de passe'}
-                    </button>
-                  </form>
-                  {quickPasswordError && <p className="text-xs text-red-400 mt-2">{quickPasswordError}</p>}
-                  <button type="button" onClick={() => setQuickPasswordDismissed(true)} className="text-xs text-[#B9BBC8] hover:text-white underline mt-3">
-                    {t('quickPasswordLater') || 'Plus tard'}
-                  </button>
-                </>
-              )}
-            </div>
-          )}
         </div>
       )}
 
-      {/* ANALYSE STRATÉGIQUE TAB */}
-      {tab === 'score' && (
+      {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
+          after "Détails du dossier" above (client's brief: no tab switch
+          between the fiche and the identification/score flow). */}
+      {tab === 'main' && (
         !companyKnown && !isAuthenticated ? (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
@@ -750,6 +673,107 @@ export default function OpportunityDetailPage() {
             ) : null}
           </>
         )
+      )}
+
+      {/* SUIVI & RAPPEL — last block of the continuous journey (client's
+          reference: "Opportunité enregistrée" then "Comment souhaitez-vous
+          continuer ?"). Kept reachable regardless of SIRET/lead state so a
+          visitor who skips identification can still book a callback; for a
+          private tender/sous-traitance this is also what unlocks the
+          "Donneur d'ordre" name shown further up the page. */}
+      {tab === 'main' && (
+        <div className="space-y-4 mt-4">
+          <div className="bg-green-400/10 border border-green-400/30 rounded-2xl p-5 md:p-6">
+            <p className="flex items-center gap-2 text-xs font-semibold text-green-400 mb-1"><CheckCircle2 size={14} /> {t('followUpSaved') || 'Opportunité enregistrée'}</p>
+            <h2 className="text-base font-extrabold text-white">{t('followUpSavedSub') || 'Elle apparaît maintenant dans votre tableau de bord'}</h2>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+            <h2 className="text-sm font-bold text-white mb-1">{t('accessHowToContinue')}</h2>
+            <p className="text-xs text-[#B9BBC8] mb-4">
+              {isPublic
+                ? (t('followUpPublicNote') || 'Le rendez-vous est proposé mais ne bloque aucune information du marché public.')
+                : t('accessProtectedSub')}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              {CALLBACK_SLOTS.map(slotLabel => (
+                <button
+                  key={slotLabel}
+                  type="button"
+                  disabled={!!slotSubmitting}
+                  onClick={() => handleBookSlot(slotLabel)}
+                  className={`min-h-[46px] text-xs font-semibold rounded-xl border px-2 transition-colors disabled:opacity-50 ${selectedSlot === slotLabel ? 'border-orange bg-orange/10 text-white' : 'border-[#5b6d7d] text-white hover:border-orange/50'}`}
+                >
+                  {slotSubmitting === 'slot' && selectedSlot === slotLabel ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              disabled={!!slotSubmitting}
+              onClick={handleCallback}
+              className={`w-full flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 mt-2 ${callbackConfirmed ? 'border border-orange bg-orange/10 text-white' : 'border border-[#5b6d7d] text-white hover:border-orange/50'}`}
+            >
+              {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : <PhoneCall size={13} />} {t('accessCallbackNoSlot')}
+            </button>
+
+            {(selectedSlot || callbackConfirmed) ? (
+              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5 mt-4">
+                <CheckCircle2 size={14} className="shrink-0" /> {callbackConfirmed ? (t('accessCallbackConfirmed') || 'Rappel demandé') : (t('followUpSlotConfirmed') || 'Créneau réservé — le suivi reste accessible normalement.')}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 pt-4">
+                <input required value={slotForm.firstName} onChange={e => setSlotForm(f => ({ ...f, firstName: e.target.value }))} placeholder={t('accessFirstName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                <input required value={slotForm.lastName} onChange={e => setSlotForm(f => ({ ...f, lastName: e.target.value }))} placeholder={t('accessLastName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                <input required type="email" value={slotForm.email} onChange={e => setSlotForm(f => ({ ...f, email: e.target.value }))} placeholder={t('accessEmail')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                <input required value={slotForm.phone} onChange={e => setSlotForm(f => ({ ...f, phone: e.target.value }))} placeholder={t('accessPhone')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+              </div>
+            )}
+            {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
+          </div>
+
+          {(selectedSlot || callbackConfirmed) && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+              {quickPasswordDone ? (
+                <div className="flex items-center gap-2 text-sm text-white">
+                  <ShieldCheck size={15} className="text-green-400 shrink-0" />
+                  {t('quickPasswordSecuredSpace') || 'Espace sécurisé'} — {slotForm.email}
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
+                      <KeyRound size={16} className="text-orange" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-white font-semibold mb-1">{t('quickPasswordTitle') || 'Créer mon mot de passe'}</p>
+                      <p className="text-xs text-[#B9BBC8]">{t('quickPasswordSub') || 'Retrouvez cette opportunité et vos rendez-vous depuis votre tableau de bord.'}</p>
+                    </div>
+                  </div>
+                  <form onSubmit={handleQuickPassword} className="flex flex-col sm:flex-row gap-2.5">
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={quickPassword}
+                      onChange={e => setQuickPassword(e.target.value)}
+                      placeholder={t('quickPasswordPlaceholder') || 'Mot de passe (8 caractères min.)'}
+                      className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                    />
+                    <button type="submit" disabled={quickPasswordSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
+                      {quickPasswordSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('quickPasswordSubmit') || 'Créer mon mot de passe'}
+                    </button>
+                  </form>
+                  {quickPasswordError && <p className="text-xs text-red-400 mt-2">{quickPasswordError}</p>}
+                  <button type="button" onClick={() => setQuickPasswordDismissed(true)} className="text-xs text-[#B9BBC8] hover:text-white underline mt-3">
+                    {t('quickPasswordLater') || 'Plus tard'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* DOSSIER & CANDIDATURE TAB */}
