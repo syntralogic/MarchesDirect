@@ -346,6 +346,14 @@ export type ApiSiretCompany = {
   employees: string | null;
   ape: string | null;
   activity: string | null;
+  // "Présence détectée" (prototype V17, section 3.3.3) - backend already
+  // returns these (routes/siret.ts) but the frontend never mapped them.
+  // Only ever real signals from Pappers/INSEE/demo data, never fabricated.
+  website?: string | null;
+  facebook?: string | null;
+  googleRating?: string | null;
+  googleReviewCount?: number | null;
+  certifications?: string[];
 };
 
 export type ApiSiretStatus = {
