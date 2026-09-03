@@ -6,11 +6,12 @@ import { useMatchScores } from '@/hooks/use-match-scores';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
+import { LoadMoreButton } from '@/components/LoadMoreButton';
 import PageMeta from '@/components/common/PageMeta';
 
 export default function AppelsPage() {
   const { t } = useLang();
-  const { opportunities: mockPrivateOpportunities, loading, error } = useOpportunities('tender');
+  const { opportunities: mockPrivateOpportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities('tender');
   const trades = useTrades();
   const [location, setLocation] = useState('');
   const [sector, setSector] = useState('Tous');
@@ -134,6 +135,14 @@ export default function AppelsPage() {
               />
             ))}
           </div>
+
+          <LoadMoreButton
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
+            total={total}
+            shown={mockPrivateOpportunities.length}
+          />
         </div>
       </div>
     </div>

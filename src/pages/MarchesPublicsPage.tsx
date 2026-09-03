@@ -6,13 +6,14 @@ import { useMatchScores } from '@/hooks/use-match-scores';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingState';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
+import { LoadMoreButton } from '@/components/LoadMoreButton';
 import PageMeta from '@/components/common/PageMeta';
 
 const STATUSES = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
 
 export default function MarchesPublicsPage() {
   const { t } = useLang();
-  const { opportunities: mockPublicOpportunities, loading, error } = useOpportunities('public_procurement');
+  const { opportunities: mockPublicOpportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities('public_procurement');
   const trades = useTrades();
   const [location, setLocation] = useState('');
   const [sector, setSector] = useState('Tous');
@@ -143,6 +144,14 @@ export default function MarchesPublicsPage() {
               />
             ))}
           </div>
+
+          <LoadMoreButton
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
+            total={total}
+            shown={mockPublicOpportunities.length}
+          />
         </div>
       </div>
     </div>

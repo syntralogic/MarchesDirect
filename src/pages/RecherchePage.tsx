@@ -7,6 +7,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
+import { LoadMoreButton } from '@/components/LoadMoreButton';
 
 export default function RecherchePage() {
   const { t } = useLang();
@@ -29,7 +30,7 @@ export default function RecherchePage() {
   const debouncedQuery = useDebounce(query, 400);
   const debouncedLocation = useDebounce(location, 400);
 
-  const { opportunities: filtered, loading, error } = useOpportunities({
+  const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: debouncedQuery || undefined,
     region: locationField === 'region' ? (debouncedLocation || undefined) : undefined,
     city: locationField === 'city' ? (debouncedLocation || undefined) : undefined,
@@ -227,6 +228,14 @@ export default function RecherchePage() {
           </div>
         ))}
       </div>
+
+      <LoadMoreButton
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        onLoadMore={loadMore}
+        total={total}
+        shown={filtered.length}
+      />
     </div>
   );
 }

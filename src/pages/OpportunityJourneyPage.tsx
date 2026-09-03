@@ -11,6 +11,7 @@ import { cities } from '@/data/mockData';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { SaveButton } from '@/components/SaveButton';
+import { LoadMoreButton } from '@/components/LoadMoreButton';
 import { subcontractNeedsApi, getApiErrorMessage, type ApiSubcontractNeed } from '@/lib/apiClient';
 import team from '@/assets/team.jpg';
 import { useLang } from '@/contexts/LangContext';
@@ -92,7 +93,7 @@ export default function OpportunityJourneyPage() {
   const WHOLE_AREA_PICKS = ['Département entier', 'Région entière', 'France entière'];
   const cityForApi = WHOLE_AREA_PICKS.includes(pickedCity) ? '' : pickedCity.split(' — ')[0].split(',')[0].trim();
 
-  const { opportunities, loading, error } = useOpportunities({
+  const { opportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     journey: JOURNEY_CODE_MAP[types[0]],
     q: debouncedQuery || undefined,
     city: cityForApi || undefined,
@@ -543,6 +544,14 @@ export default function OpportunityJourneyPage() {
               </div>
             ))}
           </div>
+
+          <LoadMoreButton
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
+            total={total}
+            shown={opportunities.length}
+          />
 
           <button onClick={() => setStep(3)} className="mt-4 flex items-center justify-center gap-1.5 border border-[#17334D] text-[#B9BBC8] font-semibold py-2.5 px-4 rounded-lg text-xs hover:border-orange/40 transition-colors w-full">
             <ArrowLeft size={14} /> {t('journeyModifySearch')}
