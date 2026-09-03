@@ -166,6 +166,10 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     // re-extracted after the severity upgrade may still be a plain string -
     // the component rendering this checks the shape defensively.
     key_risks?: { value: (string | { label: string; severity: 'obligatoire' | 'recommandee' })[]; available: boolean };
+    // Client's "Critères de notation" card - mirrors the paid tender DCE
+    // analysis' selection_criteria shape, but populated free-tier for every
+    // opportunity (see backend aiService.extractOpportunityFacts).
+    selection_criteria?: { value: { label: string; weight_percent: number | null; not_specified: boolean }[]; available: boolean };
   } | null;
 };
 

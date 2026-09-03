@@ -385,6 +385,40 @@ export default function OpportunityDetailPage() {
             )}
           </div>
 
+          {/* LE MARCHÉ EN 30 SECONDES — client's dix images (écrans 2-3):
+              a 2x2 quick-stats grid, separate from the drier "Détails du
+              dossier" list below. Each cell only renders when the
+              underlying value is real (estimated_value / start date / a
+              stated team size or duration) - never a placeholder. */}
+          {(() => {
+            const facts = opportunity.ai_extracted_facts;
+            const cells: { label: string; value: string }[] = [];
+            if (opportunity.estimated_value != null) cells.push({ label: t('quickStatAmount') || 'Montant', value: formatAmount(opportunity.estimated_value, opportunity.currency) });
+            if (facts?.team_size_estimate?.available) cells.push({ label: t('quickStatTeam') || 'Équipe', value: facts.team_size_estimate.value });
+            if (opportunity.estimated_start_date) cells.push({ label: t('quickStatStart') || 'Démarrage', value: formatDate(opportunity.estimated_start_date) });
+            if (facts?.contract_duration?.available) cells.push({ label: t('quickStatDuration') || 'Durée', value: facts.contract_duration.value });
+            if (cells.length === 0) return null;
+            return (
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                <h2 className="text-sm font-bold text-white mb-3">{t('quickStatTitle') || 'Le marché en 30 secondes'}</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {cells.map((c, i) => (
+                    <div key={i} className="bg-[#031B30] border border-[#17334D] rounded-xl px-3 py-3">
+                      <p className="text-sm font-bold text-white leading-tight">{c.value}</p>
+                      <p className="text-[10px] text-[#B9BBC8] mt-0.5">{c.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {facts?.contract_object?.available && (
+                  <div className="mt-3 pt-3 border-t border-[#17334D]">
+                    <p className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1">{t('quickStatScope') || 'Travaux à réaliser'}</p>
+                    <p className="text-xs text-[#B9BBC8] leading-relaxed">{facts.contract_object.value}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* POINTS DE VIGILANCE — moved ahead of "Détails du dossier" to
               match the reference order (risks read right after the summary,
               before the drier requirement list). */}
@@ -460,6 +494,14 @@ export default function OpportunityDetailPage() {
             if (facts.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
             if (facts.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
             if (opportunity.buyer_history_count != null) rows.push({ label: t('dossierFactBuyerHistory'), value: t('dossierBuyerHistoryValue').replace('{n}', String(opportunity.buyer_history_count)) });
+            if (Array.isArray(facts.selection_criteria?.value) && facts.selection_criteria.available && facts.selection_criteria.value.length > 0) {
+              rows.push({
+                label: t('dossierFactCriteria') || 'Critères de notation',
+                value: facts.selection_criteria.value
+                  .map(c => c.not_specified || c.weight_percent == null ? c.label : `${c.label} ${c.weight_percent} %`)
+                  .join(' · '),
+              });
+            }
             if (rows.length === 0) return null;
             return (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
