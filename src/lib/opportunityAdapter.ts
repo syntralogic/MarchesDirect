@@ -28,10 +28,20 @@ function formatAmount(value: number | null, currency: string | null): string {
 }
 
 function formatDeadline(value: string | null): string {
-  if (!value) return '';
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  // Deliberately NOT pre-formatted into a display string here. Every
+  // consumer of Opportunity.deadline (OpportunityListCard's days-remaining
+  // countdown, RecherchePage, OpportunityJourneyPage, TableauDeBordPage,
+  // use-mission, etc.) does its own `new Date(o.deadline)` - either for a
+  // days-left computation or its own toLocaleDateString() call - matching
+  // the raw-ISO-string contract on the Opportunity type (see mockData.ts).
+  // A previous pass here pre-formatted this into a French display string
+  // ("15 sept. 2026"), which every one of those call sites then re-parsed
+  // with `new Date(...)` - an unparseable string, so days-remaining always
+  // came out as NaN/0 and re-formatted dates broke. Pass the raw ISO
+  // timestamp straight through instead; nothing in the codebase renders
+  // this field unwrapped, so there's no literal-ISO-string display bug to
+  // guard against.
+  return value || '';
 }
 
 export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
@@ -47,11 +57,8 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
     department: api.location_department || '',
     distance: '',
     amount: formatAmount(api.estimated_value, api.currency),
-    // api.deadline is a raw ISO timestamp (e.g. "2026-08-28T16:00:00.000Z")
-    // straight from Postgres - every card that rendered `{o.deadline}`
-    // directly was showing that literal string to visitors instead of a
-    // readable date. Formatted once here so every card/page using this
-    // adapter gets it fixed, rather than patching each page's JSX.
+    // Raw ISO timestamp straight from the API (see formatDeadline above for
+    // why this isn't pre-formatted into a display string here).
     deadline: formatDeadline(api.deadline),
     status: toDisplayStatus(api.ai_classification_status),
     match: api.match_score ?? 0,
