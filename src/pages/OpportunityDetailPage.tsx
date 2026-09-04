@@ -951,7 +951,8 @@ export default function OpportunityDetailPage() {
                       <KeyRound size={16} className="text-orange" />
                     </div>
                     <div>
-                      <p className="text-sm text-white font-semibold mb-1">{t('quickPasswordTitle') || 'Créer mon mot de passe'}</p>
+                      <span className="text-[10px] font-bold text-orange uppercase tracking-wide block mb-1">{t('quickPasswordEyebrow') || 'Facultatif'}</span>
+                      <p className="text-sm text-white font-semibold mb-1">{t('quickPasswordHeading') || 'Retrouvez votre espace partout'}</p>
                       <p className="text-xs text-[#B9BBC8]">{t('quickPasswordSub') || 'Retrouvez cette opportunité et vos rendez-vous depuis votre tableau de bord.'}</p>
                     </div>
                   </div>

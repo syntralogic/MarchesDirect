@@ -224,6 +224,8 @@ export default function BidWorkspacePage() {
 
   const formsGenerated = !!(bid.dc1_text && bid.dc2_text && bid.dume_text);
   const draftGenerated = !!bid.technical_memo_text;
+  const pricingSaved = pricing.length > 0 && totalPricing > 0 && bid.total_bid_amount === totalPricing;
+  const allSelfServeDone = formsGenerated && !!bid.engagement_act_text && pricingSaved && draftGenerated;
 
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10 pb-24">
@@ -346,7 +348,10 @@ export default function BidWorkspacePage() {
 
             {/* Rendez-vous gating (écrans 12-15) */}
             <div className="border border-[#17334D] rounded-xl p-3.5 bg-[#031B30]">
-              <p className="text-xs font-bold text-white mb-1">Le mémoire final nécessite l'intervention de chargé d'affaires</p>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange bg-orange/10 border border-orange/30 rounded-full px-2 py-0.5 mb-2">
+                <Lock size={10} /> Mémoire final
+              </span>
+              <p className="text-xs font-bold text-white mb-1">Le mémoire final nécessite l'intervention du chargé d'affaires</p>
               <p className="text-[11px] text-[#B9BBC8] mb-3">
                 Un chargé d'affaires recueille les précisions sur les méthodes, moyens, organisation et références, puis envoie le mémoire final dans votre espace client.
               </p>
@@ -373,14 +378,22 @@ export default function BidWorkspacePage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => setShowSlotPicker(true)} className="flex items-center gap-1.5 text-xs font-bold text-white bg-orange px-3.5 py-2 rounded-lg hover:bg-orange/90 transition-colors">
-                    <CalendarClock size={13} /> Prendre rendez-vous
-                  </button>
-                  <button onClick={handleRequestCallback} disabled={bookingSlot !== null} className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#061D32] border border-[#17334D] px-3.5 py-2 rounded-lg hover:border-orange/50 transition-colors disabled:opacity-40">
-                    {bookingSlot === 'callback' ? <Loader2 size={13} className="animate-spin" /> : <PhoneCall size={13} />} Être rappelé
-                  </button>
-                </div>
+                <>
+                  <div className="bg-[#2A1B0E] border border-orange/20 rounded-lg p-3 mb-3">
+                    <p className="text-xs font-bold text-white mb-1">Aucun rendez-vous ni rappel n'est prévu</p>
+                    <p className="text-[11px] text-[#B9BBC8]">
+                      Ce n'était pas obligatoire avant. Pour finaliser le mémoire technique, un échange avec le chargé d'affaires devient maintenant nécessaire.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setShowSlotPicker(true)} className="flex items-center gap-1.5 text-xs font-bold text-white bg-orange px-3.5 py-2 rounded-lg hover:bg-orange/90 transition-colors">
+                      <CalendarClock size={13} /> Prendre rendez-vous
+                    </button>
+                    <button onClick={handleRequestCallback} disabled={bookingSlot !== null} className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#061D32] border border-[#17334D] px-3.5 py-2 rounded-lg hover:border-orange/50 transition-colors disabled:opacity-40">
+                      {bookingSlot === 'callback' ? <Loader2 size={13} className="animate-spin" /> : <PhoneCall size={13} />} Être rappelé
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -388,6 +401,10 @@ export default function BidWorkspacePage() {
           {/* Pricing schedule (écran 16) */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-5">
             <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><Euro size={15} className="text-orange" /> Bordereau de prix</h2>
+
+            {pricingSaved && (
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-green-400 mb-3"><CheckCircle2 size={12} /> Cadre de prix préparé</div>
+            )}
 
             <div className="space-y-2 mb-3">
               {pricing.map((item, i) => (
@@ -435,17 +452,33 @@ export default function BidWorkspacePage() {
               <span className="text-sm font-extrabold text-white">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalPricing)}</span>
             </div>
 
-            <button onClick={handleSavePricing} disabled={savingPricing} className="flex items-center gap-1.5 text-xs text-white bg-orange px-4 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-40">
-              {savingPricing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Préparer le bordereau de prix
-            </button>
+            {pricingSaved ? (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-2.5 rounded-xl">
+                <CheckCircle2 size={13} /> Prix préparé
+              </div>
+            ) : (
+              <button onClick={handleSavePricing} disabled={savingPricing} className="flex items-center gap-1.5 text-xs text-white bg-orange px-4 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-40">
+                {savingPricing ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Préparer le bordereau de prix
+              </button>
+            )}
           </div>
 
           {/* Dossier final (écran 17) */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-5">
-            <h2 className="text-sm font-bold text-white mb-1">Votre partie est prête</h2>
-            <p className="text-xs text-[#B9BBC8] mb-3">
-              DC1, DC2, DUME, acte d'engagement, bordereau de prix — uniquement le mémoire technique final transmis par le chargé d'affaires reste en attente.
-            </p>
+            {allSelfServeDone ? (
+              <>
+                <h2 className="text-sm font-bold text-white mb-1">Votre partie est prête</h2>
+                <p className="text-xs text-[#B9BBC8] mb-3">
+                  DC1, DC2, DUME, acte d'engagement, bordereau de prix — uniquement le mémoire technique final transmis par le chargé d'affaires reste en attente.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-sm font-bold text-white mb-1">Préparation du dossier final</h2>
+                <p className="text-xs text-[#B9BBC8] mb-1">Complétez les documents du dossier à partir du brouillon.</p>
+                <p className="text-[11px] font-semibold text-orange mb-3">Compléter les étapes ci-dessous</p>
+              </>
+            )}
             <div className="mb-3">
               <ChecklistRow label="DC1 / DC2 / DUME" done={formsGenerated} />
               <ChecklistRow label="Acte d'engagement" done={!!bid.engagement_act_text} />
