@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, FileText, Award, Briefcase, Users, ShieldCheck, Plus, Loader2,
+  ArrowLeft, Users, ShieldCheck, Plus, Loader2,
   Upload, Trash2, AlertTriangle, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,13 +13,21 @@ import {
 import { useLang } from '@/contexts/LangContext';
 
 const TABS = [
-  { key: 'documents', labelKey: 'companyVaultDocuments', icon: FileText },
-  { key: 'certifications', labelKey: 'companyVaultCertifications', icon: Award },
-  { key: 'references', labelKey: 'companyVaultReferences', icon: Briefcase },
   { key: 'resources', labelKey: 'companyVaultResources', icon: Users },
   { key: 'policies', labelKey: 'companyVaultPolicies', icon: ShieldCheck },
 ] as const;
 type TabKey = typeof TABS[number]['key'];
+
+// Client's dix images (écran 9, "Dossier entreprise"): one flat list, no
+// tabs. Each row maps to an existing document_type already handled by
+// AddDocumentModal/uploadsApi - only the on-screen label and grouping
+// change, not the underlying data.
+const FLAT_DOC_ROWS: { value: string; label: string }[] = [
+  { value: 'kbis', label: 'Kbis' },
+  { value: 'insurance', label: 'Assurance décennale' },
+  { value: 'attestation_fiscale', label: 'Attestation fiscale' },
+  { value: 'attestation_sociale', label: 'Attestation URSSAF' },
+];
 
 // Matches the document_type values the tender-response module checks for in
 // bid.missing_documents (see OpportunityDetailPage's DOC_LABELS) - keeping
@@ -97,7 +105,6 @@ function FormInput({ label, value, onChange, type = 'text', required = false }: 
 
 export default function CompanyVaultPage() {
   const { t } = useLang();
-  const [activeTab, setActiveTab] = useState<TabKey>('documents');
 
   const [documents, setDocuments] = useState<ApiCompanyDocument[]>([]);
   const [certifications, setCertifications] = useState<ApiCompanyCertification[]>([]);
@@ -107,7 +114,10 @@ export default function CompanyVaultPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [modal, setModal] = useState<TabKey | null>(null);
+  const [modal, setModal] = useState<TabKey | 'documents' | 'certifications' | 'references' | null>(null);
+  const [docModalType, setDocModalType] = useState<string>('kbis');
+  const [activeTab, setActiveTab] = useState<TabKey>('resources');
+  const [showMore, setShowMore] = useState(false);
 
   const loadAll = () => {
     setLoading(true);
@@ -127,6 +137,8 @@ export default function CompanyVaultPage() {
   };
   useEffect(loadAll, []);
 
+  const openDocModal = (docType: string) => { setDocModalType(docType); setModal('documents'); };
+
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10 pb-24">
       <Link to="/profil" className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors w-fit">
@@ -140,104 +152,148 @@ export default function CompanyVaultPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 mb-5">
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg text-[11px] font-semibold text-center transition-colors ${
-              activeTab === tab.key ? 'bg-orange text-white' : 'text-[#B9BBC8] hover:text-white border border-[#17334D]'
-            }`}
-          >
-            <tab.icon size={13} className="shrink-0" /> <span className="truncate">{t(tab.labelKey)}</span>
-          </button>
-        ))}
-      </div>
-
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-orange" /></div>
       ) : error ? (
         <div className="bg-[#061D32] border border-red-500/30 rounded-xl p-4 text-sm text-red-400">{error}</div>
       ) : (
         <>
-          {activeTab === 'documents' && (
-            <Section title={t('companyVaultDocuments') || 'Documents'} onAdd={() => setModal('documents')} addLabel={t('companyVaultAddDocument') || 'Ajouter un document'}>
-              {documents.length === 0 ? <EmptyState label={t('companyVaultNoDocuments') || 'Aucun document. KBIS, assurances, attestations...'} /> : documents.map(doc => (
-                <Row key={doc.id} onDelete={() => companyVaultApi.documents.remove(doc.id).then(loadAll)}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-semibold truncate">{DOC_TYPES.find(t => t.value === doc.document_type)?.label || doc.document_type}</p>
-                    <p className="text-xs text-[#B9BBC8]">
-                      {doc.expiry_date ? `${t('companyVaultExpiresOn') || 'Expire le'} ${formatDate(doc.expiry_date)}` : t('companyVaultNoExpiry') || 'Sans expiration'}
-                      {doc.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expiré'}</span>}
-                    </p>
+          {/* PIÈCES RÉUTILISABLES — client's dix images (écran 9): a single
+              flat list, no tab switch. Each row's "Ajouter" opens the
+              existing upload modal pre-set to that document_type; files
+              already added render underneath the same way they always did. */}
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-4">
+            <h2 className="text-sm font-bold text-white mb-1">{t('companyVaultFlatTitle') || 'Pièces réutilisables'}</h2>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('companyVaultFlatSub') || 'Ajoutez-les une fois — elles seront automatiquement réutilisées dans chaque candidature.'}</p>
+            <div className="space-y-2">
+              {FLAT_DOC_ROWS.map(row => {
+                const matches = documents.filter(d => d.document_type === row.value);
+                return (
+                  <div key={row.value} className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-white font-semibold">{row.label}</p>
+                      <AddButton onClick={() => openDocModal(row.value)} label={t('companyVaultAdd') || 'Ajouter'} />
+                    </div>
+                    {matches.length > 0 && (
+                      <div className="space-y-1.5 mt-2">
+                        {matches.map(doc => (
+                          <Row key={doc.id} onDelete={() => companyVaultApi.documents.remove(doc.id).then(loadAll)}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-[#B9BBC8]">
+                                {doc.expiry_date ? `${t('companyVaultExpiresOn') || 'Expire le'} ${formatDate(doc.expiry_date)}` : t('companyVaultNoExpiry') || 'Sans expiration'}
+                                {doc.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expiré'}</span>}
+                              </p>
+                            </div>
+                            <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-xs text-orange hover:underline shrink-0">{t('companyVaultView') || 'Voir'}</a>
+                          </Row>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-xs text-orange hover:underline shrink-0">{t('companyVaultView') || 'Voir'}</a>
-                </Row>
-              ))}
-            </Section>
-          )}
+                );
+              })}
 
-          {activeTab === 'certifications' && (
-            <Section title={t('companyVaultCertifications') || 'Certifications'} onAdd={() => setModal('certifications')} addLabel={t('companyVaultAddCertification') || 'Ajouter une certification'}>
-              {certifications.length === 0 ? <EmptyState label={t('companyVaultNoCertifications') || 'Aucune certification. Qualibat, RGE, ISO 9001...'} /> : certifications.map(c => (
-                <Row key={c.id}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-semibold truncate">{c.certification_name}</p>
-                    <p className="text-xs text-[#B9BBC8]">
-                      {c.issued_by && `${c.issued_by} · `}{c.expiry_date ? `${t('companyVaultExpiresOn') || 'Expire le'} ${formatDate(c.expiry_date)}` : t('companyVaultNoExpiry') || 'Sans expiration'}
-                      {c.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expirée'}</span>}
-                    </p>
+              <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-white font-semibold">{t('companyVaultQualificationRow') || 'Qualification / certification'}</p>
+                  <AddButton onClick={() => setModal('certifications')} label={t('companyVaultAdd') || 'Ajouter'} />
+                </div>
+                {certifications.length > 0 && (
+                  <div className="space-y-1.5 mt-2">
+                    {certifications.map(c => (
+                      <Row key={c.id}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white font-semibold truncate">{c.certification_name}</p>
+                          <p className="text-xs text-[#B9BBC8]">
+                            {c.issued_by && `${c.issued_by} · `}{c.expiry_date ? `${t('companyVaultExpiresOn') || 'Expire le'} ${formatDate(c.expiry_date)}` : t('companyVaultNoExpiry') || 'Sans expiration'}
+                            {c.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expirée'}</span>}
+                          </p>
+                        </div>
+                      </Row>
+                    ))}
                   </div>
-                </Row>
-              ))}
-            </Section>
-          )}
+                )}
+              </div>
 
-          {activeTab === 'references' && (
-            <Section title={t('companyVaultReferences') || 'Références (projets réalisés)'} onAdd={() => setModal('references')} addLabel={t('companyVaultAddReference') || 'Ajouter une référence'}>
-              {references.length === 0 ? <EmptyState label={t('companyVaultNoReferences') || 'Aucune référence. Ajoutez vos projets passés pour enrichir vos mémoires techniques.'} /> : references.map(r => (
-                <Row key={r.id}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-semibold truncate">{r.project_name}</p>
-                    <p className="text-xs text-[#B9BBC8] truncate">
-                      {r.client_name && `${r.client_name} · `}{formatDate(r.completion_date)}
-                      {r.contract_value != null && ` · ${new Intl.NumberFormat('fr-FR').format(r.contract_value)} €`}
-                    </p>
+              <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-white font-semibold">{t('companyVaultReferencesRow') || 'Références chantier'}</p>
+                  <AddButton onClick={() => setModal('references')} label={t('companyVaultAdd') || 'Ajouter'} />
+                </div>
+                {references.length > 0 && (
+                  <div className="space-y-1.5 mt-2">
+                    {references.map(r => (
+                      <Row key={r.id}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white font-semibold truncate">{r.project_name}</p>
+                          <p className="text-xs text-[#B9BBC8] truncate">
+                            {r.client_name && `${r.client_name} · `}{formatDate(r.completion_date)}
+                            {r.contract_value != null && ` · ${new Intl.NumberFormat('fr-FR').format(r.contract_value)} €`}
+                          </p>
+                        </div>
+                      </Row>
+                    ))}
                   </div>
-                </Row>
-              ))}
-            </Section>
-          )}
+                )}
+              </div>
+            </div>
+          </div>
 
-          {activeTab === 'resources' && (
-            <Section title={t('companyVaultResources') || 'Moyens humains & matériels'} onAdd={() => setModal('resources')} addLabel={t('companyVaultAddResource') || 'Ajouter une ressource'}>
-              {resources.length === 0 ? <EmptyState label={t('companyVaultNoResources') || 'Aucune ressource. Effectifs, équipements, véhicules...'} /> : resources.map(r => (
-                <Row key={r.id}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-semibold truncate">{r.name}</p>
-                    <p className="text-xs text-[#B9BBC8]">{r.resource_type === 'staff' ? t('companyVaultStaff') || 'Personnel' : r.resource_type === 'equipment' ? t('companyVaultEquipment') || 'Équipement' : t('companyVaultFacility') || 'Installation'}{r.quantity != null && ` · ${t('companyVaultQuantity') || 'Quantité'} : ${r.quantity}`}</p>
-                  </div>
-                </Row>
-              ))}
-            </Section>
-          )}
+          {/* Not part of the reference screens, but real existing features
+              (moyens humains, politiques qualité/sécurité) - kept reachable
+              rather than deleted, just no longer competing for space with
+              the flat list above. */}
+          <button type="button" onClick={() => setShowMore(s => !s)} className="text-xs text-[#B9BBC8] hover:text-white underline mb-3">
+            {showMore ? (t('companyVaultShowLess') || 'Masquer les autres éléments') : (t('companyVaultShowMore') || 'Autres éléments (moyens humains, politiques qualité/sécurité)')}
+          </button>
 
-          {activeTab === 'policies' && (
-            <Section title={t('companyVaultPolicies') || 'Politiques qualité / sécurité / environnement'} onAdd={() => setModal('policies')} addLabel={t('companyVaultAddPolicy') || 'Ajouter une politique'}>
-              {policies.length === 0 ? <EmptyState label={t('companyVaultNoPolicies') || 'Aucune politique. Ce texte sera réutilisé dans vos mémoires techniques.'} /> : policies.map(p => (
-                <Row key={p.id}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white font-semibold">{p.policy_type === 'quality' ? t('companyVaultQuality') || 'Qualité' : p.policy_type === 'safety' ? t('companyVaultSafety') || 'Sécurité' : p.policy_type === 'environment' ? t('companyVaultEnvironment') || 'Environnement' : p.policy_type}</p>
-                    <p className="text-xs text-[#B9BBC8] line-clamp-2">{p.policy_text}</p>
-                  </div>
-                </Row>
-              ))}
-            </Section>
+          {showMore && (
+            <>
+              <div className="grid grid-cols-2 gap-1.5 mb-5">
+                {TABS.map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg text-[11px] font-semibold text-center transition-colors ${
+                      activeTab === tab.key ? 'bg-orange text-white' : 'text-[#B9BBC8] hover:text-white border border-[#17334D]'
+                    }`}
+                  >
+                    <tab.icon size={13} className="shrink-0" /> <span className="truncate">{t(tab.labelKey)}</span>
+                  </button>
+                ))}
+              </div>
+
+              {activeTab === 'resources' && (
+                <Section title={t('companyVaultResources') || 'Moyens humains & matériels'} onAdd={() => setModal('resources')} addLabel={t('companyVaultAddResource') || 'Ajouter une ressource'}>
+                  {resources.length === 0 ? <EmptyState label={t('companyVaultNoResources') || 'Aucune ressource. Effectifs, équipements, véhicules...'} /> : resources.map(r => (
+                    <Row key={r.id}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-semibold truncate">{r.name}</p>
+                        <p className="text-xs text-[#B9BBC8]">{r.resource_type === 'staff' ? t('companyVaultStaff') || 'Personnel' : r.resource_type === 'equipment' ? t('companyVaultEquipment') || 'Équipement' : t('companyVaultFacility') || 'Installation'}{r.quantity != null && ` · ${t('companyVaultQuantity') || 'Quantité'} : ${r.quantity}`}</p>
+                      </div>
+                    </Row>
+                  ))}
+                </Section>
+              )}
+
+              {activeTab === 'policies' && (
+                <Section title={t('companyVaultPolicies') || 'Politiques qualité / sécurité / environnement'} onAdd={() => setModal('policies')} addLabel={t('companyVaultAddPolicy') || 'Ajouter une politique'}>
+                  {policies.length === 0 ? <EmptyState label={t('companyVaultNoPolicies') || 'Aucune politique. Ce texte sera réutilisé dans vos mémoires techniques.'} /> : policies.map(p => (
+                    <Row key={p.id}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-semibold">{p.policy_type === 'quality' ? t('companyVaultQuality') || 'Qualité' : p.policy_type === 'safety' ? t('companyVaultSafety') || 'Sécurité' : p.policy_type === 'environment' ? t('companyVaultEnvironment') || 'Environnement' : p.policy_type}</p>
+                        <p className="text-xs text-[#B9BBC8] line-clamp-2">{p.policy_text}</p>
+                      </div>
+                    </Row>
+                  ))}
+                </Section>
+              )}
+            </>
           )}
         </>
       )}
 
-      {modal === 'documents' && <AddDocumentModal onClose={() => setModal(null)} onSaved={() => { setModal(null); loadAll(); }} />}
+      {modal === 'documents' && <AddDocumentModal initialDocType={docModalType} onClose={() => setModal(null)} onSaved={() => { setModal(null); loadAll(); }} />}
       {modal === 'certifications' && <AddCertificationModal onClose={() => setModal(null)} onSaved={() => { setModal(null); loadAll(); }} />}
       {modal === 'references' && <AddReferenceModal onClose={() => setModal(null)} onSaved={() => { setModal(null); loadAll(); }} />}
       {modal === 'resources' && <AddResourceModal onClose={() => setModal(null)} onSaved={() => { setModal(null); loadAll(); }} />}
@@ -272,9 +328,9 @@ function Row({ children, onDelete }: { children: React.ReactNode; onDelete?: () 
 }
 
 // ==================== ADD DOCUMENT MODAL ====================
-function AddDocumentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function AddDocumentModal({ initialDocType, onClose, onSaved }: { initialDocType?: string; onClose: () => void; onSaved: () => void }) {
   const { t } = useLang();
-  const [documentType, setDocumentType] = useState(DOC_TYPES[0].value);
+  const [documentType, setDocumentType] = useState(initialDocType || DOC_TYPES[0].value);
   const [expiryDate, setExpiryDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
