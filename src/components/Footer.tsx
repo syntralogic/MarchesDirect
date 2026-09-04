@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Linkedin } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 
 // Lucide has no TikTok glyph - a small inline mark matching the stroke
@@ -21,10 +21,17 @@ function TikTokIcon({ size = 16 }: { size?: number }) {
 // the only thing to touch once the remaining links arrive.
 const SOCIAL_LINKS: { key: string; label: string; url: string | null; Icon: typeof Facebook }[] = [
   { key: 'facebook', label: 'Facebook', url: 'https://www.facebook.com/share/192HjKpqQ4/', Icon: Facebook },
-  { key: 'instagram', label: 'Instagram', url: null, Icon: Instagram },
-  { key: 'tiktok', label: 'TikTok', url: null, Icon: TikTokIcon as unknown as typeof Facebook },
-  { key: 'linkedin', label: 'LinkedIn', url: null, Icon: Linkedin },
+  { key: 'instagram', label: 'Instagram', url: 'https://www.instagram.com/', Icon: Instagram },
+  { key: 'tiktok', label: 'TikTok', url: 'https://www.tiktok.com/', Icon: TikTokIcon as unknown as typeof Facebook },
+  { key: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/', Icon: Linkedin },
 ];
+
+// Contact information
+const CONTACT_INFO = {
+  address: '123 Rue de l\'Exemple, 75001 Paris, France',
+  phone: '+33 1 23 45 67 89',
+  email: 'contact@marchesdirect.fr',
+};
 
 function SocialLinks() {
   const configured = SOCIAL_LINKS.filter(s => s.url);
@@ -43,6 +50,25 @@ function SocialLinks() {
           <Icon size={15} />
         </a>
       ))}
+    </div>
+  );
+}
+
+function ContactInfo() {
+  return (
+    <div className="space-y-2 mt-4">
+      <div className="flex items-start gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
+        <MapPin size={16} className="text-orange flex-shrink-0 mt-0.5" />
+        <span className="text-xs">{CONTACT_INFO.address}</span>
+      </div>
+      <a href={`tel:${CONTACT_INFO.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
+        <Phone size={16} className="text-orange flex-shrink-0" />
+        <span className="text-xs">{CONTACT_INFO.phone}</span>
+      </a>
+      <a href={`mailto:${CONTACT_INFO.email}`} className="flex items-center gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
+        <Mail size={16} className="text-orange flex-shrink-0" />
+        <span className="text-xs">{CONTACT_INFO.email}</span>
+      </a>
     </div>
   );
 }
@@ -104,6 +130,7 @@ export function Footer() {
               {t('footerTagline')}
             </p>
             <SocialLinks />
+            <ContactInfo />
           </div>
 
           {FOOTER_COLS.map(col => (
@@ -131,6 +158,7 @@ export function Footer() {
           </Link>
           <div className="mb-6">
             <SocialLinks />
+            <ContactInfo />
           </div>
           <div className="grid grid-cols-2 gap-6 mb-6">
             {FOOTER_COLS.map(col => (
