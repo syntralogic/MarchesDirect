@@ -983,9 +983,29 @@ export type ApiBidSummary = {
   location_city: string | null;
 };
 
+export type ApiTenderDocument = {
+  id: string;
+  document_label: string | null; // best-effort tag: 'RC', 'CCAP', 'CCTP', 'AAPC', 'Autre'
+  source_url: string;
+  status: 'pending' | 'downloaded' | 'parsed' | 'not_a_document' | 'external_platform_only' | 'failed';
+  mime_type: string | null;
+  file_size_bytes: number | null;
+  has_extracted_text: boolean;
+  error_message: string | null;
+  created_at: string;
+};
+
 export const tendersApi = {
   get: async (opportunityId: string): Promise<ApiTender> => {
     const { data } = await apiClient.get(`/tenders/${opportunityId}`);
+    return data;
+  },
+  // DCE - Dossier de consultation (client's dix images, écran 8): the raw
+  // set of documents found/downloaded on the buyer's notice (RC, CCTP,
+  // CCAP, DPGF/BPU, plans, ...) - distinct from the AI complexity/required-
+  // documents analysis surfaced separately by /:tenderId/analyze below.
+  getDocuments: async (opportunityId: string): Promise<{ dce_documents_status: string; documents: ApiTenderDocument[] }> => {
+    const { data } = await apiClient.get(`/tenders/${opportunityId}/documents`);
     return data;
   },
   analyze: async (tenderId: string): Promise<ApiTender> => {

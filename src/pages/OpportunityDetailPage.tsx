@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, KeyRound, Globe, Facebook, Star, BadgeCheck,
+  ChevronDown, KeyRound, Globe, Facebook, Star, BadgeCheck, Download,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -13,7 +13,7 @@ import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, getApiErrorMessage,
-  type ApiOpportunityDetail, type ApiTender, type ApiBidResponse,
+  type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
 } from '@/lib/apiClient';
 import { useLang } from '@/contexts/LangContext';
@@ -39,6 +39,19 @@ function formatDate(d: string | null) {
 const DOC_LABELS: Record<string, string> = {
   kbis: 'Extrait KBIS', insurance: "Attestation d'assurance décennale", dc1: 'DC1 (lettre de candidature)',
   dc2: 'DC2 (déclaration du candidat)', dume: 'DUME', attestation_fiscale: 'Attestation fiscale', attestation_sociale: 'Attestation sociale',
+};
+
+// DCE viewer (écran 8): document_label is the ingestion pipeline's own
+// best-effort tag (see schema.sql - 'RC', 'CCAP', 'CCTP', 'AAPC', 'Autre').
+// Display names only, no re-categorization of what the backend already tagged.
+const DCE_LABEL_NAMES: Record<string, string> = {
+  RC: 'RC — Règlement de consultation',
+  CCTP: 'CCTP — Cahier des clauses techniques',
+  CCAP: 'CCAP — Clauses administratives',
+  AAPC: "AAPC — Avis d'appel public à la concurrence",
+  DPGF: 'DPGF / BPU — Pièces de prix',
+  BPU: 'DPGF / BPU — Pièces de prix',
+  Autre: 'Plans et annexes',
 };
 
 const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = {
@@ -192,6 +205,20 @@ export default function OpportunityDetailPage() {
     if (error) setSiretError(error);
     setSiretSubmitting(false);
   };
+
+  // DCE - Dossier de consultation raw document list (client's dix images,
+  // écran 8): these are the buyer's own published files, already public -
+  // no reason to gate this behind the paid subscription like the AI
+  // analysis/bid-package cards below it are.
+  const [dceDocuments, setDceDocuments] = useState<ApiTenderDocument[]>([]);
+  const [dceDocsExpanded, setDceDocsExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!id || !isAuthenticated) return;
+    tendersApi.getDocuments(id)
+      .then(({ documents }) => setDceDocuments(documents))
+      .catch(() => {});
+  }, [id, isAuthenticated]);
 
   useEffect(() => {
     if (!id || !isAuthenticated || !isPaid) return;
@@ -982,6 +1009,52 @@ export default function OpportunityDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* DCE - Dossier de consultation (écran 8): the buyer's raw
+                published documents, grouped by type. Public info once the
+                notice exists - shown regardless of subscription status. */}
+            {dceDocuments.length > 0 && (
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-1"><FileText size={15} className="text-orange" /> DCE — Dossier de consultation</h2>
+                <p className="text-xs text-[#B9BBC8] mb-3">Consulter les documents sources publiés par l'acheteur.</p>
+                <div className="space-y-2 mb-3">
+                  {Object.entries(
+                    dceDocuments.reduce<Record<string, ApiTenderDocument[]>>((groups, d) => {
+                      const key = d.document_label || 'Autre';
+                      (groups[key] ||= []).push(d);
+                      return groups;
+                    }, {})
+                  ).map(([label, docs]) => (
+                    <div key={label} className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2 last:pb-0">
+                      <span className="text-white font-semibold">{DCE_LABEL_NAMES[label] || label}</span>
+                      <span className="text-[#B9BBC8]">{docs.length > 1 ? `${docs.length} fichiers` : docs[0].mime_type?.includes('pdf') ? 'PDF' : 'fichier'}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => setDceDocsExpanded(v => !v)} className="text-xs font-semibold text-orange hover:underline">
+                  {dceDocsExpanded ? 'Réduire' : `Voir les ${dceDocuments.length} documents du DCE`}
+                </button>
+                {dceDocsExpanded && (
+                  <div className="mt-3 space-y-1.5">
+                    {dceDocuments.map(doc => (
+                      <a
+                        key={doc.id}
+                        href={doc.status === 'downloaded' || doc.status === 'parsed' ? doc.source_url : undefined}
+                        target="_blank" rel="noreferrer"
+                        className={`flex items-center justify-between gap-2 text-[11px] px-2.5 py-2 rounded-lg border border-[#17334D] ${doc.status === 'failed' ? 'opacity-50' : 'hover:border-orange/50'} transition-colors`}
+                      >
+                        <span className="text-white truncate">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || doc.document_label || 'Document'}</span>
+                        {doc.status === 'failed' ? (
+                          <span className="text-red-400 shrink-0">Indisponible</span>
+                        ) : (
+                          <Download size={12} className="text-orange shrink-0" />
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {!isPaid ? (
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
