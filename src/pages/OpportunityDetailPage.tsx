@@ -537,16 +537,19 @@ export default function OpportunityDetailPage() {
                   <p className="text-xs text-[#B9BBC8]">{t('siretGateSub')}</p>
                 </div>
               </div>
-              <form onSubmit={handleSiretSubmit} className="flex flex-col sm:flex-row gap-2.5">
-                <input
-                  value={siretInput}
-                  onChange={e => setSiretInput(e.target.value)}
-                  placeholder={t('siretPlaceholder')}
-                  className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50 tracking-wide"
-                />
-                <button type="submit" disabled={siretSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
-                  {siretSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('siretSubmit')}
-                </button>
+              <form onSubmit={handleSiretSubmit} className="flex flex-col gap-2.5">
+                <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide">{t('siretGateLabel')}</label>
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <input
+                    value={siretInput}
+                    onChange={e => setSiretInput(e.target.value)}
+                    placeholder={t('siretPlaceholder')}
+                    className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50 tracking-wide"
+                  />
+                  <button type="submit" disabled={siretSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
+                    {siretSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('siretSubmit')}
+                  </button>
+                </div>
               </form>
               {siretError && <p className="text-xs text-red-400 mt-2">{siretError}</p>}
             </div>
@@ -606,6 +609,7 @@ export default function OpportunityDetailPage() {
                 </div>
               </div>
             )}
+
             {scoreLoading ? (
           <div className="flex items-center justify-center py-16 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('scoreCalculating')}</div>
         ) : scoreError ? (
