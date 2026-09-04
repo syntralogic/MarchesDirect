@@ -382,9 +382,32 @@ export default function OpportunityDetailPage() {
       </button>
 
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="flex items-center gap-1.5 text-[10px] font-bold text-orange uppercase tracking-wide bg-orange/10 border border-orange/30 rounded-full px-2.5 py-1">
             <JourneyIcon size={11} /> {journeyMeta.label}
+          </span>
+          {/* Deadline countdown pill (client's dix images, écran 1) - same
+              days-left math as OpportunityListCard's getDeadlineText, kept
+              in sync here since this is the only other place that renders
+              a "days remaining" badge from the same opportunity.deadline
+              field. */}
+          {opportunity.deadline && (() => {
+            const days = Math.ceil((new Date(opportunity.deadline as string).getTime() - Date.now()) / 86400000);
+            if (Number.isNaN(days)) return null;
+            const text = days < 0 ? t('listingClosedLabel') : `${days} ${days > 1 ? t('listingDaysPlural') : t('listingDaySingular')}`;
+            return (
+              <span className="text-[11px] font-medium text-white border border-white/25 rounded-full px-3 py-1">
+                {text}
+              </span>
+            );
+          })()}
+          {/* Transparency badge - public markets are fully open by law (no
+              donneur d'ordre lock at all); private tenders/sous-traitance
+              mask only the buyer's identity until a callback is booked (see
+              "Donneur d'ordre" block below). Matches the client's own
+              explanation of the public/private distinction almost verbatim. */}
+          <span className={`text-[11px] font-semibold rounded-full px-3 py-1 ${isPublic ? 'text-green-400 bg-green-400/10 border border-green-400/30' : 'text-[#B9BBC8] bg-white/5 border border-white/15'}`}>
+            {isPublic ? (t('detailInfoPublic') || 'Informations publiques') : (t('detailInfoPartial') || 'Coordonnées protégées')}
           </span>
         </div>
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -454,7 +477,12 @@ export default function OpportunityDetailPage() {
             if (cells.length === 0) return null;
             return (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                <h2 className="text-sm font-bold text-white mb-3">{t('quickStatTitle') || 'Le marché en 30 secondes'}</h2>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h2 className="text-sm font-bold text-white">{t('quickStatTitle') || 'Le marché en 30 secondes'}</h2>
+                  <span className="shrink-0 text-[10px] font-medium text-white border border-white/25 rounded-full px-2.5 py-1">
+                    {isPublic ? (t('detailAccessFree') || 'Accès libre') : (t('detailAccessPartial') || 'Accès partiel')}
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {cells.map((c, i) => (
                     <div key={i} className="bg-[#031B30] border border-[#17334D] rounded-xl px-3 py-3">
