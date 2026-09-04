@@ -58,7 +58,7 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, register } = useAuth();
-  const { companyKnown, company: siretCompany, lookup: lookupSiret, leadCaptured, captureLead } = useCompanyKnown();
+  const { companyKnown, company: siretCompany, lookup: lookupSiret, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
   const isPaid = company?.subscription_status === 'active';
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
@@ -69,6 +69,12 @@ export default function OpportunityDetailPage() {
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
   const [slotForm, setSlotForm] = useState({ email: user?.email || '', phone: '', firstName: user?.firstName || '', lastName: user?.lastName || '', companyName: company?.name || '' });
+  // "Comment souhaitez-vous continuer ?" (client's dix images, écran 5):
+  // three plain choice-cards, not a form. Reserving a slot or asking for a
+  // callback is picked here; contact info itself was already captured
+  // earlier in the journey (screen 4's "Enregistrer cette opportunité"
+  // gate) so this step never re-asks for name/email/phone.
+  const [contactChoice, setContactChoice] = useState<'slot' | 'callback' | 'none' | null>(null);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -88,6 +94,17 @@ export default function OpportunityDetailPage() {
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
   const [justUnlockedAnalysis, setJustUnlockedAnalysis] = useState(false);
+
+  // Once contact info exists anywhere (this mount's own lead form, an
+  // earlier session via CompanyKnownContext, or a logged-in account),
+  // carry it into slotForm so the "suivi & rappel" step never re-asks.
+  useEffect(() => {
+    const email = leadEmail || contextLeadEmail || user?.email || '';
+    const phone = leadPhone || contextLeadPhone || '';
+    if (email || phone) {
+      setSlotForm(f => ({ ...f, email: f.email || email, phone: f.phone || phone }));
+    }
+  }, [leadEmail, leadPhone, contextLeadEmail, contextLeadPhone, user?.email]);
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,7 +252,12 @@ export default function OpportunityDetailPage() {
   };
 
   const handleBookSlot = async (slotLabel: string) => {
-    if (!id || !slotForm.email) return;
+    if (!id) return;
+    if (!slotForm.email) {
+      setSlotError(t('followUpNeedsContact') || 'Identifiez votre entreprise et enregistrez vos coordonnées ci-dessus avant de choisir un créneau.');
+      setContactChoice(null);
+      return;
+    }
     setSelectedSlot(slotLabel);
     setSlotSubmitting('slot');
     setSlotError(null);
@@ -251,7 +273,12 @@ export default function OpportunityDetailPage() {
   };
 
   const handleCallback = async () => {
-    if (!id || !slotForm.email) return;
+    if (!id) return;
+    if (!slotForm.email) {
+      setSlotError(t('followUpNeedsContact') || 'Identifiez votre entreprise et enregistrez vos coordonnées ci-dessus avant de demander un rappel.');
+      setContactChoice(null);
+      return;
+    }
     setSlotSubmitting('callback');
     setSlotError(null);
     try {
@@ -788,49 +815,74 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             <h2 className="text-sm font-bold text-white mb-1">{t('accessHowToContinue')}</h2>
             <p className="text-xs text-[#B9BBC8] mb-4">
-              {isPublic
-                ? (t('followUpPublicNote') || 'Le rendez-vous est proposé mais ne bloque aucune information du marché public.')
-                : t('accessProtectedSub')}
+              {t('followUpOptionalNote') || "Le rendez-vous ou le rappel sont facultatifs à ce stade. Vous pouvez continuer sans contact et y revenir au moment de votre demande."}
             </p>
 
-            <div className="grid grid-cols-2 gap-2">
-              {CALLBACK_SLOTS.map(slotLabel => (
+            {contactChoice === null && (
+              <div className="space-y-2.5">
                 <button
-                  key={slotLabel}
                   type="button"
-                  disabled={!!slotSubmitting}
-                  onClick={() => handleBookSlot(slotLabel)}
-                  className={`min-h-[46px] text-xs font-semibold rounded-xl border px-2 transition-colors disabled:opacity-50 ${selectedSlot === slotLabel ? 'border-orange bg-orange/10 text-white' : 'border-[#5b6d7d] text-white hover:border-orange/50'}`}
+                  onClick={() => setContactChoice('slot')}
+                  className="w-full text-left bg-[#031B30] border border-[#17334D] hover:border-orange/50 rounded-xl px-4 py-3 transition-colors"
                 >
-                  {slotSubmitting === 'slot' && selectedSlot === slotLabel ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
+                  <p className="text-sm font-semibold text-white">{t('followUpChoiceSlotTitle') || "Choisir un créneau d'appel"}</p>
+                  <p className="text-xs text-[#B9BBC8] mt-0.5">{t('followUpChoiceSlotSub') || 'Réserver un échange commercial avec Marchés Direct.'}</p>
                 </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              disabled={!!slotSubmitting}
-              onClick={handleCallback}
-              className={`w-full flex items-center justify-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 mt-2 ${callbackConfirmed ? 'border border-orange bg-orange/10 text-white' : 'border border-[#5b6d7d] text-white hover:border-orange/50'}`}
-            >
-              {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : <PhoneCall size={13} />} {t('accessCallbackNoSlot')}
-            </button>
-
-            {(selectedSlot || callbackConfirmed) ? (
-              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5 mt-4">
-                <CheckCircle2 size={14} className="shrink-0" /> {callbackConfirmed ? (t('accessCallbackConfirmed') || 'Rappel demandé') : (t('followUpSlotConfirmed') || 'Créneau réservé — le suivi reste accessible normalement.')}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 pt-4">
-                <input required value={slotForm.firstName} onChange={e => setSlotForm(f => ({ ...f, firstName: e.target.value }))} placeholder={t('accessFirstName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                <input required value={slotForm.lastName} onChange={e => setSlotForm(f => ({ ...f, lastName: e.target.value }))} placeholder={t('accessLastName')} className="bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                <input required type="email" value={slotForm.email} onChange={e => setSlotForm(f => ({ ...f, email: e.target.value }))} placeholder={t('accessEmail')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
-                <input required value={slotForm.phone} onChange={e => setSlotForm(f => ({ ...f, phone: e.target.value }))} placeholder={t('accessPhone')} className="col-span-2 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50" />
+                <button
+                  type="button"
+                  onClick={() => { setContactChoice('callback'); handleCallback(); }}
+                  className="w-full text-left bg-[#031B30] border border-[#17334D] hover:border-orange/50 rounded-xl px-4 py-3 transition-colors"
+                >
+                  <p className="text-sm font-semibold text-white">{t('accessCallbackNoSlot')}</p>
+                  <p className="text-xs text-[#B9BBC8] mt-0.5">{t('followUpChoiceCallbackSub') || 'Nous vous recontactons plus tard.'}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setContactChoice('none')}
+                  className="w-full text-left bg-[#031B30] border border-[#17334D] hover:border-orange/50 rounded-xl px-4 py-3 transition-colors"
+                >
+                  <p className="text-sm font-semibold text-white">{t('followUpChoiceNoneTitle') || 'Continuer sans rendez-vous pour le moment'}</p>
+                  <p className="text-xs text-[#B9BBC8] mt-0.5">{t('followUpChoiceNoneSub') || 'Vous pourrez demander un échange plus tard si nécessaire, notamment pour finaliser le dossier technique.'}</p>
+                </button>
               </div>
             )}
-            {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
+
+            {contactChoice === 'slot' && !selectedSlot && (
+              <div className="grid grid-cols-2 gap-2">
+                {CALLBACK_SLOTS.map(slotLabel => (
+                  <button
+                    key={slotLabel}
+                    type="button"
+                    disabled={!!slotSubmitting}
+                    onClick={() => handleBookSlot(slotLabel)}
+                    className="min-h-[46px] text-xs font-semibold rounded-xl border border-[#5b6d7d] text-white hover:border-orange/50 px-2 transition-colors disabled:opacity-50"
+                  >
+                    {slotSubmitting === 'slot' ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {contactChoice === 'slot' && selectedSlot && (
+              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                <CheckCircle2 size={14} className="shrink-0" /> {t('followUpSlotConfirmed') || 'Créneau réservé — le suivi reste accessible normalement.'}
+              </div>
+            )}
+
+            {contactChoice === 'callback' && (
+              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                <CheckCircle2 size={14} className="shrink-0" /> {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : (t('accessCallbackConfirmed') || 'Rappel demandé')}
+              </div>
+            )}
+
+            {contactChoice === 'none' && (
+              <p className="text-xs text-[#B9BBC8]">{t('followUpChoiceNoneConfirmed') || 'Le suivi reste accessible normalement, sans rendez-vous ni rappel.'}</p>
+            )}
+
+            {slotError && <p className="text-xs text-red-400 mt-3">{slotError}</p>}
           </div>
 
-          {(selectedSlot || callbackConfirmed) && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
+          {contactChoice !== null && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
               {quickPasswordDone ? (
                 <div className="flex items-center gap-2 text-sm text-white">

@@ -8,6 +8,8 @@ interface CompanyKnownContextType {
   siret: string | null;
   loading: boolean;
   leadCaptured: boolean;
+  leadPhone: string | null;
+  leadEmail: string | null;
   lookup: (query: string) => Promise<{ error: string | null }>;
   captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null }>;
 }
@@ -19,6 +21,8 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
   const [company, setCompany] = useState<ApiSiretCompany | null>(null);
   const [siret, setSiret] = useState<string | null>(null);
   const [leadCaptured, setLeadCaptured] = useState(false);
+  const [leadPhone, setLeadPhone] = useState<string | null>(null);
+  const [leadEmail, setLeadEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +34,8 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
         setCompany(status.company || null);
         setSiret(status.siret || null);
         setLeadCaptured(!!status.leadCaptured);
+        setLeadPhone(status.phone || null);
+        setLeadEmail(status.email || null);
       })
       .catch(() => {
         // Non-fatal: just stays unidentified until the visitor tries the
@@ -49,6 +55,8 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
       setCompany(result.company || null);
       setSiret(result.siret || null);
       setLeadCaptured(!!result.leadCaptured);
+      setLeadPhone(result.phone || null);
+      setLeadEmail(result.email || null);
       return { error: null };
     } catch (err) {
       return { error: getApiErrorMessage(err, "La vérification du SIRET a échoué.") };
@@ -61,6 +69,8 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
     try {
       await siretApi.captureLead(phone, email, getSessionId(), opportunityId);
       setLeadCaptured(true);
+      setLeadPhone(phone);
+      setLeadEmail(email);
       return { error: null };
     } catch (err) {
       return { error: getApiErrorMessage(err, "L'enregistrement de vos coordonnées a échoué.") };
@@ -68,7 +78,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, loading, leadCaptured, lookup, captureLead }}>
+    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, loading, leadCaptured, leadPhone, leadEmail, lookup, captureLead }}>
       {children}
     </CompanyKnownContext.Provider>
   );
