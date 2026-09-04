@@ -72,7 +72,6 @@ export default function OpportunityDetailPage() {
   const navigate = useNavigate();
   const { isAuthenticated, company, user, register } = useAuth();
   const { companyKnown, company: siretCompany, lookup: lookupSiret, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
-  const isPaid = company?.subscription_status === 'active';
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -221,7 +220,7 @@ export default function OpportunityDetailPage() {
   }, [id, isAuthenticated]);
 
   useEffect(() => {
-    if (!id || !isAuthenticated || !isPaid) return;
+    if (!id || !isAuthenticated) return;
     setDceLoading(true);
     setDceError(null);
     tendersApi.get(id)
@@ -232,7 +231,7 @@ export default function OpportunityDetailPage() {
       })
       .catch(err => setDceError(getApiErrorMessage(err, t('detailDCEAnalysisFailed') || "Impossible de charger le dossier.")))
       .finally(() => setDceLoading(false));
-  }, [id, isAuthenticated, isPaid, t]);
+  }, [id, isAuthenticated, t]);
 
   // Checklist fetch is independent of isPaid on purpose - spec 3.7 keeps
   // the company-document checklist addable regardless of subscription,
@@ -1100,31 +1099,7 @@ export default function OpportunityDetailPage() {
               </div>
             )}
 
-            {!isPaid ? (
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
-                <Lock size={16} className="text-orange" />
-              </div>
-              <div>
-                <p className="text-sm text-white font-semibold mb-1">{t('dossierLockedTitle')}</p>
-                <p className="text-xs text-[#B9BBC8]">{t('dossierLockedSub')}</p>
-              </div>
-            </div>
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><FileText size={13} className="text-orange/70" /> {t('dossierFeature1')}</div>
-              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><Sparkles size={13} className="text-orange/70" /> {t('dossierFeature2')}</div>
-              <div className="flex items-center gap-2 text-xs text-[#B9BBC8]"><CheckCircle2 size={13} className="text-orange/70" /> {t('dossierFeature3')}</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowAccountManagerModal(true)}
-              className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
-            >
-              <PhoneCall size={14} /> {t('pricingViewPlans')}
-            </button>
-          </div>
-        ) : dceLoading ? (
+            {dceLoading ? (
           <div className="flex items-center justify-center py-10 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('dossierLoading')}</div>
         ) : (
           <div className="space-y-4">
