@@ -9,7 +9,6 @@ import {
   tendersApi, opportunitiesApi, getApiErrorMessage,
   type ApiBidResponse, type ApiPricingItem, type ApiOpportunityDetail, type ApiBidAppointment,
 } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 
 const DOC_LABELS: Record<string, string> = {
@@ -39,8 +38,6 @@ function ChecklistRow({ label, sublabel, done, action }: { label: string; sublab
 
 export default function BidWorkspacePage() {
   const { id } = useParams<{ id: string }>();
-  const { company } = useAuth();
-  const isPaid = company?.subscription_status === 'active';
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [bid, setBid] = useState<ApiBidResponse | null>(null);
   const [appointment, setAppointment] = useState<ApiBidAppointment | null>(null);
@@ -238,23 +235,6 @@ export default function BidWorkspacePage() {
         <p className="text-xs text-[#B9BBC8]">{opportunity.title}</p>
       </div>
 
-      {!isPaid && (
-        <div className="bg-[#061D32] border border-orange/40 rounded-2xl p-5 mb-5 text-center">
-          <Lock size={22} className="text-orange mx-auto mb-2" />
-          <h2 className="text-sm font-bold text-white mb-1">Mémoire technique et dépôt : accompagnement dédié</h2>
-          <p className="text-xs text-[#B9BBC8] mb-4">
-            Un chargé d'affaires Marchés Direct vous accompagne pour rédiger, valider et déposer votre mémoire technique, votre bordereau de prix et le dossier complet.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowAccountManagerModal(true)}
-            className="inline-flex items-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors"
-          >
-            <PhoneCall size={13} /> Contacter un chargé d'affaires
-          </button>
-        </div>
-      )}
-
       {bid.missing_documents && bid.missing_documents.length > 0 && (
         <div className="flex items-start gap-2 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-brand-muted mb-5">
           <AlertTriangle size={14} className="text-orange shrink-0 mt-0.5" />
@@ -265,8 +245,7 @@ export default function BidWorkspacePage() {
         </div>
       )}
 
-      {isPaid && (
-        <>
+      <>
           {/* Documents de candidature (écran 10) */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-5">
             <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-1"><FileText size={15} className="text-orange" /> Documents de candidature</h2>
@@ -501,7 +480,6 @@ export default function BidWorkspacePage() {
             </Link>
           </div>
         </>
-      )}
 
       <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
     </div>
