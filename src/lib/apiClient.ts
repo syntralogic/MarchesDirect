@@ -948,10 +948,27 @@ export type ApiBidResponse = {
   is_technical_memo_approved: boolean;
   engagement_act_text: string | null;
   is_engagement_act_signed: boolean;
+  // DC1/DC2/DUME (client's dix images, écran 10): each generated
+  // independently via tendersApi.generateForms, null until then.
+  dc1_text: string | null;
+  dc2_text: string | null;
+  dume_text: string | null;
   pricing_schedule_json: ApiPricingItem[] | null;
   total_bid_amount: number | null;
   missing_documents: string[] | null;
   submission_deadline: string | null;
+};
+
+// Bid-scoped rendez-vous with the "chargé d'affaires" (client's dix images,
+// écrans 12-15) - distinct from the generic pre-identification callback on
+// the opportunity page.
+export type ApiBidAppointment = {
+  id: string;
+  bid_id: string;
+  mode: 'slot' | 'callback';
+  slot_label: string | null;
+  status: 'requested' | 'confirmed' | 'done' | 'cancelled';
+  created_at: string;
 };
 
 export type ApiBidSummary = {
@@ -981,6 +998,21 @@ export const tendersApi = {
   },
   generateBidDocuments: async (bidId: string) => {
     const { data } = await apiClient.post(`/tenders/bid/${bidId}/generate`);
+    return data;
+  },
+  // DC1/DC2/DUME (client's dix images, écran 10) - separate from the main
+  // generate() call above since the client wants each form generated
+  // independently via its own "Générer" button.
+  generateForms: async (bidId: string): Promise<{ bid: ApiBidResponse }> => {
+    const { data } = await apiClient.post(`/tenders/bid/${bidId}/generate-forms`);
+    return data;
+  },
+  getAppointment: async (bidId: string): Promise<{ appointment: ApiBidAppointment | null; availableSlots: string[] }> => {
+    const { data } = await apiClient.get(`/tenders/bid/${bidId}/appointments`);
+    return data;
+  },
+  requestAppointment: async (bidId: string, payload: { mode: 'slot' | 'callback'; slotLabel?: string }): Promise<{ appointment: ApiBidAppointment }> => {
+    const { data } = await apiClient.post(`/tenders/bid/${bidId}/appointments`, payload);
     return data;
   },
   updateBid: async (bidId: string, payload: Partial<{
