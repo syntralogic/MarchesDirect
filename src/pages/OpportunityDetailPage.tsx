@@ -469,12 +469,12 @@ export default function OpportunityDetailPage() {
               stated team size or duration) - never a placeholder. */}
           {(() => {
             const facts = opportunity.ai_extracted_facts;
+            const factsPending = !facts;
             const cells: { label: string; value: string }[] = [];
             if (opportunity.estimated_value != null) cells.push({ label: t('quickStatAmount') || 'Montant', value: formatAmount(opportunity.estimated_value, opportunity.currency) });
             if (facts?.team_size_estimate?.available) cells.push({ label: t('quickStatTeam') || 'Équipe', value: facts.team_size_estimate.value });
             if (opportunity.estimated_start_date) cells.push({ label: t('quickStatStart') || 'Démarrage', value: formatDate(opportunity.estimated_start_date) });
             if (facts?.contract_duration?.available) cells.push({ label: t('quickStatDuration') || 'Durée', value: facts.contract_duration.value });
-            if (cells.length === 0) return null;
             return (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                 <div className="flex items-center justify-between gap-2 mb-3">
@@ -483,14 +483,18 @@ export default function OpportunityDetailPage() {
                     {isPublic ? (t('detailAccessFree') || 'Accès libre') : (t('detailAccessPartial') || 'Accès partiel')}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {cells.map((c, i) => (
-                    <div key={i} className="bg-[#031B30] border border-[#17334D] rounded-xl px-3 py-3">
-                      <p className="text-sm font-bold text-white leading-tight">{c.value}</p>
-                      <p className="text-[10px] text-[#B9BBC8] mt-0.5">{c.label}</p>
-                    </div>
-                  ))}
-                </div>
+                {cells.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {cells.map((c, i) => (
+                      <div key={i} className="bg-[#031B30] border border-[#17334D] rounded-xl px-3 py-3">
+                        <p className="text-sm font-bold text-white leading-tight">{c.value}</p>
+                        <p className="text-[10px] text-[#B9BBC8] mt-0.5">{c.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#B9BBC8]">{factsPending ? (t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.') : (t('quickStatUnavailable') || 'Peu de détails disponibles pour ce marché.')}</p>
+                )}
                 {facts?.contract_object?.available && (
                   <div className="mt-3 pt-3 border-t border-[#17334D]">
                     <p className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1">{t('quickStatScope') || 'Travaux à réaliser'}</p>
@@ -501,35 +505,46 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
-          {/* POINTS DE VIGILANCE — moved ahead of "Détails du dossier" to
-              match the reference order (risks read right after the summary,
-              before the drier requirement list). */}
-          {Array.isArray(opportunity.ai_extracted_facts?.key_risks?.value) && opportunity.ai_extracted_facts.key_risks.available && opportunity.ai_extracted_facts.key_risks.value.length > 0 && (
-            <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
-              <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
-              <ul className="space-y-2 text-xs text-[#B9BBC8]">
-                {opportunity.ai_extracted_facts.key_risks.value.map((risk, i) => {
-                  const isStructured = typeof risk === 'object' && risk !== null;
-                  const label = isStructured ? risk.label : risk;
-                  const severity = isStructured ? risk.severity : null;
-                  return (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className={severity === 'obligatoire' ? 'text-red-400 shrink-0' : 'text-orange shrink-0'}>△</span>
-                      <span>
-                        {label}
-                        {severity === 'obligatoire' && (
-                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-red-400 bg-red-400/10 border border-red-400/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskMandatory') || 'Obligatoire'}</span>
-                        )}
-                        {severity === 'recommandee' && (
-                          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-orange bg-orange/10 border border-orange/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskRecommended') || 'Recommandé'}</span>
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+          {/* POINTS DE VIGILANCE — same "always show the slot" logic as the
+              card above: while facts are pending, keep the card visible with
+              a pending note rather than have the whole section disappear
+              and reappear once the backfill job eventually reaches this
+              opportunity (client's ask: same flow on every opportunity). */}
+          {(() => {
+            const facts = opportunity.ai_extracted_facts;
+            const risks = Array.isArray(facts?.key_risks?.value) ? facts.key_risks.value : [];
+            if (facts && (!facts.key_risks?.available || risks.length === 0)) return null; // analyzed, genuinely nothing to flag
+            return (
+              <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
+                <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
+                {risks.length > 0 ? (
+                  <ul className="space-y-2 text-xs text-[#B9BBC8]">
+                    {risks.map((risk, i) => {
+                      const isStructured = typeof risk === 'object' && risk !== null;
+                      const label = isStructured ? risk.label : risk;
+                      const severity = isStructured ? risk.severity : null;
+                      return (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className={severity === 'obligatoire' ? 'text-red-400 shrink-0' : 'text-orange shrink-0'}>△</span>
+                          <span>
+                            {label}
+                            {severity === 'obligatoire' && (
+                              <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-red-400 bg-red-400/10 border border-red-400/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskMandatory') || 'Obligatoire'}</span>
+                            )}
+                            {severity === 'recommandee' && (
+                              <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-orange bg-orange/10 border border-orange/30 rounded-full px-1.5 py-0.5 align-middle">{t('riskRecommended') || 'Recommandé'}</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-[#B9BBC8]">{t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.'}</p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* DONNEUR D'ORDRE — info only here (public markets show it
               outright, private ones show the locked placeholder); the
