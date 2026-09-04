@@ -155,6 +155,19 @@ export default function TableauDeBordPage() {
 
       {section === 'overview' && (
         <>
+          {/* GREETING (écran 7: "Bonjour Karim") */}
+          {user?.firstName && (
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center text-sm font-extrabold text-orange shrink-0">
+                {user.firstName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-base font-extrabold text-white leading-tight">Bonjour {user.firstName}</p>
+                <p className="text-xs text-[#B9BBC8]">{t('dashSubtitle') || 'Voici vos opportunités et vos actions prioritaires.'}</p>
+              </div>
+            </div>
+          )}
+
           {/* STATS */}
           {statsError ? (
             <div className="mb-6 bg-[#061D32] border border-red-500/30 rounded-2xl p-4 flex items-center gap-3">
