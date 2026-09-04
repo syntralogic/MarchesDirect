@@ -177,7 +177,7 @@ export default function OpportunityDetailPage() {
   }, [id, isAuthenticated]);
 
   useEffect(() => {
-    if (!id || tab !== 'score' || matchScore || scoreLoading) return;
+    if (!id || tab !== 'main' || matchScore || scoreLoading) return;
     if (!companyKnown && !isAuthenticated) return; // gate: nothing to fetch until identified
     setScoreLoading(true);
     setScoreError(null);
