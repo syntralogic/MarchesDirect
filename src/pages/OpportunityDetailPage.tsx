@@ -736,11 +736,11 @@ export default function OpportunityDetailPage() {
               // (the value obtained), coordinates are requested only now,
               // before the fuller breakdown - never before.
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                <p className="text-sm font-bold text-white mb-1">{t('leadGateTitle') || "Votre entreprise a été identifiée et son indice de correspondance est disponible."}</p>
-                <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub') || 'Enregistrez vos coordonnées pour conserver cette opportunité et accéder à l\'analyse complète.'}</p>
+                <p className="text-base font-extrabold text-white mb-1">{t('leadGateTitle')}</p>
+                <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
                 <form onSubmit={handleLeadSubmit} className="space-y-3">
                   <div>
-                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadPhoneLabel') || 'Téléphone professionnel'}</label>
+                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadPhoneLabel')}</label>
                     <input
                       value={leadPhone}
                       onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
@@ -750,7 +750,7 @@ export default function OpportunityDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadEmailLabel') || 'E-mail professionnel'}</label>
+                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadEmailLabel')}</label>
                     <input
                       value={leadEmail}
                       onChange={e => setLeadEmail(e.target.value)}
@@ -761,7 +761,7 @@ export default function OpportunityDetailPage() {
                   </div>
                   {leadError && <p className="text-xs text-red-400">{leadError}</p>}
                   <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                    {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit') || 'Voir mon analyse complète'}
+                    {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
                   </button>
                 </form>
               </div>
