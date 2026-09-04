@@ -577,34 +577,40 @@ export default function OpportunityDetailPage() {
                 these fields (routes/siret.ts) - only ever real signals from
                 Pappers/INSEE/demo data, never fabricated, so a missing
                 signal renders as "Non détecté" rather than being hidden or
-                guessed. */}
+                guessed. Layout matches the reference exactly: label + value
+                stacked on the left, a single checkmark/cross on the right -
+                not a duplicated checkmark-plus-text pill. */}
             {siretCompany && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
-                <h2 className="text-sm font-bold text-white mb-3">{t('presenceDetectedTitle')}</h2>
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-[#B9BBC8]"><Globe size={14} className="text-[#5B6B80]" /> {t('presenceWebsite')}</span>
-                    {siretCompany.website
-                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {siretCompany.website}</span>
-                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                <h2 className="text-base font-extrabold text-white mb-3">{t('presenceDetectedTitle')}</h2>
+                <div className="divide-y divide-[#17334D]">
+                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="text-sm font-semibold text-white flex items-center gap-2"><Globe size={14} className="text-[#5B6B80]" /> {t('presenceWebsite')}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.website || t('presenceNotDetected')}</p>
+                    </div>
+                    {siretCompany.website ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-[#B9BBC8]"><Facebook size={14} className="text-[#5B6B80]" /> {t('presenceFacebook')}</span>
-                    {siretCompany.facebook
-                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {siretCompany.facebook}</span>
-                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="text-sm font-semibold text-white flex items-center gap-2"><Facebook size={14} className="text-[#5B6B80]" /> {t('presenceFacebook')}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.facebook || t('presenceNotDetected')}</p>
+                    </div>
+                    {siretCompany.facebook ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-[#B9BBC8]"><Star size={14} className="text-[#5B6B80]" /> {t('presenceGoogleReviews')}</span>
-                    {siretCompany.googleRating
-                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {siretCompany.googleRating} · {siretCompany.googleReviewCount ?? 0} avis</span>
-                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="text-sm font-semibold text-white flex items-center gap-2"><Star size={14} className="text-[#5B6B80]" /> {t('presenceGoogleReviews')}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.googleRating ? `${siretCompany.googleRating}/5 · ${siretCompany.googleReviewCount ?? 0} avis` : t('presenceNotDetected')}</p>
+                    </div>
+                    {siretCompany.googleRating ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-[#B9BBC8]"><BadgeCheck size={14} className="text-[#5B6B80]" /> {t('presenceRge')}</span>
-                    {siretCompany.certifications?.includes('RGE')
-                      ? <span className="flex items-center gap-1 text-green-400 font-semibold"><CheckCircle2 size={14} /> {t('presenceRgeDetected')}</span>
-                      : <span className="flex items-center gap-1 text-[#5B6B80]"><XCircle size={14} /> {t('presenceNotDetected')}</span>}
+                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="text-sm font-semibold text-white flex items-center gap-2"><BadgeCheck size={14} className="text-[#5B6B80]" /> {t('presenceRge')}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.certifications?.includes('RGE') ? t('presenceRgeDetected') : t('presenceNotDetected')}</p>
+                    </div>
+                    {siretCompany.certifications?.includes('RGE') ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
                   </div>
                 </div>
               </div>
@@ -617,18 +623,25 @@ export default function OpportunityDetailPage() {
         ) : matchScore ? (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="shrink-0 w-16 h-16 rounded-full border-4 border-orange/30 flex items-center justify-center relative">
-                  <span className="text-xl font-extrabold text-orange">{matchScore.score}</span>
-                </div>
+              {/* Score badge — client reference flow, screen 3: green-tinted
+                  card, "Compatibilité avec cette opportunité" caption, the
+                  tiered matchLabel ("Très pertinent" etc.) in bold green
+                  with a small orange dot, and the raw percentage large on
+                  the right. matchLabel/score are both server-computed
+                  (matchScoreService.ts) - never independently derived here. */}
+              <div className="bg-green-400/10 border border-green-400/25 rounded-xl p-4 flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <p className="text-sm font-bold text-white">{matchScore.scoreTitle} — {matchScore.score} %</p>
-                  <p className="text-xs text-[#B9BBC8]">{matchScore.scoreNote}</p>
+                  <p className="text-[11px] text-[#B9BBC8] mb-1">{t('scoreCardCaption') || 'Compatibilité avec cette opportunité'}</p>
+                  <p className="text-base font-extrabold text-green-400 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange shrink-0" /> {matchScore.matchLabel}
+                  </p>
                 </div>
+                <p className="text-3xl font-extrabold text-white shrink-0">{matchScore.score}%</p>
               </div>
+              <p className="text-xs text-[#B9BBC8]">{matchScore.scoreNote}</p>
               {/* Fixed disclaimer (client's exact wording): this is never
                   an odds-of-winning estimate, only a fit measurement. */}
-              <p className="text-[11px] text-[#5B6B80] leading-relaxed mb-3">{matchScore.scoreDisclaimer}</p>
+              <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-3 mb-3">{matchScore.scoreDisclaimer}</p>
               <p className="text-xs text-[#B9BBC8] leading-relaxed pt-3 border-t border-[#17334D]">{matchScore.whyRespond}</p>
               {matchScore.warning && (
                 <div className="flex items-start gap-2 mt-3 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-[#B9BBC8]">
