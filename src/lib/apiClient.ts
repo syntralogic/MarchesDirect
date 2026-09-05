@@ -432,20 +432,24 @@ export type ApiChatbotConversation = { id: string; topic: string; context: unkno
 export type ApiChatbotMessage = { id: string; conversation_id: string; role: 'user' | 'assistant'; content: string; created_at: string };
 
 export const chatbotApi = {
-  createConversation: async (payload: { topic?: string; opportunityId?: string; journey?: string }): Promise<ApiChatbotConversation> => {
+  createConversation: async (payload: { topic?: string; opportunityId?: string; journey?: string; sessionId?: string }): Promise<ApiChatbotConversation> => {
     const { data } = await apiClient.post('/chatbot/conversations', payload);
     return data;
   },
-  listConversations: async (): Promise<ApiChatbotConversation[]> => {
-    const { data } = await apiClient.get('/chatbot/conversations');
+  listConversations: async (sessionId?: string): Promise<ApiChatbotConversation[]> => {
+    const { data } = await apiClient.get('/chatbot/conversations', { params: sessionId ? { sessionId } : {} });
     return data;
   },
   getMessages: async (conversationId: string): Promise<ApiChatbotMessage[]> => {
     const { data } = await apiClient.get(`/chatbot/conversations/${conversationId}/messages`);
     return data;
   },
-  sendMessage: async (conversationId: string, message: string): Promise<{ response: string }> => {
-    const { data } = await apiClient.post(`/chatbot/conversations/${conversationId}/messages`, { message });
+  // sessionId is only actually used by the backend for an anonymous visitor
+  // (identity() in routes/chatbot.ts ignores it once a JWT resolves a
+  // companyId) - always sending it is harmless and means the widget doesn't
+  // need to branch on auth state itself.
+  sendMessage: async (conversationId: string, message: string, sessionId?: string): Promise<{ response: string }> => {
+    const { data } = await apiClient.post(`/chatbot/conversations/${conversationId}/messages`, { message, sessionId });
     return data;
   },
 };
