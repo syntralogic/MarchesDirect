@@ -75,12 +75,84 @@ const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = 
 // "Aujourd'hui · 17h30"). Not backed by a real staff calendar yet.
 const CALLBACK_SLOTS = ["Aujourd'hui · 17h30", "Demain · 08h30", "Demain · 14h00", 'Après-demain · 10h00'];
 
+// Which opportunities THIS visitor has actually identified a company for,
+// scoped per-opportunity-id rather than relying on CompanyKnownContext's
+// `companyKnown` alone. `companyKnown` is session-wide and, once true from
+// looking up a company on any single opportunity, stays true forever for
+// every other opportunity the visitor opens in that browser - which is why
+// the "3 pages" journey used to collapse to 2: page 1 (the opportunity
+// itself) was being skipped on every new listing because a company from a
+// completely unrelated earlier listing was still "known". Recording the
+// confirmation per opportunity id keeps the (desired, client-requested)
+// behaviour of not losing the selected company on back/refresh within the
+// *same* opportunity, without that leaking into every other one.
+const CONFIRMED_OPPS_KEY = 'md_confirmed_opportunities';
+function getConfirmedOpportunities(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(CONFIRMED_OPPS_KEY) || '{}'); } catch { return {}; }
+}
+function isOpportunityConfirmed(oppId: string | undefined): boolean {
+  if (!oppId) return false;
+  return !!getConfirmedOpportunities()[oppId];
+}
+function markOpportunityConfirmed(oppId: string | undefined, siret: string | null | undefined) {
+  if (!oppId) return;
+  try {
+    const map = getConfirmedOpportunities();
+    map[oppId] = siret || 'confirmed';
+    localStorage.setItem(CONFIRMED_OPPS_KEY, JSON.stringify(map));
+  } catch {
+    // Storage blocked - worst case the visitor re-lands on screen 1 next
+    // time, which is the safe direction to fail in.
+  }
+}
+
 export default function OpportunityDetailPage() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, completeSignup } = useAuth();
-  const { companyKnown, company: siretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
+  const { companyKnown, company: anonSiretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
+
+  // The company card (below) and the "Dossier prep" checklist both key off
+  // `siretCompany`, but that comes from CompanyKnownContext, which only ever
+  // holds an ANONYMOUS session's Pappers/INSEE lookup (siret_lookups, keyed
+  // by session_id). A logged-in visitor's own company profile lives in
+  // `companies` (via useAuth()) instead, and if they never personally ran
+  // the anonymous SIRET flow in this browser (e.g. different device, or
+  // cleared storage after signing up), `anonSiretCompany` is null and the
+  // whole card used to disappear even though they ARE identified. Falling
+  // back to their account's own company here - mapped into the same shape,
+  // with whatever `companies` doesn't store left null so the existing
+  // "non disponible" placeholders take over rather than showing anything
+  // invented - fixes that gap without changing what an anonymous visitor sees.
+  const siretCompany: ApiSiretCompany | null = anonSiretCompany || (isAuthenticated && company ? {
+    name: company.name || null,
+    legal: company.legal_form || null,
+    // Only the founding YEAR is stored on `companies`, not a real creation
+    // date - fabricating "1 janvier {year}" would show a false-precision
+    // date the client's rule explicitly forbids ("ne jamais afficher une
+    // valeur incorrecte"), so this stays null and the existing "non
+    // disponible" placeholder is used instead.
+    created: null,
+    capital: null,
+    address: (company as any).address_street || null,
+    city: (company as any).address_city || null,
+    postal: (company as any).address_postal_code || null,
+    director: null,
+    employees: (company as any).employee_count != null ? String((company as any).employee_count) : null,
+    ape: null,
+    activity: (company as any).industry_sector || null,
+    siren: null,
+    siret: company.siret || null,
+    statut: company.status || null,
+    revenue: (company as any).annual_revenue != null ? String((company as any).annual_revenue) : null,
+    revenueYear: null,
+    website: (company as any).website_url || null,
+    facebook: null,
+    googleRating: null,
+    googleReviewCount: null,
+    certifications: [],
+  } as ApiSiretCompany : null);
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +166,7 @@ export default function OpportunityDetailPage() {
   // Starts on screen 1 unless the company is already known (context from
   // an earlier step in this session), in which case screen 2 is the
   // correct starting point.
-  const [screen, setScreen] = useState<1 | 2 | 3>(() => (companyKnown || isAuthenticated) ? 2 : 1);
+  const [screen, setScreen] = useState<1 | 2 | 3>(() => (isOpportunityConfirmed(id) || isAuthenticated) ? 2 : 1);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -194,24 +266,32 @@ export default function OpportunityDetailPage() {
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
 
-  // Auto-navigate Page 1 → Page 2 the moment a company is recognized
-  // (direct SIRET match or a picked candidate confirmed), matching the
-  // brief: "As soon as they select the correct company, the application
-  // automatically navigates to the next page."
+  // Auto-navigate Page 1 → Page 2 the moment a company is recognized FOR
+  // THIS OPPORTUNITY (direct SIRET match or a picked candidate confirmed),
+  // matching the brief: "As soon as they select the correct company, the
+  // application automatically navigates to the next page." The actual
+  // advance now happens right in handleSiretSubmit/handleConfirmCandidate
+  // below (so it only fires for an action taken on this page, for this
+  // opportunity) - this effect only covers the logged-in shortcut, since an
+  // authenticated visitor's own company is legitimately "known" everywhere.
   useEffect(() => {
-    if (screen === 1 && (companyKnown || isAuthenticated)) setScreen(2);
-  }, [companyKnown, isAuthenticated, screen]);
+    if (screen === 1 && isAuthenticated) setScreen(2);
+  }, [isAuthenticated, screen]);
 
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
-    if (!companyKnown && !isAuthenticated) return; // gate: nothing to fetch until identified
+    // Gate on this specific opportunity's own confirmation, not the
+    // session-wide `companyKnown` - otherwise a company confirmed on a
+    // different, earlier opportunity would compute (and cache) a score for
+    // this one before the visitor ever identifies the right company here.
+    if (!isOpportunityConfirmed(id) && !isAuthenticated) return;
     setScoreLoading(true);
     setScoreError(null);
     opportunitiesApi.getMatchScore(id, getSessionId())
       .then(setMatchScore)
       .catch(err => setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité.")))
       .finally(() => setScoreLoading(false));
-  }, [id, screen, matchScore, scoreLoading, t, companyKnown, isAuthenticated]);
+  }, [id, screen, matchScore, scoreLoading, t, isAuthenticated]);
 
   const handleSiretSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,8 +307,16 @@ export default function OpportunityDetailPage() {
     }
     setSiretSubmitting(true);
     setSiretError(null);
-    const { error } = await lookupSiret(trimmed);
-    if (error) setSiretError(error);
+    const result = await lookupSiret(trimmed);
+    if (result.error) setSiretError(result.error);
+    // A 14-digit SIRET resolves straight to a company (no candidates list) -
+    // record it as confirmed for THIS opportunity and move on. A name search
+    // instead returns `candidates` for the visitor to pick from below, so
+    // nothing to mark yet in that case.
+    else if (result.companyKnown) {
+      markOpportunityConfirmed(id, result.siret);
+      setScreen(2);
+    }
     setSiretSubmitting(false);
   };
 
@@ -236,8 +324,12 @@ export default function OpportunityDetailPage() {
   const handleConfirmCandidate = async (candidateSiret: string) => {
     setConfirmingCandidate(candidateSiret);
     setSiretError(null);
-    const { error } = await confirmCandidate(candidateSiret);
-    if (error) setSiretError(error);
+    const result = await confirmCandidate(candidateSiret);
+    if (result.error) setSiretError(result.error);
+    else if (result.companyKnown) {
+      markOpportunityConfirmed(id, result.siret);
+      setScreen(2);
+    }
     setConfirmingCandidate(null);
   };
 
@@ -683,7 +775,7 @@ export default function OpportunityDetailPage() {
           after "Détails du dossier" above (client's brief: no tab switch
           between the fiche and the identification/score flow). */}
       {screen < 3 && (
-        !companyKnown && !isAuthenticated ? (
+        !isOpportunityConfirmed(id) && !isAuthenticated ? (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
