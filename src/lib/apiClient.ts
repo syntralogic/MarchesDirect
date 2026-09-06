@@ -218,6 +218,12 @@ export const opportunitiesApi = {
     );
     return data;
   },
+  getCounts: async () => {
+    const { data } = await apiClient.get<{ total: number; public_procurement: number; tender: number; subcontracting: number }>(
+      '/opportunities/stats/counts'
+    );
+    return data;
+  },
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;

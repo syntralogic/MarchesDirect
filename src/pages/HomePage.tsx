@@ -15,6 +15,7 @@ import { CallbackModal } from '@/components/CallbackModal';
 import { sectors, allSectors } from '@/data/mockData';
 import { frenchCitiesGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
+import { useOpportunityCounts } from '@/hooks/use-opportunity-counts';
 
 import team from "@/assets/team.jpg";
 
@@ -616,27 +617,45 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
         
         {/* Right: desktop visual */}
         <div className="hidden md:flex flex-shrink-0 w-80 xl:w-96 flex-col gap-3 relative">
-          <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-5 orange-glow-sm">
-            <div className="text-xs text-orange font-semibold uppercase tracking-wide mb-2">BOAMP · PLACE · JOUE</div>
-            <div className="text-2xl font-bold text-white mb-1">3 421+</div>
-            <div className="text-sm text-[#B9BBC8]">opportunités disponibles</div>
-            <div className="mt-3 flex gap-2">
-              <span className="text-xs bg-orange/10 text-orange px-2 py-1 rounded-full">Marchés publics</span>
-              <span className="text-xs bg-[#17334D] text-[#B9BBC8] px-2 py-1 rounded-full">Appels d'offres</span>
-            </div>
-          </div>
-          <div className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center shrink-0">
-              <div className="w-2 h-2 rounded-full bg-green-400" />
-            </div>
-            <div>
-              <div className="text-xs text-white font-semibold">Nouvelles opportunités</div>
-              <div className="text-xs text-[#B9BBC8]">127 publiées aujourd'hui</div>
-            </div>
-          </div>
+          <HeroCounters />
         </div>
       </div>
     </section>
+  );
+}
+
+function HeroCounters() {
+  const { counts, loading } = useOpportunityCounts();
+  const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
+  return (
+    <>
+      <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-5 orange-glow-sm">
+        <div className="text-xs text-orange font-semibold uppercase tracking-wide mb-2">BOAMP · DECP · TED</div>
+        <div className="text-2xl font-bold text-white mb-1">{loading ? '…' : `${fmt(counts.total)}+`}</div>
+        <div className="text-sm text-[#B9BBC8]">opportunités disponibles</div>
+      </div>
+      <Link to="/marches-publics" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
+        <div>
+          <div className="text-xs text-white font-semibold">Marchés publics</div>
+          <div className="text-xs text-[#B9BBC8]">{loading ? '…' : `${fmt(counts.public_procurement)} opportunités`}</div>
+        </div>
+        <ChevronRight size={16} className="text-[#B9BBC8]" />
+      </Link>
+      <Link to="/appels-doffres" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
+        <div>
+          <div className="text-xs text-white font-semibold">Appels d'offres privés</div>
+          <div className="text-xs text-[#B9BBC8]">{loading ? '…' : `${fmt(counts.tender)} opportunités`}</div>
+        </div>
+        <ChevronRight size={16} className="text-[#B9BBC8]" />
+      </Link>
+      <Link to="/sous-traitance" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
+        <div>
+          <div className="text-xs text-white font-semibold">Sous-traitance</div>
+          <div className="text-xs text-[#B9BBC8]">{loading ? '…' : `${fmt(counts.subcontracting)} opportunités`}</div>
+        </div>
+        <ChevronRight size={16} className="text-[#B9BBC8]" />
+      </Link>
+    </>
   );
 }
 
