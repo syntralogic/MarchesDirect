@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, KeyRound, Globe, Facebook, Star, BadgeCheck, Download,
+  ChevronDown, ChevronRight, KeyRound, Globe, Facebook, Star, BadgeCheck, Download,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -71,7 +71,7 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, register } = useAuth();
-  const { companyKnown, company: siretCompany, lookup: lookupSiret, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
+  const { companyKnown, company: siretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,8 +191,9 @@ export default function OpportunityDetailPage() {
     e.preventDefault();
     // Accept a 14-digit SIRET OR a company name (client's ask: label the
     // field "SIRET ou entreprise" so either works) - only reject genuinely
-    // too-short input, the backend resolves a name to a SIRET via Pappers
-    // search before doing the actual lookup.
+    // too-short input. A SIRET resolves directly; a name now returns a
+    // candidates list (client's 5 Sep brief) rendered below instead of
+    // auto-resolving to Pappers' best guess.
     const trimmed = siretInput.trim();
     if (trimmed.length < 2) {
       setSiretError(t('siretInputTooShort') || "Indiquez un SIRET (14 chiffres) ou le nom de l'entreprise.");
@@ -203,6 +204,15 @@ export default function OpportunityDetailPage() {
     const { error } = await lookupSiret(trimmed);
     if (error) setSiretError(error);
     setSiretSubmitting(false);
+  };
+
+  const [confirmingCandidate, setConfirmingCandidate] = useState<string | null>(null);
+  const handleConfirmCandidate = async (candidateSiret: string) => {
+    setConfirmingCandidate(candidateSiret);
+    setSiretError(null);
+    const { error } = await confirmCandidate(candidateSiret);
+    if (error) setSiretError(error);
+    setConfirmingCandidate(null);
   };
 
   // DCE - Dossier de consultation raw document list (client's dix images,
@@ -648,6 +658,31 @@ export default function OpportunityDetailPage() {
                 </div>
               </form>
               {siretError && <p className="text-xs text-red-400 mt-2">{siretError}</p>}
+              {/* Client's 5 Sep brief: a name search returns a results list
+                  to pick from and confirm, not an auto-resolved best guess. */}
+              {candidates.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[11px] text-[#B9BBC8]">{candidates.length > 1 ? 'Plusieurs entreprises correspondent — sélectionnez la vôtre :' : 'Confirmez votre entreprise :'}</p>
+                  {candidates.map(c => (
+                    <button
+                      key={c.siret}
+                      type="button"
+                      onClick={() => handleConfirmCandidate(c.siret)}
+                      disabled={confirmingCandidate !== null}
+                      className="w-full flex items-center justify-between gap-3 text-left bg-[#031B30] border border-[#17334D] rounded-lg px-3.5 py-3 hover:border-orange/50 transition-colors disabled:opacity-60"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
+                        <p className="text-[10px] text-[#B9BBC8] truncate">
+                          {[c.address, c.postal, c.city].filter(Boolean).join(', ') || c.siret}
+                          {c.ape ? ` — ${c.ape}` : ''}
+                        </p>
+                      </div>
+                      {confirmingCandidate === c.siret ? <Loader2 size={14} className="animate-spin text-orange shrink-0" /> : <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : (

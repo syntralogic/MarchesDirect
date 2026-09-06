@@ -356,10 +356,25 @@ export type ApiSiretCompany = {
   certifications?: string[];
 };
 
+export type ApiSiretCandidate = {
+  siret: string;
+  name: string | null;
+  address: string | null;
+  city: string | null;
+  postal: string | null;
+  ape: string | null;
+};
+
 export type ApiSiretStatus = {
   companyKnown: boolean;
   siret?: string;
   company?: ApiSiretCompany;
+  // Client's 5 Sep brief ("parcours définitif"): a free-text name search no
+  // longer auto-resolves to Pappers' best guess - it returns a candidates
+  // list for the visitor to pick from and confirm via POST /siret/confirm.
+  // Only present when companyKnown is false AND the query was a name (a
+  // 14-digit SIRET still resolves directly, no candidates).
+  candidates?: ApiSiretCandidate[];
   // "lead" gate (client's newest brief): phone + email captured after SIRET
   // recognition, before the fuller analysis breakdown - global per session,
   // never re-asked once true.
@@ -378,6 +393,11 @@ export const siretApi = {
   },
   lookup: async (query: string, sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.post('/siret/lookup', { query, sessionId });
+    return data;
+  },
+  // The visitor picked one candidate off the list `lookup` returned.
+  confirm: async (siret: string, sessionId: string): Promise<ApiSiretStatus> => {
+    const { data } = await apiClient.post('/siret/confirm', { siret, sessionId });
     return data;
   },
   // Client's newest brief: phone + email requested after the visitor has
