@@ -639,11 +639,6 @@ function HeroCounters() {
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   return (
     <>
-      <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-5 orange-glow-sm">
-        <div className="text-xs text-orange font-semibold uppercase tracking-wide mb-2">BOAMP · DECP · TED</div>
-        <div className="text-2xl font-bold text-white mb-1">{loading ? '…' : `${fmt(counts.total)}+`}</div>
-        <div className="text-sm text-[#B9BBC8]">opportunités disponibles</div>
-      </div>
       <Link to="/marches-publics" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
         <div>
           <div className="text-xs text-white font-semibold">Marchés publics</div>
