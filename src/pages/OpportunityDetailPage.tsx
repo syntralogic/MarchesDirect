@@ -494,7 +494,7 @@ export default function OpportunityDetailPage() {
               dossier" list below. Each cell only renders when the
               underlying value is real (estimated_value / start date / a
               stated team size or duration) - never a placeholder. */}
-         {(() => {
+          {(() => {
             const facts = opportunity.ai_extracted_facts;
             const factsPending = !facts;
             const cells: { label: string; value: string }[] = [];
@@ -531,7 +531,7 @@ export default function OpportunityDetailPage() {
               </div>
             );
           })()}
-          
+
           {/* POINTS DE VIGILANCE — same "always show the slot" logic as the
               card above: while facts are pending, keep the card visible with
               a pending note rather than have the whole section disappear
