@@ -35,6 +35,17 @@ function formatAmount(value: number | null, currency: string | null) {
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 }
+// Client's ask #4: many BOAMP notices have `description` identical to
+// `title` in the raw data (the source only ever gave one line of text).
+// Falling back to description when there's no AI summary then just
+// repeated the title verbatim under "Résumé" - detect and treat that as
+// "no real description" instead, so the block hides/shows the empty-state
+// message rather than reproducing the title.
+function isRedundantWithTitle(text: string | null | undefined, title: string | null | undefined): boolean {
+  if (!text || !title) return false;
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  return normalize(text) === normalize(title);
+}
 
 const DOC_LABELS: Record<string, string> = {
   kbis: 'Extrait KBIS', insurance: "Attestation d'assurance décennale", dc1: 'DC1 (lettre de candidature)',
@@ -460,13 +471,14 @@ export default function OpportunityDetailPage() {
       {tab === 'main' && (
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            {opportunity.ai_summary && (
+            {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
               <p className="text-sm text-white leading-relaxed">{opportunity.ai_summary}</p>
             )}
-            {opportunity.description && !opportunity.ai_summary && (
+            {opportunity.description && !opportunity.ai_summary && !isRedundantWithTitle(opportunity.description, opportunity.title) && (
               <p className="text-sm text-[#B9BBC8] leading-relaxed">{opportunity.description}</p>
             )}
-            {!opportunity.ai_summary && !opportunity.description && (
+            {(!opportunity.ai_summary || isRedundantWithTitle(opportunity.ai_summary, opportunity.title))
+              && (!opportunity.description || isRedundantWithTitle(opportunity.description, opportunity.title)) && (
               <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
             )}
           </div>
@@ -504,7 +516,7 @@ export default function OpportunityDetailPage() {
                 ) : (
                   <p className="text-xs text-[#B9BBC8]">{factsPending ? (t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.') : (t('quickStatUnavailable') || 'Peu de détails disponibles pour ce marché.')}</p>
                 )}
-                {facts?.contract_object?.available && (
+                {facts?.contract_object?.available && !isRedundantWithTitle(facts.contract_object.value, opportunity.title) && (
                   <div className="mt-3 pt-3 border-t border-[#17334D]">
                     <p className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1">{t('quickStatScope') || 'Travaux à réaliser'}</p>
                     <p className="text-xs text-[#B9BBC8] leading-relaxed">{facts.contract_object.value}</p>
