@@ -11,8 +11,8 @@ interface CompanyKnownContextType {
   leadCaptured: boolean;
   leadPhone: string | null;
   leadEmail: string | null;
-  lookup: (query: string) => Promise<{ error: string | null }>;
-  confirm: (siret: string) => Promise<{ error: string | null }>;
+  lookup: (query: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
+  confirm: (siret: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
   captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null }>;
 }
 
@@ -64,7 +64,13 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
       setLeadCaptured(!!result.leadCaptured);
       setLeadPhone(result.phone || null);
       setLeadEmail(result.email || null);
-      return { error: null };
+      // Returned alongside the (stale-until-next-render) context state so a
+      // caller like OpportunityDetailPage can react to *this specific*
+      // lookup immediately - needed to scope "company recognized" to the
+      // opportunity the visitor is actually on, rather than relying on the
+      // (session-wide, possibly already-true-from-an-earlier-opportunity)
+      // `companyKnown` context value.
+      return { error: null, companyKnown: result.companyKnown, siret: result.siret || null };
     } catch (err) {
       return { error: getApiErrorMessage(err, "La vérification du SIRET a échoué.") };
     }
@@ -81,7 +87,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
       setLeadCaptured(!!result.leadCaptured);
       setLeadPhone(result.phone || null);
       setLeadEmail(result.email || null);
-      return { error: null };
+      return { error: null, companyKnown: result.companyKnown, siret: result.siret || null };
     } catch (err) {
       return { error: getApiErrorMessage(err, "La confirmation de l'entreprise a échoué.") };
     }
