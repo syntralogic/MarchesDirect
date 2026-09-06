@@ -81,7 +81,7 @@ export default function OpportunityDetailPage() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, company, user, register } = useAuth();
+  const { isAuthenticated, company, user, completeSignup } = useAuth();
   const { companyKnown, company: siretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
@@ -338,13 +338,12 @@ export default function OpportunityDetailPage() {
     }
   };
 
-  // Lightweight account finalisation (prototype V17, section 3.5) - shown
-  // once a slot/callback has already captured phone+email. Reuses the
-  // existing full register() flow (same as SignupPage) rather than a new
-  // endpoint: companyName defaults to the SIRET-recognized name when known,
-  // since re-typing it would contradict "single password field, nothing
-  // else to fill in" from the spec. Never blocks navigation - "Plus tard"
-  // just dismisses this block, per rule 6/7 of the spec.
+  // Client priority #10 "Créer mon accès" - shown once a slot/callback has
+  // already captured phone+email. Calls the new completeSignup(), which
+  // pulls company name/SIRET/address/revenue from this same session's
+  // already-completed SIRET lookup instead of a bare company name - this is
+  // the fix for "Mon entreprise" showing almost nothing after signup. Never
+  // blocks navigation - "Plus tard" just dismisses this block.
   const handleQuickPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (quickPassword.length < 8) {
@@ -353,13 +352,7 @@ export default function OpportunityDetailPage() {
     }
     setQuickPasswordSubmitting(true);
     setQuickPasswordError(null);
-    const result = await register({
-      companyName: siretCompany?.name || slotForm.companyName || `${slotForm.firstName} ${slotForm.lastName}`.trim() || 'Mon entreprise',
-      firstName: slotForm.firstName,
-      lastName: slotForm.lastName,
-      email: slotForm.email,
-      password: quickPassword,
-    });
+    const result = await completeSignup(getSessionId(), quickPassword);
     setQuickPasswordSubmitting(false);
     if (result.error) {
       setQuickPasswordError(result.error);

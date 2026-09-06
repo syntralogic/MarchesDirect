@@ -10,6 +10,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null; mfaRequired?: boolean; mfaToken?: string; userId?: string }>;
   register: (payload: RegisterPayload) => Promise<{ error: string | null }>;
+  completeSignup: (sessionId: string, password: string) => Promise<{ error: string | null }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -79,6 +80,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Client priority #10 "Créer mon accès" - the opportunity funnel's
+  // end-of-journey password step. Only sessionId + password are sent; the
+  // backend pulls company name/SIRET/address/revenue and email/phone from
+  // that same session's already-completed SIRET lookup + lead capture
+  // (see completeSignupFromSession) instead of re-asking for any of it.
+  const completeSignup = async (sessionId: string, password: string) => {
+    try {
+      const { data } = await apiClient.post('/auth/complete-signup', { sessionId, password });
+      tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      await refreshProfile();
+      return { error: null };
+    } catch (err) {
+      return { error: getApiErrorMessage(err, "La création de votre accès a échoué.") };
+    }
+  };
+
   const logout = () => {
     tokenStorage.clear();
     setUser(null);
@@ -87,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, company, loading, isAuthenticated: !!user, login, register, logout, refreshProfile }}
+      value={{ user, company, loading, isAuthenticated: !!user, login, register, completeSignup, logout, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
