@@ -473,8 +473,12 @@ export default function OpportunityDetailPage() {
           between. Order below matches the reference screenshots: résumé →
           points de vigilance → donneur d'ordre → détails du dossier →
           identification SIRET → fiche entreprise → indice de correspondance
-          → coordonnées → dossier prep → suivi/rappel. */}
-      {screen === 1 && (
+          → coordonnées → dossier prep → suivi/rappel.
+          Always rendered regardless of `screen`: this is core opportunity
+          data (résumé, "30 secondes", risks, donneur d'ordre, détails du
+          dossier) and must never disappear - including when a returning
+          or already-identified visitor starts straight on screen 2/3. */}
+      {(
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
