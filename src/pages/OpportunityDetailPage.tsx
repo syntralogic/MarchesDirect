@@ -611,7 +611,12 @@ export default function OpportunityDetailPage() {
             if (facts.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: facts.submission_method.value });
             if (facts.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
             if (facts.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
-            if (opportunity.buyer_history_count != null) rows.push({ label: t('dossierFactBuyerHistory'), value: t('dossierBuyerHistoryValue').replace('{n}', String(opportunity.buyer_history_count)) });
+            if (opportunity.buyer_history_count != null) rows.push({
+              label: t('dossierFactBuyerHistory'),
+              value: opportunity.buyer_history_count === 0
+                ? (t('dossierBuyerHistoryNone') || 'Aucun marché similaire publié')
+                : t('dossierBuyerHistoryValue').replace('{n}', String(opportunity.buyer_history_count)),
+            });
             if (Array.isArray(facts.selection_criteria?.value) && facts.selection_criteria.available && facts.selection_criteria.value.length > 0) {
               rows.push({
                 label: t('dossierFactCriteria') || 'Critères de notation',
