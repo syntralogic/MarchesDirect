@@ -77,7 +77,9 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
           <p className="text-lg font-bold text-orange leading-tight">{o.amount}</p>
-          <p className="text-[11px] text-[#B9BBC8]">{t('detailBudget')}</p>
+          {o.amount !== 'Montant non communiqué' && (
+            <p className="text-[11px] text-[#B9BBC8]">{t('detailBudget')}</p>
+          )}
         </div>
         <div>
           <p className="text-lg font-bold text-white leading-tight">{deadlineText}</p>
