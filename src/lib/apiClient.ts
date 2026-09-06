@@ -353,6 +353,14 @@ export type ApiSiretCompany = {
   employees: string | null;
   ape: string | null;
   activity: string | null;
+  // Client priority #6/#7: SIREN/statut/chiffre d'affaires - backend
+  // (routes/siret.ts) already returns these from Pappers/INSEE, was never
+  // mapped through to the frontend type or rendered anywhere.
+  siren?: string | null;
+  siret?: string | null;
+  statut?: string | null;
+  revenue?: string | null;
+  revenueYear?: number | null;
   // "Présence détectée" (prototype V17, section 3.3.3) - backend already
   // returns these (routes/siret.ts) but the frontend never mapped them.
   // Only ever real signals from Pappers/INSEE/demo data, never fabricated.
@@ -365,11 +373,14 @@ export type ApiSiretCompany = {
 
 export type ApiSiretCandidate = {
   siret: string;
+  siren?: string | null;
   name: string | null;
   address: string | null;
   city: string | null;
   postal: string | null;
   ape: string | null;
+  activity?: string | null;
+  statut?: string | null;
 };
 
 export type ApiSiretStatus = {

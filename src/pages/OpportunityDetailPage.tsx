@@ -682,11 +682,20 @@ export default function OpportunityDetailPage() {
                       className="w-full flex items-center justify-between gap-3 text-left bg-[#031B30] border border-[#17334D] rounded-lg px-3.5 py-3 hover:border-orange/50 transition-colors disabled:opacity-60"
                     >
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
+                          {c.statut && (
+                            <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${c.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                              {c.statut}
+                            </span>
+                          )}
+                        </div>
+                        {/* Client priority #6: raison sociale / ville / activité /
+                            SIREN ou SIRET / statut - all five, not just name+address+ape code. */}
                         <p className="text-[10px] text-[#B9BBC8] truncate">
-                          {[c.address, c.postal, c.city].filter(Boolean).join(', ') || c.siret}
-                          {c.ape ? ` — ${c.ape}` : ''}
+                          {[c.city, c.activity || c.ape].filter(Boolean).join(' — ') || c.address}
                         </p>
+                        <p className="text-[10px] text-[#5B6B80] truncate">SIRET {c.siret}{c.siren ? ` · SIREN ${c.siren}` : ''}</p>
                       </div>
                       {confirmingCandidate === c.siret ? <Loader2 size={14} className="animate-spin text-orange shrink-0" /> : <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />}
                     </button>
@@ -702,6 +711,13 @@ export default function OpportunityDetailPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <ShieldCheck size={15} className="text-green-400 shrink-0" />
                   <p className="text-sm font-bold text-white">{t('siretRecognizedTitle')}{siretCompany.name ? ` — ${siretCompany.name}` : ''}</p>
+                  {/* Client priority #6/#7: statut actif/cessée must be visible
+                      on the identified-company card, not just the candidate list. */}
+                  {siretCompany.statut && (
+                    <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${siretCompany.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {siretCompany.statut}
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                   {siretCompany.legal && <p className="text-[#B9BBC8]">{t('siretLegalForm')} : <span className="text-white">{siretCompany.legal}</span></p>}
@@ -709,6 +725,16 @@ export default function OpportunityDetailPage() {
                   {(siretCompany.address || siretCompany.city) && <p className="text-[#B9BBC8] col-span-2">{t('siretAddress')} : <span className="text-white">{[siretCompany.address, siretCompany.postal, siretCompany.city].filter(Boolean).join(', ')}</span></p>}
                   {siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">{siretCompany.employees}</span></p>}
                   {siretCompany.ape && <p className="text-[#B9BBC8]">{t('siretApe')} : <span className="text-white">{siretCompany.ape}{siretCompany.activity ? ` — ${siretCompany.activity}` : ''}</span></p>}
+                  {/* Client priority #7: SIREN/SIRET and chiffre d'affaires with
+                      its year must appear on this card - backend already
+                      returns both, was never rendered. */}
+                  {siretCompany.siren && <p className="text-[#B9BBC8]">SIREN : <span className="text-white">{siretCompany.siren}</span></p>}
+                  {siretCompany.siret && <p className="text-[#B9BBC8]">SIRET : <span className="text-white">{siretCompany.siret}</span></p>}
+                  {siretCompany.revenue && (
+                    <p className="text-[#B9BBC8] col-span-2">
+                      Chiffre d'affaires : <span className="text-white">{Number(siretCompany.revenue).toLocaleString('fr-FR')} €{siretCompany.revenueYear ? ` (${siretCompany.revenueYear})` : ''}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             )}
