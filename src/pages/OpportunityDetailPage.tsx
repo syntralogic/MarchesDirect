@@ -412,6 +412,35 @@ export default function OpportunityDetailPage() {
         <ArrowLeft size={14} /> {t('detailBack')}
       </button>
 
+      {/* Numbered stepper (client's 6 Sep brief, screenshots #1/#2): "chaque
+          étape doit être clairement visible en haut de la page afin que
+          l'utilisateur comprenne immédiatement où il se trouve dans le
+          parcours." Purely a progress indicator - screen state/navigation
+          logic is unchanged, this just makes it visible. */}
+      <div className="flex items-center gap-1.5 mb-4">
+        {([
+          { n: 1, label: t('stepperOpportunity') || 'Votre opportunité' },
+          { n: 2, label: t('stepperConcordance') || 'Concordance' },
+          { n: 3, label: t('stepperDossier') || 'Votre dossier' },
+        ] as const).map((s, i) => (
+          <div key={s.n} className="flex items-center gap-1.5 min-w-0">
+            <div className={`shrink-0 flex items-center gap-1.5 ${screen === s.n ? '' : 'opacity-60'}`}>
+              <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
+                : screen === s.n ? 'bg-orange text-white'
+                : 'border border-[#17334D] text-[#5B6B80]'
+              }`}>
+                {screen > s.n ? <CheckCircle2 size={13} /> : s.n}
+              </span>
+              <span className={`hidden sm:inline text-xs font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+                {s.label}
+              </span>
+            </div>
+            {i < 2 && <div className={`h-px flex-1 min-w-[12px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
+          </div>
+        ))}
+      </div>
+
       {/* Opportunity header — kept visible on every screen (as it was
           before, above the tabs) so no detail disappears when moving
           between steps of the journey. */}
@@ -734,6 +763,7 @@ export default function OpportunityDetailPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                   {siretCompany.legal && <p className="text-[#B9BBC8]">{t('siretLegalForm')} : <span className="text-white">{siretCompany.legal}</span></p>}
+                  {siretCompany.director && <p className="text-[#B9BBC8]">Dirigeant : <span className="text-white">{siretCompany.director}</span></p>}
                   {siretCompany.created && <p className="text-[#B9BBC8]">{t('siretCreated')} : <span className="text-white">{formatDate(siretCompany.created)}</span></p>}
                   {(siretCompany.address || siretCompany.city) && <p className="text-[#B9BBC8] col-span-2">{t('siretAddress')} : <span className="text-white">{[siretCompany.address, siretCompany.postal, siretCompany.city].filter(Boolean).join(', ')}</span></p>}
                   {siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">{siretCompany.employees}</span></p>}
@@ -933,22 +963,22 @@ export default function OpportunityDetailPage() {
                     <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
                     <form onSubmit={handleLeadSubmit} className="space-y-3">
                       <div>
-                        <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadPhoneLabel')}</label>
-                        <input
-                          value={leadPhone}
-                          onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          inputMode="numeric"
-                          placeholder="06 12 34 56 78"
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                        />
-                      </div>
-                      <div>
                         <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadEmailLabel')}</label>
                         <input
                           value={leadEmail}
                           onChange={e => setLeadEmail(e.target.value)}
                           type="email"
                           placeholder="vous@entreprise.fr"
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadPhoneLabel')}</label>
+                        <input
+                          value={leadPhone}
+                          onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          inputMode="numeric"
+                          placeholder="06 12 34 56 78"
                           className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                         />
                       </div>
