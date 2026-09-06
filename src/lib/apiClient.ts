@@ -287,6 +287,26 @@ export const favoritesApi = {
   remove: async (opportunityId: string) => {
     await apiClient.delete(`/favorites/${opportunityId}`);
   },
+  // Anonymous equivalents (client's brief, 6 Sep): the Save icon on a
+  // listing card must work before the visitor is identified - saves into
+  // this browser's session instead of a company's favorites.
+  sessionIds: async (sessionId: string) => {
+    const { data } = await apiClient.get<{ ids: string[] }>('/favorites/session/ids', { params: { sessionId } });
+    return data.ids;
+  },
+  sessionSave: async (opportunityId: string, sessionId: string) => {
+    await apiClient.put(`/favorites/session/${opportunityId}`, { sessionId });
+  },
+  sessionRemove: async (opportunityId: string, sessionId: string) => {
+    await apiClient.delete(`/favorites/session/${opportunityId}`, { params: { sessionId } });
+  },
+  // Called once right after the visitor is identified (fresh signup or a
+  // returning magic-link login) - migrates this session's saved
+  // opportunities into their real company favorites.
+  attachSession: async (sessionId: string) => {
+    const { data } = await apiClient.post<{ attached: number }>('/favorites/attach', { sessionId });
+    return data.attached;
+  },
 };
 
 // Self-published subcontracting needs ("Je cherche un sous-traitant" buyer
