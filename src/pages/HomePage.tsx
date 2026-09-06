@@ -610,15 +610,6 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
           </div>
           <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
 
-          {/* Client priority #2: real opportunity counts must be visible
-              "dès l'arrivée sur le site" - HeroCounters below only ever
-              rendered in the desktop column (hidden md:flex), so a mobile
-              visitor - which is how every reference screenshot this project
-              has been checked against was taken - never saw them at all. */}
-          <div className="md:hidden grid grid-cols-1 gap-2 mb-3">
-            <HeroCounters />
-          </div>
-
           {/* Desktop hero text */}
           <div className="hidden md:block">
             <h1 className="text-5xl xl:text-6xl font-extrabold leading-tight mb-4 tracking-tight">
@@ -679,23 +670,31 @@ function HeroCounters() {
 }
 
 function OpportunityPaths() {
+  const { counts, loading } = useOpportunityCounts();
+  const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   const paths = [
-    { icon: Building, title: 'Marchés publics', sub: 'Mairies, État, collectivités', href: '/parcours?type=marches-publics' },
-    { icon: Building2, title: "Appels d'offres", sub: 'Promoteurs, bailleurs, grandes entreprises', href: '/parcours?type=appels-doffres' },
-    { icon: Handshake, title: 'Sous-traitance', sub: 'Lots entre entreprises du bâtiment', href: '/parcours?type=sous-traitance' },
+    { icon: Building, title: 'Marchés publics', sub: 'Mairies, État, collectivités', href: '/parcours?type=marches-publics', key: 'public_procurement' as const },
+    { icon: Building2, title: "Appels d'offres", sub: 'Promoteurs, bailleurs, grandes entreprises', href: '/parcours?type=appels-doffres', key: 'tender' as const },
+    { icon: Handshake, title: 'Sous-traitance', sub: 'Lots entre entreprises du bâtiment', href: '/parcours?type=sous-traitance', key: 'subcontracting' as const },
   ];
   return (
     <div className="grid grid-cols-1 gap-2">
-      {paths.map(p => (
-        <Link key={p.href} to={p.href} className="flex items-center gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-lg p-2 hover:border-orange/50 group transition-all">
-          <div className="w-10 h-10 rounded-lg bg-orange/10 flex items-center justify-center shrink-0"><p.icon size={20} className="text-orange" /></div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
-            <div className="text-[10px] text-[#B9BBC8] mt-0.5">{p.sub}</div>
-          </div>
-          <ChevronRight size={14} className="text-orange shrink-0" />
-        </Link>
-      ))}
+      {paths.map(p => {
+        const count = counts[p.key];
+        return (
+          <Link key={p.href} to={p.href} className="flex items-center gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-lg p-2 hover:border-orange/50 group transition-all">
+            <div className="w-10 h-10 rounded-lg bg-orange/10 flex items-center justify-center shrink-0"><p.icon size={20} className="text-orange" /></div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
+              <div className="text-[10px] text-[#B9BBC8] mt-0.5">{p.sub}</div>
+            </div>
+            <div className="text-[11px] text-orange font-semibold whitespace-nowrap shrink-0">
+              {loading ? '…' : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
+            </div>
+            <ChevronRight size={14} className="text-orange shrink-0" />
+          </Link>
+        );
+      })}
     </div>
   );
 }
