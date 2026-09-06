@@ -11,27 +11,22 @@ import PageMeta from '@/components/common/PageMeta';
 
 export default function AppelsPage() {
   const { t } = useLang();
-  const { opportunities: mockPrivateOpportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities('tender');
   const trades = useTrades();
   const [location, setLocation] = useState('');
   const [sector, setSector] = useState('Tous');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const filtered = useMemo(() => {
-    return mockPrivateOpportunities.filter(o => {
-      if (location && !o.location.toLowerCase().includes(location.toLowerCase())) return false;
-      // Filters against the real trade_name-backed `sector` field - the old
-      // hardcoded SECTORS/CATEGORIES label lists never matched actual data
-      // (see useTrades for why), so any non-default selection silently
-      // returned zero results.
-      if (sector !== 'Tous' && o.sector !== sector) return false;
-      return true;
-    });
-  }, [location, sector, mockPrivateOpportunities]);
+  const selectedTradeId = sector === 'Tous' ? undefined : trades.find(tr => tr.name === sector)?.id;
+
+  const { opportunities: results, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
+    journey: 'tender',
+    city: location || undefined,
+    trade_id: selectedTradeId,
+  });
 
   const resetFilters = () => { setLocation(''); setSector('Tous'); };
   const hasFilters = location || sector !== 'Tous';
-  const { scores: matchScores, canScore } = useMatchScores(filtered.map(o => o.id));
+  const { scores: matchScores, canScore } = useMatchScores(results.map(o => o.id));
 
   const FilterPanel = () => (
     <div className="space-y-5">
@@ -46,7 +41,7 @@ export default function AppelsPage() {
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('appelsSector')}</label>
         <select value={sector} onChange={e => setSector(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
           <option value="Tous">Tous</option>
-          {trades.map(name => <option key={name} value={name}>{name}</option>)}
+          {trades.map(tr => <option key={tr.id} value={tr.name}>{tr.name}</option>)}
         </select>
       </div>
       {hasFilters && (
@@ -72,7 +67,7 @@ export default function AppelsPage() {
             </div>
             <FilterPanel />
             <button onClick={() => setFiltersOpen(false)} className="w-full mt-5 bg-orange text-white font-semibold text-sm py-3 rounded-xl">
-              {t('searchButton')} ({filtered.length})
+              {t('searchButton')} ({total})
             </button>
           </div>
         </div>
@@ -115,18 +110,18 @@ export default function AppelsPage() {
         <div className="flex-1 min-w-0">
           <div className="mb-3">
             {!error && <h2 className="text-xs font-bold text-white">
-              <span className="text-orange">{filtered.length}</span> {filtered.length !== 1 ? t('appelsResultsPlural') : t('appelsResults')}
+              <span className="text-orange">{total}</span> {total !== 1 ? t('appelsResultsPlural') : t('appelsResults')}
             </h2>}
           </div>
 
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
           {!loading && error && <OpportunitiesPendingState />}
-          {!loading && !error && filtered.length === 0 && (
+          {!loading && !error && results.length === 0 && (
             <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filtered.map((o) => (
+            {results.map((o) => (
               <OpportunityListCard
                 key={o.id}
                 opportunity={o}
@@ -141,7 +136,7 @@ export default function AppelsPage() {
             loadingMore={loadingMore}
             onLoadMore={loadMore}
             total={total}
-            shown={mockPrivateOpportunities.length}
+            shown={results.length}
           />
         </div>
       </div>

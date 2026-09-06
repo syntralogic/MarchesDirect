@@ -23,7 +23,6 @@ const DEPARTMENTS: { label: string; code: string }[] = [
 export default function SousTraitancePage() {
   const { t } = useLang();
   const { companyKnown } = useCompanyKnown();
-  const { opportunities: mockSubcontractingOpportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities('subcontracting');
   const trades = useTrades();
   const [mode, setMode] = useState<'chantier' | 'partenaire'>('chantier');
   const [location, setLocation] = useState('');
@@ -31,17 +30,14 @@ export default function SousTraitancePage() {
   const [profession, setProfession] = useState('Tous');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const filtered = useMemo(() => {
-    return mockSubcontractingOpportunities.filter(o => {
-      if (location && !o.location.toLowerCase().includes(location.toLowerCase())) return false;
-      if (dept !== 'Tous' && o.department !== dept) return false;
-      // Filters against the real trade_name-backed `sector` field - see
-      // useTrades for why `o.category` (never populated by the API adapter)
-      // silently returned zero results for any non-default selection.
-      if (profession !== 'Tous' && o.sector !== profession) return false;
-      return true;
-    });
-  }, [location, dept, profession, mockSubcontractingOpportunities]);
+  const selectedTradeId = profession === 'Tous' ? undefined : trades.find(tr => tr.name === profession)?.id;
+
+  const { opportunities: results, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
+    journey: 'subcontracting',
+    city: location || undefined,
+    department: dept === 'Tous' ? undefined : dept,
+    trade_id: selectedTradeId,
+  });
 
   const resetFilters = () => { setLocation(''); setDept('Tous'); setProfession('Tous'); };
   const hasFilters = location || dept !== 'Tous' || profession !== 'Tous';
@@ -65,7 +61,7 @@ export default function SousTraitancePage() {
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('subJob')}</label>
         <select value={profession} onChange={e => setProfession(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
           <option value="Tous">Tous</option>
-          {trades.map(name => <option key={name} value={name}>{name}</option>)}
+          {trades.map(tr => <option key={tr.id} value={tr.name}>{tr.name}</option>)}
         </select>
       </div>
       {hasFilters && (
@@ -91,7 +87,7 @@ export default function SousTraitancePage() {
             </div>
             <FilterPanel />
             <button onClick={() => setFiltersOpen(false)} className="w-full mt-5 bg-orange text-white font-semibold text-sm py-3 rounded-xl">
-              {t('searchButton')} ({filtered.length})
+              {t('searchButton')} ({total})
             </button>
           </div>
         </div>
@@ -144,18 +140,18 @@ export default function SousTraitancePage() {
         <div className="flex-1 min-w-0">
           <div className="mb-3">
             {!error && <h2 className="text-xs font-bold text-white">
-              <span className="text-orange">{filtered.length}</span> {filtered.length !== 1 ? t('subResultsPlural') : t('subResults')}
+              <span className="text-orange">{total}</span> {total !== 1 ? t('subResultsPlural') : t('subResults')}
             </h2>}
           </div>
 
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
           {!loading && error && <OpportunitiesPendingState />}
-          {!loading && !error && filtered.length === 0 && (
+          {!loading && !error && results.length === 0 && (
             <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {filtered.map((o) => (
+            {results.map((o) => (
               <OpportunityListCard
                 key={o.id}
                 opportunity={o}
@@ -171,7 +167,7 @@ export default function SousTraitancePage() {
             loadingMore={loadingMore}
             onLoadMore={loadMore}
             total={total}
-            shown={mockSubcontractingOpportunities.length}
+            shown={results.length}
           />
         </div>
       </div>
