@@ -373,9 +373,19 @@ function GeographicSection() {
                       ? (tab === 'regions' ? getRegionCount(item.nom) : getDeptCount(item.code, item.nom))
                       : undefined;
                     return (
-                      <div key={code || name || index} className="flex items-center justify-between gap-2 py-0.5 border-b border-[#17334D]/50 last:border-0">
-                        <p className="text-xs font-semibold text-white truncate">{name}</p>
-                        {count !== undefined && <p className="text-[10px] text-[#B9BBC8] shrink-0">{count}</p>}
+                      <div key={code || name || index} className="flex items-center justify-between gap-2 py-1 border-b border-[#17334D]/50 last:border-0">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">{name}</p>
+                          {/* Client priority #2's exact ask: "X XXX opportunités
+                              disponibles en {région}" - was a bare number with
+                              no unit or region name repeated, easy to misread
+                              as anything (a rank, an id...). */}
+                          {count !== undefined && (
+                            <p className="text-[10px] text-orange font-medium">
+                              {count.toLocaleString('fr-FR')} {count > 1 ? t('mapOpportunitiesAvailablePlural') || 'opportunités disponibles' : t('mapOpportunitiesAvailableSingular') || 'opportunité disponible'}
+                            </p>
+                          )}
+                        </div>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -599,6 +609,15 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
             </div>
           </div>
           <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
+
+          {/* Client priority #2: real opportunity counts must be visible
+              "dès l'arrivée sur le site" - HeroCounters below only ever
+              rendered in the desktop column (hidden md:flex), so a mobile
+              visitor - which is how every reference screenshot this project
+              has been checked against was taken - never saw them at all. */}
+          <div className="md:hidden grid grid-cols-1 gap-2 mb-3">
+            <HeroCounters />
+          </div>
 
           {/* Desktop hero text */}
           <div className="hidden md:block">

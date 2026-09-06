@@ -224,6 +224,7 @@ export const opportunitiesApi = {
     );
     return data;
   },
+
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;
