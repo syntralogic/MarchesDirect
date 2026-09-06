@@ -71,8 +71,6 @@ const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = 
   subcontracting: { label: 'Sous-traitance', icon: Handshake },
 };
 
-type Tab = 'main' | 'dossier';
-
 // Placeholder near-term slots, matching the client's prototype (e.g.
 // "Aujourd'hui · 17h30"). Not backed by a real staff calendar yet.
 const CALLBACK_SLOTS = ["Aujourd'hui · 17h30", "Demain · 08h30", "Demain · 14h00", 'Après-demain · 10h00'];
@@ -87,7 +85,13 @@ export default function OpportunityDetailPage() {
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('main');
+  // Progressive 3-screen journey (client's brief: "Opportunité" →
+  // "Votre compatibilité" → "Dossier & suivi"), replacing the old
+  // single-scroll two-tab layout so each step is its own page on mobile.
+  // Starts on screen 1 unless the company is already known (context from
+  // an earlier step in this session), in which case screen 2 is the
+  // correct starting point.
+  const [screen, setScreen] = useState<1 | 2 | 3>(() => (companyKnown || isAuthenticated) ? 2 : 1);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -187,8 +191,16 @@ export default function OpportunityDetailPage() {
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
 
+  // Auto-navigate Page 1 → Page 2 the moment a company is recognized
+  // (direct SIRET match or a picked candidate confirmed), matching the
+  // brief: "As soon as they select the correct company, the application
+  // automatically navigates to the next page."
   useEffect(() => {
-    if (!id || tab !== 'main' || matchScore || scoreLoading) return;
+    if (screen === 1 && (companyKnown || isAuthenticated)) setScreen(2);
+  }, [companyKnown, isAuthenticated, screen]);
+
+  useEffect(() => {
+    if (!id || screen === 3 || matchScore || scoreLoading) return;
     if (!companyKnown && !isAuthenticated) return; // gate: nothing to fetch until identified
     setScoreLoading(true);
     setScoreError(null);
@@ -196,7 +208,7 @@ export default function OpportunityDetailPage() {
       .then(setMatchScore)
       .catch(err => setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité.")))
       .finally(() => setScoreLoading(false));
-  }, [id, tab, matchScore, scoreLoading, t, companyKnown, isAuthenticated]);
+  }, [id, screen, matchScore, scoreLoading, t, companyKnown, isAuthenticated]);
 
   const handleSiretSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -390,10 +402,17 @@ export default function OpportunityDetailPage() {
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
       <PageMeta title={`${opportunity.title} — Marchés Direct`} description={metaDescription.slice(0, 300)} />
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors">
+      <button
+        onClick={() => (screen > 1 ? setScreen((s) => (s - 1) as 1 | 2 | 3) : navigate(-1))}
+        className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors"
+      >
         <ArrowLeft size={14} /> {t('detailBack')}
       </button>
 
+      {/* Opportunity header — Page 1 ("The Opportunity") only; pages 2/3
+          focus on the company/compatibility and dossier steps instead of
+          repeating the full tender header on every screen. */}
+      {screen === 1 && (
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="flex items-center gap-1.5 text-[10px] font-bold text-orange uppercase tracking-wide bg-orange/10 border border-orange/30 rounded-full px-2.5 py-1">
@@ -435,23 +454,16 @@ export default function OpportunityDetailPage() {
           <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
         </div>
       </div>
+      )}
 
-      {/* TABS */}
-      <div className="flex gap-1 mb-4 border-b border-[#17334D]">
-        {([
-          { key: 'main' as Tab, label: t('detailResume') || 'Le marché' },
-          { key: 'dossier' as Tab, label: t('detailDossier') || 'Dossier & candidature' },
-        ]).map(tabItem => (
-          <button
-            key={tabItem.key}
-            onClick={() => setTab(tabItem.key)}
-            className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-              tab === tabItem.key ? 'text-orange border-orange' : 'text-[#B9BBC8] border-transparent hover:text-white'
-            }`}
-          >
-            {tabItem.label}
-          </button>
-        ))}
+      {/* Page title — one distinct, clearly-titled screen per step instead
+          of tabs on a single long scroll. */}
+      <div className="mb-4">
+        <h2 className="text-base font-extrabold text-white">
+          {screen === 1 ? (t('detailResume') || 'Le marché')
+            : screen === 2 ? (t('compatibilityTitle') || 'Votre compatibilité')
+            : (t('detailDossier') || 'Dossier & candidature')}
+        </h2>
       </div>
 
       {/* PARCOURS COMPLET — client's brief (dix images de référence): one
@@ -461,7 +473,7 @@ export default function OpportunityDetailPage() {
           points de vigilance → donneur d'ordre → détails du dossier →
           identification SIRET → fiche entreprise → indice de correspondance
           → coordonnées → dossier prep → suivi/rappel. */}
-      {tab === 'main' && (
+      {screen === 1 && (
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
@@ -640,7 +652,7 @@ export default function OpportunityDetailPage() {
       {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
           after "Détails du dossier" above (client's brief: no tab switch
           between the fiche and the identification/score flow). */}
-      {tab === 'main' && (
+      {screen < 3 && (
         !companyKnown && !isAuthenticated ? (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
@@ -896,6 +908,14 @@ export default function OpportunityDetailPage() {
                   checklistRefCount={checklistRefCount}
                   onContactManager={() => setShowAccountManagerModal(true)}
                 />
+
+                <button
+                  type="button"
+                  onClick={() => setScreen(3)}
+                  className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
+                >
+                  {t('compatibilityContinue') || 'Continuer'}
+                </button>
               </>
             ) : (
               // Phone+email gate (client's newest brief, Écran 7): the
@@ -945,7 +965,7 @@ export default function OpportunityDetailPage() {
           visitor who skips identification can still book a callback; for a
           private tender/sous-traitance this is also what unlocks the
           "Donneur d'ordre" name shown further up the page. */}
-      {tab === 'main' && (
+      {screen === 3 && (
         <div className="space-y-4 mt-4">
           <div className="bg-green-400/10 border border-green-400/30 rounded-2xl p-5 md:p-6">
             <p className="flex items-center gap-2 text-xs font-semibold text-green-400 mb-1"><CheckCircle2 size={14} /> {t('followUpSaved') || 'Opportunité enregistrée'}</p>
@@ -1066,8 +1086,8 @@ export default function OpportunityDetailPage() {
         </div>
       )}
 
-      {/* DOSSIER & CANDIDATURE TAB */}
-      {tab === 'dossier' && (
+      {/* DOSSIER & CANDIDATURE — Page 3 ("Remaining Flow") */}
+      {screen === 3 && (
         !isAuthenticated ? (
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center">
             <p className="text-sm text-white font-semibold mb-1">{t('dossierAnalysisTitle')}</p>
