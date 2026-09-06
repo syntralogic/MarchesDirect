@@ -10,15 +10,17 @@ import { tradesApi } from '@/lib/apiClient';
 // result set. Fetching the real trade names from GET /api/trades - which
 // existed for this purpose already but wasn't used anywhere - keeps the
 // dropdown in sync with whatever opportunities are actually tagged with.
+export interface Trade { id: string; name: string; }
+
 export function useTrades() {
-  const [trades, setTrades] = useState<string[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     tradesApi.list()
-      .then((data: { name: string }[]) => {
+      .then((data: Trade[]) => {
         if (cancelled) return;
-        setTrades(Array.isArray(data) ? data.map(t => t.name).filter(Boolean) : []);
+        setTrades(Array.isArray(data) ? data.filter(t => t?.name && t?.id) : []);
       })
       .catch(() => {
         if (!cancelled) setTrades([]);
