@@ -643,7 +643,9 @@ export default function OpportunityDetailPage() {
                 ) : (
                   <p className="text-xs text-[#B9BBC8]">{factsPending ? (t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.') : (t('quickStatUnavailable') || 'Peu de détails disponibles pour ce marché.')}</p>
                 )}
-                {facts?.contract_object?.available && !isRedundantWithTitle(facts.contract_object.value, opportunity.title) && (
+                {facts?.contract_object?.available
+                  && !isRedundantWithTitle(facts.contract_object.value, opportunity.title)
+                  && !isRedundantWithTitle(facts.contract_object.value, opportunity.ai_summary) && (
                   <div className="mt-3 pt-3 border-t border-[#17334D]">
                     <p className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1">{t('quickStatScope') || 'Travaux à réaliser'}</p>
                     <p className="text-xs text-[#B9BBC8] leading-relaxed">{facts.contract_object.value}</p>
@@ -728,7 +730,11 @@ export default function OpportunityDetailPage() {
           {opportunity.ai_extracted_facts && (() => {
             const facts = opportunity.ai_extracted_facts;
             const rows: { label: string; value: string }[] = [];
-            if (facts.contract_object?.available) rows.push({ label: t('dossierFactObject'), value: facts.contract_object.value });
+            // contract_object is already shown prominently above as "Travaux
+            // à réaliser" ("Le marché en 30 secondes" block) - repeating the
+            // exact same string here under "Objet du marché" is precisely
+            // the "je lis deux ou trois fois la même description" complaint,
+            // so it's intentionally left out of this second list.
             if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: facts.procedure_type.value });
             if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: facts.submission_deadline.value });
             if (facts.estimated_value?.available) rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
@@ -865,11 +871,16 @@ export default function OpportunityDetailPage() {
                       returns both, was never rendered. */}
                   {siretCompany.siren && <p className="text-[#B9BBC8]">SIREN : <span className="text-white">{siretCompany.siren}</span></p>}
                   {siretCompany.siret && <p className="text-[#B9BBC8]">SIRET : <span className="text-white">{siretCompany.siret}</span></p>}
-                  {siretCompany.revenue && (
+                  {siretCompany.revenue ? (
                     <p className="text-[#B9BBC8] col-span-2">
-                      Chiffre d'affaires : <span className="text-white">{Number(siretCompany.revenue).toLocaleString('fr-FR')} €{siretCompany.revenueYear ? ` (${siretCompany.revenueYear})` : ''}</span>
+                      Chiffre d'affaires : <span className="text-white">{Number(siretCompany.revenue).toLocaleString('fr-FR')} €{siretCompany.revenueYear ? ` (${siretCompany.revenueYear}${siretCompany.revenueEstimated ? ' — estimé' : ''})` : ''}</span>
                     </p>
+                  ) : (
+                    <p className="text-[#B9BBC8] col-span-2">Chiffre d'affaires : <span className="text-white">Chiffre d'affaires non disponible</span></p>
                   )}
+                  {!siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">Effectif non communiqué</span></p>}
+                  {!siretCompany.director && <p className="text-[#B9BBC8] col-span-2">Dirigeant : <span className="text-white">Aucun dirigeant affiché</span></p>}
+                  {!siretCompany.certifications?.length && <p className="text-[#B9BBC8] col-span-2">Certifications : <span className="text-white">Aucune certification détectée</span></p>}
                 </div>
               </div>
             )}

@@ -380,6 +380,7 @@ export type ApiSiretCompany = {
   siret?: string | null;
   statut?: string | null;
   revenue?: string | null;
+  revenueEstimated?: boolean;
   revenueYear?: number | null;
   // "Présence détectée" (prototype V17, section 3.3.3) - backend already
   // returns these (routes/siret.ts) but the frontend never mapped them.
