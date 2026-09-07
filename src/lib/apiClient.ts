@@ -370,6 +370,8 @@ export type ApiSiretCompany = {
   city: string | null;
   postal: string | null;
   director: string | null;
+  directors?: string[];
+  rgeOrganisme?: string | null;
   employees: string | null;
   ape: string | null;
   activity: string | null;
