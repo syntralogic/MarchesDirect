@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, KeyRound, Globe, Facebook, Star, BadgeCheck, Download,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -1118,33 +1118,44 @@ export default function OpportunityDetailPage() {
                   // opportunity and moving to the next screen - it never
                   // hides the analysis, which is rendered above regardless.
                   <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                    <p className="text-base font-extrabold text-white mb-1">{t('leadGateTitle')}</p>
+                    <p className="flex items-center gap-2 text-base font-extrabold text-white mb-1">
+                      <Mail size={17} className="text-orange shrink-0" /> {t('leadGateTitle')}
+                    </p>
                     <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
                     <form onSubmit={handleLeadSubmit} className="space-y-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadEmailLabel')}</label>
+                      <div className="relative">
+                        <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
                         <input
                           value={leadEmail}
                           onChange={e => setLeadEmail(e.target.value)}
                           type="email"
-                          placeholder="vous@entreprise.fr"
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          placeholder={t('leadEmailLabel')}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                         />
                       </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadPhoneLabel')}</label>
+                      <div className="relative">
+                        <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
                         <input
                           value={leadPhone}
                           onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           inputMode="numeric"
-                          placeholder="06 12 34 56 78"
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          placeholder={t('leadPhoneLabel')}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                         />
                       </div>
                       {leadError && <p className="text-xs text-red-400">{leadError}</p>}
-                      <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
-                      </button>
+                      <div className="flex gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setScreen(1)}
+                          className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors"
+                        >
+                          {t('compatibilityBack') || 'Retour'}
+                        </button>
+                        <button type="submit" disabled={leadSubmitting} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                          {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+                        </button>
+                      </div>
                     </form>
                   </div>
                 )}
