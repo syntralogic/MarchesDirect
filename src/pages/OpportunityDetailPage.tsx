@@ -175,10 +175,8 @@ export default function OpportunityDetailPage() {
   // Nothing that used to be visible is hidden by this split - every card
   // still renders, only regrouped by screen; the email/phone step only
   // gates moving on to the next screen, never the analysis itself.
-  // Starts on screen 1 unless the company is already known (context from
-  // an earlier step in this session), in which case screen 2 is the
-  // correct starting point.
-  const [screen, setScreen] = useState<1 | 2 | 3>(() => (isOpportunityConfirmed(id) || (isAuthenticated && !!company)) ? 2 : 1);
+  // FIX 1: Always start on screen 1, regardless of authentication status.
+  const [screen, setScreen] = useState<1 | 2 | 3>(1);
   // useAuth() can resolve isAuthenticated/company asynchronously after this
   // component's first render, which the lazy useState initializer above
   // (runs once, at mount) can't see. Without this, a logged-in user with a
@@ -813,6 +811,16 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
+          {/* FIX 2: "Continuer" button for logged-in users on screen 1 */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setScreen(2)}
+              className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
+            >
+              {t('compatibilityContinue') || 'Continuer'}
+            </button>
+          )}
         </div>
       )}
 
