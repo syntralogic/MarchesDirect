@@ -81,7 +81,7 @@ export default function OpportunityDetailPage() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, company, user, register } = useAuth();
+  const { isAuthenticated, company, user, completeSignup } = useAuth();
   const { companyKnown, company: siretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
@@ -345,6 +345,14 @@ export default function OpportunityDetailPage() {
   // since re-typing it would contradict "single password field, nothing
   // else to fill in" from the spec. Never blocks navigation - "Plus tard"
   // just dismisses this block, per rule 6/7 of the spec.
+  // Client priority #10 ("Créer mon accès") + #12 (sync entreprise/compte):
+  // this used to call the generic register() with whatever fields happened
+  // to be sitting in slotForm (a callback-booking form, not a signup form -
+  // it never had siret/legal form/address/website/revenue to give at all).
+  // completeSignup() pulls the full company record this session's SIRET
+  // identification already fetched from Pappers/INSEE, server-side, so
+  // "Mon entreprise" ends up populated instead of the near-empty "Sa" the
+  // client reported.
   const handleQuickPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (quickPassword.length < 8) {
@@ -353,13 +361,7 @@ export default function OpportunityDetailPage() {
     }
     setQuickPasswordSubmitting(true);
     setQuickPasswordError(null);
-    const result = await register({
-      companyName: siretCompany?.name || slotForm.companyName || `${slotForm.firstName} ${slotForm.lastName}`.trim() || 'Mon entreprise',
-      firstName: slotForm.firstName,
-      lastName: slotForm.lastName,
-      email: slotForm.email,
-      password: quickPassword,
-    });
+    const result = await completeSignup(getSessionId(), quickPassword);
     setQuickPasswordSubmitting(false);
     if (result.error) {
       setQuickPasswordError(result.error);

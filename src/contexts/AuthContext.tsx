@@ -10,6 +10,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null; mfaRequired?: boolean; mfaToken?: string; userId?: string }>;
   register: (payload: RegisterPayload) => Promise<{ error: string | null }>;
+  completeSignup: (sessionId: string, password: string) => Promise<{ error: string | null }>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -79,6 +80,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Client priority #10 ("Créer mon accès"): password-only signup that
+  // reuses this session's already-completed SIRET identification + lead
+  // capture (see POST /auth/complete-signup) instead of the full generic
+  // register form. Auto-logs in and populates the profile exactly like
+  // register() does, per the client's explicit ask ("il doit être
+  // automatiquement connecté et redirigé vers son tableau de bord").
+  const completeSignup = async (sessionId: string, password: string) => {
+    try {
+      const { data } = await apiClient.post('/auth/complete-signup', { sessionId, password });
+      tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      await refreshProfile();
+      return { error: null };
+    } catch (err) {
+      return { error: getApiErrorMessage(err, "La création de votre accès a échoué.") };
+    }
+  };
+
   const logout = () => {
     tokenStorage.clear();
     setUser(null);
@@ -87,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, company, loading, isAuthenticated: !!user, login, register, logout, refreshProfile }}
+      value={{ user, company, loading, isAuthenticated: !!user, login, register, completeSignup, logout, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
