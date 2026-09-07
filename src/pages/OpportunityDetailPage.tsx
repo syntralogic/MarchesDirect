@@ -533,9 +533,11 @@ export default function OpportunityDetailPage() {
         ))}
       </div>
 
-      {/* Opportunity header — kept visible on every screen (as it was
-          before, above the tabs) so no detail disappears when moving
-          between steps of the journey. */}
+      {/* Opportunity header — client's screenshots show this only on screen
+          1 ("Votre opportunité"); screens 2 and 3 are each dedicated to
+          their own content (Concordance / Votre dossier) with no repeated
+          opportunity card, per the exact reference screenshots. */}
+      {screen === 1 && (
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="flex items-center gap-1.5 text-[10px] font-bold text-orange uppercase tracking-wide bg-orange/10 border border-orange/30 rounded-full px-2.5 py-1">
@@ -577,16 +579,26 @@ export default function OpportunityDetailPage() {
           <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
         </div>
       </div>
+      )}
 
       {/* Page title — one distinct, clearly-titled screen per step instead
-          of tabs on a single long scroll. */}
-      <div className="mb-4">
-        <h2 className="text-base font-extrabold text-white">
-          {screen === 1 ? (t('detailResume') || 'Le marché')
-            : screen === 2 ? (t('compatibilityTitle') || 'Votre compatibilité')
-            : (t('detailDossier') || 'Dossier & candidature')}
-        </h2>
-      </div>
+          of tabs on a single long scroll. Screen 1's title lives inside the
+          opportunity card itself (its <h1> above) so no redundant heading
+          here; screens 2/3 get their own H1 + one-line subtitle, exactly
+          matching the client's reference screenshots ("Concordance" /
+          "Votre dossier" with the descriptive line directly underneath). */}
+      {screen !== 1 && (
+        <div className="mb-4">
+          <h2 className="text-xl font-extrabold text-white">
+            {screen === 2 ? (t('compatibilityTitle') || 'Concordance') : (t('detailDossier') || 'Votre dossier')}
+          </h2>
+          <p className="text-xs text-[#B9BBC8] mt-1">
+            {screen === 2
+              ? (t('compatibilitySubtitle') || 'Découvrez votre entreprise et son adéquation avec cette opportunité.')
+              : (t('detailDossierSubtitle') || 'Retrouvez vos documents et votre accompagnement.')}
+          </p>
+        </div>
+      )}
 
       {/* PARCOURS COMPLET — client's brief (dix images de référence): one
           continuous scroll from "le marché en 30 secondes" through
