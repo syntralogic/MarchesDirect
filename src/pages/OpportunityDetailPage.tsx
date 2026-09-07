@@ -970,48 +970,69 @@ export default function OpportunityDetailPage() {
         ) : scoreError ? (
           <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
         ) : matchScore ? (
-          <div className="space-y-4">
+            <div className="space-y-4">
+            {/* Concordance card (client's screenshot): circular ring with
+                the score centered, 4 icon+label+text rows to the right/
+                below. score/matchLabel/scoreNote are all server-computed
+                (matchScoreService.ts) - never independently derived here. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              {/* Score badge — client reference flow, screen 3: green-tinted
-                  card, "Compatibilité avec cette opportunité" caption, the
-                  tiered matchLabel ("Très pertinent" etc.) in bold green
-                  with a small orange dot, and the raw percentage large on
-                  the right. matchLabel/score are both server-computed
-                  (matchScoreService.ts) - never independently derived here. */}
-              <div className="bg-green-400/10 border border-green-400/25 rounded-xl p-4 flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-[11px] text-[#B9BBC8] mb-1">{t('scoreCardCaption') || 'Compatibilité avec cette opportunité'}</p>
-                  <p className="text-base font-extrabold text-green-400 flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange shrink-0" /> {matchScore.matchLabel}
-                  </p>
+              <h2 className="text-base font-extrabold text-white flex items-center gap-2 mb-4"><Gauge size={16} className="text-orange" /> {t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                <div className="relative w-28 h-28 shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
+                    <circle
+                      cx="50" cy="50" r="42" fill="none" stroke="#4ADE80" strokeWidth="10" strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 42}
+                      strokeDashoffset={2 * Math.PI * 42 * (1 - matchScore.score / 100)}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-extrabold text-white">{matchScore.score}%</span>
+                    <span className="text-[9px] text-[#B9BBC8] text-center leading-tight px-2">{t('scoreRingLabel') || 'de concordance'}</span>
+                  </div>
                 </div>
-                <p className="text-3xl font-extrabold text-white shrink-0">{matchScore.score}%</p>
+                <div className="flex-1 w-full space-y-3.5 min-w-0">
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 size={16} className="text-green-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreMatchingCriteria') || 'Critères correspondants'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">
+                        {matchScore.positiveFactors.length > 0 ? matchScore.positiveFactors.map(f => f.label).join(', ') + '.' : matchScore.scoreNote}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="text-orange shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreMissingElements') || 'Éléments manquants'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">
+                        {matchScore.eligibility.filter(e => e.met === false).length > 0
+                          ? matchScore.eligibility.filter(e => e.met === false).map(e => e.label).join(', ') + '.'
+                          : (t('scoreNoBlockingElement') || 'Aucun élément bloquant identifié.')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <Info size={16} className="text-[#5B6B80] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreVigilancePoints') || 'Points de vigilance'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.warning || (t('scoreNoVigilancePoint') || 'Aucun point de vigilance particulier.')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <ThumbsUp size={16} className="text-orange shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreRecommendation') || 'Recommandation'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.whyRespond}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-[#B9BBC8]">{matchScore.scoreNote}</p>
               {/* Fixed disclaimer (client's exact wording): this is never
                   an odds-of-winning estimate, only a fit measurement. */}
-              <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-3 mb-3">{matchScore.scoreDisclaimer}</p>
-              <p className="text-xs text-[#B9BBC8] leading-relaxed pt-3 border-t border-[#17334D]">{matchScore.whyRespond}</p>
-              {matchScore.warning && (
-                <div className="flex items-start gap-2 mt-3 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-[#B9BBC8]">
-                  <AlertTriangle size={14} className="text-orange shrink-0 mt-0.5" /> {matchScore.warning}
-                </div>
-              )}
+              <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
             </div>
-
-            {matchScore.positiveFactors.length > 0 && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><Gauge size={15} className="text-orange" /> {t('scoreCompatibilityFactors')}</h2>
-                <div className="space-y-2">
-                  {matchScore.positiveFactors.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs">
-                      <span className="text-[#B9BBC8]">{f.label}</span>
-                      <span className="text-white font-semibold">+{f.points}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Full compatibility breakdown - always visible once the
                 score is in, matching the brief's page 2 ("detailed
