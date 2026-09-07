@@ -516,7 +516,7 @@ export default function OpportunityDetailPage() {
           { n: 2, label: t('stepperConcordance') || 'Concordance' },
           { n: 3, label: t('stepperDossier') || 'Votre dossier' },
         ] as const).map((s, i) => (
-          <div key={s.n} className="flex items-center gap-1.5 flex-1 min-w-0">
+          <div key={s.n} className="flex items-center gap-1.5 flex-1 min-w-0 max-w-[33%]">
             <div className={`shrink-0 flex items-center gap-1.5 ${screen === s.n ? '' : 'opacity-60'}`}>
               <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
