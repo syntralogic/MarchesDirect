@@ -80,12 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Client priority #10 ("Créer mon accès"): password-only signup that
-  // reuses this session's already-completed SIRET identification + lead
-  // capture (see POST /auth/complete-signup) instead of the full generic
-  // register form. Auto-logs in and populates the profile exactly like
-  // register() does, per the client's explicit ask ("il doit être
-  // automatiquement connecté et redirigé vers son tableau de bord").
+  // Client priority #10 "Créer mon accès" - the opportunity funnel's
+  // end-of-journey password step. Only sessionId + password are sent; the
+  // backend pulls company name/SIRET/address/revenue and email/phone from
+  // that same session's already-completed SIRET lookup + lead capture
+  // (see completeSignupFromSession) instead of re-asking for any of it.
   const completeSignup = async (sessionId: string, password: string) => {
     try {
       const { data } = await apiClient.post('/auth/complete-signup', { sessionId, password });

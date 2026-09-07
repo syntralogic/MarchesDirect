@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, ChevronRight, KeyRound, Globe, Facebook, Star, BadgeCheck, Download,
+  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -34,6 +35,17 @@ function formatAmount(value: number | null, currency: string | null) {
 }
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+}
+// Client's brief (5 Sep, "Votre concordance" page): "l'ancienneté calculée
+// automatiquement" - derived from the company's creation date, never a
+// separate field to fetch/store.
+function formatSeniority(created: string | null): string | null {
+  if (!created) return null;
+  const years = Math.floor((Date.now() - new Date(created).getTime()) / (365.25 * 24 * 3600 * 1000));
+  if (years < 0) return null;
+  if (years < 1) return 'Moins d\'un an';
+  if (years > 10) return 'Plus de 10 ans';
+  return `${years} an${years > 1 ? 's' : ''}`;
 }
 // Client's ask #4: many BOAMP notices have `description` identical to
 // `title` in the raw data (the source only ever gave one line of text).
@@ -71,23 +83,102 @@ const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = 
   subcontracting: { label: 'Sous-traitance', icon: Handshake },
 };
 
-type Tab = 'main' | 'dossier';
-
 // Placeholder near-term slots, matching the client's prototype (e.g.
 // "Aujourd'hui · 17h30"). Not backed by a real staff calendar yet.
 const CALLBACK_SLOTS = ["Aujourd'hui · 17h30", "Demain · 08h30", "Demain · 14h00", 'Après-demain · 10h00'];
+
+// Which opportunities THIS visitor has actually identified a company for,
+// scoped per-opportunity-id rather than relying on CompanyKnownContext's
+// `companyKnown` alone. `companyKnown` is session-wide and, once true from
+// looking up a company on any single opportunity, stays true forever for
+// every other opportunity the visitor opens in that browser - which is why
+// the "3 pages" journey used to collapse to 2: page 1 (the opportunity
+// itself) was being skipped on every new listing because a company from a
+// completely unrelated earlier listing was still "known". Recording the
+// confirmation per opportunity id keeps the (desired, client-requested)
+// behaviour of not losing the selected company on back/refresh within the
+// *same* opportunity, without that leaking into every other one.
+const CONFIRMED_OPPS_KEY = 'md_confirmed_opportunities';
+function getConfirmedOpportunities(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(CONFIRMED_OPPS_KEY) || '{}'); } catch { return {}; }
+}
+function isOpportunityConfirmed(oppId: string | undefined): boolean {
+  if (!oppId) return false;
+  return !!getConfirmedOpportunities()[oppId];
+}
+function markOpportunityConfirmed(oppId: string | undefined, siret: string | null | undefined) {
+  if (!oppId) return;
+  try {
+    const map = getConfirmedOpportunities();
+    map[oppId] = siret || 'confirmed';
+    localStorage.setItem(CONFIRMED_OPPS_KEY, JSON.stringify(map));
+  } catch {
+    // Storage blocked - worst case the visitor re-lands on screen 1 next
+    // time, which is the safe direction to fail in.
+  }
+}
 
 export default function OpportunityDetailPage() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, completeSignup } = useAuth();
-  const { companyKnown, company: siretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
+  const { company: anonSiretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
+
+  // The company card (below) and the "Dossier prep" checklist both key off
+  // `siretCompany`, but that comes from CompanyKnownContext, which only ever
+  // holds an ANONYMOUS session's Pappers/INSEE lookup (siret_lookups, keyed
+  // by session_id). A logged-in visitor's own company profile lives in
+  // `companies` (via useAuth()) instead, and if they never personally ran
+  // the anonymous SIRET flow in this browser (e.g. different device, or
+  // cleared storage after signing up), `anonSiretCompany` is null and the
+  // whole card used to disappear even though they ARE identified. Falling
+  // back to their account's own company here - mapped into the same shape,
+  // with whatever `companies` doesn't store left null so the existing
+  // "non disponible" placeholders take over rather than showing anything
+  // invented - fixes that gap without changing what an anonymous visitor sees.
+  const siretCompany: ApiSiretCompany | null = anonSiretCompany || (isAuthenticated && company ? {
+    name: company.name || null,
+    legal: company.legal_form || null,
+    // Only the founding YEAR is stored on `companies`, not a real creation
+    // date - fabricating "1 janvier {year}" would show a false-precision
+    // date the client's rule explicitly forbids ("ne jamais afficher une
+    // valeur incorrecte"), so this stays null and the existing "non
+    // disponible" placeholder is used instead.
+    created: null,
+    capital: null,
+    address: (company as any).address_street || null,
+    city: (company as any).address_city || null,
+    postal: (company as any).address_postal_code || null,
+    director: null,
+    employees: (company as any).employee_count != null ? String((company as any).employee_count) : null,
+    ape: null,
+    activity: (company as any).industry_sector || null,
+    siren: null,
+    siret: company.siret || null,
+    statut: company.status || null,
+    revenue: (company as any).annual_revenue != null ? String((company as any).annual_revenue) : null,
+    revenueYear: null,
+    website: (company as any).website_url || null,
+    facebook: null,
+    googleRating: null,
+    googleReviewCount: null,
+    certifications: [],
+  } as ApiSiretCompany : null);
 
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('main');
+  // Progressive 3-screen journey (client's brief: "Opportunité" →
+  // "Votre compatibilité" → "Dossier & suivi"), replacing the old
+  // single-scroll two-tab layout so each step is its own page on mobile.
+  // Nothing that used to be visible is hidden by this split - every card
+  // still renders, only regrouped by screen; the email/phone step only
+  // gates moving on to the next screen, never the analysis itself.
+  // Starts on screen 1 unless the company is already known (context from
+  // an earlier step in this session), in which case screen 2 is the
+  // correct starting point.
+  const [screen, setScreen] = useState<1 | 2 | 3>(() => isOpportunityConfirmed(id) ? 2 : 1);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -187,16 +278,31 @@ export default function OpportunityDetailPage() {
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
 
+  // NOTE: previously an effect here force-advanced screen 1 -> 2 for any
+  // authenticated visitor, on every single opportunity, even ones they'd
+  // never opened before. That's the same "page 1 missing" bug the
+  // isOpportunityConfirmed() mechanism above was built to fix, just
+  // reintroduced through a different door - a logged-in visitor's company
+  // being "known" doesn't mean this specific opportunity's own résumé,
+  // travaux, exigences and points de vigilance shouldn't be shown first.
+  // Removed; the initial `screen` state above (isOpportunityConfirmed(id)
+  // only) is now the single source of truth for whether to start on
+  // screen 1 or 2.
+
   useEffect(() => {
-    if (!id || tab !== 'main' || matchScore || scoreLoading) return;
-    if (!companyKnown && !isAuthenticated) return; // gate: nothing to fetch until identified
+    if (!id || screen === 3 || matchScore || scoreLoading) return;
+    // Gate on this specific opportunity's own confirmation, not the
+    // session-wide `companyKnown` - otherwise a company confirmed on a
+    // different, earlier opportunity would compute (and cache) a score for
+    // this one before the visitor ever identifies the right company here.
+    if (!isOpportunityConfirmed(id) && !isAuthenticated) return;
     setScoreLoading(true);
     setScoreError(null);
     opportunitiesApi.getMatchScore(id, getSessionId())
       .then(setMatchScore)
       .catch(err => setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité.")))
       .finally(() => setScoreLoading(false));
-  }, [id, tab, matchScore, scoreLoading, t, companyKnown, isAuthenticated]);
+  }, [id, screen, matchScore, scoreLoading, t, isAuthenticated]);
 
   const handleSiretSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,8 +318,16 @@ export default function OpportunityDetailPage() {
     }
     setSiretSubmitting(true);
     setSiretError(null);
-    const { error } = await lookupSiret(trimmed);
-    if (error) setSiretError(error);
+    const result = await lookupSiret(trimmed);
+    if (result.error) setSiretError(result.error);
+    // A 14-digit SIRET resolves straight to a company (no candidates list) -
+    // record it as confirmed for THIS opportunity and move on. A name search
+    // instead returns `candidates` for the visitor to pick from below, so
+    // nothing to mark yet in that case.
+    else if (result.companyKnown) {
+      markOpportunityConfirmed(id, result.siret);
+      setScreen(2);
+    }
     setSiretSubmitting(false);
   };
 
@@ -221,8 +335,12 @@ export default function OpportunityDetailPage() {
   const handleConfirmCandidate = async (candidateSiret: string) => {
     setConfirmingCandidate(candidateSiret);
     setSiretError(null);
-    const { error } = await confirmCandidate(candidateSiret);
-    if (error) setSiretError(error);
+    const result = await confirmCandidate(candidateSiret);
+    if (result.error) setSiretError(result.error);
+    else if (result.companyKnown) {
+      markOpportunityConfirmed(id, result.siret);
+      setScreen(2);
+    }
     setConfirmingCandidate(null);
   };
 
@@ -338,21 +456,12 @@ export default function OpportunityDetailPage() {
     }
   };
 
-  // Lightweight account finalisation (prototype V17, section 3.5) - shown
-  // once a slot/callback has already captured phone+email. Reuses the
-  // existing full register() flow (same as SignupPage) rather than a new
-  // endpoint: companyName defaults to the SIRET-recognized name when known,
-  // since re-typing it would contradict "single password field, nothing
-  // else to fill in" from the spec. Never blocks navigation - "Plus tard"
-  // just dismisses this block, per rule 6/7 of the spec.
-  // Client priority #10 ("Créer mon accès") + #12 (sync entreprise/compte):
-  // this used to call the generic register() with whatever fields happened
-  // to be sitting in slotForm (a callback-booking form, not a signup form -
-  // it never had siret/legal form/address/website/revenue to give at all).
-  // completeSignup() pulls the full company record this session's SIRET
-  // identification already fetched from Pappers/INSEE, server-side, so
-  // "Mon entreprise" ends up populated instead of the near-empty "Sa" the
-  // client reported.
+  // Client priority #10 "Créer mon accès" - shown once a slot/callback has
+  // already captured phone+email. Calls the new completeSignup(), which
+  // pulls company name/SIRET/address/revenue from this same session's
+  // already-completed SIRET lookup instead of a bare company name - this is
+  // the fix for "Mon entreprise" showing almost nothing after signup. Never
+  // blocks navigation - "Plus tard" just dismisses this block.
   const handleQuickPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (quickPassword.length < 8) {
@@ -399,10 +508,47 @@ export default function OpportunityDetailPage() {
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
       <PageMeta title={`${opportunity.title} — Marchés Direct`} description={metaDescription.slice(0, 300)} />
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors">
+      <button
+        onClick={() => (screen > 1 ? setScreen((s) => (s - 1) as 1 | 2 | 3) : navigate(-1))}
+        className="flex items-center gap-1.5 text-xs text-[#B9BBC8] hover:text-white mb-4 transition-colors"
+      >
         <ArrowLeft size={14} /> {t('detailBack')}
       </button>
 
+      {/* Numbered stepper (client's 6 Sep brief, screenshots #1/#2): "chaque
+          étape doit être clairement visible en haut de la page afin que
+          l'utilisateur comprenne immédiatement où il se trouve dans le
+          parcours." Purely a progress indicator - screen state/navigation
+          logic is unchanged, this just makes it visible. */}
+      <div className="flex items-center gap-1.5 mb-4">
+        {([
+          { n: 1, label: t('stepperOpportunity') || 'Votre opportunité' },
+          { n: 2, label: t('stepperConcordance') || 'Concordance' },
+          { n: 3, label: t('stepperDossier') || 'Votre dossier' },
+        ] as const).map((s, i) => (
+          <div key={s.n} className="flex items-center gap-1.5 min-w-0">
+            <div className={`shrink-0 flex items-center gap-1.5 ${screen === s.n ? '' : 'opacity-60'}`}>
+              <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
+                : screen === s.n ? 'bg-orange text-white'
+                : 'border border-[#17334D] text-[#5B6B80]'
+              }`}>
+                {screen > s.n ? <CheckCircle2 size={13} /> : s.n}
+              </span>
+              <span className={`hidden sm:inline text-xs font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+                {s.label}
+              </span>
+            </div>
+            {i < 2 && <div className={`h-px flex-1 min-w-[12px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Opportunity header — client's screenshots show this only on screen
+          1 ("Votre opportunité"); screens 2 and 3 are each dedicated to
+          their own content (Concordance / Votre dossier) with no repeated
+          opportunity card, per the exact reference screenshots. */}
+      {screen === 1 && (
       <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="flex items-center gap-1.5 text-[10px] font-bold text-orange uppercase tracking-wide bg-orange/10 border border-orange/30 rounded-full px-2.5 py-1">
@@ -444,24 +590,26 @@ export default function OpportunityDetailPage() {
           <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
         </div>
       </div>
+      )}
 
-      {/* TABS */}
-      <div className="flex gap-1 mb-4 border-b border-[#17334D]">
-        {([
-          { key: 'main' as Tab, label: t('detailResume') || 'Le marché' },
-          { key: 'dossier' as Tab, label: t('detailDossier') || 'Dossier & candidature' },
-        ]).map(tabItem => (
-          <button
-            key={tabItem.key}
-            onClick={() => setTab(tabItem.key)}
-            className={`px-3.5 py-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-              tab === tabItem.key ? 'text-orange border-orange' : 'text-[#B9BBC8] border-transparent hover:text-white'
-            }`}
-          >
-            {tabItem.label}
-          </button>
-        ))}
-      </div>
+      {/* Page title — one distinct, clearly-titled screen per step instead
+          of tabs on a single long scroll. Screen 1's title lives inside the
+          opportunity card itself (its <h1> above) so no redundant heading
+          here; screens 2/3 get their own H1 + one-line subtitle, exactly
+          matching the client's reference screenshots ("Concordance" /
+          "Votre dossier" with the descriptive line directly underneath). */}
+      {screen !== 1 && (
+        <div className="mb-4">
+          <h2 className="text-xl font-extrabold text-white">
+            {screen === 2 ? (t('compatibilityTitle') || 'Concordance') : (t('detailDossier') || 'Votre dossier')}
+          </h2>
+          <p className="text-xs text-[#B9BBC8] mt-1">
+            {screen === 2
+              ? (t('compatibilitySubtitle') || 'Découvrez votre entreprise et son adéquation avec cette opportunité.')
+              : (t('detailDossierSubtitle') || 'Retrouvez vos documents et votre accompagnement.')}
+          </p>
+        </div>
+      )}
 
       {/* PARCOURS COMPLET — client's brief (dix images de référence): one
           continuous scroll from "le marché en 30 secondes" through
@@ -470,7 +618,7 @@ export default function OpportunityDetailPage() {
           points de vigilance → donneur d'ordre → détails du dossier →
           identification SIRET → fiche entreprise → indice de correspondance
           → coordonnées → dossier prep → suivi/rappel. */}
-      {tab === 'main' && (
+      {screen === 1 && (
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
@@ -518,7 +666,9 @@ export default function OpportunityDetailPage() {
                 ) : (
                   <p className="text-xs text-[#B9BBC8]">{factsPending ? (t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.') : (t('quickStatUnavailable') || 'Peu de détails disponibles pour ce marché.')}</p>
                 )}
-                {facts?.contract_object?.available && !isRedundantWithTitle(facts.contract_object.value, opportunity.title) && (
+                {facts?.contract_object?.available
+                  && !isRedundantWithTitle(facts.contract_object.value, opportunity.title)
+                  && !isRedundantWithTitle(facts.contract_object.value, opportunity.ai_summary) && (
                   <div className="mt-3 pt-3 border-t border-[#17334D]">
                     <p className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1">{t('quickStatScope') || 'Travaux à réaliser'}</p>
                     <p className="text-xs text-[#B9BBC8] leading-relaxed">{facts.contract_object.value}</p>
@@ -603,7 +753,11 @@ export default function OpportunityDetailPage() {
           {opportunity.ai_extracted_facts && (() => {
             const facts = opportunity.ai_extracted_facts;
             const rows: { label: string; value: string }[] = [];
-            if (facts.contract_object?.available) rows.push({ label: t('dossierFactObject'), value: facts.contract_object.value });
+            // contract_object is already shown prominently above as "Travaux
+            // à réaliser" ("Le marché en 30 secondes" block) - repeating the
+            // exact same string here under "Objet du marché" is precisely
+            // the "je lis deux ou trois fois la même description" complaint,
+            // so it's intentionally left out of this second list.
             if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: facts.procedure_type.value });
             if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: facts.submission_deadline.value });
             if (facts.estimated_value?.available) rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
@@ -649,8 +803,8 @@ export default function OpportunityDetailPage() {
       {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
           after "Détails du dossier" above (client's brief: no tab switch
           between the fiche and the identification/score flow). */}
-      {tab === 'main' && (
-        !companyKnown && !isAuthenticated ? (
+      {screen < 3 && (
+        !isOpportunityConfirmed(id) && !isAuthenticated ? (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
@@ -691,11 +845,20 @@ export default function OpportunityDetailPage() {
                       className="w-full flex items-center justify-between gap-3 text-left bg-[#031B30] border border-[#17334D] rounded-lg px-3.5 py-3 hover:border-orange/50 transition-colors disabled:opacity-60"
                     >
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
+                          {c.statut && (
+                            <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${c.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                              {c.statut}
+                            </span>
+                          )}
+                        </div>
+                        {/* Client priority #6: raison sociale / ville / activité /
+                            SIREN ou SIRET / statut - all five, not just name+address+ape code. */}
                         <p className="text-[10px] text-[#B9BBC8] truncate">
-                          {[c.address, c.postal, c.city].filter(Boolean).join(', ') || c.siret}
-                          {c.ape ? ` — ${c.ape}` : ''}
+                          {[c.city, c.activity || c.ape].filter(Boolean).join(' — ') || c.address}
                         </p>
+                        <p className="text-[10px] text-[#5B6B80] truncate">SIRET {c.siret}{c.siren ? ` · SIREN ${c.siren}` : ''}</p>
                       </div>
                       {confirmingCandidate === c.siret ? <Loader2 size={14} className="animate-spin text-orange shrink-0" /> : <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />}
                     </button>
@@ -708,16 +871,51 @@ export default function OpportunityDetailPage() {
           <>
             {siretCompany && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <ShieldCheck size={15} className="text-green-400 shrink-0" />
-                  <p className="text-sm font-bold text-white">{t('siretRecognizedTitle')}{siretCompany.name ? ` — ${siretCompany.name}` : ''}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
+                      <Building2 size={16} className="text-orange" />
+                    </span>
+                    <p className="text-sm font-bold text-white">{t('siretYourCompany') || 'Votre entreprise'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setScreen(1); setSiretInput(''); }}
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-orange border border-orange/40 rounded-lg px-3 py-1.5 hover:bg-orange/10 transition-colors shrink-0"
+                  >
+                    <Pencil size={12} /> {t('siretModify') || 'Modifier'}
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  {siretCompany.legal && <p className="text-[#B9BBC8]">{t('siretLegalForm')} : <span className="text-white">{siretCompany.legal}</span></p>}
-                  {siretCompany.created && <p className="text-[#B9BBC8]">{t('siretCreated')} : <span className="text-white">{formatDate(siretCompany.created)}</span></p>}
-                  {(siretCompany.address || siretCompany.city) && <p className="text-[#B9BBC8] col-span-2">{t('siretAddress')} : <span className="text-white">{[siretCompany.address, siretCompany.postal, siretCompany.city].filter(Boolean).join(', ')}</span></p>}
-                  {siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">{siretCompany.employees}</span></p>}
-                  {siretCompany.ape && <p className="text-[#B9BBC8]">{t('siretApe')} : <span className="text-white">{siretCompany.ape}{siretCompany.activity ? ` — ${siretCompany.activity}` : ''}</span></p>}
+
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <p className="text-base font-extrabold text-white">{siretCompany.name || '—'}</p>
+                  {siretCompany.statut && (
+                    <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${siretCompany.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {siretCompany.statut}
+                    </span>
+                  )}
+                </div>
+                {siretCompany.siret && <p className="text-xs text-[#5B6B80] mb-4">SIRET {siretCompany.siret}</p>}
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs pt-1 border-t border-[#17334D] mt-1">
+                  <CompanyInfoRow icon={MapPin} label="Localisation" value={[siretCompany.city, siretCompany.postal].filter(Boolean).join(' ') || siretCompany.address || null} />
+                  <CompanyInfoRow icon={User} label="Dirigeant" value={siretCompany.director} empty="Aucun dirigeant affiché" />
+                  <CompanyInfoRow icon={Users} label="Effectif" value={siretCompany.employees} empty="Effectif non communiqué" />
+                  <CompanyInfoRow icon={Calendar} label="Ancienneté" value={formatSeniority(siretCompany.created)} />
+                  <CompanyInfoRow
+                    icon={TrendingUp}
+                    label="Chiffre d'affaires"
+                    value={siretCompany.revenue ? `${Number(siretCompany.revenue).toLocaleString('fr-FR')} €${siretCompany.revenueYear ? ` (${siretCompany.revenueYear}${siretCompany.revenueEstimated ? ' — estimé' : ''})` : ''}` : null}
+                    empty="Chiffre d'affaires non disponible"
+                  />
+                  <CompanyInfoRow icon={FileText} label="Activité principale" value={siretCompany.activity || siretCompany.ape} />
+                  <CompanyInfoRow
+                    icon={Star}
+                    label="Avis Google"
+                    value={siretCompany.googleRating ? `${siretCompany.googleRating}/5${siretCompany.googleReviewCount ? ` (${siretCompany.googleReviewCount} avis)` : ''}` : null}
+                    empty="Non disponible"
+                  />
+                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.join(', ') : null} empty="Aucune certification détectée" />
                 </div>
               </div>
             )}
@@ -771,51 +969,76 @@ export default function OpportunityDetailPage() {
         ) : scoreError ? (
           <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
         ) : matchScore ? (
-          <div className="space-y-4">
+            <div className="space-y-4">
+            {/* Concordance card (client's screenshot): circular ring with
+                the score centered, 4 icon+label+text rows to the right/
+                below. score/matchLabel/scoreNote are all server-computed
+                (matchScoreService.ts) - never independently derived here. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              {/* Score badge — client reference flow, screen 3: green-tinted
-                  card, "Compatibilité avec cette opportunité" caption, the
-                  tiered matchLabel ("Très pertinent" etc.) in bold green
-                  with a small orange dot, and the raw percentage large on
-                  the right. matchLabel/score are both server-computed
-                  (matchScoreService.ts) - never independently derived here. */}
-              <div className="bg-green-400/10 border border-green-400/25 rounded-xl p-4 flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <p className="text-[11px] text-[#B9BBC8] mb-1">{t('scoreCardCaption') || 'Compatibilité avec cette opportunité'}</p>
-                  <p className="text-base font-extrabold text-green-400 flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-orange shrink-0" /> {matchScore.matchLabel}
-                  </p>
+              <h2 className="text-base font-extrabold text-white flex items-center gap-2 mb-4"><Gauge size={16} className="text-orange" /> {t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                <div className="relative w-28 h-28 shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
+                    <circle
+                      cx="50" cy="50" r="42" fill="none" stroke="#4ADE80" strokeWidth="10" strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 42}
+                      strokeDashoffset={2 * Math.PI * 42 * (1 - matchScore.score / 100)}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-extrabold text-white">{matchScore.score}%</span>
+                    <span className="text-[9px] text-[#B9BBC8] text-center leading-tight px-2">{t('scoreRingLabel') || 'de concordance'}</span>
+                  </div>
                 </div>
-                <p className="text-3xl font-extrabold text-white shrink-0">{matchScore.score}%</p>
+                <div className="flex-1 w-full space-y-3.5 min-w-0">
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 size={16} className="text-green-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreMatchingCriteria') || 'Critères correspondants'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">
+                        {matchScore.positiveFactors.length > 0 ? matchScore.positiveFactors.map(f => f.label).join(', ') + '.' : matchScore.scoreNote}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="text-orange shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreMissingElements') || 'Éléments manquants'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">
+                        {matchScore.eligibility.filter(e => e.met === false).length > 0
+                          ? matchScore.eligibility.filter(e => e.met === false).map(e => e.label).join(', ') + '.'
+                          : (t('scoreNoBlockingElement') || 'Aucun élément bloquant identifié.')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <Info size={16} className="text-[#5B6B80] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreVigilancePoints') || 'Points de vigilance'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.warning || (t('scoreNoVigilancePoint') || 'Aucun point de vigilance particulier.')}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <ThumbsUp size={16} className="text-orange shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-white">{t('scoreRecommendation') || 'Recommandation'}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.whyRespond}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-[#B9BBC8]">{matchScore.scoreNote}</p>
               {/* Fixed disclaimer (client's exact wording): this is never
                   an odds-of-winning estimate, only a fit measurement. */}
-              <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-3 mb-3">{matchScore.scoreDisclaimer}</p>
-              <p className="text-xs text-[#B9BBC8] leading-relaxed pt-3 border-t border-[#17334D]">{matchScore.whyRespond}</p>
-              {matchScore.warning && (
-                <div className="flex items-start gap-2 mt-3 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-[#B9BBC8]">
-                  <AlertTriangle size={14} className="text-orange shrink-0 mt-0.5" /> {matchScore.warning}
-                </div>
-              )}
+              <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
             </div>
 
-            {matchScore.positiveFactors.length > 0 && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><Gauge size={15} className="text-orange" /> {t('scoreCompatibilityFactors')}</h2>
-                <div className="space-y-2">
-                  {matchScore.positiveFactors.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs">
-                      <span className="text-[#B9BBC8]">{f.label}</span>
-                      <span className="text-white font-semibold">+{f.points}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(isAuthenticated || leadCaptured) ? (
-              <>
+            {/* Full compatibility breakdown - always visible once the
+                score is in, matching the brief's page 2 ("detailed
+                breakdown of the compatibility factors") which never
+                describes hiding it. The email/phone step below only
+                gates moving on to the next screen, not seeing this. */}
+            <>
                 {justUnlockedAnalysis && (
                   <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
                     <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
@@ -879,56 +1102,79 @@ export default function OpportunityDetailPage() {
                   checklistRefCount={checklistRefCount}
                   onContactManager={() => setShowAccountManagerModal(true)}
                 />
-              </>
-            ) : (
-              // Phone+email gate (client's newest brief, Écran 7): the
-              // visitor has already seen the score + why-it-matches above
-              // (the value obtained), coordinates are requested only now,
-              // before the fuller breakdown - never before.
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                <p className="text-base font-extrabold text-white mb-1">{t('leadGateTitle')}</p>
-                <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
-                <form onSubmit={handleLeadSubmit} className="space-y-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadPhoneLabel')}</label>
-                    <input
-                      value={leadPhone}
-                      onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      inputMode="numeric"
-                      placeholder="06 12 34 56 78"
-                      className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1 block">{t('leadEmailLabel')}</label>
-                    <input
-                      value={leadEmail}
-                      onChange={e => setLeadEmail(e.target.value)}
-                      type="email"
-                      placeholder="vous@entreprise.fr"
-                      className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                    />
-                  </div>
-                  {leadError && <p className="text-xs text-red-400">{leadError}</p>}
-                  <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                    {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+
+                {(isAuthenticated || leadCaptured) ? (
+                  <button
+                    type="button"
+                    onClick={() => setScreen(3)}
+                    className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
+                  >
+                    {t('compatibilityContinue') || 'Continuer'}
                   </button>
-                </form>
-              </div>
-            )}
+                ) : (
+                  // Phone+email gate (client's newest brief, Écran 7): the
+                  // visitor has already seen the score + why-it-matches above
+                  // (the value obtained). This only gates saving the
+                  // opportunity and moving to the next screen - it never
+                  // hides the analysis, which is rendered above regardless.
+                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                    <p className="flex items-center gap-2 text-base font-extrabold text-white mb-1">
+                      <Mail size={17} className="text-orange shrink-0" /> {t('leadGateTitle')}
+                    </p>
+                    <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
+                    <form onSubmit={handleLeadSubmit} className="space-y-3">
+                      <div className="relative">
+                        <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                        <input
+                          value={leadEmail}
+                          onChange={e => setLeadEmail(e.target.value)}
+                          type="email"
+                          placeholder={t('leadEmailLabel')}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                        <input
+                          value={leadPhone}
+                          onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          inputMode="numeric"
+                          placeholder={t('leadPhoneLabel')}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                        />
+                      </div>
+                      {leadError && <p className="text-xs text-red-400">{leadError}</p>}
+                      <div className="flex gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setScreen(1)}
+                          className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors"
+                        >
+                          {t('compatibilityBack') || 'Retour'}
+                        </button>
+                        <button type="submit" disabled={leadSubmitting} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                          {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+            </>
           </div>
             ) : null}
           </>
         )
       )}
 
-      {/* SUIVI & RAPPEL — last block of the continuous journey (client's
-          reference: "Opportunité enregistrée" then "Comment souhaitez-vous
-          continuer ?"). Kept reachable regardless of SIRET/lead state so a
-          visitor who skips identification can still book a callback; for a
-          private tender/sous-traitance this is also what unlocks the
-          "Donneur d'ordre" name shown further up the page. */}
-      {tab === 'main' && (
+      {/* SUIVI & RAPPEL — "Votre dossier" hub (client's screenshot,
+          10:50pm brief item 4 discipline: one clear function per block).
+          "Opportunité enregistrée" banner, then two navigation lists
+          ("Dossier de candidature" -> BidWorkspacePage / dossier entreprise;
+          "Accompagnement" -> the existing rappel/rendez-vous flow, kept
+          working exactly as before, just presented as rows instead of a
+          big card), then a way back into search and the two bottom
+          buttons. */}
+      {screen === 3 && (
         <div className="space-y-4 mt-4">
           <div className="bg-green-400/10 border border-green-400/30 rounded-2xl p-5 md:p-6">
             <p className="flex items-center gap-2 text-xs font-semibold text-green-400 mb-1"><CheckCircle2 size={14} /> {t('followUpSaved') || 'Opportunité enregistrée'}</p>
@@ -936,121 +1182,145 @@ export default function OpportunityDetailPage() {
           </div>
 
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            <h2 className="text-sm font-bold text-white mb-1">{t('accessHowToContinue')}</h2>
-            <p className="text-xs text-[#B9BBC8] mb-4">
-              {t('followUpOptionalNote') || "Le rendez-vous ou le rappel sont facultatifs à ce stade. Vous pouvez continuer sans contact et y revenir au moment de votre demande."}
-            </p>
-
-            {contactChoice === null && (
-              <div className="space-y-2.5">
-                <button
-                  type="button"
-                  onClick={() => setContactChoice('slot')}
-                  className="w-full text-left bg-[#031B30] border border-[#17334D] hover:border-orange/50 rounded-xl px-4 py-3 transition-colors"
-                >
-                  <p className="text-sm font-semibold text-white">{t('followUpChoiceSlotTitle') || "Choisir un créneau d'appel"}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-0.5">{t('followUpChoiceSlotSub') || 'Réserver un échange commercial avec Marchés Direct.'}</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setContactChoice('callback'); handleCallback(); }}
-                  className="w-full text-left bg-[#031B30] border border-[#17334D] hover:border-orange/50 rounded-xl px-4 py-3 transition-colors"
-                >
-                  <p className="text-sm font-semibold text-white">{t('accessCallbackNoSlot')}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-0.5">{t('followUpChoiceCallbackSub') || 'Nous vous recontactons plus tard.'}</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setContactChoice('none')}
-                  className="w-full text-left bg-[#031B30] border border-[#17334D] hover:border-orange/50 rounded-xl px-4 py-3 transition-colors"
-                >
-                  <p className="text-sm font-semibold text-white">{t('followUpChoiceNoneTitle') || 'Continuer sans rendez-vous pour le moment'}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-0.5">{t('followUpChoiceNoneSub') || 'Vous pourrez demander un échange plus tard si nécessaire, notamment pour finaliser le dossier technique.'}</p>
-                </button>
-              </div>
-            )}
-
-            {contactChoice === 'slot' && !selectedSlot && (
-              <div className="grid grid-cols-2 gap-2">
-                {CALLBACK_SLOTS.map(slotLabel => (
-                  <button
-                    key={slotLabel}
-                    type="button"
-                    disabled={!!slotSubmitting}
-                    onClick={() => handleBookSlot(slotLabel)}
-                    className="min-h-[46px] text-xs font-semibold rounded-xl border border-[#5b6d7d] text-white hover:border-orange/50 px-2 transition-colors disabled:opacity-50"
-                  >
-                    {slotSubmitting === 'slot' ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {contactChoice === 'slot' && selectedSlot && (
-              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                <CheckCircle2 size={14} className="shrink-0" /> {t('followUpSlotConfirmed') || 'Créneau réservé — le suivi reste accessible normalement.'}
-              </div>
-            )}
-
-            {contactChoice === 'callback' && (
-              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                <CheckCircle2 size={14} className="shrink-0" /> {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : (t('accessCallbackConfirmed') || 'Rappel demandé')}
-              </div>
-            )}
-
-            {contactChoice === 'none' && (
-              <p className="text-xs text-[#B9BBC8]">{t('followUpChoiceNoneConfirmed') || 'Le suivi reste accessible normalement, sans rendez-vous ni rappel.'}</p>
-            )}
-
-            {slotError && <p className="text-xs text-red-400 mt-3">{slotError}</p>}
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><FileText size={16} className="text-orange" /></span>
+              <p className="text-sm font-bold text-white">{t('dossierHubTitle') || 'Dossier de candidature'}</p>
+            </div>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubSub') || 'Préparez et suivez votre dossier pour cette opportunité.'}</p>
+            <div className="divide-y divide-[#17334D]">
+              {[
+                { label: t('dossierHubDocs') || 'Documents de candidature', to: `/opportunites/${id}/candidature` },
+                { label: t('dossierHubMemo') || 'Mémoire technique', to: `/opportunites/${id}/candidature` },
+                { label: t('dossierHubAdmin') || 'Pièces administratives', to: '/profil/dossier-entreprise' },
+                { label: t('dossierHubChecklist') || 'Checklist du dossier', to: `/opportunites/${id}/candidature` },
+                { label: t('dossierHubProgress') || "Suivi de l'avancement", to: '/tableau-de-bord' },
+              ].map(row => (
+                <Link key={row.label} to={row.to} className="flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors">
+                  {row.label} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
+                </Link>
+              ))}
+            </div>
           </div>
 
-          {contactChoice !== null && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              {quickPasswordDone ? (
-                <div className="flex items-center gap-2 text-sm text-white">
-                  <ShieldCheck size={15} className="text-green-400 shrink-0" />
-                  {t('quickPasswordSecuredSpace') || 'Espace sécurisé'} — {slotForm.email}
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
-                      <KeyRound size={16} className="text-orange" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-orange uppercase tracking-wide block mb-1">{t('quickPasswordEyebrow') || 'Facultatif'}</span>
-                      <p className="text-sm text-white font-semibold mb-1">{t('quickPasswordHeading') || 'Retrouvez votre espace partout'}</p>
-                      <p className="text-xs text-[#B9BBC8]">{t('quickPasswordSub') || 'Retrouvez cette opportunité et vos rendez-vous depuis votre tableau de bord.'}</p>
-                    </div>
-                  </div>
-                  <form onSubmit={handleQuickPassword} className="flex flex-col sm:flex-row gap-2.5">
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      value={quickPassword}
-                      onChange={e => setQuickPassword(e.target.value)}
-                      placeholder={t('quickPasswordPlaceholder') || 'Mot de passe (8 caractères min.)'}
-                      className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                    />
-                    <button type="submit" disabled={quickPasswordSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
-                      {quickPasswordSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('quickPasswordSubmit') || 'Créer mon mot de passe'}
-                    </button>
-                  </form>
-                  {quickPasswordError && <p className="text-xs text-red-400 mt-2">{quickPasswordError}</p>}
-                  <button type="button" onClick={() => setQuickPasswordDismissed(true)} className="text-xs text-[#B9BBC8] hover:text-white underline mt-3">
-                    {t('quickPasswordLater') || 'Plus tard'}
-                  </button>
-                </>
-              )}
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><Users size={16} className="text-orange" /></span>
+              <p className="text-sm font-bold text-white">{t('dossierHubSupportTitle') || 'Accompagnement'}</p>
             </div>
-          )}
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubSupportSub') || 'Nos experts vous guident à chaque étape.'}</p>
+            <div className="divide-y divide-[#17334D]">
+              <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="w-full flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors text-left">
+                {t('dossierHubCallback') || 'Demander un rappel'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
+              </button>
+              <button type="button" onClick={() => setContactChoice(c => c === 'slot' ? null : 'slot')} className="w-full flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors text-left">
+                {t('dossierHubSlot') || 'Prendre rendez-vous'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
+              </button>
+              <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors text-left">
+                {t('dossierHubAccompanied') || 'Être accompagné'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
+              </button>
+              <a href="mailto:contact@marches-direct.fr" className="flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors">
+                {t('dossierHubHelp') || 'Aide au dépôt'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
+              </a>
+            </div>
+
+            {contactChoice === 'callback' && (
+              <div className="mt-3 pt-3 border-t border-[#17334D]">
+                {callbackConfirmed ? (
+                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                    <CheckCircle2 size={14} className="shrink-0" /> {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : (t('accessCallbackConfirmed') || 'Rappel demandé')}
+                  </div>
+                ) : (
+                  <button type="button" disabled={!!slotSubmitting} onClick={handleCallback} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                    {slotSubmitting === 'callback' ? <Loader2 size={14} className="animate-spin" /> : <PhoneCall size={14} />} {t('accessCallbackNoSlot') || 'Confirmer la demande de rappel'}
+                  </button>
+                )}
+                {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
+              </div>
+            )}
+
+            {contactChoice === 'slot' && (
+              <div className="mt-3 pt-3 border-t border-[#17334D]">
+                {selectedSlot ? (
+                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                    <CheckCircle2 size={14} className="shrink-0" /> {t('followUpSlotConfirmed') || 'Créneau réservé — le suivi reste accessible normalement.'}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {CALLBACK_SLOTS.map(slotLabel => (
+                      <button
+                        key={slotLabel}
+                        type="button"
+                        disabled={!!slotSubmitting}
+                        onClick={() => handleBookSlot(slotLabel)}
+                        className="min-h-[46px] text-xs font-semibold rounded-xl border border-[#5b6d7d] text-white hover:border-orange/50 px-2 transition-colors disabled:opacity-50"
+                      >
+                        {slotSubmitting === 'slot' ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
+              </div>
+            )}
+
+            {contactChoice !== null && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
+              <div className="mt-3 pt-3 border-t border-[#17334D]">
+                {quickPasswordDone ? (
+                  <div className="flex items-center gap-2 text-sm text-white">
+                    <ShieldCheck size={15} className="text-green-400 shrink-0" />
+                    {t('quickPasswordSecuredSpace') || 'Espace sécurisé'} — {slotForm.email}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-[#B9BBC8] mb-2">{t('quickPasswordSub') || 'Retrouvez cette opportunité et vos rendez-vous depuis votre tableau de bord.'}</p>
+                    <form onSubmit={handleQuickPassword} className="flex flex-col sm:flex-row gap-2.5">
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={quickPassword}
+                        onChange={e => setQuickPassword(e.target.value)}
+                        placeholder={t('quickPasswordPlaceholder') || 'Mot de passe (8 caractères min.)'}
+                        className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                      />
+                      <button type="submit" disabled={quickPasswordSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
+                        {quickPasswordSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('quickPasswordSubmit') || 'Créer mon mot de passe'}
+                      </button>
+                    </form>
+                    {quickPasswordError && <p className="text-xs text-red-400 mt-2">{quickPasswordError}</p>}
+                    <button type="button" onClick={() => setQuickPasswordDismissed(true)} className="text-xs text-[#B9BBC8] hover:text-white underline mt-3">
+                      {t('quickPasswordLater') || 'Plus tard'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><Sparkles size={16} className="text-orange" /></span>
+              <p className="text-sm font-bold text-white">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</p>
+            </div>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubMoreSub') || "Découvrez d'autres opportunités adaptées à votre profil."}</p>
+            <Link to="/recherche" className="flex items-center justify-center gap-2 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
+              {t('dossierHubMoreCta') || "Rechercher d'autres opportunités"} <ChevronRight size={14} />
+            </Link>
+          </div>
+
+          <div className="flex gap-2.5">
+            <button type="button" onClick={() => setScreen(2)} className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
+              {t('compatibilityBack') || 'Retour'}
+            </button>
+            <Link to={`/opportunites/${id}/candidature`} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white font-bold py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
+              {t('dossierHubAccessCta') || 'Accéder à mon dossier'}
+            </Link>
+          </div>
         </div>
       )}
 
-      {/* DOSSIER & CANDIDATURE TAB */}
-      {tab === 'dossier' && (
+      {/* DOSSIER & CANDIDATURE — Page 3 ("Remaining Flow") */}
+      {screen === 3 && (
         !isAuthenticated ? (
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center">
             <p className="text-sm text-white font-semibold mb-1">{t('dossierAnalysisTitle')}</p>
@@ -1225,6 +1495,24 @@ export default function OpportunityDetailPage() {
 }
 
 type DossierPrepItem = { label: string; ready: boolean; readyText: string; pendingText: string };
+
+// "Votre entreprise" card (client's screenshot, écran "Concordance"): icon +
+// muted label above, white value below - a missing value never leaves a
+// blank cell or an omitted row, it shows the caller's explicit fallback
+// text instead (client's exact wording: "Chiffre d'affaires non
+// disponible", "Effectif non communiqué", etc.) so the grid never looks
+// broken or incomplete.
+function CompanyInfoRow({ icon: Icon, label, value, empty }: { icon: typeof MapPin; label: string; value: string | null | undefined; empty?: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon size={14} className="text-[#5B6B80] shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="text-[10px] text-[#5B6B80]">{label}</p>
+        <p className="text-white font-medium">{value || empty || '—'}</p>
+      </div>
+    </div>
+  );
+}
 
 function DossierPrepBlock({
   t, siretCompany, matchScore, checklistDocs, checklistRefCount, onContactManager,

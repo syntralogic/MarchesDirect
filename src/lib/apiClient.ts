@@ -287,6 +287,26 @@ export const favoritesApi = {
   remove: async (opportunityId: string) => {
     await apiClient.delete(`/favorites/${opportunityId}`);
   },
+  // Anonymous equivalents (client's brief, 6 Sep): the Save icon on a
+  // listing card must work before the visitor is identified - saves into
+  // this browser's session instead of a company's favorites.
+  sessionIds: async (sessionId: string) => {
+    const { data } = await apiClient.get<{ ids: string[] }>('/favorites/session/ids', { params: { sessionId } });
+    return data.ids;
+  },
+  sessionSave: async (opportunityId: string, sessionId: string) => {
+    await apiClient.put(`/favorites/session/${opportunityId}`, { sessionId });
+  },
+  sessionRemove: async (opportunityId: string, sessionId: string) => {
+    await apiClient.delete(`/favorites/session/${opportunityId}`, { params: { sessionId } });
+  },
+  // Called once right after the visitor is identified (fresh signup or a
+  // returning magic-link login) - migrates this session's saved
+  // opportunities into their real company favorites.
+  attachSession: async (sessionId: string) => {
+    const { data } = await apiClient.post<{ attached: number }>('/favorites/attach', { sessionId });
+    return data.attached;
+  },
 };
 
 // Self-published subcontracting needs ("Je cherche un sous-traitant" buyer
@@ -353,6 +373,15 @@ export type ApiSiretCompany = {
   employees: string | null;
   ape: string | null;
   activity: string | null;
+  // Client priority #6/#7: SIREN/statut/chiffre d'affaires - backend
+  // (routes/siret.ts) already returns these from Pappers/INSEE, was never
+  // mapped through to the frontend type or rendered anywhere.
+  siren?: string | null;
+  siret?: string | null;
+  statut?: string | null;
+  revenue?: string | null;
+  revenueEstimated?: boolean;
+  revenueYear?: number | null;
   // "Présence détectée" (prototype V17, section 3.3.3) - backend already
   // returns these (routes/siret.ts) but the frontend never mapped them.
   // Only ever real signals from Pappers/INSEE/demo data, never fabricated.
@@ -365,11 +394,14 @@ export type ApiSiretCompany = {
 
 export type ApiSiretCandidate = {
   siret: string;
+  siren?: string | null;
   name: string | null;
   address: string | null;
   city: string | null;
   postal: string | null;
   ape: string | null;
+  activity?: string | null;
+  statut?: string | null;
 };
 
 export type ApiSiretStatus = {
