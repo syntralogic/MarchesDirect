@@ -819,8 +819,16 @@ export default function OpportunityDetailPage() {
       {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
           after "Détails du dossier" above (client's brief: no tab switch
           between the fiche and the identification/score flow). */}
-      {screen < 3 && (
-        !isOpportunityConfirmed(id) && !isAuthenticated ? (
+      {/* Client's repeated complaint (screenshots, "same data shows on
+          multiple cards/pages"): this used to be one `screen < 3` block
+          with an if/else inside, so once a company was confirmed the
+          company/score/lead-capture content rendered on screen 1 too
+          (e.g. after using "Modifier" or the lead form's "Retour" button
+          to navigate back) - the exact same card duplicated across two
+          screens. Split into two mutually exclusive, single-screen blocks:
+          the search form only ever belongs to screen 1, the company card /
+          concordance / lead capture only ever belongs to screen 2. */}
+      {screen === 1 && !isAuthenticated && (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
@@ -883,7 +891,9 @@ export default function OpportunityDetailPage() {
               )}
             </div>
           </div>
-        ) : (
+      )}
+
+      {screen === 2 && (
           <>
             {siretCompany && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
@@ -1186,7 +1196,6 @@ export default function OpportunityDetailPage() {
           </div>
             ) : null}
           </>
-        )
       )}
 
       {/* SUIVI & RAPPEL — "Votre dossier" hub (client's screenshot,
