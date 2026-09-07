@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
@@ -178,7 +178,23 @@ export default function OpportunityDetailPage() {
   // Starts on screen 1 unless the company is already known (context from
   // an earlier step in this session), in which case screen 2 is the
   // correct starting point.
-  const [screen, setScreen] = useState<1 | 2 | 3>(() => isOpportunityConfirmed(id) ? 2 : 1);
+  const [screen, setScreen] = useState<1 | 2 | 3>(() => (isOpportunityConfirmed(id) || (isAuthenticated && !!company)) ? 2 : 1);
+  // useAuth() can resolve isAuthenticated/company asynchronously after this
+  // component's first render, which the lazy useState initializer above
+  // (runs once, at mount) can't see. Without this, a logged-in user with a
+  // known company stayed stuck on screen 1 whenever auth loaded a beat
+  // after mount - screen 1's own content then rendered at the same time as
+  // the company/concordance content meant for screen 2 (see the `screen < 3`
+  // render logic further down, which shows that content once authenticated
+  // regardless of the actual screen value). Runs once only, via the ref, so
+  // it doesn't override a deliberate "Modifier" navigation back to screen 1.
+  const autoAdvancedRef = useRef(false);
+  useEffect(() => {
+    if (!autoAdvancedRef.current && screen === 1 && isAuthenticated && company) {
+      autoAdvancedRef.current = true;
+      setScreen(2);
+    }
+  }, [isAuthenticated, company, screen]);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
