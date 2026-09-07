@@ -915,7 +915,12 @@ export default function OpportunityDetailPage() {
 
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs pt-1 border-t border-[#17334D] mt-1">
                   <CompanyInfoRow icon={MapPin} label="Localisation" value={[siretCompany.city, siretCompany.postal].filter(Boolean).join(' ') || siretCompany.address || null} />
-                  <CompanyInfoRow icon={User} label="Dirigeant" value={siretCompany.director} empty="Aucun dirigeant affiché" />
+                  <CompanyInfoRow
+                    icon={User}
+                    label={siretCompany.directors && siretCompany.directors.length > 1 ? 'Dirigeants' : 'Dirigeant'}
+                    value={siretCompany.directors && siretCompany.directors.length > 0 ? siretCompany.directors.join(', ') : siretCompany.director}
+                    empty="Aucun dirigeant affiché"
+                  />
                   <CompanyInfoRow icon={Users} label="Effectif" value={siretCompany.employees} empty="Effectif non communiqué" />
                   <CompanyInfoRow icon={Calendar} label="Ancienneté" value={formatSeniority(siretCompany.created)} />
                   <CompanyInfoRow
@@ -972,9 +977,11 @@ export default function OpportunityDetailPage() {
                   <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                     <div>
                       <p className="text-sm font-semibold text-white flex items-center gap-2"><BadgeCheck size={14} className="text-[#5B6B80]" /> {t('presenceRge')}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.certifications?.includes('RGE') ? t('presenceRgeDetected') : t('presenceNotDetected')}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">
+                        {siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : t('presenceNotDetected')}
+                      </p>
                     </div>
-                    {siretCompany.certifications?.includes('RGE') ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
+                    {siretCompany.rgeOrganisme ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
                   </div>
                 </div>
               </div>
