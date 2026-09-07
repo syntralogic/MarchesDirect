@@ -510,7 +510,7 @@ export default function OpportunityDetailPage() {
           l'utilisateur comprenne immédiatement où il se trouve dans le
           parcours." Purely a progress indicator - screen state/navigation
           logic is unchanged, this just makes it visible. */}
-      <div className="flex items-center gap-1.5 mb-4 w-full">
+      <div className="flex items-center justify-center gap-1.5 mb-4 w-full max-w-full">
         {([
           { n: 1, label: t('stepperOpportunity') || 'Votre opportunité' },
           { n: 2, label: t('stepperConcordance') || 'Concordance' },
