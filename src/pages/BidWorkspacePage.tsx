@@ -90,7 +90,8 @@ export default function BidWorkspacePage() {
       if (result.bid.pricing_schedule_json) setPricing(result.bid.pricing_schedule_json);
       toast.success('Brouillon généré.');
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Échec de la génération du brouillon.'));
+      // Display custom error message instead of the backend error
+      toast.error('Cette action nécessite l\'intervention manuelle du chargé d\'affaires. Veuillez le contacter directement.');
     } finally {
       setGeneratingDraft(false);
     }
@@ -106,7 +107,8 @@ export default function BidWorkspacePage() {
       setBid(result.bid);
       toast.success('DC1, DC2 et DUME générés.');
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Échec de la génération des documents.'));
+      // Also display custom message for forms generation if needed
+      toast.error('Cette action nécessite l\'intervention manuelle du chargé d\'affaires. Veuillez le contacter directement.');
     } finally {
       setGeneratingForms(false);
     }
