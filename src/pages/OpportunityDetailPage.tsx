@@ -177,22 +177,9 @@ export default function OpportunityDetailPage() {
   // gates moving on to the next screen, never the analysis itself.
   // FIX 1: Always start on screen 1, regardless of authentication status.
   const [screen, setScreen] = useState<1 | 2 | 3>(1);
-  // useAuth() can resolve isAuthenticated/company asynchronously after this
-  // component's first render, which the lazy useState initializer above
-  // (runs once, at mount) can't see. Without this, a logged-in user with a
-  // known company stayed stuck on screen 1 whenever auth loaded a beat
-  // after mount - screen 1's own content then rendered at the same time as
-  // the company/concordance content meant for screen 2 (see the `screen < 3`
-  // render logic further down, which shows that content once authenticated
-  // regardless of the actual screen value). Runs once only, via the ref, so
-  // it doesn't override a deliberate "Modifier" navigation back to screen 1.
+  
+  // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
   const autoAdvancedRef = useRef(false);
-  useEffect(() => {
-    if (!autoAdvancedRef.current && screen === 1 && isAuthenticated && company) {
-      autoAdvancedRef.current = true;
-      setScreen(2);
-    }
-  }, [isAuthenticated, company, screen]);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -291,17 +278,6 @@ export default function OpportunityDetailPage() {
       .catch(() => setAccess({ identityUnlocked: false }))
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
-
-  // NOTE: previously an effect here force-advanced screen 1 -> 2 for any
-  // authenticated visitor, on every single opportunity, even ones they'd
-  // never opened before. That's the same "page 1 missing" bug the
-  // isOpportunityConfirmed() mechanism above was built to fix, just
-  // reintroduced through a different door - a logged-in visitor's company
-  // being "known" doesn't mean this specific opportunity's own résumé,
-  // travaux, exigences and points de vigilance shouldn't be shown first.
-  // Removed; the initial `screen` state above (isOpportunityConfirmed(id)
-  // only) is now the single source of truth for whether to start on
-  // screen 1 or 2.
 
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
