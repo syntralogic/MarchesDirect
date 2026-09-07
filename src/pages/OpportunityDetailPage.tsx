@@ -4,6 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, KeyRound, Globe, Facebook, Star, BadgeCheck, Download,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -34,6 +35,17 @@ function formatAmount(value: number | null, currency: string | null) {
 }
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+}
+// Client's brief (5 Sep, "Votre concordance" page): "l'ancienneté calculée
+// automatiquement" - derived from the company's creation date, never a
+// separate field to fetch/store.
+function formatSeniority(created: string | null): string | null {
+  if (!created) return null;
+  const years = Math.floor((Date.now() - new Date(created).getTime()) / (365.25 * 24 * 3600 * 1000));
+  if (years < 0) return null;
+  if (years < 1) return 'Moins d\'un an';
+  if (years > 10) return 'Plus de 10 ans';
+  return `${years} an${years > 1 ? 's' : ''}`;
 }
 // Client's ask #4: many BOAMP notices have `description` identical to
 // `title` in the raw data (the source only ever gave one line of text).
@@ -860,39 +872,51 @@ export default function OpportunityDetailPage() {
           <>
             {siretCompany && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <ShieldCheck size={15} className="text-green-400 shrink-0" />
-                  <p className="text-sm font-bold text-white">{t('siretRecognizedTitle')}{siretCompany.name ? ` — ${siretCompany.name}` : ''}</p>
-                  {/* Client priority #6/#7: statut actif/cessée must be visible
-                      on the identified-company card, not just the candidate list. */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
+                      <Building2 size={16} className="text-orange" />
+                    </span>
+                    <p className="text-sm font-bold text-white">{t('siretYourCompany') || 'Votre entreprise'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setScreen(1); setSiretInput(''); }}
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-orange border border-orange/40 rounded-lg px-3 py-1.5 hover:bg-orange/10 transition-colors shrink-0"
+                  >
+                    <Pencil size={12} /> {t('siretModify') || 'Modifier'}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <p className="text-base font-extrabold text-white">{siretCompany.name || '—'}</p>
                   {siretCompany.statut && (
                     <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${siretCompany.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
                       {siretCompany.statut}
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  {siretCompany.legal && <p className="text-[#B9BBC8]">{t('siretLegalForm')} : <span className="text-white">{siretCompany.legal}</span></p>}
-                  {siretCompany.director && <p className="text-[#B9BBC8]">Dirigeant : <span className="text-white">{siretCompany.director}</span></p>}
-                  {siretCompany.created && <p className="text-[#B9BBC8]">{t('siretCreated')} : <span className="text-white">{formatDate(siretCompany.created)}</span></p>}
-                  {(siretCompany.address || siretCompany.city) && <p className="text-[#B9BBC8] col-span-2">{t('siretAddress')} : <span className="text-white">{[siretCompany.address, siretCompany.postal, siretCompany.city].filter(Boolean).join(', ')}</span></p>}
-                  {siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">{siretCompany.employees}</span></p>}
-                  {siretCompany.ape && <p className="text-[#B9BBC8]">{t('siretApe')} : <span className="text-white">{siretCompany.ape}{siretCompany.activity ? ` — ${siretCompany.activity}` : ''}</span></p>}
-                  {/* Client priority #7: SIREN/SIRET and chiffre d'affaires with
-                      its year must appear on this card - backend already
-                      returns both, was never rendered. */}
-                  {siretCompany.siren && <p className="text-[#B9BBC8]">SIREN : <span className="text-white">{siretCompany.siren}</span></p>}
-                  {siretCompany.siret && <p className="text-[#B9BBC8]">SIRET : <span className="text-white">{siretCompany.siret}</span></p>}
-                  {siretCompany.revenue ? (
-                    <p className="text-[#B9BBC8] col-span-2">
-                      Chiffre d'affaires : <span className="text-white">{Number(siretCompany.revenue).toLocaleString('fr-FR')} €{siretCompany.revenueYear ? ` (${siretCompany.revenueYear}${siretCompany.revenueEstimated ? ' — estimé' : ''})` : ''}</span>
-                    </p>
-                  ) : (
-                    <p className="text-[#B9BBC8] col-span-2">Chiffre d'affaires : <span className="text-white">Chiffre d'affaires non disponible</span></p>
-                  )}
-                  {!siretCompany.employees && <p className="text-[#B9BBC8]">{t('siretEmployees')} : <span className="text-white">Effectif non communiqué</span></p>}
-                  {!siretCompany.director && <p className="text-[#B9BBC8] col-span-2">Dirigeant : <span className="text-white">Aucun dirigeant affiché</span></p>}
-                  {!siretCompany.certifications?.length && <p className="text-[#B9BBC8] col-span-2">Certifications : <span className="text-white">Aucune certification détectée</span></p>}
+                {siretCompany.siret && <p className="text-xs text-[#5B6B80] mb-4">SIRET {siretCompany.siret}</p>}
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs pt-1 border-t border-[#17334D] mt-1">
+                  <CompanyInfoRow icon={MapPin} label="Localisation" value={[siretCompany.city, siretCompany.postal].filter(Boolean).join(' ') || siretCompany.address || null} />
+                  <CompanyInfoRow icon={User} label="Dirigeant" value={siretCompany.director} empty="Aucun dirigeant affiché" />
+                  <CompanyInfoRow icon={Users} label="Effectif" value={siretCompany.employees} empty="Effectif non communiqué" />
+                  <CompanyInfoRow icon={Calendar} label="Ancienneté" value={formatSeniority(siretCompany.created)} />
+                  <CompanyInfoRow
+                    icon={TrendingUp}
+                    label="Chiffre d'affaires"
+                    value={siretCompany.revenue ? `${Number(siretCompany.revenue).toLocaleString('fr-FR')} €${siretCompany.revenueYear ? ` (${siretCompany.revenueYear}${siretCompany.revenueEstimated ? ' — estimé' : ''})` : ''}` : null}
+                    empty="Chiffre d'affaires non disponible"
+                  />
+                  <CompanyInfoRow icon={FileText} label="Activité principale" value={siretCompany.activity || siretCompany.ape} />
+                  <CompanyInfoRow
+                    icon={Star}
+                    label="Avis Google"
+                    value={siretCompany.googleRating ? `${siretCompany.googleRating}/5${siretCompany.googleReviewCount ? ` (${siretCompany.googleReviewCount} avis)` : ''}` : null}
+                    empty="Non disponible"
+                  />
+                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.join(', ') : null} empty="Aucune certification détectée" />
                 </div>
               </div>
             )}
@@ -1414,6 +1438,24 @@ export default function OpportunityDetailPage() {
 }
 
 type DossierPrepItem = { label: string; ready: boolean; readyText: string; pendingText: string };
+
+// "Votre entreprise" card (client's screenshot, écran "Concordance"): icon +
+// muted label above, white value below - a missing value never leaves a
+// blank cell or an omitted row, it shows the caller's explicit fallback
+// text instead (client's exact wording: "Chiffre d'affaires non
+// disponible", "Effectif non communiqué", etc.) so the grid never looks
+// broken or incomplete.
+function CompanyInfoRow({ icon: Icon, label, value, empty }: { icon: typeof MapPin; label: string; value: string | null | undefined; empty?: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon size={14} className="text-[#5B6B80] shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="text-[10px] text-[#5B6B80]">{label}</p>
+        <p className="text-white font-medium">{value || empty || '—'}</p>
+      </div>
+    </div>
+  );
+}
 
 function DossierPrepBlock({
   t, siretCompany, matchScore, checklistDocs, checklistRefCount, onContactManager,
