@@ -987,204 +987,62 @@ export default function OpportunityDetailPage() {
               </div>
             )}
 
-            {scoreLoading ? (
-          <div className="flex items-center justify-center py-16 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('scoreCalculating')}</div>
-        ) : scoreError ? (
-          <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
-        ) : matchScore ? (
-            <div className="space-y-4">
-            {/* Concordance card (client's screenshot): circular ring with
-                the score centered, 4 icon+label+text rows to the right/
-                below. score/matchLabel/scoreNote are all server-computed
-                (matchScoreService.ts) - never independently derived here. */}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <h2 className="text-base font-extrabold text-white flex items-center gap-2 mb-4"><Gauge size={16} className="text-orange" /> {t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-                <div className="relative w-28 h-28 shrink-0">
-                  <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
-                    <circle
-                      cx="50" cy="50" r="42" fill="none" stroke="#4ADE80" strokeWidth="10" strokeLinecap="round"
-                      strokeDasharray={2 * Math.PI * 42}
-                      strokeDashoffset={2 * Math.PI * 42 * (1 - matchScore.score / 100)}
+            {(isAuthenticated || leadCaptured) ? (
+              <button
+                type="button"
+                onClick={() => setScreen(3)}
+                className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
+              >
+                {t('compatibilityContinue') || 'Continuer'}
+              </button>
+            ) : (
+              // Phone+email gate (client's newest brief, Écran 7): the
+              // visitor has already seen the score + why-it-matches above
+              // (the value obtained). This only gates saving the
+              // opportunity and moving to the next screen - it never
+              // hides the analysis, which is rendered above regardless.
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                <p className="flex items-center gap-2 text-base font-extrabold text-white mb-1">
+                  <Mail size={17} className="text-orange shrink-0" /> {t('leadGateTitle')}
+                </p>
+                <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
+                <form onSubmit={handleLeadSubmit} className="space-y-3">
+                  <div className="relative">
+                    <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                    <input
+                      value={leadEmail}
+                      onChange={e => setLeadEmail(e.target.value)}
+                      type="email"
+                      placeholder={t('leadEmailLabel')}
+                      className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                     />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-extrabold text-white">{matchScore.score}%</span>
-                    <span className="text-[9px] text-[#B9BBC8] text-center leading-tight px-2">{t('scoreRingLabel') || 'de concordance'}</span>
                   </div>
-                </div>
-                <div className="flex-1 w-full space-y-3.5 min-w-0">
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 size={16} className="text-green-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreMatchingCriteria') || 'Critères correspondants'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">
-                        {matchScore.positiveFactors.length > 0 ? matchScore.positiveFactors.map(f => f.label).join(', ') + '.' : matchScore.scoreNote}
-                      </p>
-                    </div>
+                  <div className="relative">
+                    <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                    <input
+                      value={leadPhone}
+                      onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      inputMode="numeric"
+                      placeholder={t('leadPhoneLabel')}
+                      className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                    />
                   </div>
-                  <div className="flex items-start gap-2.5">
-                    <AlertTriangle size={16} className="text-orange shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreMissingElements') || 'Éléments manquants'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">
-                        {matchScore.eligibility.filter(e => e.met === false).length > 0
-                          ? matchScore.eligibility.filter(e => e.met === false).map(e => e.label).join(', ') + '.'
-                          : (t('scoreNoBlockingElement') || 'Aucun élément bloquant identifié.')}
-                      </p>
-                    </div>
+                  {leadError && <p className="text-xs text-red-400">{leadError}</p>}
+                  <div className="flex gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setScreen(1)}
+                      className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors"
+                    >
+                      {t('compatibilityBack') || 'Retour'}
+                    </button>
+                    <button type="submit" disabled={leadSubmitting} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                      {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+                    </button>
                   </div>
-                  <div className="flex items-start gap-2.5">
-                    <Info size={16} className="text-[#5B6B80] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreVigilancePoints') || 'Points de vigilance'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.warning || (t('scoreNoVigilancePoint') || 'Aucun point de vigilance particulier.')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <ThumbsUp size={16} className="text-orange shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreRecommendation') || 'Recommandation'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.whyRespond}</p>
-                    </div>
-                  </div>
-                </div>
+                </form>
               </div>
-              {/* Fixed disclaimer (client's exact wording): this is never
-                  an odds-of-winning estimate, only a fit measurement. */}
-              <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
-            </div>
-
-            {/* Full compatibility breakdown - always visible once the
-                score is in, matching the brief's page 2 ("detailed
-                breakdown of the compatibility factors") which never
-                describes hiding it. The email/phone step below only
-                gates moving on to the next screen, not seeing this. */}
-            <>
-                {justUnlockedAnalysis && (
-                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                    <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
-                  </div>
-                )}
-
-                <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                  <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
-                  <div className="space-y-2.5">
-                    {matchScore.criteria.map((c, i) => (
-                      <div key={i}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-[#B9BBC8]">{c.label}</span>
-                          <span className="text-white font-semibold">{c.weight}%</span>
-                        </div>
-                        <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
-                          <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {matchScore.eligibility.length > 0 && (
-                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                    <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
-                    <div className="space-y-2.5">
-                      {matchScore.eligibility.map((el, i) => (
-                        <div key={i} className="flex items-start gap-2.5 text-xs">
-                          {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-                            : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                            : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
-                          <div>
-                            <p className="text-white font-semibold">{el.label}</p>
-                            <p className="text-[#B9BBC8]">{el.note}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {!isAuthenticated && (
-                      <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
-                    )}
-                  </div>
-                )}
-
-                <RefineAnalysisAccordion t={t} />
-
-                {/* Client's newest brief: "Votre candidature peut déjà commencer" -
-                    a single new screen/block inserted after the full analysis,
-                    reusing real signals already on this page rather than
-                    fabricating readiness. DC1/DC2/DUME/mémoire technique/prix
-                    are never marked ready here - no free draft-generation
-                    pipeline runs pre-payment, and the client's rule is explicit
-                    ("aucune information inventée... aucun document présenté
-                    comme définitif sans vérification"). */}
-                <DossierPrepBlock
-                  t={t}
-                  siretCompany={siretCompany}
-                  matchScore={matchScore}
-                  checklistDocs={checklistDocs}
-                  checklistRefCount={checklistRefCount}
-                  onContactManager={() => setShowAccountManagerModal(true)}
-                />
-
-                {(isAuthenticated || leadCaptured) ? (
-                  <button
-                    type="button"
-                    onClick={() => setScreen(3)}
-                    className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
-                  >
-                    {t('compatibilityContinue') || 'Continuer'}
-                  </button>
-                ) : (
-                  // Phone+email gate (client's newest brief, Écran 7): the
-                  // visitor has already seen the score + why-it-matches above
-                  // (the value obtained). This only gates saving the
-                  // opportunity and moving to the next screen - it never
-                  // hides the analysis, which is rendered above regardless.
-                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                    <p className="flex items-center gap-2 text-base font-extrabold text-white mb-1">
-                      <Mail size={17} className="text-orange shrink-0" /> {t('leadGateTitle')}
-                    </p>
-                    <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
-                    <form onSubmit={handleLeadSubmit} className="space-y-3">
-                      <div className="relative">
-                        <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
-                        <input
-                          value={leadEmail}
-                          onChange={e => setLeadEmail(e.target.value)}
-                          type="email"
-                          placeholder={t('leadEmailLabel')}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                        />
-                      </div>
-                      <div className="relative">
-                        <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
-                        <input
-                          value={leadPhone}
-                          onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          inputMode="numeric"
-                          placeholder={t('leadPhoneLabel')}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                        />
-                      </div>
-                      {leadError && <p className="text-xs text-red-400">{leadError}</p>}
-                      <div className="flex gap-2.5 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setScreen(1)}
-                          className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors"
-                        >
-                          {t('compatibilityBack') || 'Retour'}
-                        </button>
-                        <button type="submit" disabled={leadSubmitting} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                          {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-            </>
-          </div>
-            ) : null}
+            )}
           </>
         )
       )}
@@ -1319,6 +1177,124 @@ export default function OpportunityDetailPage() {
               </div>
             )}
           </div>
+
+          {/* SCORING SECTION - MOVED FROM SCREEN 2 */}
+          {scoreLoading ? (
+            <div className="flex items-center justify-center py-16 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('scoreCalculating')}</div>
+          ) : scoreError ? (
+            <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
+          ) : matchScore ? (
+            <div className="space-y-4">
+              {/* Concordance card */}
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                <h2 className="text-base font-extrabold text-white flex items-center gap-2 mb-4"><Gauge size={16} className="text-orange" /> {t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                  <div className="relative w-28 h-28 shrink-0">
+                    <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
+                      <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
+                      <circle
+                        cx="50" cy="50" r="42" fill="none" stroke="#4ADE80" strokeWidth="10" strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 42}
+                        strokeDashoffset={2 * Math.PI * 42 * (1 - matchScore.score / 100)}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-extrabold text-white">{matchScore.score}%</span>
+                      <span className="text-[9px] text-[#B9BBC8] text-center leading-tight px-2">{t('scoreRingLabel') || 'de concordance'}</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 w-full space-y-3.5 min-w-0">
+                    <div className="flex items-start gap-2.5">
+                      <CheckCircle2 size={16} className="text-green-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-white">{t('scoreMatchingCriteria') || 'Critères correspondants'}</p>
+                        <p className="text-xs text-[#B9BBC8] mt-0.5">
+                          {matchScore.positiveFactors.length > 0 ? matchScore.positiveFactors.map(f => f.label).join(', ') + '.' : matchScore.scoreNote}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle size={16} className="text-orange shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-white">{t('scoreMissingElements') || 'Éléments manquants'}</p>
+                        <p className="text-xs text-[#B9BBC8] mt-0.5">
+                          {matchScore.eligibility.filter(e => e.met === false).length > 0
+                            ? matchScore.eligibility.filter(e => e.met === false).map(e => e.label).join(', ') + '.'
+                            : (t('scoreNoBlockingElement') || 'Aucun élément bloquant identifié.')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <Info size={16} className="text-[#5B6B80] shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-white">{t('scoreVigilancePoints') || 'Points de vigilance'}</p>
+                        <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.warning || (t('scoreNoVigilancePoint') || 'Aucun point de vigilance particulier.')}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <ThumbsUp size={16} className="text-orange shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-white">{t('scoreRecommendation') || 'Recommandation'}</p>
+                        <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.whyRespond}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
+              </div>
+
+              {/* Full compatibility breakdown */}
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
+                <div className="space-y-2.5">
+                  {matchScore.criteria.map((c, i) => (
+                    <div key={i}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-[#B9BBC8]">{c.label}</span>
+                        <span className="text-white font-semibold">{c.weight}%</span>
+                      </div>
+                      <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
+                        <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {matchScore.eligibility.length > 0 && (
+                <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                  <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
+                  <div className="space-y-2.5">
+                    {matchScore.eligibility.map((el, i) => (
+                      <div key={i} className="flex items-start gap-2.5 text-xs">
+                        {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
+                          : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                          : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
+                        <div>
+                          <p className="text-white font-semibold">{el.label}</p>
+                          <p className="text-[#B9BBC8]">{el.note}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!isAuthenticated && (
+                    <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
+                  )}
+                </div>
+              )}
+
+              <RefineAnalysisAccordion t={t} />
+
+              <DossierPrepBlock
+                t={t}
+                siretCompany={siretCompany}
+                matchScore={matchScore}
+                checklistDocs={checklistDocs}
+                checklistRefCount={checklistRefCount}
+                onContactManager={() => setShowAccountManagerModal(true)}
+              />
+            </div>
+          ) : null}
 
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             <div className="flex items-center gap-2.5 mb-1">
