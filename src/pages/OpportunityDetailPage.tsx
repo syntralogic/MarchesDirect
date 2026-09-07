@@ -178,7 +178,7 @@ export default function OpportunityDetailPage() {
   // Starts on screen 1 unless the company is already known (context from
   // an earlier step in this session), in which case screen 2 is the
   // correct starting point.
-  const [screen, setScreen] = useState<1 | 2 | 3>(() => (isOpportunityConfirmed(id) || isAuthenticated) ? 2 : 1);
+  const [screen, setScreen] = useState<1 | 2 | 3>(() => isOpportunityConfirmed(id) ? 2 : 1);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -278,17 +278,16 @@ export default function OpportunityDetailPage() {
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
 
-  // Auto-navigate Page 1 → Page 2 the moment a company is recognized FOR
-  // THIS OPPORTUNITY (direct SIRET match or a picked candidate confirmed),
-  // matching the brief: "As soon as they select the correct company, the
-  // application automatically navigates to the next page." The actual
-  // advance now happens right in handleSiretSubmit/handleConfirmCandidate
-  // below (so it only fires for an action taken on this page, for this
-  // opportunity) - this effect only covers the logged-in shortcut, since an
-  // authenticated visitor's own company is legitimately "known" everywhere.
-  useEffect(() => {
-    if (screen === 1 && isAuthenticated) setScreen(2);
-  }, [isAuthenticated, screen]);
+  // NOTE: previously an effect here force-advanced screen 1 -> 2 for any
+  // authenticated visitor, on every single opportunity, even ones they'd
+  // never opened before. That's the same "page 1 missing" bug the
+  // isOpportunityConfirmed() mechanism above was built to fix, just
+  // reintroduced through a different door - a logged-in visitor's company
+  // being "known" doesn't mean this specific opportunity's own résumé,
+  // travaux, exigences and points de vigilance shouldn't be shown first.
+  // Removed; the initial `screen` state above (isOpportunityConfirmed(id)
+  // only) is now the single source of truth for whether to start on
+  // screen 1 or 2.
 
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
