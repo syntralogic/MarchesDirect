@@ -5,6 +5,7 @@ import {
   Search, UserRound, ChevronRight, ClipboardCheck, FolderCheck, PhoneCall, Bookmark,
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { stripMarkdownArtifacts } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { SaveButton } from '@/components/SaveButton';
@@ -239,7 +240,7 @@ export default function TableauDeBordPage() {
                 <SaveButton opportunityId={featured.id} />
               </div>
               {featured.ai_summary && (
-                <p className="text-xs text-[#B9BBC8] leading-relaxed mb-3 line-clamp-2">{featured.ai_summary}</p>
+                <p className="text-xs text-[#B9BBC8] leading-relaxed mb-3 line-clamp-2">{stripMarkdownArtifacts(featured.ai_summary)}</p>
               )}
               <div className="flex flex-wrap gap-3 text-[11px] text-[#B9BBC8] mb-3">
                 {(featured.location_city || featured.location_region) && (
