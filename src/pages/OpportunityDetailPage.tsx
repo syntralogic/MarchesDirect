@@ -17,6 +17,7 @@ import {
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
 } from '@/lib/apiClient';
+import { stripMarkdownArtifacts } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
@@ -492,8 +493,8 @@ export default function OpportunityDetailPage() {
   // callback slot is booked (see the "Donneur d'ordre" block below).
   const identityUnlocked = isPublic || !!access?.identityUnlocked;
 
-  const metaDescription = (opportunity.ai_summary || opportunity.description)
-    || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`;
+  const metaDescription = stripMarkdownArtifacts((opportunity.ai_summary || opportunity.description)
+    || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`);
 
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
@@ -510,26 +511,26 @@ export default function OpportunityDetailPage() {
           l'utilisateur comprenne immédiatement où il se trouve dans le
           parcours." Purely a progress indicator - screen state/navigation
           logic is unchanged, this just makes it visible. */}
-      <div className="flex items-center justify-center gap-1 mb-4 w-full max-w-xs mx-auto">
+      <div className="flex items-center justify-between gap-1 mb-4 w-full">
         {([
           { n: 1, label: t('stepperOpportunity') || 'Votre opportunité' },
           { n: 2, label: t('stepperConcordance') || 'Concordance' },
           { n: 3, label: t('stepperDossier') || 'Votre dossier' },
         ] as const).map((s, i) => (
-          <div key={s.n} className="flex items-center gap-1 flex-1 min-w-0">
-            <div className={`shrink-0 flex items-center gap-1 ${screen === s.n ? '' : 'opacity-60'}`}>
-              <span className={`shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold ${
+          <div key={s.n} className="flex items-center gap-2 flex-1 min-w-0">
+            <div className={`shrink-0 flex items-center gap-2 ${screen === s.n ? '' : 'opacity-60'}`}>
+              <span className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
                 : 'border border-[#17334D] text-[#5B6B80]'
               }`}>
-                {screen > s.n ? <CheckCircle2 size={12} className="sm:w-[13px] sm:h-[13px]" /> : s.n}
+                {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
-              <span className={`hidden xs:inline text-[10px] sm:text-xs font-semibold whitespace-nowrap truncate ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              <span className={`text-[11px] sm:text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
             </div>
-            {i < 2 && <div className={`h-px flex-1 min-w-[4px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
+            {i < 2 && <div className={`h-px flex-1 min-w-[16px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
           </div>
         ))}
       </div>
@@ -612,7 +613,7 @@ export default function OpportunityDetailPage() {
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
-              <p className="text-sm text-white leading-relaxed">{opportunity.ai_summary}</p>
+              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{stripMarkdownArtifacts(opportunity.ai_summary)}</p>
             )}
             {opportunity.description && !opportunity.ai_summary && !isRedundantWithTitle(opportunity.description, opportunity.title) && (
               <p className="text-sm text-[#B9BBC8] leading-relaxed">{opportunity.description}</p>
