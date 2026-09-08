@@ -16,8 +16,16 @@ export default function RecherchePage() {
   const [searchParams] = useSearchParams();
 
   const [query, setQuery] = useState('');
-  const initialCity = searchParams.get('city') || '';
-  const initialRegion = searchParams.get('region') || '';
+  // Client's map lets 2+ regions/departments/cities be selected at once
+  // ("Nouvelle-Aquitaine, Bretagne") - HomePage's buildSearchUrl() already
+  // sent every selection as its own repeated `region=` param, but this only
+  // ever read `.get('region')`, which returns just the FIRST match and
+  // silently drops the rest. `.getAll()` + comma-join matches the backend's
+  // new comma-separated multi-value parsing (opportunities.ts).
+  const initialRegions = searchParams.getAll('region');
+  const initialCities = searchParams.getAll('city');
+  const initialCity = initialCities.join(', ');
+  const initialRegion = initialRegions.join(', ');
   const [location, setLocation] = useState(initialRegion || initialCity);
   const [locationField] = useState<'region' | 'city'>(initialCity && !initialRegion ? 'city' : 'region');
   const tradeId = searchParams.get('trade_id') || undefined;
