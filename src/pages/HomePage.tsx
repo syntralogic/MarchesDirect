@@ -405,16 +405,28 @@ function GeographicSection() {
             {selectedCount > 0 ? (
               <Link
                 to={buildSearchUrl()}
-                className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 rounded-xl hover:bg-orange/10 transition-colors"
+                className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 px-3 rounded-xl hover:bg-orange/10 transition-colors text-center"
               >
-                {t('mapViewOpportunitiesIn')} 
-                {selected.map((item, i) => (
-                  <span key={i}>
-                    {i > 0 && ', '}
-                    {'nom' in item ? item.nom : item.name}
-                  </span>
-                ))}
-                <ArrowRight size={14} />
+                {/* Client's 6 Sep screenshot: with 2+ regions/departments
+                    selected, this row (label + every selected name inline,
+                    no wrap) overflowed past the button's own border. Wraps
+                    onto a second line now, and past 2 names collapses to a
+                    count instead of listing every single one - keeps the
+                    button a fixed, predictable shape regardless of how many
+                    zones are selected. */}
+                <span className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5 min-w-0">
+                  <span>{t('mapViewOpportunitiesIn')}</span>
+                  {selected.slice(0, 2).map((item, i) => (
+                    <span key={i}>
+                      {i > 0 && ', '}
+                      {'nom' in item ? item.nom : item.name}
+                    </span>
+                  ))}
+                  {selected.length > 2 && (
+                    <span>+{selected.length - 2} {t('mapAndMore') || 'autres'}</span>
+                  )}
+                </span>
+                <ArrowRight size={14} className="shrink-0" />
               </Link>
             ) : (
               <div className="mt-3 flex flex-col items-center text-center py-4">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
@@ -17,6 +17,7 @@ import {
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
 } from '@/lib/apiClient';
+import { stripMarkdownArtifacts } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
@@ -175,10 +176,11 @@ export default function OpportunityDetailPage() {
   // Nothing that used to be visible is hidden by this split - every card
   // still renders, only regrouped by screen; the email/phone step only
   // gates moving on to the next screen, never the analysis itself.
-  // Starts on screen 1 unless the company is already known (context from
-  // an earlier step in this session), in which case screen 2 is the
-  // correct starting point.
-  const [screen, setScreen] = useState<1 | 2 | 3>(() => isOpportunityConfirmed(id) ? 2 : 1);
+  // FIX 1: Always start on screen 1, regardless of authentication status.
+  const [screen, setScreen] = useState<1 | 2 | 3>(1);
+  
+  // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
+  const autoAdvancedRef = useRef(false);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -285,17 +287,6 @@ export default function OpportunityDetailPage() {
       .catch(() => setAccess({ identityUnlocked: false }))
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
-
-  // NOTE: previously an effect here force-advanced screen 1 -> 2 for any
-  // authenticated visitor, on every single opportunity, even ones they'd
-  // never opened before. That's the same "page 1 missing" bug the
-  // isOpportunityConfirmed() mechanism above was built to fix, just
-  // reintroduced through a different door - a logged-in visitor's company
-  // being "known" doesn't mean this specific opportunity's own résumé,
-  // travaux, exigences and points de vigilance shouldn't be shown first.
-  // Removed; the initial `screen` state above (isOpportunityConfirmed(id)
-  // only) is now the single source of truth for whether to start on
-  // screen 1 or 2.
 
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
@@ -510,11 +501,11 @@ export default function OpportunityDetailPage() {
   // callback slot is booked (see the "Donneur d'ordre" block below).
   const identityUnlocked = isPublic || !!access?.identityUnlocked;
 
-  const metaDescription = (opportunity.ai_summary || opportunity.description)
-    || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`;
+  const metaDescription = stripMarkdownArtifacts((opportunity.ai_summary || opportunity.description)
+    || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`);
 
   return (
-    <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
+    <div className="page-fade-in bg-[#001326] relative z-10 max-w-3xl mx-auto px-4 py-6 md:py-10">
       <PageMeta title={`${opportunity.title} — Marchés Direct`} description={metaDescription.slice(0, 300)} />
       <button
         onClick={() => (screen > 1 ? setScreen((s) => (s - 1) as 1 | 2 | 3) : navigate(-1))}
@@ -528,26 +519,31 @@ export default function OpportunityDetailPage() {
           l'utilisateur comprenne immédiatement où il se trouve dans le
           parcours." Purely a progress indicator - screen state/navigation
           logic is unchanged, this just makes it visible. */}
-      <div className="flex items-center gap-1.5 mb-4">
+      <div className="flex items-center justify-between gap-1 mb-4 w-full">
         {([
           { n: 1, label: t('stepperOpportunity') || 'Votre opportunité' },
           { n: 2, label: t('stepperConcordance') || 'Concordance' },
           { n: 3, label: t('stepperDossier') || 'Votre dossier' },
         ] as const).map((s, i) => (
-          <div key={s.n} className="flex items-center gap-1.5 min-w-0">
-            <div className={`shrink-0 flex items-center gap-1.5 ${screen === s.n ? '' : 'opacity-60'}`}>
-              <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+          <div key={s.n} className="flex items-center gap-2 flex-1 min-w-0">
+            <div className={`shrink-0 flex items-center gap-2 ${screen === s.n ? '' : 'opacity-60'}`}>
+              <span className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
                 : 'border border-[#17334D] text-[#5B6B80]'
               }`}>
-                {screen > s.n ? <CheckCircle2 size={13} /> : s.n}
+                {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
-              <span className={`hidden sm:inline text-xs font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              {/* Labels only from sm+ - three full-length French labels
+                  ("Votre opportunité" being the longest) don't fit a phone
+                  width without overlapping; the current step's name is
+                  already shown as this page's own heading further down, so
+                  nothing is actually lost by hiding these on a phone. */}
+              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
             </div>
-            {i < 2 && <div className={`h-px flex-1 min-w-[12px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
+            {i < 2 && <div className={`h-px flex-1 min-w-[16px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
           </div>
         ))}
       </div>
@@ -630,7 +626,7 @@ export default function OpportunityDetailPage() {
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
-              <p className="text-sm text-white leading-relaxed">{opportunity.ai_summary}</p>
+              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{stripMarkdownArtifacts(opportunity.ai_summary)}</p>
             )}
             {opportunity.description && !opportunity.ai_summary && !isRedundantWithTitle(opportunity.description, opportunity.title) && (
               <p className="text-sm text-[#B9BBC8] leading-relaxed">{opportunity.description}</p>
@@ -805,18 +801,32 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
+          {/* FIX 2: "Continuer" button for logged-in users on screen 1 */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setScreen(2)}
+              className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
+            >
+              {t('compatibilityContinue') || 'Continuer'}
+            </button>
+          )}
         </div>
       )}
 
-      {/* SIRET / IDENTIFICATION — bottom of Page 1 ("Votre opportunité") per
-          the client's exact 4-page breakdown (5 Sep 10:20pm): "En bas de
-          cette page, il recherche son entreprise... Dès qu'il sélectionne
-          la bonne entreprise, il passe automatiquement à la page suivante."
-          This used to be gated on `screen < 3` (true for screens 1 AND 2
-          alike) with no distinct content for screen 2 at all - selecting a
-          candidate correctly called setScreen(2), but nothing new ever
-          rendered for it, so the page appeared stuck. */}
-      {screen === 1 && !isOpportunityConfirmed(id) && !isAuthenticated && (
+      {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
+          after "Détails du dossier" above (client's brief: no tab switch
+          between the fiche and the identification/score flow). */}
+      {/* Client's repeated complaint (screenshots, "same data shows on
+          multiple cards/pages"): this used to be one `screen < 3` block
+          with an if/else inside, so once a company was confirmed the
+          company/score/lead-capture content rendered on screen 1 too
+          (e.g. after using "Modifier" or the lead form's "Retour" button
+          to navigate back) - the exact same card duplicated across two
+          screens. Split into two mutually exclusive, single-screen blocks:
+          the search form only ever belongs to screen 1, the company card /
+          concordance / lead capture only ever belongs to screen 2. */}
+      {screen === 1 && !isAuthenticated && (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
@@ -918,7 +928,12 @@ export default function OpportunityDetailPage() {
 
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs pt-1 border-t border-[#17334D] mt-1">
                   <CompanyInfoRow icon={MapPin} label="Localisation" value={[siretCompany.city, siretCompany.postal].filter(Boolean).join(' ') || siretCompany.address || null} />
-                  <CompanyInfoRow icon={User} label="Dirigeant" value={siretCompany.director} empty="Aucun dirigeant affiché" />
+                  <CompanyInfoRow
+                    icon={User}
+                    label={siretCompany.directors && siretCompany.directors.length > 1 ? 'Dirigeants' : 'Dirigeant'}
+                    value={siretCompany.directors && siretCompany.directors.length > 0 ? siretCompany.directors.join(', ') : siretCompany.director}
+                    empty="Aucun dirigeant affiché"
+                  />
                   <CompanyInfoRow icon={Users} label="Effectif" value={siretCompany.employees} empty="Effectif non communiqué" />
                   <CompanyInfoRow icon={Calendar} label="Ancienneté" value={formatSeniority(siretCompany.created)} />
                   <CompanyInfoRow
@@ -975,9 +990,11 @@ export default function OpportunityDetailPage() {
                   <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                     <div>
                       <p className="text-sm font-semibold text-white flex items-center gap-2"><BadgeCheck size={14} className="text-[#5B6B80]" /> {t('presenceRge')}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.certifications?.includes('RGE') ? t('presenceRgeDetected') : t('presenceNotDetected')}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">
+                        {siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : t('presenceNotDetected')}
+                      </p>
                     </div>
-                    {siretCompany.certifications?.includes('RGE') ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
+                    {siretCompany.rgeOrganisme ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
                   </div>
                 </div>
               </div>
