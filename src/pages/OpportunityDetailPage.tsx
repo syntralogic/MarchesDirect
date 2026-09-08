@@ -519,14 +519,23 @@ export default function OpportunityDetailPage() {
           l'utilisateur comprenne immédiatement où il se trouve dans le
           parcours." Purely a progress indicator - screen state/navigation
           logic is unchanged, this just makes it visible. */}
+      {/* Client's exact complaint: "seuls les numéros 1, 2 et 3
+          apparaissent... le visiteur ne sait pas à quoi correspondent les
+          étapes" - labels were `hidden sm:inline`, i.e. invisible below a
+          640px viewport. Every reference screenshot this project has been
+          checked against was taken on a phone, so in practice every visitor
+          only ever saw three bare numbered circles with no idea what step
+          1/2/3 actually meant. Now shown at every width, stacked under the
+          circle with short (not the full-sentence) labels so three of them
+          still fit a phone without wrapping or overlapping. */}
       <div className="flex items-center justify-between gap-1 mb-4 w-full">
         {([
-          { n: 1, label: t('stepperOpportunity') || 'Votre opportunité' },
-          { n: 2, label: t('stepperConcordance') || 'Concordance' },
-          { n: 3, label: t('stepperDossier') || 'Votre dossier' },
+          { n: 1, label: t('stepperOpportunity') || 'Votre opportunité', short: t('stepperOpportunityShort') || 'Opportunité' },
+          { n: 2, label: t('stepperConcordance') || 'Concordance', short: t('stepperConcordanceShort') || 'Concordance' },
+          { n: 3, label: t('stepperDossier') || 'Votre dossier', short: t('stepperDossierShort') || 'Dossier' },
         ] as const).map((s, i) => (
           <div key={s.n} className="flex items-center gap-2 flex-1 min-w-0">
-            <div className={`shrink-0 flex items-center gap-2 ${screen === s.n ? '' : 'opacity-60'}`}>
+            <div className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n ? '' : 'opacity-60'}`}>
               <span className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
@@ -534,19 +543,30 @@ export default function OpportunityDetailPage() {
               }`}>
                 {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
-              {/* Labels only from sm+ - three full-length French labels
-                  ("Votre opportunité" being the longest) don't fit a phone
-                  width without overlapping; the current step's name is
-                  already shown as this page's own heading further down, so
-                  nothing is actually lost by hiding these on a phone. */}
+              {/* Short label always visible (mobile-first); the full
+                  sentence-length label only from sm+ where there's room. */}
+              <span className={`sm:hidden text-[9px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+                {s.short}
+              </span>
               <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
             </div>
-            {i < 2 && <div className={`h-px flex-1 min-w-[16px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
+            {i < 2 && <div className={`h-px flex-1 min-w-[16px] self-start mt-3 sm:mt-0 sm:self-auto ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
           </div>
         ))}
       </div>
+
+      {/* Client's exact wording ("il faut clairement afficher: Étape 1 –
+          Votre opportunité...") - a small kicker above the step's own
+          heading. Screens 2/3 already show the full name as a big H2 right
+          below (existing "Page title" block), so this only repeats the
+          name for screen 1, which has no separate H2 of its own (its title
+          lives inside the opportunity card instead). */}
+      <p className="text-xs font-bold text-orange uppercase tracking-wide mb-3">
+        {t('stepperStepPrefix') || 'Étape'} {screen}{screen === 1 ? ` — ${t('stepperOpportunity') || 'Votre opportunité'}` : ''}
+      </p>
+
 
       {/* Opportunity header — client's screenshots show this only on screen
           1 ("Votre opportunité"); screens 2 and 3 are each dedicated to
