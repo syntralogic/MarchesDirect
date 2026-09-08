@@ -30,6 +30,15 @@ const TYPE_LABEL: Record<Opportunity['type'], string> = {
   subcontracting: 'Sous-traitance',
 };
 
+// Client's ask: real statuses instead of everything looking like a fresh
+// new opportunity. 'active' isn't shown here - that's the normal/expected
+// case for a listing and doesn't need a callout badge.
+const LIFECYCLE_BADGE: Record<Exclude<NonNullable<Opportunity['lifecycleStatus']>, 'active'>, { text: string; className: string }> = {
+  expired: { text: 'Clôturé', className: 'text-[#B9BBC8] border-white/15' },
+  awarded: { text: 'Attribué', className: 'text-orange border-orange/40' },
+  cancelled: { text: 'Annulé', className: 'text-red-400 border-red-400/40' },
+};
+
 function getDeadlineText(deadline: string | undefined, t: (key: string) => string) {
   if (!deadline) return '-';
   const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
@@ -63,9 +72,16 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
       onClick={() => navigate(destination)}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
-        <span className="inline-block text-[11px] font-medium text-white border border-white/25 rounded-full px-3 py-1">
-          {TYPE_LABEL[o.type] ?? TYPE_LABEL.public}
-        </span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="inline-block text-[11px] font-medium text-white border border-white/25 rounded-full px-3 py-1">
+            {TYPE_LABEL[o.type] ?? TYPE_LABEL.public}
+          </span>
+          {o.lifecycleStatus && o.lifecycleStatus !== 'active' && (
+            <span className={`inline-block text-[11px] font-semibold border rounded-full px-3 py-1 ${LIFECYCLE_BADGE[o.lifecycleStatus].className}`}>
+              {LIFECYCLE_BADGE[o.lifecycleStatus].text}
+            </span>
+          )}
+        </div>
         <div onClick={e => e.stopPropagation()} className="shrink-0">
           <SaveButton opportunityId={o.id} />
         </div>

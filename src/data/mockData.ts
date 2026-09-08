@@ -10,6 +10,11 @@ export interface Opportunity {
   amount: string;
   deadline: string;
   status: 'Non analysé' | 'En cours' | 'Déposé' | 'Gagné' | 'Perdu';
+  // The opportunity's own real-world state (separate from `status` above,
+  // which tracks the current user's progress against it) - client's ask:
+  // "En cours / Clôturé / Attribué / Annulé" instead of everything looking
+  // like a fresh new opportunity regardless of whether it's still open.
+  lifecycleStatus?: 'active' | 'expired' | 'awarded' | 'cancelled';
   match: number;
   type: 'public' | 'private' | 'subcontracting';
   sector: string;

@@ -21,7 +21,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     ? params
     : { journey: params };
 
-  const { journey, region, city, department, trade_id, q } = searchParams;
+  const { journey, region, city, department, trade_id, q, status } = searchParams;
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -40,7 +40,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     setPage(1);
 
     opportunitiesApi
-      .search({ journey, region, city, department, trade_id, q, page: 1, limit: PAGE_SIZE })
+      .search({ journey, region, city, department, trade_id, q, status, page: 1, limit: PAGE_SIZE })
       .then((data) => {
         if (cancelled || thisRequest !== requestId.current) return;
         setOpportunities(data.results.map(apiOpportunityToDisplay));
@@ -64,7 +64,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     return () => {
       cancelled = true;
     };
-  }, [journey, region, city, department, trade_id, q]);
+  }, [journey, region, city, department, trade_id, q, status]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || page >= totalPages) return;
@@ -73,7 +73,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     setLoadingMore(true);
 
     opportunitiesApi
-      .search({ journey, region, city, department, trade_id, q, page: nextPage, limit: PAGE_SIZE })
+      .search({ journey, region, city, department, trade_id, q, status, page: nextPage, limit: PAGE_SIZE })
       .then((data) => {
         if (thisRequest !== requestId.current) return; // filters changed underneath us
         setOpportunities((prev) => [...prev, ...data.results.map(apiOpportunityToDisplay)]);
@@ -86,7 +86,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
       .finally(() => {
         setLoadingMore(false);
       });
-  }, [journey, region, city, department, trade_id, q, page, totalPages, loadingMore]);
+  }, [journey, region, city, department, trade_id, q, status, page, totalPages, loadingMore]);
 
   return {
     opportunities,
