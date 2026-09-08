@@ -189,6 +189,7 @@ export type OpportunitySearchParams = {
   department?: string;
   min_value?: number;
   max_value?: number;
+  status?: string;
   page?: number;
   limit?: number;
 };
