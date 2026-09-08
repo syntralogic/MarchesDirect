@@ -497,7 +497,7 @@ export default function OpportunityDetailPage() {
     || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`);
 
   return (
-    <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
+    <div className="page-fade-in bg-[#001326] relative z-10 max-w-3xl mx-auto px-4 py-6 md:py-10">
       <PageMeta title={`${opportunity.title} — Marchés Direct`} description={metaDescription.slice(0, 300)} />
       <button
         onClick={() => (screen > 1 ? setScreen((s) => (s - 1) as 1 | 2 | 3) : navigate(-1))}
