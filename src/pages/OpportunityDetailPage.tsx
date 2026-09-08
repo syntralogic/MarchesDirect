@@ -233,8 +233,16 @@ export default function OpportunityDetailPage() {
     setLeadSubmitting(true);
     setLeadError(null);
     const { error } = await captureLead(leadPhone, leadEmail, id);
-    if (error) setLeadError(error);
-    else setJustUnlockedAnalysis(true);
+    if (error) {
+      setLeadError(error);
+    } else {
+      // Client's exact button label is "Enregistrer et continuer" - one
+      // action, not submit-then-a-second-tap. Was previously just setting
+      // leadCaptured and leaving the visitor on the same screen with a
+      // "Continuer" button that had appeared in the form's place.
+      setJustUnlockedAnalysis(true);
+      setScreen(3);
+    }
     setLeadSubmitting(false);
   };
 
@@ -800,11 +808,15 @@ export default function OpportunityDetailPage() {
         </div>
       )}
 
-      {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
-          after "Détails du dossier" above (client's brief: no tab switch
-          between the fiche and the identification/score flow). */}
-      {screen < 3 && (
-        !isOpportunityConfirmed(id) && !isAuthenticated ? (
+      {/* SIRET / IDENTIFICATION — bottom of Page 1 ("Votre opportunité") per
+          the client's exact 4-page breakdown (5 Sep 10:20pm): "En bas de
+          cette page, il recherche son entreprise... Dès qu'il sélectionne
+          la bonne entreprise, il passe automatiquement à la page suivante."
+          This used to be gated on `screen < 3` (true for screens 1 AND 2
+          alike) with no distinct content for screen 2 at all - selecting a
+          candidate correctly called setScreen(2), but nothing new ever
+          rendered for it, so the page appeared stuck. */}
+      {screen === 1 && !isOpportunityConfirmed(id) && !isAuthenticated && (
           <div className="space-y-4">
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
@@ -867,7 +879,14 @@ export default function OpportunityDetailPage() {
               )}
             </div>
           </div>
-        ) : (
+      )}
+
+      {/* Page 2 ("Votre entreprise et votre concordance", client's exact
+          4-page breakdown) - company card + concordance score + email/phone,
+          nothing else. Criteria breakdown / eligibility docs / dossier-prep
+          checklist moved into screen 3 below (they never appear in the
+          client's reference screenshot for this screen). */}
+      {screen === 2 && (
           <>
             {siretCompany && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
@@ -1032,76 +1051,8 @@ export default function OpportunityDetailPage() {
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
             </div>
-
-            {/* Full compatibility breakdown - always visible once the
-                score is in, matching the brief's page 2 ("detailed
-                breakdown of the compatibility factors") which never
-                describes hiding it. The email/phone step below only
-                gates moving on to the next screen, not seeing this. */}
-            <>
-                {justUnlockedAnalysis && (
-                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                    <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
-                  </div>
-                )}
-
-                <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                  <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
-                  <div className="space-y-2.5">
-                    {matchScore.criteria.map((c, i) => (
-                      <div key={i}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-[#B9BBC8]">{c.label}</span>
-                          <span className="text-white font-semibold">{c.weight}%</span>
-                        </div>
-                        <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
-                          <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {matchScore.eligibility.length > 0 && (
-                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                    <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
-                    <div className="space-y-2.5">
-                      {matchScore.eligibility.map((el, i) => (
-                        <div key={i} className="flex items-start gap-2.5 text-xs">
-                          {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-                            : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                            : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
-                          <div>
-                            <p className="text-white font-semibold">{el.label}</p>
-                            <p className="text-[#B9BBC8]">{el.note}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {!isAuthenticated && (
-                      <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
-                    )}
-                  </div>
-                )}
-
-                <RefineAnalysisAccordion t={t} />
-
-                {/* Client's newest brief: "Votre candidature peut déjà commencer" -
-                    a single new screen/block inserted after the full analysis,
-                    reusing real signals already on this page rather than
-                    fabricating readiness. DC1/DC2/DUME/mémoire technique/prix
-                    are never marked ready here - no free draft-generation
-                    pipeline runs pre-payment, and the client's rule is explicit
-                    ("aucune information inventée... aucun document présenté
-                    comme définitif sans vérification"). */}
-                <DossierPrepBlock
-                  t={t}
-                  siretCompany={siretCompany}
-                  matchScore={matchScore}
-                  checklistDocs={checklistDocs}
-                  checklistRefCount={checklistRefCount}
-                  onContactManager={() => setShowAccountManagerModal(true)}
-                />
+            </div>
+          ) : null}
 
                 {(isAuthenticated || leadCaptured) ? (
                   <button
@@ -1159,11 +1110,7 @@ export default function OpportunityDetailPage() {
                     </form>
                   </div>
                 )}
-            </>
-          </div>
-            ) : null}
           </>
-        )
       )}
 
       {/* SUIVI & RAPPEL — "Votre dossier" hub (client's screenshot,
@@ -1176,6 +1123,78 @@ export default function OpportunityDetailPage() {
           buttons. */}
       {screen === 3 && (
         <div className="space-y-4 mt-4">
+          {justUnlockedAnalysis && (
+            <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+              <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
+            </div>
+          )}
+
+          {/* Detailed compatibility breakdown - moved here from the
+              Concordance screen (client's exact reference for that screen
+              never shows criteria weights / eligibility docs, only the
+              score summary card). Kept, just relocated to the dossier hub
+              where "en savoir plus" content belongs. */}
+          {matchScore && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+              <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
+              <div className="space-y-2.5">
+                {matchScore.criteria.map((c, i) => (
+                  <div key={i}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-[#B9BBC8]">{c.label}</span>
+                      <span className="text-white font-semibold">{c.weight}%</span>
+                    </div>
+                    <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
+                      <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {matchScore && matchScore.eligibility.length > 0 && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+              <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
+              <div className="space-y-2.5">
+                {matchScore.eligibility.map((el, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-xs">
+                    {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
+                      : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                      : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
+                    <div>
+                      <p className="text-white font-semibold">{el.label}</p>
+                      <p className="text-[#B9BBC8]">{el.note}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {!isAuthenticated && (
+                <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
+              )}
+            </div>
+          )}
+
+          <RefineAnalysisAccordion t={t} />
+
+          {/* Client's newest brief: "Votre candidature peut déjà commencer" -
+              reuses real signals already on this page rather than
+              fabricating readiness. DC1/DC2/DUME/mémoire technique/prix are
+              never marked ready here - no free draft-generation pipeline
+              runs pre-payment, and the client's rule is explicit ("aucune
+              information inventée... aucun document présenté comme définitif
+              sans vérification"). */}
+          {matchScore && (
+            <DossierPrepBlock
+              t={t}
+              siretCompany={siretCompany}
+              matchScore={matchScore}
+              checklistDocs={checklistDocs}
+              checklistRefCount={checklistRefCount}
+              onContactManager={() => setShowAccountManagerModal(true)}
+            />
+          )}
+
           <div className="bg-green-400/10 border border-green-400/30 rounded-2xl p-5 md:p-6">
             <p className="flex items-center gap-2 text-xs font-semibold text-green-400 mb-1"><CheckCircle2 size={14} /> {t('followUpSaved') || 'Opportunité enregistrée'}</p>
             <h2 className="text-base font-extrabold text-white">{t('followUpSavedSub') || 'Elle apparaît maintenant dans votre tableau de bord'}</h2>
