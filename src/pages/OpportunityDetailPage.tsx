@@ -526,7 +526,12 @@ export default function OpportunityDetailPage() {
               }`}>
                 {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
-              <span className={`text-[11px] sm:text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              {/* Labels only from sm+ - three full-length French labels
+                  ("Votre opportunité" being the longest) don't fit a phone
+                  width without overlapping; the current step's name is
+                  already shown as this page's own heading further down, so
+                  nothing is actually lost by hiding these on a phone. */}
+              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
             </div>
