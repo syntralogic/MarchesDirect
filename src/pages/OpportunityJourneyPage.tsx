@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building, Building2, Handshake, ChevronRight, ArrowLeft, ArrowRight,
@@ -82,6 +82,15 @@ export default function OpportunityJourneyPage() {
   const [citySearch, setCitySearch] = useState('');
   const [pickedCity, setPickedCity] = useState('');
   const [radius, setRadius] = useState(50);
+  // City search was matching only the 12 hardcoded cities in mockData.ts
+  // (Paris, Marseille, Lyon...), so typing any other French commune (the
+  // vast majority) returned zero suggestions and "Appliquer la zone" stayed
+  // disabled - the location step was a dead end for most towns. Now queries
+  // the same live api-adresse.data.gouv.fr municipality search HomePage's
+  // city search already uses, falling back to the static popular-cities
+  // list when the box is empty or the lookup fails.
+  const [cityApiResults, setCityApiResults] = useState<{ name: string }[]>([]);
+  const [cityApiLoading, setCityApiLoading] = useState(false);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [status, setStatus] = useState('Tous');
@@ -109,10 +118,41 @@ export default function OpportunityJourneyPage() {
     return TRADE_SUGGESTIONS.filter(s => s.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
   }, [query]);
 
+  const debouncedCitySearch = useDebounce(citySearch, 300);
+
+  useEffect(() => {
+    if (!locationModalOpen) return;
+    const trimmed = debouncedCitySearch.trim();
+    if (trimmed.length < 2) { setCityApiResults([]); setCityApiLoading(false); return; }
+    let cancelled = false;
+    setCityApiLoading(true);
+    fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(trimmed)}&type=municipality&limit=8`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (cancelled) return;
+        const features = data?.features || [];
+        const seen = new Set<string>();
+        const results: { name: string }[] = [];
+        for (const f of features) {
+          const name = f?.properties?.city || f?.properties?.name;
+          if (name && !seen.has(name)) { seen.add(name); results.push({ name }); }
+        }
+        setCityApiResults(results);
+      })
+      .catch(() => { if (!cancelled) setCityApiResults([]); })
+      .finally(() => { if (!cancelled) setCityApiLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedCitySearch, locationModalOpen]);
+
   const citySuggestions = useMemo(() => {
-    if (!citySearch.trim()) return cities.slice(0, 5);
-    return cities.filter(c => c.name.toLowerCase().includes(citySearch.toLowerCase())).slice(0, 5);
-  }, [citySearch]);
+    const trimmed = citySearch.trim();
+    if (!trimmed) return cities.slice(0, 5);
+    if (trimmed.length < 2) return cities.filter(c => c.name.toLowerCase().includes(trimmed.toLowerCase())).slice(0, 5);
+    if (cityApiResults.length > 0) return cityApiResults;
+    // Still loading, or the live lookup came back empty/failed - keep the
+    // static list as a fallback so the modal never goes blank mid-search.
+    return cities.filter(c => c.name.toLowerCase().includes(trimmed.toLowerCase())).slice(0, 5);
+  }, [citySearch, cityApiResults]);
 
   const toggleType = (id: OppType) => {
     setTypes(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
@@ -582,6 +622,12 @@ export default function OpportunityJourneyPage() {
               </div>
 
               <div className="space-y-1 mb-4">
+                {cityApiLoading && citySearch.trim().length >= 2 && (
+                  <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeySearching') || 'Recherche...'}</p>
+                )}
+                {!cityApiLoading && citySearch.trim().length >= 2 && citySuggestions.length === 0 && (
+                  <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeyNoCityFound') || 'Aucune ville trouvée.'}</p>
+                )}
                 {citySuggestions.map(c => (
                   <button
                     key={c.name}
