@@ -61,6 +61,7 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
     // why this isn't pre-formatted into a display string here).
     deadline: formatDeadline(api.deadline),
     status: toDisplayStatus(api.ai_classification_status),
+    listingStatus: api.status,
     match: api.match_score ?? 0,
     type: JOURNEY_TO_TYPE[api.journey],
     sector: api.trade_name || '',

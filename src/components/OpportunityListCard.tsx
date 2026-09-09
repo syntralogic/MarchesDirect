@@ -30,6 +30,16 @@ const TYPE_LABEL: Record<Opportunity['type'], string> = {
   subcontracting: 'Sous-traitance',
 };
 
+// Client (2026-09-09): "sab dikhna chahiye jitna hai" - the backend no
+// longer hides closed/awarded/cancelled listings from search, it labels
+// them instead. A card with no badge is implicitly open/active (by far
+// the common case), so only non-active statuses render anything here.
+const LISTING_STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  expired: { label: 'Marché clôturé', className: 'text-[#B9BBC8] bg-white/5 border-white/15' },
+  awarded: { label: 'Attribué', className: 'text-[#5EA6FF] bg-[#5EA6FF]/10 border-[#5EA6FF]/25' },
+  cancelled: { label: 'Annulé', className: 'text-red-400 bg-red-400/10 border-red-400/25' },
+};
+
 function getDeadlineText(deadline: string | undefined, t: (key: string) => string) {
   if (!deadline) return '-';
   const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
@@ -43,6 +53,7 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
   const navigate = useNavigate();
   const destination = to ?? `/opportunites/${o.id}`;
   const deadlineText = getDeadlineText(o.deadline, t);
+  const statusBadge = o.listingStatus ? LISTING_STATUS_BADGE[o.listingStatus] : undefined;
 
   let statusLine: { text: string; className: string };
   if (compatible !== undefined) {
@@ -63,9 +74,16 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
       onClick={() => navigate(destination)}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
-        <span className="inline-block text-[11px] font-medium text-white border border-white/25 rounded-full px-3 py-1">
-          {TYPE_LABEL[o.type] ?? TYPE_LABEL.public}
-        </span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="inline-block text-[11px] font-medium text-white border border-white/25 rounded-full px-3 py-1">
+            {TYPE_LABEL[o.type] ?? TYPE_LABEL.public}
+          </span>
+          {statusBadge && (
+            <span className={`inline-block text-[11px] font-semibold border rounded-full px-3 py-1 ${statusBadge.className}`}>
+              {statusBadge.label}
+            </span>
+          )}
+        </div>
         <div onClick={e => e.stopPropagation()} className="shrink-0">
           <SaveButton opportunityId={o.id} />
         </div>
