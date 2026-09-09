@@ -90,6 +90,13 @@ export default function OpportunityJourneyPage() {
   const [pickedDepartment, setPickedDepartment] = useState('');
   const [pickedRegion, setPickedRegion] = useState('');
   const [zoneResolving, setZoneResolving] = useState(false);
+  // Surfaced when "Whole department"/"Whole region" can't actually be
+  // resolved to a real department code / region name (no city context yet,
+  // or the lookup failed) - previously these silently fell back to
+  // searching all of France while still labeling the pick "Whole
+  // department"/"Whole region", which is exactly the "selection ka masla"
+  // (wrong results for the zone you picked) the client reported.
+  const [zoneError, setZoneError] = useState('');
   // City search was matching only the 12 hardcoded cities in mockData.ts
   // (Paris, Marseille, Lyon...), so typing any other French commune (the
   // vast majority) returned zero suggestions and "Appliquer la zone" stayed
@@ -140,6 +147,10 @@ export default function OpportunityJourneyPage() {
   }, [query]);
 
   const debouncedCitySearch = useDebounce(citySearch, 300);
+
+  useEffect(() => {
+    if (locationModalOpen) setZoneError('');
+  }, [locationModalOpen]);
 
   useEffect(() => {
     if (!locationModalOpen) return;
@@ -215,25 +226,44 @@ export default function OpportunityJourneyPage() {
     }
   };
 
+  // Whether there's any city text to resolve a department/region from -
+  // either currently typed, or already picked from the suggestions list.
+  // "Whole department"/"Whole region" need this; without it there is
+  // nothing to derive an area from, so those two picks are disabled below
+  // instead of silently applying no filter (= every opportunity in France)
+  // while still showing as "Whole department"/"Whole region" selected.
+  const hasAreaSource = citySearch.trim().length > 0 || (!!pickedCity && !WHOLE_AREA_PICKS.includes(pickedCity));
+
   const pickWholeDepartment = async () => {
+    setZoneError('');
     setZoneResolving(true);
     const { department } = await resolveAreaFromCity();
     setZoneResolving(false);
+    if (!department) {
+      setZoneError(t('journeyZoneResolveError') || "Impossible de déterminer le département. Essayez de rechercher une ville d'abord.");
+      return;
+    }
     setPickedRegion('');
     setPickedDepartment(department);
     setPickedCity('Département entier');
   };
 
   const pickWholeRegion = async () => {
+    setZoneError('');
     setZoneResolving(true);
     const { region } = await resolveAreaFromCity();
     setZoneResolving(false);
+    if (!region) {
+      setZoneError(t('journeyZoneResolveError') || "Impossible de déterminer la région. Essayez de rechercher une ville d'abord.");
+      return;
+    }
     setPickedDepartment('');
     setPickedRegion(region);
     setPickedCity('Région entière');
   };
 
   const pickWholeFrance = () => {
+    setZoneError('');
     setPickedDepartment('');
     setPickedRegion('');
     setPickedCity('France entière');
@@ -697,7 +727,7 @@ export default function OpportunityJourneyPage() {
                 <input
                   autoFocus
                   value={citySearch}
-                  onChange={e => setCitySearch(e.target.value)}
+                  onChange={e => { setCitySearch(e.target.value); setZoneError(''); }}
                   placeholder={t('journeyCitySearchPlaceholder')}
                   className="w-full bg-[#061D32] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
                 />
@@ -738,17 +768,61 @@ export default function OpportunityJourneyPage() {
                 ))}
               </div>
 
-              <div className="space-y-1 mb-5">
-                <button onClick={pickWholeDepartment} disabled={zoneResolving} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors disabled:opacity-50">
-                  {t('journeyWholeDept')} <ChevronRight size={14} className="text-orange" />
+              <div className="space-y-1 mb-2">
+                <button
+                  onClick={pickWholeDepartment}
+                  disabled={zoneResolving || !hasAreaSource}
+                  title={!hasAreaSource ? (t('journeyZoneNeedsCity') || "Recherchez d'abord une ville ci-dessus") : undefined}
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg border text-sm transition-colors disabled:opacity-40 ${
+                    pickedCity === 'Département entier' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-white hover:border-orange/40'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {pickedCity === 'Département entier' && <CheckCircle2 size={14} />}
+                    {t('journeyWholeDept')}
+                    {pickedCity === 'Département entier' && pickedDepartment && (
+                      <span className="text-[10px] text-[#B9BBC8] font-normal">({pickedDepartment})</span>
+                    )}
+                  </span>
+                  {zoneResolving ? <Loader2 size={14} className="text-orange animate-spin" /> : <ChevronRight size={14} className="text-orange" />}
                 </button>
-                <button onClick={pickWholeRegion} disabled={zoneResolving} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors disabled:opacity-50">
-                  {t('journeyWholeRegion')} <ChevronRight size={14} className="text-orange" />
+                <button
+                  onClick={pickWholeRegion}
+                  disabled={zoneResolving || !hasAreaSource}
+                  title={!hasAreaSource ? (t('journeyZoneNeedsCity') || "Recherchez d'abord une ville ci-dessus") : undefined}
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg border text-sm transition-colors disabled:opacity-40 ${
+                    pickedCity === 'Région entière' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-white hover:border-orange/40'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {pickedCity === 'Région entière' && <CheckCircle2 size={14} />}
+                    {t('journeyWholeRegion')}
+                    {pickedCity === 'Région entière' && pickedRegion && (
+                      <span className="text-[10px] text-[#B9BBC8] font-normal">({pickedRegion})</span>
+                    )}
+                  </span>
+                  {zoneResolving ? <Loader2 size={14} className="text-orange animate-spin" /> : <ChevronRight size={14} className="text-orange" />}
                 </button>
-                <button onClick={pickWholeFrance} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
-                  {t('journeyWholeFrance')} <ChevronRight size={14} className="text-orange" />
+                <button
+                  onClick={pickWholeFrance}
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-lg border text-sm transition-colors ${
+                    pickedCity === 'France entière' ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-white hover:border-orange/40'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {pickedCity === 'France entière' && <CheckCircle2 size={14} />}
+                    {t('journeyWholeFrance')}
+                  </span>
+                  <ChevronRight size={14} className="text-orange" />
                 </button>
               </div>
+              {zoneError && (
+                <p className="text-[11px] text-red-400 mb-3">{zoneError}</p>
+              )}
+              {!hasAreaSource && !zoneError && (
+                <p className="text-[10px] text-[#6B7280] mb-3">{t('journeyZoneNeedsCity') || "Recherchez d'abord une ville ci-dessus pour sélectionner un département ou une région entière."}</p>
+              )}
+              {hasAreaSource && !zoneError && <div className="mb-3" />}
 
               <button
                 onClick={applyZone}
