@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building, Building2, Handshake, ChevronRight, ArrowLeft, ArrowRight,
@@ -102,8 +103,15 @@ export default function OpportunityJourneyPage() {
   const WHOLE_AREA_PICKS = ['Département entier', 'Région entière', 'France entière'];
   const cityForApi = WHOLE_AREA_PICKS.includes(pickedCity) ? '' : pickedCity.split(' — ')[0].split(',')[0].trim();
 
+  // Was JOURNEY_CODE_MAP[types[0]] - the type step lets several opportunity
+  // types be toggled on at once (and step 4's filter pills show every
+  // selected type as active), but only the first-selected one was ever
+  // actually sent to the search, so picking e.g. both "Marchés publics" and
+  // "Appels d'offres" silently searched only "Marchés publics".
+  const journeyForApi = types.map(ty => JOURNEY_CODE_MAP[ty]).join(',');
+
   const { opportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
-    journey: JOURNEY_CODE_MAP[types[0]],
+    journey: journeyForApi,
     q: debouncedQuery || undefined,
     city: cityForApi || undefined,
   });
@@ -600,7 +608,15 @@ export default function OpportunityJourneyPage() {
       )}
 
       {/* Location Modal */}
-      {locationModalOpen && (
+      {/* Rendered via a portal straight onto <body>, like AppointmentModal/
+          CallbackModal already do - this div was previously a normal
+          descendant of the .page-fade-in wrapper above, whose opacity
+          animation creates its own stacking context. That trapped this
+          modal's z-50 inside a local context with no z-index of its own,
+          so on mobile the fixed BottomNav (z-40, a root-level sibling)
+          could paint over it and "Appliquer la zone" ended up hidden
+          behind the bottom bar. */}
+      {locationModalOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLocationModalOpen(false)} />
           <div className="relative w-full md:max-w-md bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10 max-h-[85dvh] overflow-y-auto">
@@ -677,11 +693,12 @@ export default function OpportunityJourneyPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Filters Modal */}
-      {filtersOpen && (
+      {/* Filters Modal - same portal fix as the Location Modal above. */}
+      {filtersOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setFiltersOpen(false)} />
           <div className="relative w-full md:max-w-md bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10 max-h-[85dvh] overflow-y-auto">
@@ -721,7 +738,8 @@ export default function OpportunityJourneyPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />

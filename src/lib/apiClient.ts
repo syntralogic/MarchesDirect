@@ -191,7 +191,11 @@ export type ApiPagination = {
 };
 
 export type OpportunitySearchParams = {
-  journey?: 'tender' | 'public_procurement' | 'subcontracting';
+  // Comma-separated for multiple (e.g. 'tender,public_procurement') - the
+  // journey step lets several opportunity types be selected at once; a
+  // strict single-value union here previously meant the search always
+  // silently dropped everything but the first-selected type.
+  journey?: 'tender' | 'public_procurement' | 'subcontracting' | string;
   q?: string;
   trade_id?: string;
   region?: string;
