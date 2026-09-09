@@ -139,6 +139,9 @@ export type ApiOpportunityDetail = ApiOpportunity & {
   cpv_display?: string | null;
   source_reference?: string | null;
   identity_unlocked?: boolean;
+  // Link back to the official notice (BOAMP/TED/PLACE) - null when the
+  // source has no confirmed stable per-notice public URL (e.g. DECP).
+  official_url?: string | null;
   // Aggregated buyer stat, computed server-side from the real (unredacted)
   // buyer_name - safe to show even on a locked private tender/sous-
   // traitance fiche per spec (name-free), so it's a plain top-level field,
