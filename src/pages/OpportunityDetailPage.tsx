@@ -794,6 +794,11 @@ export default function OpportunityDetailPage() {
           {opportunity.ai_extracted_facts && (() => {
             const facts = opportunity.ai_extracted_facts;
             const rows: { label: string; value: string }[] = [];
+            // Client's audit: no "référence officielle" shown anywhere on
+            // the fiche. source_reference is the raw BOAMP idweb / TED
+            // publication-number etc. (see officialUrl.ts) - always known
+            // at ingest time, unlike the AI-extracted fields below.
+            if (opportunity.source_reference) rows.push({ label: t('dossierFactReference'), value: opportunity.source_reference });
             // contract_object is already shown prominently above as "Travaux
             // à réaliser" ("Le marché en 30 secondes" block) - repeating the
             // exact same string here under "Objet du marché" is precisely
@@ -808,6 +813,14 @@ export default function OpportunityDetailPage() {
             if (facts.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: facts.submission_method.value });
             if (facts.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
             if (facts.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
+            // Attribution info only ever shows up once BOAMP/DECP actually
+            // publishes an award notice - not available on an open call for
+            // tenders is the expected, common case, not a gap.
+            if (facts.attribution_winner?.available) rows.push({ label: t('dossierFactAttributionWinner'), value: facts.attribution_winner.value });
+            if (facts.attribution_amount?.available) rows.push({ label: t('dossierFactAttributionAmount'), value: facts.attribution_amount.value });
+            if (facts.attribution_date?.available) rows.push({ label: t('dossierFactAttributionDate'), value: facts.attribution_date.value });
+            if (facts.buyer_phone?.available) rows.push({ label: t('dossierFactBuyerPhone'), value: facts.buyer_phone.value });
+            if (facts.buyer_website?.available) rows.push({ label: t('dossierFactBuyerWebsite'), value: facts.buyer_website.value });
             if (opportunity.buyer_history_count != null) rows.push({
               label: t('dossierFactBuyerHistory'),
               value: opportunity.buyer_history_count === 0

@@ -165,6 +165,13 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     submission_method?: { value: string; available: boolean };
     allotment?: { value: string; available: boolean };
     technical_visit?: { value: string; available: boolean };
+    // Client's audit: attribution info + fuller buyer contact details were
+    // entirely missing (backend aiService.extractOpportunityFacts).
+    attribution_winner?: { value: string; available: boolean };
+    attribution_amount?: { value: string; available: boolean };
+    attribution_date?: { value: string; available: boolean };
+    buyer_phone?: { value: string; available: boolean };
+    buyer_website?: { value: string; available: boolean };
     // Newer opportunities: structured {label, severity}. Older ones not yet
     // re-extracted after the severity upgrade may still be a plain string -
     // the component rendering this checks the shape defensively.
