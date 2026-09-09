@@ -201,7 +201,7 @@ export default function CompanyVaultPage() {
                 {certifications.length > 0 && (
                   <div className="space-y-1.5 mt-2">
                     {certifications.map(c => (
-                      <Row key={c.id}>
+                      <Row key={c.id} onDelete={() => companyVaultApi.certifications.remove(c.id).then(loadAll)}>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-white font-semibold truncate">{c.certification_name}</p>
                           <p className="text-xs text-[#B9BBC8]">
@@ -223,7 +223,7 @@ export default function CompanyVaultPage() {
                 {references.length > 0 && (
                   <div className="space-y-1.5 mt-2">
                     {references.map(r => (
-                      <Row key={r.id}>
+                      <Row key={r.id} onDelete={() => companyVaultApi.references.remove(r.id).then(loadAll)}>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-white font-semibold truncate">{r.project_name}</p>
                           <p className="text-xs text-[#B9BBC8] truncate">
@@ -266,7 +266,7 @@ export default function CompanyVaultPage() {
               {activeTab === 'resources' && (
                 <Section title={t('companyVaultResources') || 'Moyens humains & matériels'} onAdd={() => setModal('resources')} addLabel={t('companyVaultAddResource') || 'Ajouter une ressource'}>
                   {resources.length === 0 ? <EmptyState label={t('companyVaultNoResources') || 'Aucune ressource. Effectifs, équipements, véhicules...'} /> : resources.map(r => (
-                    <Row key={r.id}>
+                    <Row key={r.id} onDelete={() => companyVaultApi.resources.remove(r.id).then(loadAll)}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white font-semibold truncate">{r.name}</p>
                         <p className="text-xs text-[#B9BBC8]">{r.resource_type === 'staff' ? t('companyVaultStaff') || 'Personnel' : r.resource_type === 'equipment' ? t('companyVaultEquipment') || 'Équipement' : t('companyVaultFacility') || 'Installation'}{r.quantity != null && ` · ${t('companyVaultQuantity') || 'Quantité'} : ${r.quantity}`}</p>
@@ -279,7 +279,7 @@ export default function CompanyVaultPage() {
               {activeTab === 'policies' && (
                 <Section title={t('companyVaultPolicies') || 'Politiques qualité / sécurité / environnement'} onAdd={() => setModal('policies')} addLabel={t('companyVaultAddPolicy') || 'Ajouter une politique'}>
                   {policies.length === 0 ? <EmptyState label={t('companyVaultNoPolicies') || 'Aucune politique. Ce texte sera réutilisé dans vos mémoires techniques.'} /> : policies.map(p => (
-                    <Row key={p.id}>
+                    <Row key={p.id} onDelete={() => companyVaultApi.policies.remove(p.id).then(loadAll)}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white font-semibold">{p.policy_type === 'quality' ? t('companyVaultQuality') || 'Qualité' : p.policy_type === 'safety' ? t('companyVaultSafety') || 'Sécurité' : p.policy_type === 'environment' ? t('companyVaultEnvironment') || 'Environnement' : p.policy_type}</p>
                         <p className="text-xs text-[#B9BBC8] line-clamp-2">{p.policy_text}</p>
