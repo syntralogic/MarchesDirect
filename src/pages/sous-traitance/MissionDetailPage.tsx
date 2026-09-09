@@ -58,7 +58,7 @@ export default function MissionDetailPage() {
           </div>
           <div className="rounded-xl border border-[#17334D] bg-[#061D32] p-3 text-center">
             <div className="text-[10px] text-[#B9BBC8]">Échéance</div>
-            <div className="mt-1 text-[13px] font-bold text-white">{new Date(mission.deadline).toLocaleDateString('fr-FR')}</div>
+            <div className="mt-1 text-[13px] font-bold text-white">{mission.deadline ? new Date(mission.deadline).toLocaleDateString('fr-FR') : '—'}</div>
           </div>
           <div className="rounded-xl border border-[#17334D] bg-[#061D32] p-3 text-center">
             <div className="text-[10px] text-[#B9BBC8]">Secteur</div>
