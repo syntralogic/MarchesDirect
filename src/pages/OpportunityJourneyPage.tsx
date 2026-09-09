@@ -141,6 +141,18 @@ export default function OpportunityJourneyPage() {
     [opportunities, status]
   );
 
+  // Header count: the page fetches PAGE_SIZE (100) at a time and appends
+  // more via "load more", so opportunities.length/filteredResults.length
+  // only reflects what's been loaded so far - showing that as "the"
+  // result count understates how many actually match once a search
+  // matches more than one page, which read as "results incomplete" even
+  // though every match is reachable via Load more. `total` is the real,
+  // backend-reported count for the current server-side filters (journey/
+  // q/city/department/region); only fall back to the loaded/filtered
+  // count when the client-side status filter (not sent to the backend)
+  // is narrowing the list further than `total` accounts for.
+  const displayResultCount = status === 'Tous' ? total : filteredResults.length;
+
   const filteredSuggestions = useMemo(() => {
     if (!query.trim()) return TRADE_SUGGESTIONS.slice(0, 3);
     return TRADE_SUGGESTIONS.filter(s => s.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
@@ -636,7 +648,7 @@ export default function OpportunityJourneyPage() {
 
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-bold text-white">
-              <span className="text-orange">{filteredResults.length}</span> {filteredResults.length !== 1 ? t('journeyResultsPlural') : t('journeyResults')}
+              <span className="text-orange">{displayResultCount}</span> {displayResultCount !== 1 ? t('journeyResultsPlural') : t('journeyResults')}
             </h2>
             <button
               onClick={() => setFiltersOpen(true)}
