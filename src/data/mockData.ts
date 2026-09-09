@@ -10,13 +10,11 @@ export interface Opportunity {
   amount: string;
   deadline: string;
   status: 'Non analysé' | 'En cours' | 'Déposé' | 'Gagné' | 'Perdu';
-  // Unrelated to `status` above (that one is the user's own candidature
-  // progress). This is the opportunity listing's own real-world lifecycle
-  // from the API's `status` column (active/expired/awarded/cancelled) -
-  // added 2026-09-09 alongside the backend change that stopped hiding
-  // closed/awarded listings outright and started labeling them instead
-  // (client: "sab dikhna chahiye jitna hai").
-  listingStatus?: string;
+  // The opportunity's own real-world state (separate from `status` above,
+  // which tracks the current user's progress against it) - client's ask:
+  // "En cours / Clôturé / Attribué / Annulé" instead of everything looking
+  // like a fresh new opportunity regardless of whether it's still open.
+  lifecycleStatus?: 'active' | 'expired' | 'awarded' | 'cancelled';
   match: number;
   type: 'public' | 'private' | 'subcontracting';
   sector: string;

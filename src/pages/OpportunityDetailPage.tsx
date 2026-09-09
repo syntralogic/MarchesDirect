@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download,
+  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink,
   Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,7 @@ import {
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
 } from '@/lib/apiClient';
+import { stripMarkdownArtifacts } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
@@ -175,26 +176,11 @@ export default function OpportunityDetailPage() {
   // Nothing that used to be visible is hidden by this split - every card
   // still renders, only regrouped by screen; the email/phone step only
   // gates moving on to the next screen, never the analysis itself.
-  // Starts on screen 1 unless the company is already known (context from
-  // an earlier step in this session), in which case screen 2 is the
-  // correct starting point.
-  const [screen, setScreen] = useState<1 | 2 | 3>(() => (isOpportunityConfirmed(id) || (isAuthenticated && !!company)) ? 2 : 1);
-  // useAuth() can resolve isAuthenticated/company asynchronously after this
-  // component's first render, which the lazy useState initializer above
-  // (runs once, at mount) can't see. Without this, a logged-in user with a
-  // known company stayed stuck on screen 1 whenever auth loaded a beat
-  // after mount - screen 1's own content then rendered at the same time as
-  // the company/concordance content meant for screen 2 (see the `screen < 3`
-  // render logic further down, which shows that content once authenticated
-  // regardless of the actual screen value). Runs once only, via the ref, so
-  // it doesn't override a deliberate "Modifier" navigation back to screen 1.
+  // FIX 1: Always start on screen 1, regardless of authentication status.
+  const [screen, setScreen] = useState<1 | 2 | 3>(1);
+  
+  // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
   const autoAdvancedRef = useRef(false);
-  useEffect(() => {
-    if (!autoAdvancedRef.current && screen === 1 && isAuthenticated && company) {
-      autoAdvancedRef.current = true;
-      setScreen(2);
-    }
-  }, [isAuthenticated, company, screen]);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -249,8 +235,16 @@ export default function OpportunityDetailPage() {
     setLeadSubmitting(true);
     setLeadError(null);
     const { error } = await captureLead(leadPhone, leadEmail, id);
-    if (error) setLeadError(error);
-    else setJustUnlockedAnalysis(true);
+    if (error) {
+      setLeadError(error);
+    } else {
+      // Client's exact button label is "Enregistrer et continuer" - one
+      // action, not submit-then-a-second-tap. Was previously just setting
+      // leadCaptured and leaving the visitor on the same screen with a
+      // "Continuer" button that had appeared in the form's place.
+      setJustUnlockedAnalysis(true);
+      setScreen(3);
+    }
     setLeadSubmitting(false);
   };
 
@@ -293,17 +287,6 @@ export default function OpportunityDetailPage() {
       .catch(() => setAccess({ identityUnlocked: false }))
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
-
-  // NOTE: previously an effect here force-advanced screen 1 -> 2 for any
-  // authenticated visitor, on every single opportunity, even ones they'd
-  // never opened before. That's the same "page 1 missing" bug the
-  // isOpportunityConfirmed() mechanism above was built to fix, just
-  // reintroduced through a different door - a logged-in visitor's company
-  // being "known" doesn't mean this specific opportunity's own résumé,
-  // travaux, exigences and points de vigilance shouldn't be shown first.
-  // Removed; the initial `screen` state above (isOpportunityConfirmed(id)
-  // only) is now the single source of truth for whether to start on
-  // screen 1 or 2.
 
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
@@ -518,11 +501,11 @@ export default function OpportunityDetailPage() {
   // callback slot is booked (see the "Donneur d'ordre" block below).
   const identityUnlocked = isPublic || !!access?.identityUnlocked;
 
-  const metaDescription = (opportunity.ai_summary || opportunity.description)
-    || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`;
+  const metaDescription = stripMarkdownArtifacts((opportunity.ai_summary || opportunity.description)
+    || `${journeyMeta.label} : ${opportunity.title}${opportunity.location_city ? ` à ${opportunity.location_city}` : ''}. Consultez l'annonce complète sur Marchés Direct.`);
 
   return (
-    <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10">
+    <div className="page-fade-in bg-[#001326] relative z-10 max-w-3xl mx-auto px-4 py-6 md:py-10">
       <PageMeta title={`${opportunity.title} — Marchés Direct`} description={metaDescription.slice(0, 300)} />
       <button
         onClick={() => (screen > 1 ? setScreen((s) => (s - 1) as 1 | 2 | 3) : navigate(-1))}
@@ -536,29 +519,54 @@ export default function OpportunityDetailPage() {
           l'utilisateur comprenne immédiatement où il se trouve dans le
           parcours." Purely a progress indicator - screen state/navigation
           logic is unchanged, this just makes it visible. */}
-      <div className="flex items-center gap-1.5 mb-4">
+      {/* Client's exact complaint: "seuls les numéros 1, 2 et 3
+          apparaissent... le visiteur ne sait pas à quoi correspondent les
+          étapes" - labels were `hidden sm:inline`, i.e. invisible below a
+          640px viewport. Every reference screenshot this project has been
+          checked against was taken on a phone, so in practice every visitor
+          only ever saw three bare numbered circles with no idea what step
+          1/2/3 actually meant. Now shown at every width, stacked under the
+          circle with short (not the full-sentence) labels so three of them
+          still fit a phone without wrapping or overlapping. */}
+      <div className="flex items-center justify-between gap-1 mb-4 w-full">
         {([
-          { n: 1, label: t('stepperOpportunity') || 'Votre opportunité' },
-          { n: 2, label: t('stepperConcordance') || 'Concordance' },
-          { n: 3, label: t('stepperDossier') || 'Votre dossier' },
+          { n: 1, label: t('stepperOpportunity') || 'Votre opportunité', short: t('stepperOpportunityShort') || 'Opportunité' },
+          { n: 2, label: t('stepperConcordance') || 'Concordance', short: t('stepperConcordanceShort') || 'Concordance' },
+          { n: 3, label: t('stepperDossier') || 'Votre dossier', short: t('stepperDossierShort') || 'Dossier' },
         ] as const).map((s, i) => (
-          <div key={s.n} className="flex items-center gap-1.5 min-w-0">
-            <div className={`shrink-0 flex items-center gap-1.5 ${screen === s.n ? '' : 'opacity-60'}`}>
-              <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+          <div key={s.n} className="flex items-center gap-2 flex-1 min-w-0">
+            <div className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n ? '' : 'opacity-60'}`}>
+              <span className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
                 : 'border border-[#17334D] text-[#5B6B80]'
               }`}>
-                {screen > s.n ? <CheckCircle2 size={13} /> : s.n}
+                {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
-              <span className={`hidden sm:inline text-xs font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              {/* Short label always visible (mobile-first); the full
+                  sentence-length label only from sm+ where there's room. */}
+              <span className={`sm:hidden text-[9px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+                {s.short}
+              </span>
+              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
             </div>
-            {i < 2 && <div className={`h-px flex-1 min-w-[12px] ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
+            {i < 2 && <div className={`h-px flex-1 min-w-[16px] self-start mt-3 sm:mt-0 sm:self-auto ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
           </div>
         ))}
       </div>
+
+      {/* Client's exact wording ("il faut clairement afficher: Étape 1 –
+          Votre opportunité...") - a small kicker above the step's own
+          heading. Screens 2/3 already show the full name as a big H2 right
+          below (existing "Page title" block), so this only repeats the
+          name for screen 1, which has no separate H2 of its own (its title
+          lives inside the opportunity card instead). */}
+      <p className="text-xs font-bold text-orange uppercase tracking-wide mb-3">
+        {t('stepperStepPrefix') || 'Étape'} {screen}{screen === 1 ? ` — ${t('stepperOpportunity') || 'Votre opportunité'}` : ''}
+      </p>
+
 
       {/* Opportunity header — client's screenshots show this only on screen
           1 ("Votre opportunité"); screens 2 and 3 are each dedicated to
@@ -638,7 +646,7 @@ export default function OpportunityDetailPage() {
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
-              <p className="text-sm text-white leading-relaxed">{opportunity.ai_summary}</p>
+              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{stripMarkdownArtifacts(opportunity.ai_summary)}</p>
             )}
             {opportunity.description && !opportunity.ai_summary && !isRedundantWithTitle(opportunity.description, opportunity.title) && (
               <p className="text-sm text-[#B9BBC8] leading-relaxed">{opportunity.description}</p>
@@ -646,6 +654,23 @@ export default function OpportunityDetailPage() {
             {(!opportunity.ai_summary || isRedundantWithTitle(opportunity.ai_summary, opportunity.title))
               && (!opportunity.description || isRedundantWithTitle(opportunity.description, opportunity.title)) && (
               <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
+            )}
+            {/* Client's audit (6 Sep): fiche had no way to cross-check
+                against the source (BOAMP/TED/PLACE). Only renders when we
+                actually have a confirmed link for this source - see
+                buildOfficialUrl in the backend, which returns null rather
+                than guess one for sources without a stable public scheme
+                (e.g. DECP). */}
+            {opportunity.official_url && (
+              <a
+                href={opportunity.official_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#4EA1FF] hover:underline"
+              >
+                <ExternalLink size={13} />
+                {t('detailOfficialNoticeLink') || "Voir l'annonce officielle"}
+              </a>
             )}
           </div>
 
@@ -769,6 +794,11 @@ export default function OpportunityDetailPage() {
           {opportunity.ai_extracted_facts && (() => {
             const facts = opportunity.ai_extracted_facts;
             const rows: { label: string; value: string }[] = [];
+            // Client's audit: no "référence officielle" shown anywhere on
+            // the fiche. source_reference is the raw BOAMP idweb / TED
+            // publication-number etc. (see officialUrl.ts) - always known
+            // at ingest time, unlike the AI-extracted fields below.
+            if (opportunity.source_reference) rows.push({ label: t('dossierFactReference'), value: opportunity.source_reference });
             // contract_object is already shown prominently above as "Travaux
             // à réaliser" ("Le marché en 30 secondes" block) - repeating the
             // exact same string here under "Objet du marché" is precisely
@@ -783,6 +813,14 @@ export default function OpportunityDetailPage() {
             if (facts.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: facts.submission_method.value });
             if (facts.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
             if (facts.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
+            // Attribution info only ever shows up once BOAMP/DECP actually
+            // publishes an award notice - not available on an open call for
+            // tenders is the expected, common case, not a gap.
+            if (facts.attribution_winner?.available) rows.push({ label: t('dossierFactAttributionWinner'), value: facts.attribution_winner.value });
+            if (facts.attribution_amount?.available) rows.push({ label: t('dossierFactAttributionAmount'), value: facts.attribution_amount.value });
+            if (facts.attribution_date?.available) rows.push({ label: t('dossierFactAttributionDate'), value: facts.attribution_date.value });
+            if (facts.buyer_phone?.available) rows.push({ label: t('dossierFactBuyerPhone'), value: facts.buyer_phone.value });
+            if (facts.buyer_website?.available) rows.push({ label: t('dossierFactBuyerWebsite'), value: facts.buyer_website.value });
             if (opportunity.buyer_history_count != null) rows.push({
               label: t('dossierFactBuyerHistory'),
               value: opportunity.buyer_history_count === 0
@@ -813,6 +851,16 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
+          {/* FIX 2: "Continuer" button for logged-in users on screen 1 */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setScreen(2)}
+              className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
+            >
+              {t('compatibilityContinue') || 'Continuer'}
+            </button>
+          )}
         </div>
       )}
 
@@ -893,6 +941,11 @@ export default function OpportunityDetailPage() {
           </div>
       )}
 
+      {/* Page 2 ("Votre entreprise et votre concordance", client's exact
+          4-page breakdown) - company card + concordance score + email/phone,
+          nothing else. Criteria breakdown / eligibility docs / dossier-prep
+          checklist moved into screen 3 below (they never appear in the
+          client's reference screenshot for this screen). */}
       {screen === 2 && (
           <>
             {siretCompany && (
@@ -1065,76 +1118,8 @@ export default function OpportunityDetailPage() {
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
             </div>
-
-            {/* Full compatibility breakdown - always visible once the
-                score is in, matching the brief's page 2 ("detailed
-                breakdown of the compatibility factors") which never
-                describes hiding it. The email/phone step below only
-                gates moving on to the next screen, not seeing this. */}
-            <>
-                {justUnlockedAnalysis && (
-                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                    <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
-                  </div>
-                )}
-
-                <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                  <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
-                  <div className="space-y-2.5">
-                    {matchScore.criteria.map((c, i) => (
-                      <div key={i}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-[#B9BBC8]">{c.label}</span>
-                          <span className="text-white font-semibold">{c.weight}%</span>
-                        </div>
-                        <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
-                          <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {matchScore.eligibility.length > 0 && (
-                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                    <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
-                    <div className="space-y-2.5">
-                      {matchScore.eligibility.map((el, i) => (
-                        <div key={i} className="flex items-start gap-2.5 text-xs">
-                          {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-                            : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                            : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
-                          <div>
-                            <p className="text-white font-semibold">{el.label}</p>
-                            <p className="text-[#B9BBC8]">{el.note}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {!isAuthenticated && (
-                      <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
-                    )}
-                  </div>
-                )}
-
-                <RefineAnalysisAccordion t={t} />
-
-                {/* Client's newest brief: "Votre candidature peut déjà commencer" -
-                    a single new screen/block inserted after the full analysis,
-                    reusing real signals already on this page rather than
-                    fabricating readiness. DC1/DC2/DUME/mémoire technique/prix
-                    are never marked ready here - no free draft-generation
-                    pipeline runs pre-payment, and the client's rule is explicit
-                    ("aucune information inventée... aucun document présenté
-                    comme définitif sans vérification"). */}
-                <DossierPrepBlock
-                  t={t}
-                  siretCompany={siretCompany}
-                  matchScore={matchScore}
-                  checklistDocs={checklistDocs}
-                  checklistRefCount={checklistRefCount}
-                  onContactManager={() => setShowAccountManagerModal(true)}
-                />
+            </div>
+          ) : null}
 
                 {(isAuthenticated || leadCaptured) ? (
                   <button
@@ -1192,9 +1177,6 @@ export default function OpportunityDetailPage() {
                     </form>
                   </div>
                 )}
-            </>
-          </div>
-            ) : null}
           </>
       )}
 
@@ -1208,6 +1190,78 @@ export default function OpportunityDetailPage() {
           buttons. */}
       {screen === 3 && (
         <div className="space-y-4 mt-4">
+          {justUnlockedAnalysis && (
+            <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+              <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
+            </div>
+          )}
+
+          {/* Detailed compatibility breakdown - moved here from the
+              Concordance screen (client's exact reference for that screen
+              never shows criteria weights / eligibility docs, only the
+              score summary card). Kept, just relocated to the dossier hub
+              where "en savoir plus" content belongs. */}
+          {matchScore && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+              <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
+              <div className="space-y-2.5">
+                {matchScore.criteria.map((c, i) => (
+                  <div key={i}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-[#B9BBC8]">{c.label}</span>
+                      <span className="text-white font-semibold">{c.weight}%</span>
+                    </div>
+                    <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
+                      <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {matchScore && matchScore.eligibility.length > 0 && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+              <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
+              <div className="space-y-2.5">
+                {matchScore.eligibility.map((el, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-xs">
+                    {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
+                      : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                      : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
+                    <div>
+                      <p className="text-white font-semibold">{el.label}</p>
+                      <p className="text-[#B9BBC8]">{el.note}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {!isAuthenticated && (
+                <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
+              )}
+            </div>
+          )}
+
+          <RefineAnalysisAccordion t={t} />
+
+          {/* Client's newest brief: "Votre candidature peut déjà commencer" -
+              reuses real signals already on this page rather than
+              fabricating readiness. DC1/DC2/DUME/mémoire technique/prix are
+              never marked ready here - no free draft-generation pipeline
+              runs pre-payment, and the client's rule is explicit ("aucune
+              information inventée... aucun document présenté comme définitif
+              sans vérification"). */}
+          {matchScore && (
+            <DossierPrepBlock
+              t={t}
+              siretCompany={siretCompany}
+              matchScore={matchScore}
+              checklistDocs={checklistDocs}
+              checklistRefCount={checklistRefCount}
+              onContactManager={() => setShowAccountManagerModal(true)}
+            />
+          )}
+
           <div className="bg-green-400/10 border border-green-400/30 rounded-2xl p-5 md:p-6">
             <p className="flex items-center gap-2 text-xs font-semibold text-green-400 mb-1"><CheckCircle2 size={14} /> {t('followUpSaved') || 'Opportunité enregistrée'}</p>
             <h2 className="text-base font-extrabold text-white">{t('followUpSavedSub') || 'Elle apparaît maintenant dans votre tableau de bord'}</h2>
