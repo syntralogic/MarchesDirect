@@ -83,6 +83,13 @@ export default function OpportunityJourneyPage() {
   const [citySearch, setCitySearch] = useState('');
   const [pickedCity, setPickedCity] = useState('');
   const [radius, setRadius] = useState(50);
+  // "Département entier" / "Région entière" need an actual department code
+  // / region name to filter by - resolved on demand (see pickWholeDept /
+  // pickWholeRegion below) from whatever city the visitor searched or
+  // picked, via the same municipality lookup used for city search.
+  const [pickedDepartment, setPickedDepartment] = useState('');
+  const [pickedRegion, setPickedRegion] = useState('');
+  const [zoneResolving, setZoneResolving] = useState(false);
   // City search was matching only the 12 hardcoded cities in mockData.ts
   // (Paris, Marseille, Lyon...), so typing any other French commune (the
   // vast majority) returned zero suggestions and "Appliquer la zone" stayed
@@ -114,6 +121,12 @@ export default function OpportunityJourneyPage() {
     journey: journeyForApi,
     q: debouncedQuery || undefined,
     city: cityForApi || undefined,
+    // "Whole department" / "whole region" were previously no-ops: cityForApi
+    // goes empty for both (see WHOLE_AREA_PICKS above) and neither param was
+    // ever sent, so both silently behaved exactly like "Whole France" -
+    // every opportunity nationwide, not just the visitor's department/region.
+    department: pickedCity === 'Département entier' ? (pickedDepartment || undefined) : undefined,
+    region: pickedCity === 'Région entière' ? (pickedRegion || undefined) : undefined,
   });
 
   const filteredResults = useMemo(
@@ -171,6 +184,59 @@ export default function OpportunityJourneyPage() {
     if (pickedCity) setLocationLabel(`${pickedCity} + ${radius} km`);
     setLocationModalOpen(false);
     setStep(4);
+  };
+
+  // Resolves the department code + region name for "Whole department" /
+  // "Whole region" from whatever city text is available - what's currently
+  // typed in the search box, falling back to an already-picked city's name.
+  // Same api-adresse.data.gouv.fr municipality lookup already used for city
+  // search/HomePage; its `context` field is "{dept code}, {dept name},
+  // {region name}" (e.g. "75, Paris, Île-de-France") - the dept code is
+  // what location_department stores (see HomePage's getDeptCount matching
+  // by code), the region name is what location_region search matches.
+  const resolveAreaFromCity = async (): Promise<{ department: string; region: string }> => {
+    // Falls back to the already-picked city's name only if it really is a
+    // city - not a previous "Département entier"/"Région entière"/"France
+    // entière" label (e.g. clicking these buttons twice in a row without
+    // ever having searched a real city).
+    const priorCity = WHOLE_AREA_PICKS.includes(pickedCity) ? '' : pickedCity.replace(/ — Ville$/, '').trim();
+    const source = citySearch.trim() || priorCity;
+    if (!source) return { department: '', region: '' };
+    try {
+      const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(source)}&type=municipality&limit=1`);
+      if (!res.ok) return { department: '', region: '' };
+      const data = await res.json();
+      const context: string | undefined = data?.features?.[0]?.properties?.context;
+      if (!context) return { department: '', region: '' };
+      const [deptCode, , regionName] = context.split(',').map((p: string) => p.trim());
+      return { department: deptCode || '', region: regionName || '' };
+    } catch {
+      return { department: '', region: '' };
+    }
+  };
+
+  const pickWholeDepartment = async () => {
+    setZoneResolving(true);
+    const { department } = await resolveAreaFromCity();
+    setZoneResolving(false);
+    setPickedRegion('');
+    setPickedDepartment(department);
+    setPickedCity('Département entier');
+  };
+
+  const pickWholeRegion = async () => {
+    setZoneResolving(true);
+    const { region } = await resolveAreaFromCity();
+    setZoneResolving(false);
+    setPickedDepartment('');
+    setPickedRegion(region);
+    setPickedCity('Région entière');
+  };
+
+  const pickWholeFrance = () => {
+    setPickedDepartment('');
+    setPickedRegion('');
+    setPickedCity('France entière');
   };
 
   const stepLabels = [
@@ -647,7 +713,7 @@ export default function OpportunityJourneyPage() {
                 {citySuggestions.map(c => (
                   <button
                     key={c.name}
-                    onClick={() => setPickedCity(`${c.name} — Ville`)}
+                    onClick={() => { setPickedCity(`${c.name} — Ville`); setPickedDepartment(''); setPickedRegion(''); }}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
                       pickedCity.startsWith(c.name) ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
                     }`}
@@ -673,13 +739,13 @@ export default function OpportunityJourneyPage() {
               </div>
 
               <div className="space-y-1 mb-5">
-                <button onClick={() => setPickedCity('Département entier')} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
+                <button onClick={pickWholeDepartment} disabled={zoneResolving} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors disabled:opacity-50">
                   {t('journeyWholeDept')} <ChevronRight size={14} className="text-orange" />
                 </button>
-                <button onClick={() => setPickedCity('Région entière')} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
+                <button onClick={pickWholeRegion} disabled={zoneResolving} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors disabled:opacity-50">
                   {t('journeyWholeRegion')} <ChevronRight size={14} className="text-orange" />
                 </button>
-                <button onClick={() => setPickedCity('France entière')} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
+                <button onClick={pickWholeFrance} className="w-full flex items-center justify-between px-3 py-3 rounded-lg border border-[#17334D] text-sm text-white hover:border-orange/40 transition-colors">
                   {t('journeyWholeFrance')} <ChevronRight size={14} className="text-orange" />
                 </button>
               </div>
