@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download,
+  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink,
   Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -654,6 +654,23 @@ export default function OpportunityDetailPage() {
             {(!opportunity.ai_summary || isRedundantWithTitle(opportunity.ai_summary, opportunity.title))
               && (!opportunity.description || isRedundantWithTitle(opportunity.description, opportunity.title)) && (
               <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
+            )}
+            {/* Client's audit (6 Sep): fiche had no way to cross-check
+                against the source (BOAMP/TED/PLACE). Only renders when we
+                actually have a confirmed link for this source - see
+                buildOfficialUrl in the backend, which returns null rather
+                than guess one for sources without a stable public scheme
+                (e.g. DECP). */}
+            {opportunity.official_url && (
+              <a
+                href={opportunity.official_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#4EA1FF] hover:underline"
+              >
+                <ExternalLink size={13} />
+                {t('detailOfficialNoticeLink') || "Voir l'annonce officielle"}
+              </a>
             )}
           </div>
 
