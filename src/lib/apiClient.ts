@@ -748,6 +748,7 @@ export const companyVaultApi = {
       certificationName: string; certificationCode?: string; issuedBy?: string;
       issuedDate?: string; expiryDate?: string; documentUrl?: string;
     }): Promise<ApiCompanyCertification> => (await apiClient.post('/companies/me/certifications', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/certifications/${id}`); },
   },
   references: {
     list: async (): Promise<ApiCompanyReference[]> => (await apiClient.get('/companies/me/references')).data,
@@ -755,18 +756,21 @@ export const companyVaultApi = {
       projectName: string; description?: string; clientName?: string; contractValue?: number;
       contractType?: string; completionDate?: string; skillsDemonstrated?: string[];
     }): Promise<ApiCompanyReference> => (await apiClient.post('/companies/me/references', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/references/${id}`); },
   },
   resources: {
     list: async (): Promise<ApiCompanyResource[]> => (await apiClient.get('/companies/me/resources')).data,
     create: async (payload: {
       resourceType: string; name: string; category?: string; quantity?: number; description?: string;
     }): Promise<ApiCompanyResource> => (await apiClient.post('/companies/me/resources', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/resources/${id}`); },
   },
   policies: {
     list: async (): Promise<ApiCompanyPolicy[]> => (await apiClient.get('/companies/me/policies')).data,
     create: async (payload: {
       policyType: string; policyText: string; effectiveDate?: string;
     }): Promise<ApiCompanyPolicy> => (await apiClient.post('/companies/me/policies', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/policies/${id}`); },
   },
 };
 
