@@ -14,21 +14,24 @@ export default function MarchesPublicsPage() {
   const trades = useTrades();
   const [location, setLocation] = useState('');
   const [sector, setSector] = useState('Tous');
+  const [status, setStatus] = useState('Tous');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Sector filter needs the trade's id for the server-side query (the
   // dropdown shows names) - see use-trades.ts for why filtering by name
   // client-side never worked past the first loaded page.
   const selectedTradeId = sector === 'Tous' ? undefined : trades.find(tr => tr.name === sector)?.id;
+  const STATUS_TO_API: Record<string, string> = { 'En cours': 'active', 'Clôturé': 'expired', 'Attribué': 'awarded', 'Annulé': 'cancelled' };
 
   const { opportunities: results, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     journey: 'public_procurement',
     city: location || undefined,
     trade_id: selectedTradeId,
+    status: status === 'Tous' ? undefined : STATUS_TO_API[status],
   });
 
-  const resetFilters = () => { setLocation(''); setSector('Tous'); };
-  const hasFilters = location || sector !== 'Tous';
+  const resetFilters = () => { setLocation(''); setSector('Tous'); setStatus('Tous'); };
+  const hasFilters = location || sector !== 'Tous' || status !== 'Tous';
   const { scores: matchScores, canScore } = useMatchScores(results.map(o => o.id));
 
   const FilterPanel = () => (
@@ -45,6 +48,16 @@ export default function MarchesPublicsPage() {
         <select value={sector} onChange={e => setSector(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
           <option value="Tous">Tous</option>
           {trades.map(tr => <option key={tr.id} value={tr.name}>{tr.name}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Statut</label>
+        <select value={status} onChange={e => setStatus(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
+          <option value="Tous">Tous</option>
+          <option value="En cours">En cours</option>
+          <option value="Clôturé">Clôturé</option>
+          <option value="Attribué">Attribué</option>
+          <option value="Annulé">Annulé</option>
         </select>
       </div>
       {hasFilters && (

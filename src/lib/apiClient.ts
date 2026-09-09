@@ -139,6 +139,9 @@ export type ApiOpportunityDetail = ApiOpportunity & {
   cpv_display?: string | null;
   source_reference?: string | null;
   identity_unlocked?: boolean;
+  // Link back to the official notice (BOAMP/TED/PLACE) - null when the
+  // source has no confirmed stable per-notice public URL (e.g. DECP).
+  official_url?: string | null;
   // Aggregated buyer stat, computed server-side from the real (unredacted)
   // buyer_name - safe to show even on a locked private tender/sous-
   // traitance fiche per spec (name-free), so it's a plain top-level field,
@@ -162,6 +165,13 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     submission_method?: { value: string; available: boolean };
     allotment?: { value: string; available: boolean };
     technical_visit?: { value: string; available: boolean };
+    // Client's audit: attribution info + fuller buyer contact details were
+    // entirely missing (backend aiService.extractOpportunityFacts).
+    attribution_winner?: { value: string; available: boolean };
+    attribution_amount?: { value: string; available: boolean };
+    attribution_date?: { value: string; available: boolean };
+    buyer_phone?: { value: string; available: boolean };
+    buyer_website?: { value: string; available: boolean };
     // Newer opportunities: structured {label, severity}. Older ones not yet
     // re-extracted after the severity upgrade may still be a plain string -
     // the component rendering this checks the shape defensively.
@@ -189,6 +199,7 @@ export type OpportunitySearchParams = {
   department?: string;
   min_value?: number;
   max_value?: number;
+  status?: string;
   page?: number;
   limit?: number;
 };
@@ -737,6 +748,7 @@ export const companyVaultApi = {
       certificationName: string; certificationCode?: string; issuedBy?: string;
       issuedDate?: string; expiryDate?: string; documentUrl?: string;
     }): Promise<ApiCompanyCertification> => (await apiClient.post('/companies/me/certifications', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/certifications/${id}`); },
   },
   references: {
     list: async (): Promise<ApiCompanyReference[]> => (await apiClient.get('/companies/me/references')).data,
@@ -744,18 +756,21 @@ export const companyVaultApi = {
       projectName: string; description?: string; clientName?: string; contractValue?: number;
       contractType?: string; completionDate?: string; skillsDemonstrated?: string[];
     }): Promise<ApiCompanyReference> => (await apiClient.post('/companies/me/references', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/references/${id}`); },
   },
   resources: {
     list: async (): Promise<ApiCompanyResource[]> => (await apiClient.get('/companies/me/resources')).data,
     create: async (payload: {
       resourceType: string; name: string; category?: string; quantity?: number; description?: string;
     }): Promise<ApiCompanyResource> => (await apiClient.post('/companies/me/resources', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/resources/${id}`); },
   },
   policies: {
     list: async (): Promise<ApiCompanyPolicy[]> => (await apiClient.get('/companies/me/policies')).data,
     create: async (payload: {
       policyType: string; policyText: string; effectiveDate?: string;
     }): Promise<ApiCompanyPolicy> => (await apiClient.post('/companies/me/policies', payload)).data,
+    remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/policies/${id}`); },
   },
 };
 

@@ -37,3 +37,17 @@ export function formatDate(
     ...opts,
   }).format(new Date(date));
 }
+
+// Safety net for AI-generated text (ai_summary etc.) stored before backend
+// prompts were fixed to forbid markdown (client's 8 Sep screenshot: raw
+// "# Résumé..." / "**bold**" markers rendering verbatim in plain <p> tags
+// with no markdown renderer). Only strips symbols, never touches the
+// actual wording - new AI output shouldn't have anything for this to strip.
+export function stripMarkdownArtifacts(text: string): string {
+  return text
+    .replace(/^#{1,6}\s*/gm, '')       // # / ## headers
+    .replace(/\*\*(.*?)\*\*/g, '$1')   // **bold**
+    .replace(/\*(.*?)\*/g, '$1')       // *italic*
+    .replace(/^[-*]\s+/gm, '')         // bullet markers
+    .trim();
+}
