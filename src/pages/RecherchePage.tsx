@@ -31,12 +31,24 @@ export default function RecherchePage() {
   const tradeId = searchParams.get('trade_id') || undefined;
   const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
 
-  // Add state for radius and availability
+  // Add state for radius (decorative for now - main list endpoint has no
+  // geo-radius filter, only /stats/near does; out of scope for this fix)
   const [radius, setRadius] = useState('50');
-  const [availability, setAvailability] = useState('now');
+
+  // Client's audit: filters need a real status set (nouveau/en cours/
+  // clôturé/attribué/annulé) and a montant range - neither existed here.
+  // 'nouveau' isn't its own backend status (it's a temporary badge on
+  // recently-published rows per opportunityStatusJob's comments), so it
+  // maps to the default "no status filter" browse view rather than a
+  // literal status value.
+  const [statutFilter, setStatutFilter] = useState('');
+  const [montantMin, setMontantMin] = useState('');
+  const [montantMax, setMontantMax] = useState('');
 
   const debouncedQuery = useDebounce(query, 400);
   const debouncedLocation = useDebounce(location, 400);
+  const debouncedMontantMin = useDebounce(montantMin, 400);
+  const debouncedMontantMax = useDebounce(montantMax, 400);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: debouncedQuery || undefined,
@@ -44,6 +56,9 @@ export default function RecherchePage() {
     city: locationField === 'city' ? (debouncedLocation || undefined) : undefined,
     trade_id: tradeId,
     journey: journeyParam,
+    status: statutFilter || undefined,
+    min_value: debouncedMontantMin ? Number(debouncedMontantMin) : undefined,
+    max_value: debouncedMontantMax ? Number(debouncedMontantMax) : undefined,
   });
 
   useEffect(() => {
@@ -132,19 +147,48 @@ export default function RecherchePage() {
         </div>
 
         <div className="mb-2.5">
-          <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchAvailability')}</label>
+          <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchStatut')}</label>
           <div className="relative">
             <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-            <select 
-              value={availability}
-              onChange={e => setAvailability(e.target.value)}
+            <select
+              value={statutFilter}
+              onChange={e => setStatutFilter(e.target.value)}
               className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
             >
-              <option value="now">{t('searchAvailabilityNow')}</option>
-              <option value="1month">{t('searchAvailability1')}</option>
-              <option value="3month">{t('searchAvailability3')}</option>
+              <option value="">{t('searchStatutAll')}</option>
+              <option value="active">{t('searchStatutActive')}</option>
+              <option value="expired">{t('searchStatutExpired')}</option>
+              <option value="awarded">{t('searchStatutAwarded')}</option>
+              <option value="cancelled">{t('searchStatutCancelled')}</option>
             </select>
             <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="flex gap-2 mb-2.5">
+          <div className="flex-1">
+            <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchMontantMin')}</label>
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="0"
+              value={montantMin}
+              onChange={e => setMontantMin(e.target.value)}
+              className="w-full bg-[#031B30] border border-[#17334D] rounded-md px-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchMontantMax')}</label>
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder={t('searchMontantMaxPlaceholder')}
+              value={montantMax}
+              onChange={e => setMontantMax(e.target.value)}
+              className="w-full bg-[#031B30] border border-[#17334D] rounded-md px-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
+            />
           </div>
         </div>
 
