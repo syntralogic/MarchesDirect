@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { Save, Globe, Shield, Bell, Check, Database, RefreshCw } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
-import { adminApi, type ApiDataSource } from '@/lib/apiClient';
+import { adminApi, type ApiDataSource, type ApiSourceStat } from '@/lib/apiClient';
 
 export default function AdminSettings() {
   const { t, lang } = useLang();
   const [saved, setSaved] = useState(false);
 
   const [sources, setSources] = useState<ApiDataSource[] | null>(null);
+  const [sourceStats, setSourceStats] = useState<ApiSourceStat[] | null>(null);
   const [sourcesError, setSourcesError] = useState(false);
   const [runningCode, setRunningCode] = useState<string | null>(null);
   const [runResult, setRunResult] = useState<{ code: string; ok: boolean } | null>(null);
@@ -16,7 +17,10 @@ export default function AdminSettings() {
   const loadSources = () => {
     adminApi
       .dataSources()
-      .then((res) => setSources(res.sources))
+      .then((res) => {
+        setSources(res.sources);
+        setSourceStats(res.sourceStats || []);
+      })
       .catch(() => setSourcesError(true));
   };
 
@@ -105,6 +109,43 @@ export default function AdminSettings() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {sourceStats && sourceStats.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-[#17334D]">
+              <h3 className="text-xs font-semibold text-white uppercase tracking-wide mb-1">
+                {t('adminSourceStatsTitle')}
+              </h3>
+              <p className="text-[11px] text-[#B9BBC8] mb-3">{t('adminSourceStatsDesc')}</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] text-left border-collapse">
+                  <thead>
+                    <tr className="text-[#B9BBC8] uppercase tracking-wide">
+                      <th className="pb-2 pr-3 font-semibold">{t('adminSourceStatsSource')}</th>
+                      <th className="pb-2 pr-3 font-semibold text-right">{t('adminSourceStatsCount')}</th>
+                      <th className="pb-2 pr-3 font-semibold text-right">{t('adminSourceStatsOfficialUrl')}</th>
+                      <th className="pb-2 pr-3 font-semibold text-right">{t('adminSourceStatsBuyer')}</th>
+                      <th className="pb-2 pr-3 font-semibold text-right">{t('adminSourceStatsDeadline')}</th>
+                      <th className="pb-2 pr-3 font-semibold text-right">{t('adminSourceStatsDescription')}</th>
+                      <th className="pb-2 font-semibold text-right">{t('adminSourceStatsAmount')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sourceStats.map((s) => (
+                      <tr key={s.source_id} className="border-t border-[#17334D]/60">
+                        <td className="py-2 pr-3 text-white font-semibold uppercase">{s.code}</td>
+                        <td className="py-2 pr-3 text-right text-white font-mono">{s.opportunity_count.toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR')}</td>
+                        <td className="py-2 pr-3 text-right text-[#B9BBC8] font-mono">{s.with_official_url_pct}%</td>
+                        <td className="py-2 pr-3 text-right text-[#B9BBC8] font-mono">{s.with_buyer_name_pct}%</td>
+                        <td className="py-2 pr-3 text-right text-[#B9BBC8] font-mono">{s.with_deadline_pct}%</td>
+                        <td className="py-2 pr-3 text-right text-[#B9BBC8] font-mono">{s.with_substantial_description_pct}%</td>
+                        <td className="py-2 text-right text-[#B9BBC8] font-mono">{s.with_estimated_value_pct}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

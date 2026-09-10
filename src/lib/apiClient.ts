@@ -827,6 +827,27 @@ export type ApiDataSource = {
   next_run: string | null;
 };
 
+// Per-source counts + completeness (official_url/buyer_name/deadline/
+// description/estimated_value) from GET /api/admin/data-sources'
+// sourceStats - answers "which source, how many opportunities, how
+// complete" directly instead of only showing connector on/off state.
+export type ApiSourceStat = {
+  source_id: number;
+  code: string;
+  active: boolean;
+  opportunity_count: number;
+  with_official_url: number;
+  with_official_url_pct: number;
+  with_buyer_name: number;
+  with_buyer_name_pct: number;
+  with_deadline: number;
+  with_deadline_pct: number;
+  with_substantial_description: number;
+  with_substantial_description_pct: number;
+  with_estimated_value: number;
+  with_estimated_value_pct: number;
+};
+
 // Backend has had these endpoints (requires admin/super_admin role) since the
 // connector work landed, but nothing in this frontend ever called them - the
 // only way to pull fresh listings was to wait for the every-2-hour cron.
@@ -843,7 +864,7 @@ export const adminApi = {
     const { data } = await apiClient.get<ApiAdminStats>('/admin/stats');
     return data;
   },
-  dataSources: async (): Promise<{ sources: ApiDataSource[] }> => {
+  dataSources: async (): Promise<{ sources: ApiDataSource[]; sourceStats: ApiSourceStat[] }> => {
     const { data } = await apiClient.get('/admin/data-sources');
     return data;
   },
