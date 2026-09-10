@@ -49,15 +49,29 @@ export default function RecherchePage() {
   const debouncedMontantMin = useDebounce(montantMin, 400);
   const debouncedMontantMax = useDebounce(montantMax, 400);
 
+  // The debounced state below already fires a search live as the user
+  // types, but the "Rechercher" button itself did nothing but blur the
+  // active input - clicking it produced no visible effect and, worse, any
+  // not-yet-debounced keystroke (typed in the last 400ms) was silently
+  // dropped instead of being searched immediately. `applied` holds the
+  // values actually sent to useOpportunities: kept in sync with the
+  // debounced ones as the user types, but the button (and Enter, via the
+  // form's onSubmit) now bypasses the debounce and applies the raw
+  // current field values right away.
+  const [applied, setApplied] = useState({ query: '', location: '', montantMin: '', montantMax: '' });
+  useEffect(() => {
+    setApplied({ query: debouncedQuery, location: debouncedLocation, montantMin: debouncedMontantMin, montantMax: debouncedMontantMax });
+  }, [debouncedQuery, debouncedLocation, debouncedMontantMin, debouncedMontantMax]);
+
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
-    q: debouncedQuery || undefined,
-    region: locationField === 'region' ? (debouncedLocation || undefined) : undefined,
-    city: locationField === 'city' ? (debouncedLocation || undefined) : undefined,
+    q: applied.query || undefined,
+    region: locationField === 'region' ? (applied.location || undefined) : undefined,
+    city: locationField === 'city' ? (applied.location || undefined) : undefined,
     trade_id: tradeId,
     journey: journeyParam,
     status: statutFilter || undefined,
-    min_value: debouncedMontantMin ? Number(debouncedMontantMin) : undefined,
-    max_value: debouncedMontantMax ? Number(debouncedMontantMax) : undefined,
+    min_value: applied.montantMin ? Number(applied.montantMin) : undefined,
+    max_value: applied.montantMax ? Number(applied.montantMax) : undefined,
   });
 
   useEffect(() => {
@@ -66,14 +80,11 @@ export default function RecherchePage() {
     trackVisitorEvent('search', `Recherche : ${parts.join(' · ')}`, undefined, { q: debouncedQuery, location: debouncedLocation, journey: journeyParam });
   }, [debouncedQuery, debouncedLocation, journeyParam]);
 
-  // Handle search button click - force a re-fetch by triggering a state update
+  // Applies the current (un-debounced) field values immediately - used by
+  // both the "Rechercher" button and submitting the form (Enter key).
   const handleSearch = () => {
-    // The debounced values will trigger the useOpportunities hook
-    // We just need to ensure the debounce flushes immediately
-    // We can achieve this by toggling a key or using a ref
-    // For simplicity, we'll just use the existing debounce logic
-    // and let the user know the search is happening
     (document.activeElement as HTMLElement | null)?.blur();
+    setApplied({ query, location, montantMin, montantMax });
   };
 
   return (
@@ -91,7 +102,7 @@ export default function RecherchePage() {
       </div>
 
       {/* Search Form */}
-      <div className="bg-[#061D32] border border-[#17334D] rounded-xl p-2.5 mb-3">
+      <form onSubmit={e => { e.preventDefault(); handleSearch(); }} className="bg-[#061D32] border border-[#17334D] rounded-xl p-2.5 mb-3">
         <div className="mb-2">
           <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchKeywords')}</label>
           <div className="relative">
@@ -185,15 +196,14 @@ export default function RecherchePage() {
         </div>
 
         <button
-          type="button"
-          onClick={handleSearch}
+          type="submit"
           disabled={loading}
           className="w-full bg-orange text-white font-bold py-2 rounded-md text-xs hover:bg-orange/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
           {loading ? <Loader2 size={12} className="animate-spin" /> : null}
           {t('searchButton')}
         </button>
-      </div>
+      </form>
 
       {/* Results Header */}
       {/* Was filtered.length - only the currently loaded batch (max
