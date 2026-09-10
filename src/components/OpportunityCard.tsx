@@ -89,11 +89,11 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
           <div className="flex items-center gap-1">
             <Calendar size={11} className="text-muted-foreground" />
             <span className="text-xs text-muted-foreground">
-              {new Date(opportunity.deadline).toLocaleDateString('fr-FR', {
+              {opportunity.deadline ? new Date(opportunity.deadline).toLocaleDateString('fr-FR', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric',
-              })}
+              }) : '—'}
             </span>
           </div>
         </div>
