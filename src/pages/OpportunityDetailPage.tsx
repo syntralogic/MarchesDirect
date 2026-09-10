@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone, Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -645,15 +645,21 @@ export default function OpportunityDetailPage() {
       {screen === 1 && (
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
-              <p className="text-sm text-white leading-relaxed whitespace-pre-line">{stripMarkdownArtifacts(opportunity.ai_summary)}</p>
-            )}
-            {opportunity.description && !opportunity.ai_summary && !isRedundantWithTitle(opportunity.description, opportunity.title) && (
-              <p className="text-sm text-[#B9BBC8] leading-relaxed">{opportunity.description}</p>
-            )}
-            {(!opportunity.ai_summary || isRedundantWithTitle(opportunity.ai_summary, opportunity.title))
-              && (!opportunity.description || isRedundantWithTitle(opportunity.description, opportunity.title)) && (
-              <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
+            {opportunity.ai_analysis_sections ? (
+              <OpportunityAnalysisAccordions sections={opportunity.ai_analysis_sections} t={t} />
+            ) : (
+              <>
+                {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
+                  <p className="text-sm text-white leading-relaxed whitespace-pre-line">{stripMarkdownArtifacts(opportunity.ai_summary)}</p>
+                )}
+                {opportunity.description && !opportunity.ai_summary && !isRedundantWithTitle(opportunity.description, opportunity.title) && (
+                  <p className="text-sm text-[#B9BBC8] leading-relaxed">{opportunity.description}</p>
+                )}
+                {(!opportunity.ai_summary || isRedundantWithTitle(opportunity.ai_summary, opportunity.title))
+                  && (!opportunity.description || isRedundantWithTitle(opportunity.description, opportunity.title)) && (
+                  <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
+                )}
+              </>
             )}
             {/* Client's audit (6 Sep): fiche had no way to cross-check
                 against the source (BOAMP/TED/PLACE). Only renders when we
@@ -1730,6 +1736,61 @@ function RefineAnalysisAccordion({ t }: { t: (key: string) => string }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Client's 10 Sep spec: the opportunity analysis (previously one dense
+// paragraph - see ai_summary above) is now split into 3 fixed accordions,
+// reused identically on every fiche: Présentation du marché / Conditions
+// et points à vérifier / Entreprises concernées. First one open by
+// default, the other two collapsed; each toggles independently on click.
+// Content comes from ai_analysis_sections (generateOpportunityAnalysisSections
+// in aiService.ts) - this component only lays it out, using the site's
+// existing card/accordion styling (RefineAnalysisAccordion above), not the
+// client's mockup's own literal colors.
+function OpportunityAnalysisAccordions({
+  sections,
+  t,
+}: {
+  sections: { presentation: string; conditions: string; entreprises: string };
+  t: (key: string) => string;
+}) {
+  const items = [
+    { key: 'presentation', icon: FileText, title: t('detailAccordionPresentation') || 'Présentation du marché', text: sections.presentation },
+    { key: 'conditions', icon: Search, title: t('detailAccordionConditions') || 'Conditions et points à vérifier', text: sections.conditions },
+    { key: 'entreprises', icon: Users, title: t('detailAccordionEntreprises') || 'Entreprises concernées', text: sections.entreprises },
+  ].filter(item => item.text && item.text.trim().length > 0);
+
+  const [openKey, setOpenKey] = useState<string | null>(items[0]?.key ?? null);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      {items.map(item => {
+        const isOpen = openKey === item.key;
+        const Icon = item.icon;
+        return (
+          <div key={item.key} className="border border-[#17334D] rounded-xl bg-[#031B30] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setOpenKey(cur => (cur === item.key ? null : item.key))}
+              className="w-full flex items-center gap-2.5 px-3.5 py-3.5 text-left"
+              aria-expanded={isOpen}
+            >
+              <Icon size={16} className="text-orange shrink-0" />
+              <span className="flex-1 text-sm font-semibold text-white">{item.title}</span>
+              <ChevronDown size={14} className={`text-[#B9BBC8] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+              <div className="px-3.5 pb-4 text-sm text-[#EAF0F6] leading-relaxed whitespace-pre-line">
+                {stripMarkdownArtifacts(item.text)}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -117,6 +117,7 @@ export type ApiOpportunity = {
   location_department?: string | null;
   ai_classification_status: string;
   ai_summary: string | null;
+  ai_analysis_sections?: { presentation: string; conditions: string; entreprises: string } | null;
   status: string;
   journey: 'tender' | 'public_procurement' | 'subcontracting';
   trade_name: string | null;
@@ -474,6 +475,7 @@ export type ApiDashboardMatch = {
   location_city: string | null;
   location_region: string | null;
   ai_summary: string | null;
+  ai_analysis_sections?: { presentation: string; conditions: string; entreprises: string } | null;
   journey?: 'tender' | 'public_procurement' | 'subcontracting' | null;
   identity_unlocked?: boolean;
 };
