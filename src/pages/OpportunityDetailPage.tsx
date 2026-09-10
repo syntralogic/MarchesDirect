@@ -646,7 +646,15 @@ export default function OpportunityDetailPage() {
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {opportunity.ai_analysis_sections ? (
-              <OpportunityAnalysisAccordions sections={opportunity.ai_analysis_sections} t={t} />
+              <OpportunityAnalysisAccordions
+                sections={opportunity.ai_analysis_sections}
+                sourceText={
+                  opportunity.description && !isRedundantWithTitle(opportunity.description, opportunity.title)
+                    ? opportunity.description
+                    : null
+                }
+                t={t}
+              />
             ) : (
               <>
                 {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
@@ -1751,9 +1759,22 @@ function RefineAnalysisAccordion({ t }: { t: (key: string) => string }) {
 // client's mockup's own literal colors.
 function OpportunityAnalysisAccordions({
   sections,
+  sourceText,
   t,
 }: {
   sections: { presentation: string; conditions: string; entreprises: string };
+  // Full, un-summarized opportunity description (raw `description` field).
+  // The 3 sections above are an AI-condensed 2-5 sentence synthesis, which
+  // risks trimming details a candidate actually needs (a specific clause,
+  // an exact figure, a secondary requirement the summary rolled up into a
+  // generic sentence). Rather than changing the generation itself - the
+  // condensed sections are what the client's 10 Sep spec asked for, for
+  // readability - this keeps the full original text one click away so
+  // nothing from the source is ever actually lost, per the later "do not
+  // lose information" clarification. Null/omitted when there's no
+  // meaningful original text to fall back to (already covered by
+  // isRedundantWithTitle upstream).
+  sourceText?: string | null;
   t: (key: string) => string;
 }) {
   const items = [
@@ -1763,6 +1784,7 @@ function OpportunityAnalysisAccordions({
   ].filter(item => item.text && item.text.trim().length > 0);
 
   const [openKey, setOpenKey] = useState<string | null>(items[0]?.key ?? null);
+  const [sourceOpen, setSourceOpen] = useState(false);
 
   if (items.length === 0) return null;
 
@@ -1791,6 +1813,27 @@ function OpportunityAnalysisAccordions({
           </div>
         );
       })}
+      {sourceText && (
+        <div className="border border-[#17334D] rounded-xl bg-[#031B30] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setSourceOpen(o => !o)}
+            className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
+            aria-expanded={sourceOpen}
+          >
+            <FileText size={14} className="text-[#5B6B80] shrink-0" />
+            <span className="flex-1 text-xs font-semibold text-[#B9BBC8]">
+              {t('detailSourceTextToggle') || 'Voir le texte source complet'}
+            </span>
+            <ChevronDown size={13} className={`text-[#5B6B80] shrink-0 transition-transform ${sourceOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {sourceOpen && (
+            <div className="px-3.5 pb-4 text-xs text-[#B9BBC8] leading-relaxed whitespace-pre-line">
+              {stripMarkdownArtifacts(sourceText)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
