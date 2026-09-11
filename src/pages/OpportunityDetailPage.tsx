@@ -96,6 +96,17 @@ function hashStringToUnit(input: string): number {
   }
   return (hash % 10000) / 10000;
 }
+// Client's follow-up (11 Sep, dossier-demo message): the red dot on the two
+// social-proof cards must scale in size with the number it's next to
+// ("dont la taille augmente ou diminue selon les données affichées") - not
+// a fixed dot. Maps each counter's known range to a px size range; kept as
+// a plain linear map since the client described this as already
+// calculated/fixed, not something to make configurable.
+function socialProofDotSizePx(value: number, min: number, max: number, minPx: number, maxPx: number): number {
+  if (max === min) return (minPx + maxPx) / 2;
+  const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  return Math.round(minPx + t * (maxPx - minPx));
+}
 // Client's brief (5 Sep, "Votre concordance" page): "l'ancienneté calculée
 // automatiquement" - derived from the company's creation date, never a
 // separate field to fetch/store.
@@ -697,22 +708,41 @@ export default function OpportunityDetailPage() {
             numbers were always meant to be display-only (see the counter
             functions above), never shown as a verified statistic. */}
         <div className="space-y-2.5 mt-4">
-          <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4">
-            <p className="flex items-center gap-2 text-sm font-bold text-white">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-              {getInterestedCompaniesCount(opportunity.id)} {t('interestedCompaniesLabel') || 'entreprises intéressées'}
-            </p>
-            <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">
-              {t('interestedCompaniesBody') || 'consultent actuellement cette opportunité.'}
-            </p>
-            <p className="text-[11px] text-[#5B6B80] mt-2">{t('statsDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
-          </div>
-          <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
-            <p className="text-xs text-[#EAF0F6] leading-relaxed">
-              <span className="font-bold text-white">{getConsultationsCount(opportunity.id)} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
-              {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
-            </p>
-          </div>
+          {(() => {
+            const companiesCount = getInterestedCompaniesCount(opportunity.id);
+            const consultationsCount = getConsultationsCount(opportunity.id);
+            const companiesDotPx = socialProofDotSizePx(companiesCount, 7, 18, 6, 14);
+            const consultationsDotPx = socialProofDotSizePx(consultationsCount, 2, 5, 6, 11);
+            return (
+              <>
+                <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4">
+                  <p className="flex items-center gap-2 text-sm font-bold text-white">
+                    <span
+                      className="rounded-full bg-red-500 shrink-0"
+                      style={{ width: companiesDotPx, height: companiesDotPx }}
+                    />
+                    {companiesCount} {t('interestedCompaniesLabel') || 'entreprises intéressées'}
+                  </p>
+                  <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">
+                    {t('interestedCompaniesBody') || 'consultent actuellement cette opportunité.'}
+                  </p>
+                  <p className="text-[11px] text-[#5B6B80] mt-2">{t('statsDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
+                </div>
+                <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
+                  <p className="flex items-center gap-2 text-xs text-[#EAF0F6] leading-relaxed">
+                    <span
+                      className="rounded-full bg-red-500 shrink-0 animate-pulse"
+                      style={{ width: consultationsDotPx, height: consultationsDotPx }}
+                    />
+                    <span>
+                      <span className="font-bold text-white">{consultationsCount} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
+                      {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
+                    </span>
+                  </p>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
       )}
