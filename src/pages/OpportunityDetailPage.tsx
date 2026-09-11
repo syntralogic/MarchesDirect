@@ -54,6 +54,19 @@ function formatSeniority(created: string | null): string | null {
 // repeated the title verbatim under "Résumé" - detect and treat that as
 // "no real description" instead, so the block hides/shows the empty-state
 // message rather than reproducing the title.
+// Matches the backend's hasAnalysisContent() (routes/opportunities.ts) -
+// an ai_analysis_sections object can exist but have all 3 fields blank
+// (the coercion in generateOpportunityAnalysisSections falls back to ''
+// per key rather than throwing on a partial/edge-case response). Checking
+// the object is merely non-null treated that shape as "generated": it
+// rendered <OpportunityAnalysisAccordions>, whose own empty-items filter
+// then returned null - nothing shown where the ai_summary paragraph used
+// to be, instead of falling back to it.
+function hasAnalysisContent(sections: { presentation: string; conditions: string; entreprises: string } | null | undefined): boolean {
+  if (!sections) return false;
+  return Boolean(sections.presentation?.trim() || sections.conditions?.trim() || sections.entreprises?.trim());
+}
+
 function isRedundantWithTitle(text: string | null | undefined, title: string | null | undefined): boolean {
   if (!text || !title) return false;
   const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -645,8 +658,8 @@ export default function OpportunityDetailPage() {
       {screen === 1 && (
         <div className="space-y-4">
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            {opportunity.ai_analysis_sections ? (
-              <OpportunityAnalysisAccordions sections={opportunity.ai_analysis_sections} t={t} />
+            {hasAnalysisContent(opportunity.ai_analysis_sections) ? (
+              <OpportunityAnalysisAccordions sections={opportunity.ai_analysis_sections!} t={t} />
             ) : (
               <>
                 {opportunity.ai_summary && !isRedundantWithTitle(opportunity.ai_summary, opportunity.title) && (
