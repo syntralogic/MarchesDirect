@@ -37,6 +37,65 @@ function formatAmount(value: number | null, currency: string | null) {
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 }
+// Client's brief (11 Sep, "compteurs" spec, exact wording): two display-only
+// social-proof counters on the opportunity card - NOT tied to real data
+// ("aucun système de comptage réel"), explicitly because a real 0/1 count on
+// most fiches would be less convincing than a plausible-looking one, and the
+// client was clear these must never be presented as real statistics anywhere
+// they could be checked (no admin toggle to make them "real" later without
+// this comment being revisited).
+//
+// "13 entreprises" - one fixed number per fiche, range 7-18 weighted toward
+// 7-15, red dot does NOT pulse. Seeded from the opportunity id so the same
+// fiche shows the same number on every visit/reload (no flicker on
+// re-render) while different fiches naturally land on different numbers.
+function getInterestedCompaniesCount(opportunityId: string): number {
+  const seed = hashStringToUnit(opportunityId + ':companies');
+  // 80% of fiches land in the tighter 7-15 range the client asked to
+  // favour, the rest spread across the full 7-18 range.
+  if (seed < 0.8) return 7 + Math.floor((seed / 0.8) * 9); // 7-15
+  return 16 + Math.floor(((seed - 0.8) / 0.2) * 3); // 16-18
+}
+// Consultation counter - one value from {2,3,4,5} per fiche, red dot DOES
+// pulse (client: "conserver la légère pulsation"). Client also asked to
+// avoid repeating the same value on two consecutively-viewed fiches -
+// tracked via sessionStorage since that's a cross-page-navigation
+// constraint, not something a single component instance can know on its
+// own. Falls back to the seeded value alone if sessionStorage is
+// unavailable (private browsing etc.) - still random per fiche, just
+// without the no-repeat guarantee.
+function getConsultationsCount(opportunityId: string): number {
+  const options = [2, 3, 4, 5];
+  const seed = hashStringToUnit(opportunityId + ':consultations');
+  let value = options[Math.floor(seed * options.length)];
+  try {
+    const storageKey = 'md_last_consultation';
+    const raw = sessionStorage.getItem(storageKey);
+    const last = raw ? JSON.parse(raw) as { id: string; value: number } : null;
+    if (last && last.id === opportunityId) {
+      // Same fiche shown again this session (e.g. back/forward nav) - keep
+      // the same number rather than reassigning on every visit.
+      return last.value;
+    }
+    if (last && last.value === value) {
+      // Bump to the next option in the fixed cycle so two fiches viewed
+      // back-to-back never show the same count.
+      value = options[(options.indexOf(value) + 1) % options.length];
+    }
+    sessionStorage.setItem(storageKey, JSON.stringify({ id: opportunityId, value }));
+  } catch {
+    // sessionStorage unavailable - value stays the seeded one, just without
+    // the cross-fiche no-repeat guarantee.
+  }
+  return value;
+}
+function hashStringToUnit(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return (hash % 10000) / 10000;
+}
 // Client's brief (5 Sep, "Votre concordance" page): "l'ancienneté calculée
 // automatiquement" - derived from the company's creation date, never a
 // separate field to fetch/store.
@@ -625,6 +684,19 @@ export default function OpportunityDetailPage() {
           )}
           <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('detailDeadline')} : {formatDate(opportunity.deadline)}</span>
           <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
+        </div>
+        {/* Social-proof counters (client's 11 Sep spec) - display-only,
+            not tied to any real count, see getInterestedCompaniesCount/
+            getConsultationsCount above for exactly why and how. */}
+        <div className="flex flex-wrap gap-3 mt-3">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#B9BBC8] bg-white/5 border border-white/10 rounded-full px-3 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+            {getInterestedCompaniesCount(opportunity.id)} {t('interestedCompaniesLabel') || 'entreprises intéressées'}
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#B9BBC8] bg-white/5 border border-white/10 rounded-full px-3 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse" />
+            {getConsultationsCount(opportunity.id)} {t('consultationsLabel') || 'consultations récentes'}
+          </span>
         </div>
       </div>
       )}
