@@ -685,18 +685,34 @@ export default function OpportunityDetailPage() {
           <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('detailDeadline')} : {formatDate(opportunity.deadline)}</span>
           <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
         </div>
-        {/* Social-proof counters (client's 11 Sep spec) - display-only,
-            not tied to any real count, see getInterestedCompaniesCount/
-            getConsultationsCount above for exactly why and how. */}
-        <div className="flex flex-wrap gap-3 mt-3">
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#B9BBC8] bg-white/5 border border-white/10 rounded-full px-3 py-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-            {getInterestedCompaniesCount(opportunity.id)} {t('interestedCompaniesLabel') || 'entreprises intéressées'}
-          </span>
-          <span className="flex items-center gap-1.5 text-[11px] font-medium text-[#B9BBC8] bg-white/5 border border-white/10 rounded-full px-3 py-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 animate-pulse" />
-            {getConsultationsCount(opportunity.id)} {t('consultationsLabel') || 'consultations récentes'}
-          </span>
+        {/* Social-proof counters, redesigned as 2 cards (client feedback,
+            11 Sep, screenshot): the pill-badge version above wasn't
+            acceptable ("eyse nhi chalega") - client sent the Concordance
+            screen's card style as the reference to match instead
+            ("eyse ho", "yehi 2 cards, baki kuch nahi"). Counts and
+            randomization logic are UNCHANGED (getInterestedCompaniesCount/
+            getConsultationsCount) - only the presentation moved from
+            pill -> card. Kept the disclaimer line on card 1, matching the
+            reference card's own "Exemple illustratif" wording, since these
+            numbers were always meant to be display-only (see the counter
+            functions above), never shown as a verified statistic. */}
+        <div className="space-y-2.5 mt-4">
+          <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4">
+            <p className="flex items-center gap-2 text-sm font-bold text-white">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+              {getInterestedCompaniesCount(opportunity.id)} {t('interestedCompaniesLabel') || 'entreprises intéressées'}
+            </p>
+            <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">
+              {t('interestedCompaniesBody') || 'consultent actuellement cette opportunité.'}
+            </p>
+            <p className="text-[11px] text-[#5B6B80] mt-2">{t('statsDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
+          </div>
+          <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
+            <p className="text-xs text-[#EAF0F6] leading-relaxed">
+              <span className="font-bold text-white">{getConsultationsCount(opportunity.id)} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
+              {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
+            </p>
+          </div>
         </div>
       </div>
       )}
