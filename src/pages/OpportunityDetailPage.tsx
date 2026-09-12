@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink,
+  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
   Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone, Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -274,6 +274,12 @@ export default function OpportunityDetailPage() {
   // earlier in the journey (screen 4's "Enregistrer cette opportunité"
   // gate) so this step never re-asks for name/email/phone.
   const [contactChoice, setContactChoice] = useState<'slot' | 'callback' | 'none' | null>(null);
+  // "Votre dossier" hub state (client's 10 Sep card spec, free-visitor view).
+  const [dossierStepsOpen, setDossierStepsOpen] = useState(false);
+  const [dceViewed, setDceViewed] = useState(false);
+  const [dceAnalysisViewed, setDceAnalysisViewed] = useState(false);
+  const [eligibilityOpen, setEligibilityOpen] = useState(false);
+  const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -1341,14 +1347,127 @@ export default function OpportunityDetailPage() {
             </div>
           )}
 
-          {/* Detailed compatibility breakdown - moved here from the
-              Concordance screen (client's exact reference for that screen
-              never shows criteria weights / eligibility docs, only the
-              score summary card). Kept, just relocated to the dossier hub
-              where "en savoir plus" content belongs. */}
-          {matchScore && (
+          {/* Client's 10 Sep interactive-card spec ("Votre dossier" - free
+              visitor view): reproduces the reference card layout exactly -
+              opportunity selector, 5-step progress, dossier pré-rempli,
+              locked "Générer mon dossier" (subscriber-only, no free draft
+              pipeline per the client's own rule), buyer criteria weighting,
+              DCE + analysis, the 3 locked candidature documents, pièces
+              d'entreprise count, and the accompagnement CTA - in that exact
+              order. Wired to real data everywhere it already exists
+              (matchScore for weighting, checklistDocs for the pièces
+              count); the dossier-progress step tracking itself has no
+              backend field yet, so it's derived client-side from signals
+              already on the page (see DOSSIER_STEPS below) rather than a
+              new migration - good enough to render correctly, worth a real
+              status column later if the client wants steps to persist
+              server-side. */}
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <label className="block text-xs font-semibold text-[#B9BBC8] mb-2">{t('dossierSelectorLabel') || 'Vos opportunités enregistrées'}</label>
+            <div className="relative">
+              <select
+                disabled
+                value={id}
+                className="w-full appearance-none bg-[#031B30] border border-[#17334D] rounded-xl px-3.5 py-2.5 pr-9 text-sm text-white disabled:opacity-100"
+              >
+                <option value={id}>{opportunity.title} — {t('dossierSelectorPreview') || 'Aperçu disponible'}</option>
+              </select>
+              <ChevronDown size={14} className="text-[#B9BBC8] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+            <div className="mt-3">
+              <h2 className="text-sm font-bold text-white">{opportunity.title}</h2>
+              <p className="text-xs text-[#B9BBC8] mt-1">
+                {opportunity.trade_name}
+                {opportunity.deadline && <> · {formatDate(opportunity.deadline)}</>}
+              </p>
+            </div>
+          </div>
+
+          {(() => {
+            const steps = [
+              { done: true, label: t('dossierStepPreview') || 'Aperçu disponible' },
+              { done: dceViewed, label: t('dossierStepDce') || 'DCE consulté' },
+              { done: dceAnalysisViewed, label: t('dossierStepAnalysis') || 'Analyse du DCE consultée' },
+              { done: false, label: t('dossierStepGenerated') || 'Dossier généré' },
+              { done: false, label: t('dossierStepFiled') || 'Dépôt effectué' },
+            ];
+            const doneCount = steps.filter(s => s.done).length;
+            const pct = Math.round((doneCount / steps.length) * 100);
+            return (
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-sm font-bold text-white">{t('dossierProgressTitle') || 'Avancement de votre dossier'}</h2>
+                  <span className="text-orange font-extrabold text-lg">{pct} %</span>
+                </div>
+                <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden mb-2">
+                  <div className="h-full bg-orange rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <p className="text-xs text-[#B9BBC8] mb-3">
+                  {(t('dossierProgressSteps') || '{done} étape sur {total} terminée · Dépôt non effectué')
+                    .replace('{done}', String(doneCount)).replace('{total}', String(steps.length))}
+                </p>
+                <p className="flex items-center gap-1.5 text-xs text-[#B9BBC8] mb-2">
+                  <Clock3 size={13} className="shrink-0" /> {t('dossierStepPreview') || 'Aperçu disponible'}
+                </p>
+                <p className="text-xs text-white mb-2">{t('dossierProgressReady') || 'Votre aperçu est prêt. Découvrez la suite de l\'accompagnement.'}</p>
+                <button type="button" onClick={() => setDossierStepsOpen(o => !o)} className="flex items-center gap-1 text-xs font-semibold text-orange hover:underline">
+                  <ChevronRight size={12} className={`transition-transform ${dossierStepsOpen ? 'rotate-90' : ''}`} /> {t('dossierProgressSeeSteps') || 'Voir les étapes de préparation'}
+                </button>
+                {dossierStepsOpen && (
+                  <div className="mt-3 pt-3 border-t border-[#17334D] space-y-2">
+                    {steps.map((s, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        {s.done ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <span className="w-[13px] h-[13px] rounded-full border border-[#5B6B80] shrink-0" />}
+                        <span className={s.done ? 'text-white' : 'text-[#B9BBC8]'}>{s.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-white">{t('dossierPrefilledTitle') || 'Votre dossier pré-rempli'}</h2>
+              <span className="text-[11px] font-semibold text-green-400">{t('dossierPrefilledBadge') || 'Offert · disponible'}</span>
+            </div>
+            <div className="flex items-start gap-3 mb-4">
+              <span className="w-9 h-9 rounded-lg bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><FileText size={16} className="text-orange" /></span>
+              <div>
+                <p className="text-sm font-semibold text-white">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')} × {opportunity.title}</p>
+                <p className="text-xs text-[#B9BBC8] mt-0.5">{t('dossierPrefilledDesc') || 'Votre entreprise, le lot retenu et une première trame de réponse rassemblés dans un document.'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <Link to={`/opportunites/${id}/candidature`} className="bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
+                {t('dossierPrefilledConsult') || 'Consulter mon dossier'}
+              </Link>
+              <button type="button" onClick={() => setDossierStepsOpen(true)} className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline">
+                <Download size={13} /> {t('dossierPrefilledDownload') || 'Télécharger'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <ChevronRight size={15} className="text-orange" />
+              <h2 className="text-sm font-bold text-white">{t('dossierGenerateTitle') || 'Préparer ma candidature'}</h2>
+            </div>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierGenerateDesc') || "Votre chargé d'affaires prépare et dépose votre candidature."}</p>
+            <button
+              type="button"
+              onClick={() => setShowAccountManagerModal(true)}
+              className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
+            >
+              <Lock size={13} /> {t('dossierGenerateCta') || 'Générer mon dossier'}
+            </button>
+            <p className="text-[11px] text-[#5B6B80] text-center mt-2">{t('dossierGenerateNote') || "Préparation complète incluse dans l'accompagnement."}</p>
+          </div>
+
+          {matchScore && matchScore.criteria.length > 0 && (
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight')}</h2>
+              <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight') || "Pondération des critères de l'acheteur"}</h2>
               <div className="space-y-2.5">
                 {matchScore.criteria.map((c, i) => (
                   <div key={i}>
@@ -1362,98 +1481,137 @@ export default function OpportunityDetailPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {matchScore && matchScore.eligibility.length > 0 && (
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white mb-3">{t('scoreEligibilityDocs')}</h2>
-              <div className="space-y-2.5">
-                {matchScore.eligibility.map((el, i) => (
-                  <div key={i} className="flex items-start gap-2.5 text-xs">
-                    {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-                      : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                      : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
-                    <div>
-                      <p className="text-white font-semibold">{el.label}</p>
-                      <p className="text-[#B9BBC8]">{el.note}</p>
+              
+              {matchScore.eligibility.length > 0 && (
+                <>
+                  <button type="button" onClick={() => setEligibilityOpen(o => !o)} className="flex items-center gap-1 text-xs font-semibold text-orange hover:underline mt-3">
+                    <ChevronRight size={12} className={`transition-transform ${eligibilityOpen ? 'rotate-90' : ''}`} /> {t('scoreEligibilityDocs') || 'Exigences de cette consultation'}
+                  </button>
+                  {eligibilityOpen && (
+                    <div className="mt-3 pt-3 border-t border-[#17334D] space-y-2.5">
+                      {matchScore.eligibility.map((el, i) => (
+                        <div key={i} className="flex items-start gap-2.5 text-xs">
+                          {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
+                            : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                            : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
+                          <div>
+                            <p className="text-white font-semibold">{el.label}</p>
+                            <p className="text-[#B9BBC8]">{el.note}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-              {!isAuthenticated && (
-                <p className="text-[11px] text-[#5B6B80] mt-3 pt-3 border-t border-[#17334D]">{t('scoreLoginToCheck')}</p>
+                  )}
+                </>
               )}
             </div>
           )}
 
-          <RefineAnalysisAccordion t={t} />
-
-          {/* Client's newest brief: "Votre candidature peut déjà commencer" -
-              reuses real signals already on this page rather than
-              fabricating readiness. DC1/DC2/DUME/mémoire technique/prix are
-              never marked ready here - no free draft-generation pipeline
-              runs pre-payment, and the client's rule is explicit ("aucune
-              information inventée... aucun document présenté comme définitif
-              sans vérification"). */}
-          {matchScore && (
-            <DossierPrepBlock
-              t={t}
-              siretCompany={siretCompany}
-              matchScore={matchScore}
-              checklistDocs={checklistDocs}
-              checklistRefCount={checklistRefCount}
-              onContactManager={() => setShowAccountManagerModal(true)}
-            />
-          )}
-
-          <div className="bg-green-400/10 border border-green-400/30 rounded-2xl p-5 md:p-6">
-            <p className="flex items-center gap-2 text-xs font-semibold text-green-400 mb-1"><CheckCircle2 size={14} /> {t('followUpSaved') || 'Opportunité enregistrée'}</p>
-            <h2 className="text-base font-extrabold text-white">{t('followUpSavedSub') || 'Elle apparaît maintenant dans votre tableau de bord'}</h2>
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <FileText size={15} className="text-orange" />
+              <h2 className="text-sm font-bold text-white">{t('dossierDceTitle') || 'DCE — Dossier de consultation'}</h2>
+            </div>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceSub') || 'Les documents du marché et leurs versions.'}</p>
+            <div className="flex items-center justify-between border-t border-[#17334D] pt-3">
+              <div>
+                <p className="text-sm text-white font-semibold">{t('dossierDceDocName') || 'Règlement de consultation'}</p>
+                <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
+              </div>
+              {opportunity.official_url ? (
+                <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => setDceViewed(true)} className="text-orange font-semibold text-sm hover:underline shrink-0">
+                  {t('dossierDceConsult') || 'Consulter'}
+                </a>
+              ) : (
+                <button type="button" onClick={() => setDceViewed(true)} className="text-orange font-semibold text-sm hover:underline shrink-0">{t('dossierDceConsult') || 'Consulter'}</button>
+              )}
+            </div>
           </div>
 
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><FileText size={16} className="text-orange" /></span>
-              <p className="text-sm font-bold text-white">{t('dossierHubTitle') || 'Dossier de candidature'}</p>
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Search size={15} className="text-orange" />
+              <h2 className="text-sm font-bold text-white">{t('dossierDceAnalysisTitle') || 'Analyse du DCE'}</h2>
             </div>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubSub') || 'Préparez et suivez votre dossier pour cette opportunité.'}</p>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceAnalysisSub') || 'Les exigences, les points de vigilance et la préparation de votre réponse.'}</p>
+            <button type="button" onClick={() => { setDceAnalysisViewed(true); setEligibilityOpen(true); }} className="flex items-center gap-2 border border-orange/50 text-orange text-sm font-semibold px-4 py-2 rounded-xl hover:bg-orange/10 transition-colors">
+              <FileText size={13} /> {t('dossierDceAnalysisCta') || "Voir l'analyse"}
+            </button>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <FileText size={15} className="text-orange" />
+              <h2 className="text-sm font-bold text-white">{t('dossierCandidatureTitle') || 'Dossier de candidature'}</h2>
+            </div>
+            <p className="text-xs text-[#B9BBC8] mb-3 -mt-2">{t('dossierCandidatureSub') || "Les documents que votre chargé d'affaires prépare avec vous."}</p>
             <div className="divide-y divide-[#17334D]">
               {[
-                { label: t('dossierHubDocs') || 'Documents de candidature', to: `/opportunites/${id}/candidature` },
-                { label: t('dossierHubMemo') || 'Mémoire technique', to: `/opportunites/${id}/candidature` },
-                { label: t('dossierHubAdmin') || 'Pièces administratives', to: '/profil/dossier-entreprise' },
-                { label: t('dossierHubChecklist') || 'Checklist du dossier', to: `/opportunites/${id}/candidature` },
-                { label: t('dossierHubProgress') || "Suivi de l'avancement", to: '/tableau-de-bord' },
-              ].map(row => (
-                <Link key={row.label} to={row.to} className="flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors">
-                  {row.label} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
-                </Link>
+                { title: t('dossierCandidatureMemo') || 'Mémoire technique', desc: t('dossierCandidatureMemoDesc') || 'Organisation, moyens et méthode pour ce marché.' },
+                { title: t('dossierCandidatureDocs') || 'Documents de candidature', desc: t('dossierCandidatureDocsDesc') || 'Informations de candidature et formulaires applicables.' },
+                { title: t('dossierCandidatureFinance') || 'Réponse financière', desc: t('dossierCandidatureFinanceDesc') || 'Chiffrage et cadre financiers du marché.' },
+              ].map(item => (
+                <div key={item.title} className="flex items-center justify-between gap-3 py-3">
+                  <div>
+                    <p className="text-sm text-white font-semibold">{item.title}</p>
+                    <p className="text-xs text-[#B9BBC8]">{item.desc}</p>
+                    <p className="text-[11px] text-[#5B6B80] mt-0.5">{t('dossierGenerateNote') || "Inclus dans l'accompagnement."}</p>
+                  </div>
+                  <button type="button" onClick={() => setShowAccountManagerModal(true)} className="flex items-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors shrink-0">
+                    <Lock size={12} /> {t('dossierGenerateCta') || 'Générer'}
+                  </button>
+                </div>
               ))}
             </div>
           </div>
 
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><Users size={16} className="text-orange" /></span>
-              <p className="text-sm font-bold text-white">{t('dossierHubSupportTitle') || 'Accompagnement'}</p>
-            </div>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubSupportSub') || 'Nos experts vous guident à chaque étape.'}</p>
-            <div className="divide-y divide-[#17334D]">
-              <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="w-full flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors text-left">
-                {t('dossierHubCallback') || 'Demander un rappel'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
-              </button>
-              <button type="button" onClick={() => setContactChoice(c => c === 'slot' ? null : 'slot')} className="w-full flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors text-left">
-                {t('dossierHubSlot') || 'Prendre rendez-vous'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
-              </button>
-              <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors text-left">
-                {t('dossierHubAccompanied') || 'Être accompagné'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
-              </button>
-              <a href="mailto:contact@marches-direct.fr" className="flex items-center justify-between gap-3 py-3 text-sm text-white hover:text-orange transition-colors">
-                {t('dossierHubHelp') || 'Aide au dépôt'} <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />
-              </a>
-            </div>
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <button type="button" onClick={() => setCompanyPiecesOpen(o => !o)} className="w-full flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-sm font-bold text-white">
+                <ChevronRight size={14} className={`text-orange transition-transform ${companyPiecesOpen ? 'rotate-90' : ''}`} />
+                {(t('dossierPiecesTitle') || 'Pièces de votre entreprise')} · {CHECKLIST_DOCS.filter(item => checklistDocs.some(d => d.document_type === item.type)).length} / {CHECKLIST_DOCS.length} {t('dossierPiecesVerified') || 'vérifiées'}
+              </span>
+            </button>
+            {companyPiecesOpen && (
+              <div className="mt-3 pt-3 border-t border-[#17334D] space-y-2">
+                {CHECKLIST_DOCS.map(item => {
+                  const done = checklistDocs.some(d => d.document_type === item.type);
+                  return (
+                    <div key={item.type} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="text-[#B9BBC8]">{t(item.labelKey)}</span>
+                      {done ? (
+                        <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
+                      ) : (
+                        <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <button type="button" onClick={() => setDossierStepsOpen(o => !o)} className="w-full flex items-center gap-2">
+              <ChevronRight size={14} className={`text-orange transition-transform ${dossierStepsOpen ? 'rotate-90' : ''}`} />
+              <span className="text-sm font-bold text-white">{t('dossierProgressAccordion') || "Suivi de l'avancement"}</span>
+            </button>
+          </div>
+
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Users size={15} className="text-orange" />
+              <h2 className="text-sm font-bold text-white">{t('dossierHubSupportTitle') || 'Votre accompagnement'}</h2>
+            </div>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierSupportSub') || "Un chargé d'affaires vous aide à préparer votre candidature et réaliser le dépôt."}</p>
+            <div className="flex items-center gap-4">
+              <button type="button" onClick={() => setShowAccountManagerModal(true)} className="bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
+                {t('dossierHubSlot') || 'Prendre rendez-vous'}
+              </button>
+              <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="text-sm text-orange font-semibold hover:underline">
+                {t('dossierVerifyContact') || 'Vérifier mes coordonnées'}
+              </button>
+            </div>
             {contactChoice === 'callback' && (
               <div className="mt-3 pt-3 border-t border-[#17334D]">
                 {callbackConfirmed ? (
@@ -1468,84 +1626,18 @@ export default function OpportunityDetailPage() {
                 {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
               </div>
             )}
-
-            {contactChoice === 'slot' && (
-              <div className="mt-3 pt-3 border-t border-[#17334D]">
-                {selectedSlot ? (
-                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                    <CheckCircle2 size={14} className="shrink-0" /> {t('followUpSlotConfirmed') || 'Créneau réservé — le suivi reste accessible normalement.'}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {CALLBACK_SLOTS.map(slotLabel => (
-                      <button
-                        key={slotLabel}
-                        type="button"
-                        disabled={!!slotSubmitting}
-                        onClick={() => handleBookSlot(slotLabel)}
-                        className="min-h-[46px] text-xs font-semibold rounded-xl border border-[#5b6d7d] text-white hover:border-orange/50 px-2 transition-colors disabled:opacity-50"
-                      >
-                        {slotSubmitting === 'slot' ? <Loader2 size={13} className="animate-spin mx-auto" /> : slotLabel}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
-              </div>
-            )}
-
-            {contactChoice !== null && !quickPasswordDismissed && (!isAuthenticated || quickPasswordDone) && (
-              <div className="mt-3 pt-3 border-t border-[#17334D]">
-                {quickPasswordDone ? (
-                  <div className="flex items-center gap-2 text-sm text-white">
-                    <ShieldCheck size={15} className="text-green-400 shrink-0" />
-                    {t('quickPasswordSecuredSpace') || 'Espace sécurisé'} — {slotForm.email}
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-xs text-[#B9BBC8] mb-2">{t('quickPasswordSub') || 'Retrouvez cette opportunité et vos rendez-vous depuis votre tableau de bord.'}</p>
-                    <form onSubmit={handleQuickPassword} className="flex flex-col sm:flex-row gap-2.5">
-                      <input
-                        type="password"
-                        required
-                        minLength={8}
-                        value={quickPassword}
-                        onChange={e => setQuickPassword(e.target.value)}
-                        placeholder={t('quickPasswordPlaceholder') || 'Mot de passe (8 caractères min.)'}
-                        className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                      />
-                      <button type="submit" disabled={quickPasswordSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
-                        {quickPasswordSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('quickPasswordSubmit') || 'Créer mon mot de passe'}
-                      </button>
-                    </form>
-                    {quickPasswordError && <p className="text-xs text-red-400 mt-2">{quickPasswordError}</p>}
-                    <button type="button" onClick={() => setQuickPasswordDismissed(true)} className="text-xs text-[#B9BBC8] hover:text-white underline mt-3">
-                      {t('quickPasswordLater') || 'Plus tard'}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
           </div>
 
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><Sparkles size={16} className="text-orange" /></span>
-              <p className="text-sm font-bold text-white">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</p>
-            </div>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubMoreSub') || "Découvrez d'autres opportunités adaptées à votre profil."}</p>
-            <Link to="/recherche" className="flex items-center justify-center gap-2 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
-              {t('dossierHubMoreCta') || "Rechercher d'autres opportunités"} <ChevronRight size={14} />
-            </Link>
+          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <h2 className="text-sm font-bold text-white mb-3">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</h2>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubMoreSub') || "Retrouvez vos opportunités enregistrées et choisissez les prochaines candidatures."}</p>
+            <Link to="/tableau-de-bord" className="text-sm text-orange font-semibold hover:underline">{t('dossierHubDashboard') || 'Voir mon tableau de bord'}</Link>
           </div>
 
           <div className="flex gap-2.5">
             <button type="button" onClick={() => setScreen(2)} className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
               {t('compatibilityBack') || 'Retour'}
             </button>
-            <Link to={`/opportunites/${id}/candidature`} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white font-bold py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-              {t('dossierHubAccessCta') || 'Accéder à mon dossier'}
-            </Link>
           </div>
         </div>
       )}
