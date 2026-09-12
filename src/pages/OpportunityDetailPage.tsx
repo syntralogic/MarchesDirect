@@ -7,6 +7,7 @@ import {
   Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone, Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { SaveButton } from '@/components/SaveButton';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -14,8 +15,10 @@ import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage,
+  companiesApi, dossiersApi,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
+  type ApiDossierRequest,
 } from '@/lib/apiClient';
 import { stripMarkdownArtifacts } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
@@ -328,6 +331,16 @@ export default function OpportunityDetailPage() {
   const [quickPasswordDone, setQuickPasswordDone] = useState(false);
   const [quickPasswordDismissed, setQuickPasswordDismissed] = useState(false);
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
+  // "Votre dossier" 5-section aperçu (client's 12 Sep dossier-demo
+  // reference, Écran "3. Dossier") - replaces the old locked
+  // "Préparer ma candidature" card below. Backed by dossier_requests
+  // (see dossiersApi) - draft-savable, doesn't submit anything real until
+  // "Générer mon dossier" is pressed, per the client's exact wording.
+  const [dossier, setDossier] = useState<ApiDossierRequest | null>(null);
+  const [dossierResponseText, setDossierResponseText] = useState('');
+  const [dossierPresentation, setDossierPresentation] = useState('');
+  const [dossierPartners, setDossierPartners] = useState<{ name: string; role: string }[]>([]);
+  const [dossierGenerating, setDossierGenerating] = useState(false);
   // Phone+email gate (client's newest brief, Écran 7): shown once SIRET is
   // known but leadCaptured is still false, in place of the fuller analysis
   // breakdown (criteria/eligibility/refine accordion) - global per session
@@ -489,6 +502,21 @@ export default function OpportunityDetailPage() {
     tendersApi.getDocuments(id)
       .then(({ documents }) => setDceDocuments(documents))
       .catch(() => {});
+  }, [id, isAuthenticated]);
+
+  // "Votre dossier" aperçu: load any existing draft/request for this
+  // opportunity + the company profile (Identification/Présentation
+  // sections). Independent of the tender/bid fetch above - this reads
+  // dossier_requests, not the deeper BidWorkspacePage tender flow.
+  useEffect(() => {
+    if (!id || !isAuthenticated) return;
+    dossiersApi.get(id).then(d => {
+      if (!d) return;
+      setDossier(d);
+      setDossierResponseText(d.response_text || '');
+      setDossierPartners(d.partners || []);
+    }).catch(() => {});
+    companiesApi.me().then(c => setDossierPresentation(c.description || '')).catch(() => {});
   }, [id, isAuthenticated]);
 
   useEffect(() => {
@@ -1583,19 +1611,161 @@ export default function OpportunityDetailPage() {
           </div>
 
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <ChevronRight size={15} className="text-orange" />
-              <h2 className="text-sm font-bold text-white">{t('dossierGenerateTitle') || 'Préparer ma candidature'}</h2>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-sm font-bold text-white">{t('dossierGenerateTitle') || 'Votre dossier de candidature'}</h2>
+              {dossier?.status && dossier.status !== 'draft' && (
+                <span className="text-[10px] font-bold text-green-400 bg-green-400/10 border border-green-400/30 rounded-full px-2 py-0.5 uppercase">
+                  {dossier.status === 'requested' ? (t('dossierStatusRequested') || 'Demande envoyée')
+                    : dossier.status === 'in_review' ? (t('dossierStatusInReview') || "En cours d'examen")
+                    : dossier.status === 'ready' ? (t('dossierStatusReady') || 'Prêt')
+                    : (t('dossierStatusSubmitted') || 'Déposé')}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierGenerateDesc') || "Votre chargé d'affaires prépare et dépose votre candidature."}</p>
-            <button
-              type="button"
-              onClick={() => setShowAccountManagerModal(true)}
-              className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
-            >
-              <Lock size={13} /> {t('dossierGenerateCta') || 'Générer mon dossier'}
-            </button>
-            <p className="text-[11px] text-[#5B6B80] text-center mt-2">{t('dossierGenerateNote') || "Préparation complète incluse dans l'accompagnement."}</p>
+            <p className="text-xs text-[#B9BBC8] mb-4">{opportunity.title}</p>
+
+            {/* 01. Identification de l'Entreprise - read-only, from the
+                company profile, badge "Auto-rempli" per the reference. */}
+            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-white">01. {t('dossierIdentificationTitle') || "Identification de l'Entreprise"}</p>
+                <span className="text-[10px] font-semibold text-[#5B6B80] flex items-center gap-1"><Building2 size={11} /> {t('dossierAutoFilled') || 'Auto-rempli'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                <div><span className="text-[#5B6B80]">{t('dossierFieldName') || 'Entreprise'}</span><p className="text-white font-medium truncate">{company?.name || '—'}</p></div>
+                <div><span className="text-[#5B6B80]">SIRET</span><p className="text-white font-medium">{company?.siret || '—'}</p></div>
+                <div><span className="text-[#5B6B80]">{t('dossierFieldAddress') || 'Adresse'}</span><p className="text-white font-medium truncate">{[company?.address_city, company?.address_postal_code].filter(Boolean).join(' ') || '—'}</p></div>
+                <div><span className="text-[#5B6B80]">{t('dossierFieldSector') || "Secteur d'activité"}</span><p className="text-white font-medium truncate">{company?.industry_sector || '—'}</p></div>
+              </div>
+            </div>
+
+            {/* 02. Présentation de l'Entreprise - editable, badge
+                "Suggestion" since it's a starting draft the company can
+                rewrite, saved to companies.description (reusable across
+                every dossier, not just this one). */}
+            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-white">02. {t('dossierPresentationTitle') || "Présentation de l'Entreprise"}</p>
+                <span className="text-[10px] font-semibold text-orange flex items-center gap-1"><Sparkles size={11} /> {t('dossierSuggestion') || 'Suggestion'}</span>
+              </div>
+              <textarea
+                value={dossierPresentation}
+                onChange={e => setDossierPresentation(e.target.value)}
+                rows={3}
+                placeholder={t('dossierPresentationPlaceholder') || 'Présentez votre entreprise, votre expérience et vos savoir-faire...'}
+                className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+              />
+            </div>
+
+            {/* 03. Votre réponse au marché - editable draft, this is what
+                gets sent to the chargé d'affaires to build on. */}
+            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-white">03. {t('dossierResponseTitle') || 'Votre réponse au marché'}</p>
+                <span className="text-[10px] font-semibold text-[#5B6B80] flex items-center gap-1"><Pencil size={11} /> {t('dossierPersonalize') || 'Personnalisez'}</span>
+              </div>
+              <textarea
+                value={dossierResponseText}
+                onChange={e => setDossierResponseText(e.target.value)}
+                rows={4}
+                placeholder={t('dossierResponsePlaceholder') || 'Décrivez votre approche pour répondre à ce marché...'}
+                className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+              />
+            </div>
+
+            {/* 04. Vos partenaires - co-traitance, optional, add/remove rows. */}
+            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
+              <p className="text-xs font-bold text-white mb-2">04. {t('dossierPartnersTitle') || 'Vos partenaires'}</p>
+              {dossierPartners.length > 0 && (
+                <div className="space-y-2 mb-2">
+                  {dossierPartners.map((p, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        value={p.name}
+                        onChange={e => setDossierPartners(prev => prev.map((it, idx) => idx === i ? { ...it, name: e.target.value } : it))}
+                        placeholder={t('dossierPartnerName') || 'Nom du partenaire'}
+                        className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                      />
+                      <input
+                        value={p.role}
+                        onChange={e => setDossierPartners(prev => prev.map((it, idx) => idx === i ? { ...it, role: e.target.value } : it))}
+                        placeholder={t('dossierPartnerRole') || 'Rôle'}
+                        className="w-28 bg-[#031B30] border border-[#17334D] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                      />
+                      <button type="button" onClick={() => setDossierPartners(prev => prev.filter((_, idx) => idx !== i))} className="text-[#5B6B80] hover:text-red-400 transition-colors shrink-0">
+                        <XCircle size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setDossierPartners(prev => [...prev, { name: '', role: '' }])}
+                className="flex items-center gap-1.5 text-xs font-semibold text-orange"
+              >
+                <Users size={13} /> {t('dossierAddPartner') || 'Ajouter un partenaire'}
+              </button>
+            </div>
+
+            {/* 05. Pièces à assembler - reuses the same company-document
+                checklist already tracked on this page (CHECKLIST_DOCS /
+                checklistDocs), so this isn't a second, separate source of
+                truth for the same 4 documents. */}
+            <div className="border border-[#17334D] rounded-xl p-4 mb-4">
+              <p className="text-xs font-bold text-white mb-2">05. {t('dossierAssembleTitle') || 'Pièces à assembler'}</p>
+              {CHECKLIST_DOCS.map(item => {
+                const done = checklistDocs.some(d => d.document_type === item.type);
+                return (
+                  <div key={item.type} className="flex items-center gap-2 py-1.5 text-xs">
+                    {done ? <CheckCircle2 size={14} className="text-green-400 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-[#5B6B80] shrink-0" />}
+                    <span className={done ? 'text-white' : 'text-[#B9BBC8]'}>{t(item.labelKey) || item.type}</span>
+                  </div>
+                );
+              })}
+              {checklistDocs.length < CHECKLIST_DOCS.length && (
+                <Link to="/profil/dossier-entreprise" className="inline-block mt-1.5 text-xs font-semibold text-orange hover:underline">
+                  {t('dossierCompleteDocs') || 'Compléter mes pièces'}
+                </Link>
+              )}
+            </div>
+
+            {dossier?.status && dossier.status !== 'draft' ? (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-2.5 rounded-xl justify-center">
+                <CheckCircle2 size={13} /> {t('dossierRequestSent') || "Demande envoyée à votre chargé d'affaires"}
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={dossierGenerating}
+                onClick={async () => {
+                  if (!id) return;
+                  setDossierGenerating(true);
+                  try {
+                    if (dossierPresentation !== (company?.description || '')) {
+                      await companiesApi.updateMe({ description: dossierPresentation });
+                    }
+                    const saved = await dossiersApi.generate(id, {
+                      response_text: dossierResponseText,
+                      partners: dossierPartners.filter(p => p.name.trim()),
+                      checklist: CHECKLIST_DOCS.map(item => ({ label: item.type, done: checklistDocs.some(d => d.document_type === item.type) })),
+                    });
+                    setDossier(saved);
+                    toast.success(t('dossierGenerateSuccess') || "Demande envoyée à votre chargé d'affaires.");
+                  } catch (err) {
+                    toast.error(getApiErrorMessage(err, t('dossierGenerateError') || "Impossible d'envoyer la demande."));
+                  } finally {
+                    setDossierGenerating(false);
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50"
+              >
+                {dossierGenerating ? <Loader2 size={14} className="animate-spin" /> : null} {t('dossierGenerateCta') || 'Générer mon dossier'}
+              </button>
+            )}
+            <p className="text-[11px] text-[#5B6B80] text-center mt-2">
+              {t('dossierGenerateNote') || "Cette action envoie une demande à votre chargé d'affaires - aucun dépôt n'est réalisé automatiquement."}
+            </p>
           </div>
 
           {matchScore && matchScore.criteria.length > 0 && (
