@@ -38,27 +38,27 @@ function normalizeFr(s: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// HERO — compacted so the three path cards + Démo/Témoignages fit on mobile
+// HERO
 // ---------------------------------------------------------------------------
 function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
   const [demoOpen, setDemoOpen] = useState(false);
   return (
-    <section className="px-3 md:px-6 pt-3 md:pt-10 pb-0 md:pb-10 max-w-3xl mx-auto w-full">
-      <div className="border border-orange/40 rounded-2xl bg-[#061D32] p-3 md:p-6 orange-glow relative overflow-hidden">
+    <section className="px-3 md:px-6 pt-5 md:pt-10 pb-0 md:pb-10 max-w-3xl mx-auto w-full">
+      <div className="border border-orange/40 rounded-2xl bg-[#061D32] p-4 md:p-6 orange-glow relative overflow-hidden">
         <div className="relative z-10">
-          <span className="text-[10px] md:text-[11px] font-bold text-orange uppercase tracking-widest">
+          <span className="text-[11px] md:text-[11px] font-bold text-orange uppercase tracking-widest">
             Artisans · TPE · PME
           </span>
-          <h1 className="text-xl md:text-3xl font-extrabold leading-tight mt-1.5 md:mt-2 mb-2 md:mb-3">
+          <h1 className="text-2xl md:text-3xl font-extrabold leading-tight mt-2.5 md:mt-2 mb-4 md:mb-3">
             <span className="text-white">Trouvez des marchés adaptés</span>{' '}
             <span className="text-orange">à votre entreprise.</span>
           </h1>
-          <div className="mb-3 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
-          <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
-            <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-2.5 md:py-3 rounded-xl text-xs md:text-sm hover:bg-orange/90 transition-colors">
+          <div className="mb-5 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-3">
+            <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3.5 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
               Prendre rendez-vous
             </button>
-            <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-2.5 md:py-3 rounded-xl text-xs md:text-sm hover:bg-orange/10 transition-colors">
+            <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-3.5 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/10 transition-colors">
               Être rappelé
             </button>
           </div>
@@ -108,37 +108,37 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
     { icon: Handshake, title: 'Sous-traitance', sub: "Une partie d'un chantier ou d'une prestation à réaliser", href: '/parcours?type=sous-traitance', key: 'subcontracting' as const },
   ];
   return (
-    <div className="grid grid-cols-1 gap-1.5 md:gap-2">
+    <div className="grid grid-cols-1 gap-2.5 md:gap-2">
       {paths.map(p => {
         const count = counts[p.key];
         return (
-          <Link key={p.href} to={p.href} className="flex items-center gap-2.5 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all">
-            <div className="w-9 h-9 md:w-11 md:h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
-              <p.icon size={18} className="text-orange md:hidden" />
+          <Link key={p.href} to={p.href} className="flex items-center gap-3 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3.5 md:p-3 hover:border-orange/50 group transition-all">
+            <div className="w-11 h-11 md:w-11 md:h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
+              <p.icon size={22} className="text-orange md:hidden" />
               <p.icon size={22} className="text-orange hidden md:block" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
-              <div className="text-[10px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug">{p.sub}</div>
+              <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
+              <div className="text-[11px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug">{p.sub}</div>
             </div>
-            <ChevronRight size={14} className="text-orange shrink-0 md:hidden" />
+            <ChevronRight size={16} className="text-orange shrink-0 md:hidden" />
             <ChevronRight size={16} className="text-orange shrink-0 hidden md:block" />
             {loading ? null : <span className="sr-only">{fmt(count)}</span>}
           </Link>
         );
       })}
-      <div className="grid grid-cols-2 gap-1.5 md:gap-2">
-        <button onClick={onDemoClick} className="flex flex-col items-start gap-1 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all text-left">
-          <PlayCircle size={18} className="text-orange md:hidden" />
+      <div className="grid grid-cols-2 gap-2.5 md:gap-2">
+        <button onClick={onDemoClick} className="flex flex-col items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3.5 md:p-3 hover:border-orange/50 group transition-all text-left">
+          <PlayCircle size={22} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
-          <div className="text-xs md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
-          <div className="text-[10px] md:text-[11px] text-[#B9BBC8] leading-snug">Le parcours en 1 min</div>
+          <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
+          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug">Le parcours en 1 min</div>
         </button>
-        <a href="#mdh-temoignages" className="flex flex-col items-start gap-1 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all">
-          <PlayCircle size={18} className="text-orange md:hidden" />
+        <a href="#mdh-temoignages" className="flex flex-col items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3.5 md:p-3 hover:border-orange/50 group transition-all">
+          <PlayCircle size={22} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
-          <div className="text-xs md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
-          <div className="text-[10px] md:text-[11px] text-[#B9BBC8] leading-snug">Leurs retours d'expérience</div>
+          <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
+          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug">Leurs retours d'expérience</div>
         </a>
       </div>
     </div>
