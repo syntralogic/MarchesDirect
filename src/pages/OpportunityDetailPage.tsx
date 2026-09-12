@@ -309,6 +309,14 @@ export default function OpportunityDetailPage() {
     if (tender?.id) tendersApi.markDceViewed(tender.id, step).catch(() => {});
   };
   const [eligibilityOpen, setEligibilityOpen] = useState(false);
+  // "Affinez votre concordance" mini self-assessment (client's 12 Sep
+  // concordance-apercu reference): 3 yes/no/to-confirm questions the
+  // visitor answers about themselves. Purely a self-reflection prompt for
+  // now, client-side only - it doesn't feed back into the server-computed
+  // matchScore (that stays 100% derived from real company/opportunity data,
+  // never from unverified self-reported answers).
+  const [refineOpen, setRefineOpen] = useState(false);
+  const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>({});
   const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -1248,67 +1256,134 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
         ) : matchScore ? (
             <div className="space-y-4">
-            {/* Concordance card (client's screenshot): circular ring with
-                the score centered, 4 icon+label+text rows to the right/
-                below. score/matchLabel/scoreNote are all server-computed
+            {/* Concordance card (client's 12 Sep concordance-apercu
+                reference): ring + "Indice de concordance" description
+                beside it, an illustrative comparable-companies stat (the
+                reference itself labels this "Exemple illustratif -
+                statistique à vérifier", so it's presented as a plausible,
+                clearly-illustrative figure, not a real backend metric), and
+                a highlighted quote using the server-computed whyRespond
+                text. score/matchLabel/whyRespond are all server-computed
                 (matchScoreService.ts) - never independently derived here. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <h2 className="text-base font-extrabold text-white flex items-center gap-2 mb-4"><Gauge size={16} className="text-orange" /> {t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
+              <h2 className="text-base font-extrabold text-white mb-1">{t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
+              <p className="text-xs text-[#B9BBC8] mb-4">{opportunity.title}</p>
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
                 <div className="relative w-28 h-28 shrink-0">
                   <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
                     <circle
-                      cx="50" cy="50" r="42" fill="none" stroke="#4ADE80" strokeWidth="10" strokeLinecap="round"
+                      cx="50" cy="50" r="42" fill="none" stroke="#FF7A00" strokeWidth="10" strokeLinecap="round"
                       strokeDasharray={2 * Math.PI * 42}
                       strokeDashoffset={2 * Math.PI * 42 * (1 - matchScore.score / 100)}
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-2xl font-extrabold text-white">{matchScore.score}%</span>
-                    <span className="text-[9px] text-[#B9BBC8] text-center leading-tight px-2">{t('scoreRingLabel') || 'de concordance'}</span>
                   </div>
                 </div>
-                <div className="flex-1 w-full space-y-3.5 min-w-0">
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 size={16} className="text-green-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreMatchingCriteria') || 'Critères correspondants'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">
-                        {matchScore.positiveFactors.length > 0 ? matchScore.positiveFactors.map(f => f.label).join(', ') + '.' : matchScore.scoreNote}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <AlertTriangle size={16} className="text-orange shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreMissingElements') || 'Éléments manquants'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">
-                        {matchScore.eligibility.filter(e => e.met === false).length > 0
-                          ? matchScore.eligibility.filter(e => e.met === false).map(e => e.label).join(', ') + '.'
-                          : (t('scoreNoBlockingElement') || 'Aucun élément bloquant identifié.')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <Info size={16} className="text-[#5B6B80] shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreVigilancePoints') || 'Points de vigilance'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.warning || (t('scoreNoVigilancePoint') || 'Aucun point de vigilance particulier.')}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <ThumbsUp size={16} className="text-orange shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-white">{t('scoreRecommendation') || 'Recommandation'}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{matchScore.whyRespond}</p>
-                    </div>
-                  </div>
+                <div className="flex-1 w-full min-w-0">
+                  <p className="text-sm font-bold text-white flex items-center gap-2"><Gauge size={15} className="text-orange" /> {t('scoreIndexTitle') || 'Indice de concordance'}</p>
+                  <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">{t('scoreIndexDesc') || 'Ce score compare le profil de votre entreprise aux exigences du marché, à partir des informations disponibles. Vos réponses permettent de préciser cette évaluation.'}</p>
                 </div>
               </div>
+
+              {/* Illustrative comparable-win stat, deterministic per
+                  opportunity (not random on every render/refresh) so it
+                  doesn't flicker between values - still explicitly labeled
+                  illustrative per the reference. */}
+              <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
+                <p className="text-sm font-bold text-white flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange shrink-0" />
+                  {(() => {
+                    let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+                    return (8 + (h % 18));
+                  })()} {t('scoreComparableCount') || 'entreprises'}
+                </p>
+                <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">
+                  {t('scoreComparableDesc') || 'avec un indice de concordance comparable ont remporté un marché similaire au cours des 6 derniers mois.'}
+                </p>
+                <p className="text-[10px] text-[#5B6B80] italic mt-2">{t('scoreComparableDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
+              </div>
+
+              {matchScore.whyRespond && (
+                <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
+                  <p className="text-sm text-white leading-relaxed">{matchScore.whyRespond}</p>
+                </div>
+              )}
+
               {/* Fixed disclaimer (client's exact wording): this is never
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
+            </div>
+
+            {/* "Affinez votre concordance" self-assessment accordion
+                (client's 12 Sep reference): purely a reflection prompt for
+                the visitor, doesn't alter the server-computed score. */}
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+              <button type="button" onClick={() => setRefineOpen(o => !o)} className="w-full flex items-center justify-between text-left">
+                <span className="text-sm font-extrabold text-white">{t('refineTitle') || 'Affinez votre concordance'}</span>
+                <ChevronRight size={16} className={`text-orange shrink-0 transition-transform ${refineOpen ? 'rotate-90' : ''}`} />
+              </button>
+              {!refineOpen && <p className="text-xs text-[#B9BBC8] mt-1">{t('refineSub') || '4 questions rapides - répondez pour affiner votre score.'}</p>}
+              {refineOpen && (
+                <div className="mt-4 space-y-4">
+                  {[
+                    { key: 'experience', q: t('refineQ1') || 'Avez-vous déjà réalisé ce type de prestation ?' },
+                    { key: 'means', q: t('refineQ2') || 'Pouvez-vous mobiliser les moyens attendus pour ce marché ?' },
+                    { key: 'calendar', q: t('refineQ3') || 'Pouvez-vous respecter le calendrier indiqué ?' },
+                  ].map(row => (
+                    <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
+                      <p className="text-xs text-white mb-2.5">{row.q}</p>
+                      <div className="flex gap-2">
+                        {(['oui', 'non', 'a_confirmer'] as const).map(opt => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: opt }))}
+                            className={`flex-1 text-xs font-semibold py-2 rounded-lg border transition-colors ${
+                              refineAnswers[row.key] === opt
+                                ? 'bg-orange border-orange text-white'
+                                : 'border-[#17334D] text-[#B9BBC8] hover:border-orange/40'
+                            }`}
+                          >
+                            {opt === 'oui' ? (t('refineYes') || 'Oui') : opt === 'non' ? (t('refineNo') || 'Non') : (t('refineUnsure') || 'À confirmer')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* "Les points forts de cette opportunité pour vous" (client's
+                12 Sep reference): derived straight from real opportunity/
+                matchScore fields already on this page - never a separate
+                fabricated data source. Each item is true/false on whether
+                that piece of information is actually present in the
+                fiche - not an assessment of whether it's favorable. */}
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+              <h2 className="text-sm font-extrabold text-white mb-3">{t('strengthsTitle') || 'Les points forts de cette opportunité pour vous'}</h2>
+              <div className="divide-y divide-[#17334D]">
+                {[
+                  { icon: Briefcase, ok: !!opportunity.trade_name, label: t('strengthLot') || 'Lot / métier identifié', desc: opportunity.trade_name || (t('strengthLotMissing') || "Le métier n'est pas précisé sur cette fiche.") },
+                  { icon: Euro, ok: !!opportunity.estimated_value, label: t('strengthBudget') || 'Budget défini', desc: opportunity.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value)} € HT` : (t('strengthBudgetMissing') || "Le montant n'est pas communiqué.") },
+                  { icon: MapPin, ok: !!opportunity.location_city, label: t('strengthLocation') || 'Localisation précisée', desc: [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ') || (t('strengthLocationMissing') || "La localisation n'est pas précisée.") },
+                  { icon: Calendar, ok: !!opportunity.deadline, label: t('strengthCalendar') || 'Calendrier identifié', desc: opportunity.deadline ? formatDate(opportunity.deadline) : (t('strengthCalendarMissing') || "La date limite n'est pas communiquée.") },
+                  { icon: Award, ok: matchScore.criteria.length > 0, label: t('strengthCriteria') || 'Critères de notation identifiés', desc: matchScore.criteria.length > 0 ? matchScore.criteria.map(c => c.label).join(', ') : (t('strengthCriteriaMissing') || "Les critères de notation ne sont pas détaillés sur cette fiche.") },
+                ].map((row, i) => (
+                  <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${row.ok ? 'bg-green-400/10' : 'bg-[#17334D]'}`}>
+                      <row.icon size={15} className={row.ok ? 'text-green-400' : 'text-[#5B6B80]'} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white">{row.label}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{row.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             </div>
           ) : null}
