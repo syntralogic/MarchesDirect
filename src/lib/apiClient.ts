@@ -1066,6 +1066,8 @@ export type ApiBidResponse = {
   missing_documents: string[] | null;
   submission_deadline: string | null;
   submitted_at: string | null;
+  dce_viewed_at: string | null;
+  dce_analysis_viewed_at: string | null;
 };
 
 // Bid-scoped rendez-vous with the "chargé d'affaires" (client's dix images,
@@ -1123,6 +1125,10 @@ export const tendersApi = {
   },
   getBid: async (tenderId: string): Promise<ApiBidResponse> => {
     const { data } = await apiClient.get(`/tenders/${tenderId}/bid`);
+    return data;
+  },
+  markDceViewed: async (tenderId: string, step: 'dce' | 'analysis'): Promise<ApiBidResponse> => {
+    const { data } = await apiClient.post(`/tenders/${tenderId}/dce-viewed`, { step });
     return data;
   },
   generateBidDocuments: async (bidId: string) => {
