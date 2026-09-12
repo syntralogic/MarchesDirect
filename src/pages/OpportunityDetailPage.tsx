@@ -284,6 +284,16 @@ export default function OpportunityDetailPage() {
   const [dossierStepsOpen, setDossierStepsOpen] = useState(false);
   const [dceViewed, setDceViewed] = useState(false);
   const [dceAnalysisViewed, setDceAnalysisViewed] = useState(false);
+  // Updates local state immediately (instant UI feedback) and persists to
+  // bid_responses in the background (see backend's POST
+  // /:tenderId/dce-viewed) - was local-state-only before, resetting the
+  // dossier progress bar's first 2 "real" steps on every refresh/re-login.
+  // Silently ignores failure: this is a progress-bar nicety, not worth
+  // surfacing an error toast over.
+  const markDceViewed = (step: 'dce' | 'analysis') => {
+    if (step === 'dce') setDceViewed(true); else setDceAnalysisViewed(true);
+    if (tender?.id) tendersApi.markDceViewed(tender.id, step).catch(() => {});
+  };
   const [eligibilityOpen, setEligibilityOpen] = useState(false);
   const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
@@ -468,6 +478,10 @@ export default function OpportunityDetailPage() {
         setTender(tData);
         const b = await tendersApi.getBid(tData.id);
         setBid(b);
+        // Restore persisted dossier-progress steps (see markDceViewed
+        // below) instead of always starting from false on every load.
+        if (b.dce_viewed_at) setDceViewed(true);
+        if (b.dce_analysis_viewed_at) setDceAnalysisViewed(true);
       })
       .catch(err => setDceError(getApiErrorMessage(err, t('detailDCEAnalysisFailed') || "Impossible de charger le dossier.")))
       .finally(() => setDceLoading(false));
@@ -1549,11 +1563,11 @@ export default function OpportunityDetailPage() {
                 <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
               </div>
               {opportunity.official_url ? (
-                <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => setDceViewed(true)} className="text-orange font-semibold text-sm hover:underline shrink-0">
+                <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
                   {t('dossierDceConsult') || 'Consulter'}
                 </a>
               ) : (
-                <button type="button" onClick={() => setDceViewed(true)} className="text-orange font-semibold text-sm hover:underline shrink-0">{t('dossierDceConsult') || 'Consulter'}</button>
+                <button type="button" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">{t('dossierDceConsult') || 'Consulter'}</button>
               )}
             </div>
           </div>
@@ -1564,7 +1578,7 @@ export default function OpportunityDetailPage() {
               <h2 className="text-sm font-bold text-white">{t('dossierDceAnalysisTitle') || 'Analyse du DCE'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceAnalysisSub') || 'Les exigences, les points de vigilance et la préparation de votre réponse.'}</p>
-            <button type="button" onClick={() => { setDceAnalysisViewed(true); setEligibilityOpen(true); }} className="flex items-center gap-2 border border-orange/50 text-orange text-sm font-semibold px-4 py-2 rounded-xl hover:bg-orange/10 transition-colors">
+            <button type="button" onClick={() => { markDceViewed('analysis'); setEligibilityOpen(true); }} className="flex items-center gap-2 border border-orange/50 text-orange text-sm font-semibold px-4 py-2 rounded-xl hover:bg-orange/10 transition-colors">
               <FileText size={13} /> {t('dossierDceAnalysisCta') || "Voir l'analyse"}
             </button>
           </div>
