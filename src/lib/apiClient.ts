@@ -637,6 +637,7 @@ export const brandsApi = {
 export type ApiCompany = {
   id: string;
   name: string;
+  contact_name?: string | null;
   kbis_number?: string | null;
   legal_form?: string | null;
   siret?: string | null;

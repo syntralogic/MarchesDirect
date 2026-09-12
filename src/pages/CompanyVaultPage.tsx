@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  companyVaultApi, uploadsApi, getApiErrorMessage,
+  companyVaultApi, uploadsApi, companiesApi, getApiErrorMessage,
   type ApiCompanyDocument, type ApiCompanyCertification, type ApiCompanyReference,
   type ApiCompanyResource, type ApiCompanyPolicy,
 } from '@/lib/apiClient';
@@ -114,6 +114,12 @@ export default function CompanyVaultPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // "Informations de l'entreprise" card (client's 12 Sep spec) - name +
+  // contact_name, editable, saved via the existing generic PUT /companies/me.
+  const [companyName, setCompanyName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [companySaving, setCompanySaving] = useState(false);
+
   const [modal, setModal] = useState<TabKey | 'documents' | 'certifications' | 'references' | null>(null);
   const [docModalType, setDocModalType] = useState<string>('kbis');
   const [activeTab, setActiveTab] = useState<TabKey>('resources');
@@ -128,14 +134,30 @@ export default function CompanyVaultPage() {
       companyVaultApi.references.list(),
       companyVaultApi.resources.list(),
       companyVaultApi.policies.list(),
+      companiesApi.me(),
     ])
-      .then(([d, c, r, res, p]) => {
+      .then(([d, c, r, res, p, comp]) => {
         setDocuments(d); setCertifications(c); setReferences(r); setResources(res); setPolicies(p);
+        setCompanyName(comp.name || ''); setContactName(comp.contact_name || '');
       })
       .catch(err => setError(getApiErrorMessage(err, t('companyVaultLoadError') || 'Impossible de charger le dossier entreprise.')))
       .finally(() => setLoading(false));
   };
   useEffect(loadAll, []);
+
+  const handleSaveCompany = async () => {
+    setCompanySaving(true);
+    try {
+      const updated = await companiesApi.updateMe({ name: companyName, contact_name: contactName });
+      setCompanyName(updated.name || '');
+      setContactName(updated.contact_name || '');
+      toast.success(t('companyInfoSaved') || 'Informations enregistrées.');
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t('companyInfoSaveFailed') || "Échec de l'enregistrement."));
+    } finally {
+      setCompanySaving(false);
+    }
+  };
 
   const openDocModal = (docType: string) => { setDocModalType(docType); setModal('documents'); };
 
@@ -146,11 +168,47 @@ export default function CompanyVaultPage() {
       </Link>
 
       <div className="mb-5">
-        <h1 className="text-lg md:text-xl font-extrabold text-white mb-1">{t('companyVaultTitle') || 'Dossier entreprise'}</h1>
+        <p className="text-xs font-bold text-orange tracking-wide uppercase mb-1">{t('companyVaultEyebrow') || 'Profil'}</p>
+        <h1 className="text-lg md:text-xl font-extrabold text-white mb-1">{t('companyVaultTitle') || 'Mon entreprise'}</h1>
         <p className="text-xs text-[#B9BBC8]">
-          {t('companyVaultSub') || 'Renseignez vos documents, certifications et références une fois — ils seront automatiquement réutilisés dans chaque dossier de candidature.'}
+          {t('companyVaultSub') || 'Vos informations et justificatifs réutilisables pour toutes vos candidatures.'}
         </p>
       </div>
+
+      {!loading && !error && (
+        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-4">
+          <h2 className="text-sm font-bold text-white mb-3">{t('companyInfoTitle') || "Informations de l'entreprise"}</h2>
+          <div className="mb-3">
+            <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyInfoName') || 'Entreprise'}</label>
+            <input
+              type="text"
+              value={companyName}
+              onChange={e => setCompanyName(e.target.value)}
+              className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange"
+            />
+          </div>
+          <div className="mb-4">
+            <label className="text-xs font-semibold text-[#B9BBC8] mb-1 block">{t('companyInfoContact') || 'Interlocuteur'}</label>
+            <input
+              type="text"
+              value={contactName}
+              onChange={e => setContactName(e.target.value)}
+              className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange"
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={handleSaveCompany}
+              disabled={companySaving}
+              className="flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50"
+            >
+              {companySaving && <Loader2 size={14} className="animate-spin" />} {t('companyVaultSave') || 'Enregistrer'}
+            </button>
+            <Link to="/profil" className="text-sm text-orange font-semibold hover:underline">{t('companyInfoContactDetails') || 'Mes coordonnées'}</Link>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 size={22} className="animate-spin text-orange" /></div>
@@ -163,8 +221,8 @@ export default function CompanyVaultPage() {
               existing upload modal pre-set to that document_type; files
               already added render underneath the same way they always did. */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-4">
-            <h2 className="text-sm font-bold text-white mb-1">{t('companyVaultFlatTitle') || 'Pièces réutilisables'}</h2>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('companyVaultFlatSub') || 'Ajoutez-les une fois — elles seront automatiquement réutilisées dans chaque candidature.'}</p>
+            <h2 className="text-sm font-bold text-white mb-1">{t('companyVaultFlatTitle') || 'Dossier entreprise'}</h2>
+            <p className="text-xs text-[#B9BBC8] mb-3">{t('companyVaultFlatSub') || 'Ajoutez vos pièces ici, puis utilisez-les dans les marchés concernés.'}</p>
             <div className="space-y-2">
               {FLAT_DOC_ROWS.map(row => {
                 const matches = documents.filter(d => d.document_type === row.value);
