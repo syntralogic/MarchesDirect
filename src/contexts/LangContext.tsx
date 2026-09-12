@@ -951,6 +951,7 @@ const frTranslations: Translations = {
   leadConsentText: 'Marchés Direct (Zient Labs) utilise vos coordonnées pour vous envoyer votre étude et, si nécessaire, vous appeler pour faire le point sur votre demande.',
   leadContactPreferences: 'Préférences de contact',
   compatibilityBack: 'Retour',
+  compatibilityContinue: 'Continuer',
   dossierHubTitle: 'Dossier de candidature',
   dossierHubSub: 'Préparez et suivez votre dossier pour cette opportunité.',
   dossierHubDocs: 'Documents de candidature',
@@ -1452,6 +1453,67 @@ const frTranslations: Translations = {
   companyVaultDownload: 'Télécharger',
   companyVaultUpdate: 'Actualiser',
   companyVaultUploading: 'Envoi en cours…',
+  // Added 12 Sep - found missing via a full scan against every t()/tList() call
+  // site in the app (see LangContext's t() fix note above for how this class
+  // of bug was hiding in production without ever erroring).
+  companyVaultExpiryDate: 'Date d\'expiration',
+  dossierAddPartner: 'Ajouter un partenaire',
+  dossierAssembleTitle: 'Pièces à assembler',
+  dossierAutoFilled: 'Auto-rempli',
+  dossierCompleteDocs: 'Compléter mes pièces',
+  dossierFieldAddress: 'Adresse',
+  dossierFieldName: 'Entreprise',
+  dossierFieldSector: 'Secteur d\'activité',
+  dossierGenerateError: 'Impossible d\'envoyer la demande.',
+  dossierGenerateSuccess: 'Demande envoyée à votre chargé d\'affaires.',
+  dossierIdentificationTitle: 'Identification de l\'Entreprise',
+  dossierPartnerName: 'Nom du partenaire',
+  dossierPartnerRole: 'Rôle',
+  dossierPartnersTitle: 'Vos partenaires',
+  dossierPersonalize: 'Personnalisez',
+  dossierPresentationPlaceholder: 'Présentez votre entreprise, votre expérience et vos savoir-faire...',
+  dossierPresentationTitle: 'Présentation de l\'Entreprise',
+  dossierRequestSent: 'Demande envoyée à votre chargé d\'affaires',
+  dossierResponsePlaceholder: 'Décrivez votre approche pour répondre à ce marché...',
+  dossierResponseTitle: 'Votre réponse au marché',
+  dossierStatusInReview: 'En cours d\'examen',
+  dossierStatusReady: 'Prêt',
+  dossierStatusRequested: 'Demande envoyée',
+  dossierStatusSubmitted: 'Déposé',
+  dossierSuggestion: 'Suggestion',
+  profileDaySingular: 'jour restant',
+  profileDaysPlural: 'jours restants',
+  profileTrialDaysLeft: 'Essai gratuit',
+  profileTrialEndsOn: 'Se termine le',
+  profileTrialExpired: 'Essai gratuit terminé — passez à une formule payante pour continuer',
+  refineSub: '4 questions rapides - répondez pour affiner votre score.',
+  scoreComparableCount: 'entreprises',
+  scoreComparableDesc: 'avec un indice de concordance comparable ont remporté un marché similaire au cours des 6 derniers mois.',
+  scoreComparableDisclaimer: 'Exemple illustratif — statistique à vérifier.',
+  scoreIndexDesc: 'Ce score compare le profil de votre entreprise aux exigences du marché, à partir des informations disponibles. Vos réponses permettent de préciser cette évaluation.',
+  scoreIndexTitle: 'Indice de concordance',
+  strengthBudget: 'Budget défini',
+  strengthBudgetMissing: 'Le montant n\'est pas communiqué.',
+  strengthCalendar: 'Calendrier identifié',
+  strengthCalendarMissing: 'La date limite n\'est pas communiquée.',
+  strengthCriteria: 'Critères de notation identifiés',
+  strengthCriteriaMissing: 'Les critères de notation ne sont pas détaillés sur cette fiche.',
+  strengthLocation: 'Localisation précisée',
+  strengthLocationMissing: 'La localisation n\'est pas précisée.',
+  strengthLot: 'Lot / métier identifié',
+  strengthLotMissing: 'Le métier n\'est pas précisé sur cette fiche.',
+  strengthsTitle: 'Les points forts de cette opportunité pour vous',
+  adminContactsHideJourney: 'Masquer le parcours',
+  adminContactsShowJourney: 'Voir le parcours',
+  adminContactsLoading: 'Chargement...',
+  adminContactsNoJourney: 'Aucun parcours enregistré pour ce contact.',
+  adminLeadsGrant: 'Donner l\'accès',
+  adminLeadsGranted: 'Accès donné',
+  adminTendersStatusUpdateFailed: 'Impossible de mettre à jour le statut.',
+  adminUsersStatusUpdateFailed: 'Impossible de mettre à jour le statut.',
+  journeyChoosePath: 'Choisissez votre parcours',
+  journeyStartsHere: 'commence ici',
+  journeyYourNext: 'Votre parcours',
 };
 
 const enTranslations: Translations = {
@@ -2402,6 +2464,7 @@ const enTranslations: Translations = {
   leadConsentText: 'Marchés Direct (Zient Labs) uses your contact details to send you your study and, if needed, to call you about your request.',
   leadContactPreferences: 'Contact preferences',
   compatibilityBack: 'Back',
+  compatibilityContinue: 'Continue',
   dossierHubTitle: 'Application file',
   dossierHubSub: 'Prepare and track your file for this opportunity.',
   dossierHubDocs: 'Application documents',
@@ -2903,6 +2966,67 @@ const enTranslations: Translations = {
   companyVaultDownload: 'Download',
   companyVaultUpdate: 'Update',
   companyVaultUploading: 'Uploading…',
+  // Added 12 Sep - found missing via a full scan against every t()/tList() call
+  // site in the app (see LangContext's t() fix note above for how this class
+  // of bug was hiding in production without ever erroring).
+  companyVaultExpiryDate: 'Expiry date',
+  dossierAddPartner: 'Add a partner',
+  dossierAssembleTitle: 'Documents to assemble',
+  dossierAutoFilled: 'Auto-filled',
+  dossierCompleteDocs: 'Complete my documents',
+  dossierFieldAddress: 'Address',
+  dossierFieldName: 'Company',
+  dossierFieldSector: 'Industry sector',
+  dossierGenerateError: 'Unable to send the request.',
+  dossierGenerateSuccess: 'Request sent to your account manager.',
+  dossierIdentificationTitle: 'Company Identification',
+  dossierPartnerName: 'Partner\'s name',
+  dossierPartnerRole: 'Role',
+  dossierPartnersTitle: 'Your partners',
+  dossierPersonalize: 'Personalize',
+  dossierPresentationPlaceholder: 'Present your company, your experience and your expertise...',
+  dossierPresentationTitle: 'Company Presentation',
+  dossierRequestSent: 'Request sent to your account manager',
+  dossierResponsePlaceholder: 'Describe your approach to responding to this contract...',
+  dossierResponseTitle: 'Your response to the contract',
+  dossierStatusInReview: 'Under review',
+  dossierStatusReady: 'Ready',
+  dossierStatusRequested: 'Request sent',
+  dossierStatusSubmitted: 'Submitted',
+  dossierSuggestion: 'Suggestion',
+  profileDaySingular: 'day left',
+  profileDaysPlural: 'days left',
+  profileTrialDaysLeft: 'Free trial',
+  profileTrialEndsOn: 'Ends on',
+  profileTrialExpired: 'Free trial ended — upgrade to a paid plan to continue',
+  refineSub: '4 quick questions - answer to refine your score.',
+  scoreComparableCount: 'companies',
+  scoreComparableDesc: 'with a comparable match index won a similar contract in the last 6 months.',
+  scoreComparableDisclaimer: 'Illustrative example — statistic to be verified.',
+  scoreIndexDesc: 'This score compares your company\'s profile to the contract\'s requirements, based on available information. Your answers help refine this assessment.',
+  scoreIndexTitle: 'Match index',
+  strengthBudget: 'Budget defined',
+  strengthBudgetMissing: 'The amount is not stated.',
+  strengthCalendar: 'Timeline identified',
+  strengthCalendarMissing: 'The deadline is not stated.',
+  strengthCriteria: 'Scoring criteria identified',
+  strengthCriteriaMissing: 'The scoring criteria are not detailed on this listing.',
+  strengthLocation: 'Location specified',
+  strengthLocationMissing: 'The location is not specified.',
+  strengthLot: 'Trade / lot identified',
+  strengthLotMissing: 'The trade is not specified on this listing.',
+  strengthsTitle: 'Strengths of this opportunity for you',
+  adminContactsHideJourney: 'Hide journey',
+  adminContactsShowJourney: 'View journey',
+  adminContactsLoading: 'Loading...',
+  adminContactsNoJourney: 'No journey recorded for this contact.',
+  adminLeadsGrant: 'Grant access',
+  adminLeadsGranted: 'Access granted',
+  adminTendersStatusUpdateFailed: 'Unable to update the status.',
+  adminUsersStatusUpdateFailed: 'Unable to update the status.',
+  journeyChoosePath: 'Choose your path',
+  journeyStartsHere: 'starts here',
+  journeyYourNext: 'Your journey',
 };
 
 interface LangContextType {
@@ -2941,9 +3065,25 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     try { window.localStorage.setItem(LANG_STORAGE_KEY, l); } catch { /* private browsing etc. - non-fatal, just won't persist */ }
   };
 
+  // BUG (found 12 Sep, live screenshot on /opportunites/... showed raw key
+  // names like "compatibilityContinue" and "strengthsTitle" literally on
+  // screen instead of their French text): this used `dict[key] ?? key`,
+  // so a missing key resolved to the key's own name - a non-empty string,
+  // which is truthy. Every one of the many `t('someKey') || 'Some French
+  // fallback'` call sites across the app (both this session's and the
+  // other Claude session's code) relies on the `||` firing when a key
+  // isn't in the dictionary yet; with the old `?? key` behavior it never
+  // did, so any translation added to code but not yet added here (or
+  // simply mistyped) showed the raw key instead of the intended fallback
+  // text, in production, with no error anywhere. Returning '' instead
+  // makes `||` behave as every call site already assumes. The couple of
+  // call sites that use `t('key')` with no `||` fallback at all (rare)
+  // will now render blank instead of a raw key name for a missing key -
+  // strictly better for end users, and the actual fix for those is to add
+  // the missing key, not to keep this bug around as a debugging aid.
   const t = (key: string, params?: Record<string, string | number>): string => {
     const dict = lang === 'fr' ? frTranslations : enTranslations;
-    const value = dict[key] ?? key;
+    const value = dict[key] ?? '';
     const str = Array.isArray(value) ? value.join(' ') : value;
     if (!params) return str;
     return str.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
@@ -2951,7 +3091,7 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
 
   const tList = (key: string): string[] => {
     const dict = lang === 'fr' ? frTranslations : enTranslations;
-    const value = dict[key] ?? key;
+    const value = dict[key] ?? '';
     return Array.isArray(value) ? value : [value];
   };
 
