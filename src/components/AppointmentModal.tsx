@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
@@ -45,6 +45,35 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Client's 12 Sep report: opening this modal (now reachable from several
+  // new "Générer mon dossier" buttons on the dossier hub) left the page
+  // layout broken/non-responsive even after closing the modal or navigating
+  // back. Root cause: this modal never locked background scroll, so on a
+  // narrow viewport the page underneath could pick up horizontal scroll
+  // while the modal was open (its own content briefly wider than the
+  // viewport during the step transitions below) - and since nothing ever
+  // reset it, that scroll offset/state stuck around after close. Standard
+  // scroll-lock: freezes body scroll on mount, restores the exact prior
+  // inline style on unmount (covers close via the X button, the backdrop
+  // click, and unmounting from a route change/back navigation alike, since
+  // all three take the `open` prop to false and run this same cleanup).
+  useEffect(() => {
+    if (!open) return;
+    const { overflow, position, top, width } = document.body.style;
+    const scrollY = window.scrollY;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    return () => {
+      document.body.style.overflow = overflow;
+      document.body.style.position = position;
+      document.body.style.top = top;
+      document.body.style.width = width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
 
   if (!open) return null;
 
