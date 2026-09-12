@@ -126,12 +126,12 @@ function formatSeniority(created: string | null): string | null {
 // message rather than reproducing the title.
 // Matches the backend's hasAnalysisContent() (routes/opportunities.ts) -
 // an ai_analysis_sections object can exist but have all 3 fields blank
-// (the coercion in generateOpportunityAnalysisSections falls back to ''
-// per key rather than throwing on a partial/edge-case response). Checking
-// the object is merely non-null treated that shape as "generated": it
-// rendered <OpportunityAnalysisAccordions>, whose own empty-items filter
-// then returned null - nothing shown where the ai_summary paragraph used
-// to be, instead of falling back to it.
+// (the coercion in generateOpportunityAnalysisSections falls back to '' per
+// key rather than throwing on a partial/edge-case response). Checking the
+// object is merely non-null treated that shape as "generated": it rendered
+// <OpportunityAnalysisAccordions>, whose own empty-items filter then
+// returned null - nothing shown where the ai_summary paragraph used to be,
+// instead of falling back to it.
 function hasAnalysisContent(sections: { presentation: string; conditions: string; entreprises: string } | null | undefined): boolean {
   if (!sections) return false;
   return Boolean(sections.presentation?.trim() || sections.conditions?.trim() || sections.entreprises?.trim());
