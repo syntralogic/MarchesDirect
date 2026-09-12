@@ -369,7 +369,7 @@ function Row({ children, onDelete }: { children: React.ReactNode; onDelete?: () 
 // ==================== ADD DOCUMENT MODAL ====================
 function InlineFileRow({ label, doc, docType, t, onUploaded }: {
   label: string; doc: ApiCompanyDocument | undefined; docType: string;
-  t: (key: string) => string; onUploaded: () => void;
+  t: (key: string, params?: Record<string, string | number>) => string; onUploaded: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
