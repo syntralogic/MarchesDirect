@@ -7,7 +7,6 @@ import {
 import { useLang } from '@/contexts/LangContext';
 import { stripMarkdownArtifacts } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFavorites } from '@/contexts/FavoritesContext';
 import { SaveButton } from '@/components/SaveButton';
 import {
   apiClient, getApiErrorMessage, dashboardApi, favoritesApi, tendersApi,
@@ -34,10 +33,23 @@ const BID_STATUS_LABEL: Record<string, string> = {
   lost: 'Perdu',
 };
 
+// Client's 12 Sep card spec: status badge + progress % + status line per
+// candidature card. ApiBidSummary's `status` is the only real per-bid
+// signal available (no granular "N pièces manquantes" count exists yet -
+// see the comment above where this is used) - each bucket maps to one
+// reasonable state derived from that real status, not a fabricated
+// per-record number.
+const BID_PROGRESS_META: Record<string, { pct: number; badgeKey: string; badgeFallback: string; badgeColor: string; detailKey: string; detailFallback: string }> = {
+  draft: { pct: 20, badgeKey: 'dashBadgeInitiative', badgeFallback: 'À votre initiative', badgeColor: 'text-green-400', detailKey: 'dashDetailDraft', detailFallback: 'Demandez la préparation de votre candidature.' },
+  in_progress: { pct: 60, badgeKey: 'dashBadgeInProgress', badgeFallback: 'Préparation en cours', badgeColor: 'text-green-400', detailKey: 'dashDetailInProgress', detailFallback: "Votre chargé d'affaires poursuit la préparation." },
+  submitted: { pct: 100, badgeKey: 'dashBadgeSubmitted', badgeFallback: 'Candidature déposée', badgeColor: 'text-green-400', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
+  awarded: { pct: 100, badgeKey: 'dashBadgeAwarded', badgeFallback: 'Marché remporté', badgeColor: 'text-green-400', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
+  lost: { pct: 100, badgeKey: 'dashBadgeLost', badgeFallback: 'Marché non retenu', badgeColor: 'text-[#B9BBC8]', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
+};
+
 export default function TableauDeBordPage() {
   const { t } = useLang();
-  const { user, company } = useAuth();
-  const { savedIds } = useFavorites();
+  const { company } = useAuth();
   const isPaid = company?.subscription_status === 'active';
 
   const [section, setSection] = useState<Section>('overview');
@@ -124,11 +136,7 @@ export default function TableauDeBordPage() {
     if (s === 'saved' && !savedLoaded) loadSaved();
   };
 
-  const dossiersInProgress = bids.filter(b => b.status !== 'submitted' && b.status !== 'awarded' && b.status !== 'lost').length;
   const featured = matches[0];
-  const firstName = user?.firstName || '';
-  const companyName = company?.name || '';
-  const initial = (firstName || companyName || '?').charAt(0).toUpperCase();
 
   return (
     <div className="page-fade-in max-w-2xl mx-auto px-4 py-6 pb-24 md:pb-12">
@@ -136,14 +144,10 @@ export default function TableauDeBordPage() {
       {/* HEADER (écran 7: "Bonjour Karim / Voici vos opportunités et vos
           actions prioritaires.") */}
       {section === 'overview' ? (
-        <div className="flex items-center gap-3 mb-6">
-          <div className="shrink-0 w-11 h-11 rounded-full bg-orange text-white flex items-center justify-center font-extrabold text-lg">
-            {initial}
-          </div>
-          <div>
-            <h1 className="text-lg font-extrabold text-white">{t('dashWelcome')}{firstName ? ` ${firstName}` : ''}</h1>
-            <p className="text-xs text-[#B9BBC8]">{t('dashSubtitle') || 'Voici vos opportunités et vos actions prioritaires.'}</p>
-          </div>
+        <div className="mb-6">
+          <p className="text-xs font-bold text-orange tracking-wide uppercase mb-1">{t('dashEyebrow') || 'Tableau de bord'}</p>
+          <h1 className="text-lg font-extrabold text-white">{t('dashOpportunitiesTitle') || 'Mes opportunités et candidatures'}</h1>
+          <p className="text-xs text-[#B9BBC8] mt-1">{t('dashOpportunitiesSub') || 'Chaque marché conserve ses documents, ses validations et son avancement.'}</p>
         </div>
       ) : (
         <button
@@ -157,32 +161,65 @@ export default function TableauDeBordPage() {
 
       {section === 'overview' && (
         <>
-          {/* STATS */}
-          {statsError ? (
+          {statsError && (
             <div className="mb-6 bg-[#061D32] border border-red-500/30 rounded-2xl p-4 flex items-center gap-3">
               <AlertCircle size={20} className="text-red-400 shrink-0" />
               <p className="text-sm text-[#B9BBC8]">{statsError}</p>
             </div>
+          )}
+
+          {/* Client's 12 Sep card spec: flat list of candidature-progress
+              cards - title, status badge, lot/trade/date line, progress
+              bar, status detail line, "Reprendre ma candidature" CTA.
+              Sourced from real bid data (tendersApi.myBids, already
+              fetched above). ApiBidSummary has no lot number, trade, or a
+              granular "N pièces manquantes" count yet - the % and status
+              text below are derived from the real `status` field (draft/
+              in_progress/submitted/...), not fabricated per-record
+              numbers; exact per-lot detail needs those fields added to
+              /tenders/bids/mine if the client wants it later. */}
+          {bidsLoading ? (
+            <div className="space-y-3 mb-6">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                  <div className="h-4 w-2/3 bg-[#17334D] rounded animate-pulse mb-3" />
+                  <div className="h-1.5 w-full bg-[#17334D] rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : bids.length === 0 ? (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center mb-6">
+              <FolderCheck size={24} className="text-orange mx-auto mb-2" />
+              <p className="text-sm text-[#B9BBC8]">{t('dashNoBidsFree') || "Aucune demande en cours."}</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2.5 mb-6">
-              <StatCard
-                loading={statsLoading}
-                value={summary?.activeOpportunities ?? 0}
-                label={t('dashNewOpportunities') || 'Nouvelles opportunités'}
-                onClick={() => openSection('new')}
-              />
-              <StatCard
-                loading={statsLoading}
-                value={savedIds.size}
-                label={t('dashSaved') || 'Annonces enregistrées'}
-                onClick={() => openSection('saved')}
-              />
-              <StatCard
-                loading={bidsLoading}
-                value={isPaid ? dossiersInProgress : bids.length}
-                label={isPaid ? (t('dashDossiersInProgress') || 'Dossiers en cours') : (t('dashPendingRequests') || 'Demandes en cours')}
-                onClick={() => openSection('dossiers')}
-              />
+            <div className="space-y-3 mb-6">
+              {bids.map(b => {
+                const meta = BID_PROGRESS_META[b.status] || BID_PROGRESS_META.draft;
+                return (
+                  <div key={b.id} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                      <h3 className="text-sm font-bold text-white">{b.title}</h3>
+                      <span className={`text-[11px] font-semibold shrink-0 ${meta.badgeColor}`}>{t(meta.badgeKey) || meta.badgeFallback}</span>
+                    </div>
+                    <p className="text-xs text-[#B9BBC8] mb-3">
+                      {[b.location_city, b.deadline ? `${new Date(b.deadline).toLocaleDateString('fr-FR')} · 12 h` : null].filter(Boolean).join(' · ')}
+                    </p>
+                    <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden mb-2">
+                      <div className="h-full bg-orange rounded-full" style={{ width: `${meta.pct}%` }} />
+                    </div>
+                    <p className="text-xs text-[#B9BBC8] mb-3">
+                      {meta.pct} % {t('dashPreparationLabel') || 'de préparation'} · {t(meta.detailKey) || meta.detailFallback}
+                    </p>
+                    <Link
+                      to={`/opportunites/${b.opportunity_id}/candidature`}
+                      className="block text-center bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
+                    >
+                      {t('dashResumeBid') || 'Reprendre ma candidature'}
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -427,28 +464,6 @@ export default function TableauDeBordPage() {
 
       <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
     </div>
-  );
-}
-
-function StatCard({ loading, value, label, onClick }: { loading: boolean; value: number; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="bg-[#061D32] border border-[#17334D] rounded-2xl p-3 text-left hover:border-orange/40 transition-colors"
-    >
-      {loading ? (
-        <>
-          <div className="h-6 w-8 bg-[#17334D] rounded animate-pulse mb-2" />
-          <div className="h-3 w-16 bg-[#17334D] rounded animate-pulse" />
-        </>
-      ) : (
-        <>
-          <p className="text-xl font-extrabold text-orange">{value}</p>
-          <p className="text-[10px] font-medium text-[#B9BBC8] leading-tight mt-1">{label}</p>
-        </>
-      )}
-    </button>
   );
 }
 
