@@ -7,7 +7,7 @@ export default function ConfidentialitePage() {
     { title: t('privacyData'), text: t('privacyDataText') },
     { title: t('privacyPurpose'), text: t('privacyPurposeText') },
     { title: t('privacyRetention'), text: t('privacyRetentionText') },
-    { title: t('privacyRights'), text: t('privacyRightsText') },
+    { title: t('privacyRights'), text: t('privacyRightsText'), id: 'droits' },
     { title: t('privacyDelete'), text: t('privacyDeleteText') },
     { title: t('privacySecurity'), text: t('privacySecurityText') },
     { title: t('privacyCookies'), text: t('privacyCookiesText') },
@@ -22,7 +22,7 @@ export default function ConfidentialitePage() {
 
       <div className="space-y-5">
         {sections.map(s => (
-          <div key={s.title} className="bg-[#061D32] border border-[#17334D] rounded-xl p-5">
+          <div key={s.title} id={s.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-5 scroll-mt-24">
             <h2 className="text-sm font-bold text-orange uppercase tracking-wide mb-3">{s.title}</h2>
             <p className="text-sm text-[#B9BBC8] leading-relaxed">{s.text}</p>
           </div>

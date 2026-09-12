@@ -1457,6 +1457,28 @@ export default function OpportunityDetailPage() {
                         />
                       </div>
                       {leadError && <p className="text-xs text-red-400">{leadError}</p>}
+                      {/* Client's 12 Sep ask (with reference screenshot): keep
+                          this consent text and the two links small, muted
+                          gray, deliberately low-attention - the priority
+                          stays on the score/analysis and the email/phone
+                          fields above, not on legal copy. Still real,
+                          clickable links (Confidentialité -> the existing
+                          privacy page; Préférences de contact -> its "Vos
+                          droits (RGPD)" section, the closest existing page
+                          to a contact-preferences center - there's no
+                          separate one for an anonymous, not-yet-logged-in
+                          visitor to land on). */}
+                      <p className="text-[11px] text-[#5B6B80] leading-relaxed">
+                        {t('leadConsentText')}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <a href="/confidentialite" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
+                          {t('privacy') || 'Confidentialité'}
+                        </a>
+                        <a href="/confidentialite#droits" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
+                          {t('leadContactPreferences')}
+                        </a>
+                      </div>
                       <div className="flex gap-2.5 pt-1">
                         <button
                           type="button"

@@ -54,7 +54,15 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
             <span className="text-orange">à votre entreprise.</span>
           </h1>
           <div className="mb-5 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-3 pr-16 sm:pr-0">
+            {/* pr-16 on mobile only: the floating chat bubble is fixed at
+                bottom-20 right-4 (w-14 = 56px), which sits directly on top
+                of the right edge of "Être rappelé" whenever this row
+                scrolls into that band of the viewport - both screenshots
+                the client sent show the bubble overlapping that button's
+                text. Reserving that width here keeps both buttons clear of
+                it instead of moving/hiding the bubble itself (used
+                everywhere else on the site). */}
             <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3.5 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
               Prendre rendez-vous
             </button>
