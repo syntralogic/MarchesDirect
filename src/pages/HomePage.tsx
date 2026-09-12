@@ -606,7 +606,7 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
                 <span className="text-orange">{t('heroLine2')}</span>
               </h1>
               <p className="text-[#B9BBC8] text-xs leading-relaxed mb-1">{t('heroSub')}</p>
-              <div className="mb-3"><OpportunityPaths /></div>
+              <div className="mb-3"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
               <div className="flex gap-2 mb-2">
                 <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-2.5 rounded-lg text-xs hover:bg-orange/90 transition-colors">{t('bookAppointment')}</button>
                 <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-2.5 rounded-lg text-xs hover:bg-orange/10 transition-colors">{t('callBack')}</button>
@@ -641,6 +641,20 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
         {/* Right: desktop visual */}
         <div className="hidden md:flex flex-shrink-0 w-80 xl:w-96 flex-col gap-3 relative">
           <HeroCounters />
+          <button onClick={() => setDemoOpen(true)} className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors text-left">
+            <div>
+              <div className="text-xs text-white font-semibold">Démo vidéo</div>
+              <div className="text-xs text-[#B9BBC8]">Le parcours en 1 min</div>
+            </div>
+            <PlayCircle size={16} className="text-orange" />
+          </button>
+          <a href="#mdh-temoignages" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
+            <div>
+              <div className="text-xs text-white font-semibold">Témoignages vidéo</div>
+              <div className="text-xs text-[#B9BBC8]">Leurs retours d'expérience</div>
+            </div>
+            <PlayCircle size={16} className="text-orange" />
+          </a>
         </div>
       </div>
     </section>
@@ -677,7 +691,7 @@ function HeroCounters() {
   );
 }
 
-function OpportunityPaths() {
+function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
   const { counts, loading } = useOpportunityCounts();
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   const paths = [
@@ -703,6 +717,22 @@ function OpportunityPaths() {
           </Link>
         );
       })}
+      <button onClick={onDemoClick} className="flex items-center gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-lg p-2 hover:border-orange/50 group transition-all text-left">
+        <div className="w-10 h-10 rounded-lg bg-orange/10 flex items-center justify-center shrink-0"><PlayCircle size={20} className="text-orange" /></div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
+          <div className="text-[10px] text-[#B9BBC8] mt-0.5">Le parcours en 1 min</div>
+        </div>
+        <ChevronRight size={14} className="text-orange shrink-0" />
+      </button>
+      <a href="#mdh-temoignages" className="flex items-center gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-lg p-2 hover:border-orange/50 group transition-all">
+        <div className="w-10 h-10 rounded-lg bg-orange/10 flex items-center justify-center shrink-0"><PlayCircle size={20} className="text-orange" /></div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
+          <div className="text-[10px] text-[#B9BBC8] mt-0.5">Leurs retours d'expérience</div>
+        </div>
+        <ChevronRight size={14} className="text-orange shrink-0" />
+      </a>
     </div>
   );
 }
@@ -775,7 +805,7 @@ function DemoWalkthroughSection() {
 
 function TestimonialsSection() {
   return (
-    <section className="px-4 md:px-6 py-10 md:py-16 max-w-7xl mx-auto w-full">
+    <section id="mdh-temoignages" className="px-4 md:px-6 py-10 md:py-16 max-w-7xl mx-auto w-full">
       <div className="mb-6">
         <span className="text-xs font-bold text-orange uppercase tracking-widest">Leur expérience, avec leurs mots</span>
         <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">Des entrepreneurs racontent leur candidature.</h2>
