@@ -1306,16 +1306,16 @@ const frTranslations: Translations = {
   notFoundBack: 'Retour à l\'accueil',
 
   // Company Vault - French
-  companyVaultTitle: 'Dossier entreprise',
-  companyVaultSub: 'Renseignez vos documents, certifications et références une fois — ils seront automatiquement réutilisés dans chaque dossier de candidature.',
+  companyVaultTitle: 'Mon entreprise',
+  companyVaultSub: 'Vos informations et justificatifs réutilisables pour toutes vos candidatures.',
   companyVaultDocuments: 'Documents',
   companyVaultCertifications: 'Certifications',
   companyVaultReferences: 'Références (projets réalisés)',
   companyVaultResources: 'Moyens humains & matériels',
   companyVaultPolicies: 'Politiques qualité / sécurité / environnement',
   companyVaultAddDocument: 'Ajouter un document',
-  companyVaultFlatTitle: 'Pièces réutilisables',
-  companyVaultFlatSub: 'Ajoutez-les une fois — elles seront automatiquement réutilisées dans chaque candidature.',
+  companyVaultFlatTitle: 'Dossier entreprise',
+  companyVaultFlatSub: 'Ajoutez vos pièces ici, puis utilisez-les dans les marchés concernés.',
   companyVaultAdd: 'Ajouter',
   companyVaultQualificationRow: 'Qualification / certification',
   companyVaultReferencesRow: 'Références chantier',
@@ -1437,6 +1437,15 @@ const frTranslations: Translations = {
   dashDetailDraft: 'Demandez la préparation de votre candidature.',
   dashDetailInProgress: "Votre chargé d'affaires poursuit la préparation.",
   dashDetailSubmitted: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.',
+
+  // Mon entreprise (client's 12 Sep card spec)
+  companyVaultEyebrow: 'Profil',
+  companyInfoTitle: "Informations de l'entreprise",
+  companyInfoName: 'Entreprise',
+  companyInfoContact: 'Interlocuteur',
+  companyInfoContactDetails: 'Mes coordonnées',
+  companyInfoSaved: 'Informations enregistrées.',
+  companyInfoSaveFailed: "Échec de l'enregistrement.",
 };
 
 const enTranslations: Translations = {
@@ -2743,15 +2752,15 @@ const enTranslations: Translations = {
 
   // Company Vault - English
   companyVaultTitle: 'Company file',
-  companyVaultSub: 'Add your documents, certifications and references once — they will be automatically reused in every application file.',
+  companyVaultSub: 'Your information and documents, reused across every application.',
   companyVaultDocuments: 'Documents',
   companyVaultCertifications: 'Certifications',
   companyVaultReferences: 'References (completed projects)',
   companyVaultResources: 'Human & material resources',
   companyVaultPolicies: 'Quality / safety / environment policies',
   companyVaultAddDocument: 'Add document',
-  companyVaultFlatTitle: 'Reusable documents',
-  companyVaultFlatSub: 'Add these once — they will be reused automatically in every application.',
+  companyVaultFlatTitle: 'Company file',
+  companyVaultFlatSub: 'Add your documents here, then use them on the relevant contracts.',
   companyVaultAdd: 'Add',
   companyVaultQualificationRow: 'Qualification / certification',
   companyVaultReferencesRow: 'Site references',
@@ -2873,6 +2882,15 @@ const enTranslations: Translations = {
   dashDetailDraft: 'Request preparation of your application.',
   dashDetailInProgress: 'Your account manager is continuing preparation.',
   dashDetailSubmitted: 'Marchés Direct has submitted the application. The proof is available.',
+
+  // Mon entreprise (client's 12 Sep card spec)
+  companyVaultEyebrow: 'Profile',
+  companyInfoTitle: 'Company information',
+  companyInfoName: 'Company',
+  companyInfoContact: 'Contact person',
+  companyInfoContactDetails: 'My contact details',
+  companyInfoSaved: 'Information saved.',
+  companyInfoSaveFailed: 'Failed to save.',
 };
 
 interface LangContextType {
