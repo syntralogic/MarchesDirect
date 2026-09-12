@@ -6,18 +6,18 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 
 const NAV_LINKS = [
-  { key: 'tenders', href: '/appels-doffres' },
-  { key: 'public', href: '/marches-publics' },
-  { key: 'subcontracting', href: '/sous-traitance' },
+  { key: 'tenders', href: '/parcours?type=appels-doffres' },
+  { key: 'public', href: '/parcours?type=marches-publics' },
+  { key: 'subcontracting', href: '/parcours?type=sous-traitance' },
   { key: 'howItWorks', href: '/how-it-works' },
   { key: 'pricing', href: '/tarifs' },
 ];
 
 const MOBILE_NAV_LINKS = [
   { key: 'home', href: '/' },
-  { key: 'tenders', href: '/appels-doffres' },
-  { key: 'public', href: '/marches-publics' },
-  { key: 'subcontracting', href: '/sous-traitance' },
+  { key: 'tenders', href: '/parcours?type=appels-doffres' },
+  { key: 'public', href: '/parcours?type=marches-publics' },
+  { key: 'subcontracting', href: '/parcours?type=sous-traitance' },
   { key: 'howItWorks', href: '/how-it-works' },
   { key: 'pricing', href: '/tarifs' },
 ];
