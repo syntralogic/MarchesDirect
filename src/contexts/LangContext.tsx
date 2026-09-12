@@ -1422,6 +1422,21 @@ const frTranslations: Translations = {
   dossierSupportSub: "Un chargé d'affaires vous aide à préparer votre candidature et réaliser le dépôt.",
   dossierVerifyContact: 'Vérifier mes coordonnées',
   dossierHubDashboard: 'Voir mon tableau de bord',
+
+  // Tableau de bord (client's 12 Sep card spec)
+  dashEyebrow: 'Tableau de bord',
+  dashOpportunitiesTitle: 'Mes opportunités et candidatures',
+  dashOpportunitiesSub: 'Chaque marché conserve ses documents, ses validations et son avancement.',
+  dashPreparationLabel: 'de préparation',
+  dashResumeBid: 'Reprendre ma candidature',
+  dashBadgeInitiative: 'À votre initiative',
+  dashBadgeInProgress: 'Préparation en cours',
+  dashBadgeSubmitted: 'Candidature déposée',
+  dashBadgeAwarded: 'Marché remporté',
+  dashBadgeLost: 'Marché non retenu',
+  dashDetailDraft: 'Demandez la préparation de votre candidature.',
+  dashDetailInProgress: "Votre chargé d'affaires poursuit la préparation.",
+  dashDetailSubmitted: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.',
 };
 
 const enTranslations: Translations = {
@@ -2843,6 +2858,21 @@ const enTranslations: Translations = {
   dossierSupportSub: 'An account manager helps you prepare your application and complete submission.',
   dossierVerifyContact: 'Verify my contact details',
   dossierHubDashboard: 'See my dashboard',
+
+  // Tableau de bord (client's 12 Sep card spec)
+  dashEyebrow: 'Dashboard',
+  dashOpportunitiesTitle: 'My opportunities and applications',
+  dashOpportunitiesSub: 'Each contract keeps its own documents, validations and progress.',
+  dashPreparationLabel: 'prepared',
+  dashResumeBid: 'Resume my application',
+  dashBadgeInitiative: 'Your initiative',
+  dashBadgeInProgress: 'Preparation in progress',
+  dashBadgeSubmitted: 'Application submitted',
+  dashBadgeAwarded: 'Contract awarded',
+  dashBadgeLost: 'Contract not awarded',
+  dashDetailDraft: 'Request preparation of your application.',
+  dashDetailInProgress: 'Your account manager is continuing preparation.',
+  dashDetailSubmitted: 'Marchés Direct has submitted the application. The proof is available.',
 };
 
 interface LangContextType {
