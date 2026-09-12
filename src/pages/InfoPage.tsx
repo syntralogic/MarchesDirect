@@ -469,22 +469,7 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* SECTION 4: OBJECTIVE CTA */}
-      <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-8 text-center mb-10">
-        <h2 className="text-xl md:text-2xl font-extrabold text-white mb-2">
-          {t('objectiveTitle')}
-        </h2>
-        <p className="text-xs md:text-sm text-[#B9BBC8] leading-relaxed mb-4">
-          {t('objectiveSub')}
-        </p>
-        <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
-          <p className="text-[11px] md:text-sm text-[#B9BBC8]">
-            {t('objectiveText')}
-          </p>
-        </div>
-      </div>
-
-      {/* SECTION 5: FAQ (Repeated for main page) */}
+      {/* SECTION 4: FAQ (Repeated for main page) — placed before the final CTA to match reference order */}
       <div className="mb-10">
         <div className="mb-6">
           <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('faqTag')}</span>
@@ -531,6 +516,21 @@ export default function InfoPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* SECTION 5: OBJECTIVE CTA — final section, matching reference's closing "Et maintenant ?" placement */}
+      <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-8 text-center mb-10">
+        <h2 className="text-xl md:text-2xl font-extrabold text-white mb-2">
+          {t('objectiveTitle')}
+        </h2>
+        <p className="text-xs md:text-sm text-[#B9BBC8] leading-relaxed mb-4">
+          {t('objectiveSub')}
+        </p>
+        <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
+          <p className="text-[11px] md:text-sm text-[#B9BBC8]">
+            {t('objectiveText')}
+          </p>
+        </div>
       </div>
 
       <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
