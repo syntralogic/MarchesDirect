@@ -40,6 +40,21 @@ function formatAmount(value: number | null, currency: string | null) {
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 }
+// Client's report: the AI-extracted "submission_deadline" fact sometimes
+// comes back as a raw JS/ISO timestamp (e.g. "Thu Dec 12 2025 00:00:00
+// GMT+0000 (Coordinated Universal Time)" or "2025-12-12T00:00:00.000Z")
+// instead of natural-language text, showing an English date format with a
+// long GMT timezone mention. When the value looks like one of those raw
+// timestamps, render it as a plain French date instead; genuine free-text
+// extractions from the source document are left untouched.
+function formatFactDeadline(value: string) {
+  const looksLikeRawTimestamp = /^\d{4}-\d{2}-\d{2}T|GMT|^[A-Za-z]{3} [A-Za-z]{3} \d{1,2} \d{4}/.test(value);
+  if (!looksLikeRawTimestamp) return value;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 // Client's 12 Sep report: the dossier hub's "Vos opportunités enregistrées"
 // selector showed full opportunity titles as option text, running 3-4 lines
@@ -1033,7 +1048,7 @@ export default function OpportunityDetailPage() {
             // the "je lis deux ou trois fois la même description" complaint,
             // so it's intentionally left out of this second list.
             if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: facts.procedure_type.value });
-            if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: facts.submission_deadline.value });
+            if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
             if (facts.estimated_value?.available) rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
             if (facts.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
             if (facts.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
