@@ -1407,12 +1407,19 @@ export default function OpportunityDetailPage() {
           </div>
 
           {(() => {
+            // "Dossier généré" / "Dépôt effectué" were hardcoded `false` -
+            // could never show as done even after the company actually
+            // generated their mémoire technique or the team filed the
+            // submission. `bid` (ApiBidResponse) is already fetched above
+            // via tendersApi.getBid - just wasn't being read here.
+            const dossierGenerated = !!bid?.technical_memo_text;
+            const dossierFiled = bid?.status === 'submitted' || !!bid?.submitted_at;
             const steps = [
               { done: true, label: t('dossierStepPreview') || 'Aperçu disponible' },
               { done: dceViewed, label: t('dossierStepDce') || 'DCE consulté' },
               { done: dceAnalysisViewed, label: t('dossierStepAnalysis') || 'Analyse du DCE consultée' },
-              { done: false, label: t('dossierStepGenerated') || 'Dossier généré' },
-              { done: false, label: t('dossierStepFiled') || 'Dépôt effectué' },
+              { done: dossierGenerated, label: t('dossierStepGenerated') || 'Dossier généré' },
+              { done: dossierFiled, label: t('dossierStepFiled') || 'Dépôt effectué' },
             ];
             const doneCount = steps.filter(s => s.done).length;
             const pct = Math.round((doneCount / steps.length) * 100);

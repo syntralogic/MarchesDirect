@@ -1065,6 +1065,7 @@ export type ApiBidResponse = {
   total_bid_amount: number | null;
   missing_documents: string[] | null;
   submission_deadline: string | null;
+  submitted_at: string | null;
 };
 
 // Bid-scoped rendez-vous with the "chargé d'affaires" (client's dix images,
