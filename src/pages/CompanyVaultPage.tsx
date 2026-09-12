@@ -121,7 +121,7 @@ export default function CompanyVaultPage() {
   const [companySaving, setCompanySaving] = useState(false);
 
   const [modal, setModal] = useState<TabKey | 'documents' | 'certifications' | 'references' | null>(null);
-  const [docModalType, setDocModalType] = useState<string>('kbis');
+  const [docModalType] = useState<string>('kbis');
   const [activeTab, setActiveTab] = useState<TabKey>('resources');
   const [showMore, setShowMore] = useState(false);
 
@@ -158,8 +158,6 @@ export default function CompanyVaultPage() {
       setCompanySaving(false);
     }
   };
-
-  const openDocModal = (docType: string) => { setDocModalType(docType); setModal('documents'); };
 
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 py-6 md:py-10 pb-24">
@@ -225,29 +223,12 @@ export default function CompanyVaultPage() {
             <p className="text-xs text-[#B9BBC8] mb-3">{t('companyVaultFlatSub') || 'Ajoutez vos pièces ici, puis utilisez-les dans les marchés concernés.'}</p>
             <div className="space-y-2">
               {FLAT_DOC_ROWS.map(row => {
-                const matches = documents.filter(d => d.document_type === row.value);
+                const rowDocs = documents.filter(d => d.document_type === row.value);
+                // Most recent = last one returned; row shows one file per
+                // the reference's layout, "Actualiser" adds a new version.
+                const latest = rowDocs[rowDocs.length - 1];
                 return (
-                  <div key={row.value} className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-white font-semibold">{row.label}</p>
-                      <AddButton onClick={() => openDocModal(row.value)} label={t('companyVaultAdd') || 'Ajouter'} />
-                    </div>
-                    {matches.length > 0 && (
-                      <div className="space-y-1.5 mt-2">
-                        {matches.map(doc => (
-                          <Row key={doc.id} onDelete={() => companyVaultApi.documents.remove(doc.id).then(loadAll)}>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-[#B9BBC8]">
-                                {doc.expiry_date ? `${t('companyVaultExpiresOn') || 'Expire le'} ${formatDate(doc.expiry_date)}` : t('companyVaultNoExpiry') || 'Sans expiration'}
-                                {doc.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expiré'}</span>}
-                              </p>
-                            </div>
-                            <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-xs text-orange hover:underline shrink-0">{t('companyVaultView') || 'Voir'}</a>
-                          </Row>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <InlineFileRow key={row.value} label={row.label} doc={latest} docType={row.value} t={t} onUploaded={loadAll} />
                 );
               })}
 
@@ -386,6 +367,74 @@ function Row({ children, onDelete }: { children: React.ReactNode; onDelete?: () 
 }
 
 // ==================== ADD DOCUMENT MODAL ====================
+function InlineFileRow({ label, doc, docType, t, onUploaded }: {
+  label: string; doc: ApiCompanyDocument | undefined; docType: string;
+  t: (key: string) => string; onUploaded: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same filename next time
+    if (!file) return;
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast.error(t('companyVaultFileTypeError') || 'Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(t('companyVaultFileSizeError', { size: (file.size / 1024 / 1024).toFixed(1) }) || `Le fichier est trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} MB). Taille maximale : 10 MB.`);
+      return;
+    }
+    setUploading(true);
+    try {
+      const uploaded = await uploadsApi.upload(file);
+      await companyVaultApi.documents.create({
+        documentType: docType, fileUrl: uploaded.url, fileSizeBytes: uploaded.sizeBytes,
+        fileMimeType: uploaded.mimeType, documentName: uploaded.originalName,
+      });
+      // Client's 12 Sep spec shows one file per row (upload replaces the
+      // shown one) - the underlying API keeps every version (each upload
+      // just adds a row), so the previous version stays retrievable
+      // wherever it was already used on a candidature, per the reference's
+      // own note ("Les versions déjà retenues dans vos candidatures sont
+      // conservées"). This row just displays the most recent one.
+      toast.success(t('companyVaultDocumentAdded') || 'Document ajouté avec succès.');
+      onUploaded();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, t('companyVaultDocumentAddFailed') || "Échec de l'ajout du document."));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-3">
+      <p className="text-sm text-white font-semibold mb-0.5">{label}</p>
+      <p className="text-xs text-[#B9BBC8] mb-2 truncate">
+        {doc ? doc.document_name : (t('companyVaultNoFileYet') || 'Aucun fichier')}
+        {doc?.is_expired && <span className="text-red-400 ml-1.5 inline-flex items-center gap-1"><AlertTriangle size={11} /> {t('companyVaultExpired') || 'Expiré'}</span>}
+      </p>
+      {doc && (
+        <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-xs text-orange hover:underline block mb-2">
+          {t('companyVaultDownload') || 'Télécharger'}
+        </a>
+      )}
+      <label className="block">
+        <span className="text-xs text-orange font-semibold block mb-1">{t('companyVaultUpdate') || 'Actualiser'}</span>
+        <input
+          ref={inputRef}
+          type="file"
+          onChange={handleFile}
+          disabled={uploading}
+          className="block w-full text-xs text-[#B9BBC8] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#17334D] file:text-white hover:file:bg-[#1f4064] file:cursor-pointer disabled:opacity-50"
+        />
+      </label>
+      {uploading && <p className="text-[11px] text-[#B9BBC8] mt-1.5 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> {t('companyVaultUploading') || 'Envoi en cours…'}</p>}
+    </div>
+  );
+}
+
 function AddDocumentModal({ initialDocType, onClose, onSaved }: { initialDocType?: string; onClose: () => void; onSaved: () => void }) {
   const { t } = useLang();
   const [documentType, setDocumentType] = useState(initialDocType || DOC_TYPES[0].value);
