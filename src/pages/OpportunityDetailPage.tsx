@@ -37,6 +37,20 @@ function formatAmount(value: number | null, currency: string | null) {
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 }
+
+// Client's 12 Sep report: the dossier hub's "Vos opportunités enregistrées"
+// selector showed full opportunity titles as option text, running 3-4 lines
+// on a real (long) BOAMP title. Asked for one line: shortened title, plus
+// city or amount if there's room. Native <select><option> text can't be
+// CSS-truncated cross-browser, so the label itself has to be short -
+// truncates the title and appends city (preferred, shorter) or a formatted
+// amount, whichever fits under the length budget.
+function compactOpportunityLabel(title: string, city: string | null, value: number | null): string {
+  const suffix = city || (value ? `${Math.round(value / 1000)} k€` : null);
+  const titleBudget = suffix ? 42 : 52;
+  const shortTitle = title.length > titleBudget ? `${title.slice(0, titleBudget - 1).trimEnd()}…` : title;
+  return suffix ? `${shortTitle} — ${suffix}` : shortTitle;
+}
 // Client's brief (11 Sep, "compteurs" spec, exact wording): two display-only
 // social-proof counters on the opportunity card - NOT tied to real data
 // ("aucun système de comptage réel"), explicitly because a real 0/1 count on
@@ -266,7 +280,7 @@ export default function OpportunityDetailPage() {
   // one option - the reference mockup's selector actually switches between
   // several saved candidatures. Populated from the same "opportunités
   // enregistrées" (favorites) the client's spec names for this selector.
-  const [savedOpportunities, setSavedOpportunities] = useState<{ id: string; title: string }[]>([]);
+  const [savedOpportunities, setSavedOpportunities] = useState<{ id: string; title: string; location_city: string | null; estimated_value: number | null }[]>([]);
   
   // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
   const autoAdvancedRef = useRef(false);
@@ -396,7 +410,7 @@ export default function OpportunityDetailPage() {
   useEffect(() => {
     if (screen !== 3 || !isAuthenticated) return;
     favoritesApi.list()
-      .then(list => setSavedOpportunities(list.map(o => ({ id: o.id, title: o.title }))))
+      .then(list => setSavedOpportunities(list.map(o => ({ id: o.id, title: o.title, location_city: o.location_city, estimated_value: o.estimated_value }))))
       .catch(() => setSavedOpportunities([]));
   }, [screen, isAuthenticated]);
 
@@ -1401,11 +1415,11 @@ export default function OpportunityDetailPage() {
                     saved, so the selector never renders empty/without the
                     page you're actually on. */}
                 {!savedOpportunities.some(o => o.id === id) && (
-                  <option value={id}>{opportunity.title} — {t('dossierSelectorPreview') || 'Aperçu disponible'}</option>
+                  <option value={id}>{compactOpportunityLabel(opportunity.title, opportunity.location_city, opportunity.estimated_value)}</option>
                 )}
                 {savedOpportunities.map(o => (
                   <option key={o.id} value={o.id}>
-                    {o.title}{o.id === id ? ` — ${t('dossierSelectorPreview') || 'Aperçu disponible'}` : ''}
+                    {compactOpportunityLabel(o.title, o.location_city, o.estimated_value)}
                   </option>
                 ))}
               </select>
