@@ -13,7 +13,7 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
-  opportunitiesApi, tendersApi, companyVaultApi, getApiErrorMessage,
+  opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
 } from '@/lib/apiClient';
@@ -261,6 +261,12 @@ export default function OpportunityDetailPage() {
   // gates moving on to the next screen, never the analysis itself.
   // FIX 1: Always start on screen 1, regardless of authentication status.
   const [screen, setScreen] = useState<1 | 2 | 3>(1);
+  // Dossier hub's opportunity selector (client's 10 Sep card spec): was a
+  // hardcoded <select disabled> showing only the current opportunity as its
+  // one option - the reference mockup's selector actually switches between
+  // several saved candidatures. Populated from the same "opportunités
+  // enregistrées" (favorites) the client's spec names for this selector.
+  const [savedOpportunities, setSavedOpportunities] = useState<{ id: string; title: string }[]>([]);
   
   // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
   const autoAdvancedRef = useRef(false);
@@ -376,6 +382,13 @@ export default function OpportunityDetailPage() {
       .catch(() => setAccess({ identityUnlocked: false }))
       .finally(() => setAccessLoading(false));
   }, [id, isAuthenticated]);
+
+  useEffect(() => {
+    if (screen !== 3 || !isAuthenticated) return;
+    favoritesApi.list()
+      .then(list => setSavedOpportunities(list.map(o => ({ id: o.id, title: o.title }))))
+      .catch(() => setSavedOpportunities([]));
+  }, [screen, isAuthenticated]);
 
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
@@ -1366,11 +1379,21 @@ export default function OpportunityDetailPage() {
             <label className="block text-xs font-semibold text-[#B9BBC8] mb-2">{t('dossierSelectorLabel') || 'Vos opportunités enregistrées'}</label>
             <div className="relative">
               <select
-                disabled
                 value={id}
-                className="w-full appearance-none bg-[#031B30] border border-[#17334D] rounded-xl px-3.5 py-2.5 pr-9 text-sm text-white disabled:opacity-100"
+                onChange={e => { if (e.target.value !== id) navigate(`/opportunites/${e.target.value}`); }}
+                className="w-full appearance-none bg-[#031B30] border border-[#17334D] rounded-xl px-3.5 py-2.5 pr-9 text-sm text-white cursor-pointer"
               >
-                <option value={id}>{opportunity.title} — {t('dossierSelectorPreview') || 'Aperçu disponible'}</option>
+                {/* Current opportunity always shows even if it isn't (yet)
+                    saved, so the selector never renders empty/without the
+                    page you're actually on. */}
+                {!savedOpportunities.some(o => o.id === id) && (
+                  <option value={id}>{opportunity.title} — {t('dossierSelectorPreview') || 'Aperçu disponible'}</option>
+                )}
+                {savedOpportunities.map(o => (
+                  <option key={o.id} value={o.id}>
+                    {o.title}{o.id === id ? ` — ${t('dossierSelectorPreview') || 'Aperçu disponible'}` : ''}
+                  </option>
+                ))}
               </select>
               <ChevronDown size={14} className="text-[#B9BBC8] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
