@@ -651,6 +651,7 @@ export type ApiCompany = {
   annual_revenue?: number | null;
   founding_year?: number | null;
   working_radius_km?: number | null;
+  description?: string | null;
   verified?: boolean;
   [key: string]: unknown;
 };
@@ -779,6 +780,39 @@ export const companyVaultApi = {
     }): Promise<ApiCompanyPolicy> => (await apiClient.post('/companies/me/policies', payload)).data,
     remove: async (id: string): Promise<void> => { await apiClient.delete(`/companies/me/policies/${id}`); },
   },
+};
+
+export type ApiDossierRequest = {
+  id: string;
+  company_id: string;
+  opportunity_id: string;
+  status: 'draft' | 'requested' | 'in_review' | 'ready' | 'submitted';
+  response_text: string | null;
+  partners: { name: string; role: string }[];
+  checklist: { label: string; done: boolean }[];
+  requested_at: string | null;
+  ready_at: string | null;
+  submitted_at: string | null;
+};
+
+// "Votre dossier" feature (12 Sep, client's dossier-demo reference).
+export const dossiersApi = {
+  get: async (opportunityId: string): Promise<ApiDossierRequest | null> => {
+    try {
+      return (await apiClient.get(`/dossiers/${opportunityId}`)).data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) return null;
+      throw err;
+    }
+  },
+  saveDraft: async (
+    opportunityId: string,
+    payload: { response_text?: string; partners?: { name: string; role: string }[]; checklist?: { label: string; done: boolean }[] }
+  ): Promise<ApiDossierRequest> => (await apiClient.put(`/dossiers/${opportunityId}`, payload)).data,
+  generate: async (
+    opportunityId: string,
+    payload: { response_text?: string; partners?: { name: string; role: string }[]; checklist?: { label: string; done: boolean }[] }
+  ): Promise<ApiDossierRequest> => (await apiClient.post(`/dossiers/${opportunityId}/generate`, payload)).data,
 };
 
 export type ApiSeoPage = {
