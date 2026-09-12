@@ -1446,6 +1446,10 @@ const frTranslations: Translations = {
   companyInfoContactDetails: 'Mes coordonnées',
   companyInfoSaved: 'Informations enregistrées.',
   companyInfoSaveFailed: "Échec de l'enregistrement.",
+  companyVaultNoFileYet: 'Aucun fichier',
+  companyVaultDownload: 'Télécharger',
+  companyVaultUpdate: 'Actualiser',
+  companyVaultUploading: 'Envoi en cours…',
 };
 
 const enTranslations: Translations = {
@@ -2891,6 +2895,10 @@ const enTranslations: Translations = {
   companyInfoContactDetails: 'My contact details',
   companyInfoSaved: 'Information saved.',
   companyInfoSaveFailed: 'Failed to save.',
+  companyVaultNoFileYet: 'No file yet',
+  companyVaultDownload: 'Download',
+  companyVaultUpdate: 'Update',
+  companyVaultUploading: 'Uploading…',
 };
 
 interface LangContextType {
