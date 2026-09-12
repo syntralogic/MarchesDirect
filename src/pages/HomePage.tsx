@@ -4,6 +4,7 @@ import {
   Building2, Handshake, ChevronRight, Globe,
   Building, ArrowRight, Zap, Settings, Monitor, Truck, Briefcase, Headset,
   Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, BookOpen,
+  Percent, Plus, ChevronUp, Quote,
 } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid } from 'd3-geo';
@@ -706,6 +707,134 @@ function OpportunityPaths() {
   );
 }
 
+function DemoWalkthroughSection() {
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const steps = [
+    { label: 'Opportunité', title: 'Chauffage · lot 03', desc: 'Épinal · 120 000 € HT' },
+    { label: 'Concordance', title: '78 % de concordance', desc: 'Votre entreprise correspond aux critères demandés' },
+    { label: 'Dossier', title: 'Le besoin · les critères · le dossier', desc: 'Votre chargé d\'affaires prépare la candidature' },
+  ];
+  return (
+    <section className="px-4 md:px-6 py-10 md:py-16 max-w-7xl mx-auto w-full">
+      <div className="mb-6">
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">Démo vidéo</span>
+        <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">De la recherche au dossier, en 1 minute.</h2>
+        <p className="text-[#B9BBC8] text-sm">Choisissez votre zone. Découvrez comment candidater.</p>
+      </div>
+
+      <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
+          <div className="flex-1 min-w-0">
+            <div className="flex gap-1 border border-[#17334D] rounded-xl p-1 w-fit mb-4">
+              {steps.map((s, i) => (
+                <button
+                  key={s.label}
+                  onClick={() => setStep(i as 0 | 1 | 2)}
+                  className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
+                    step === i ? 'bg-orange/15 text-orange border border-orange' : 'text-[#B9BBC8] hover:text-white'
+                  }`}
+                >
+                  {String(i + 1).padStart(2, '0')} {s.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="border border-[#17334D] rounded-xl bg-[#031B30] p-4 md:p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-orange/10 flex items-center justify-center shrink-0"><Percent size={18} className="text-orange" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{steps[step].title}</p>
+                  <p className="text-xs text-[#B9BBC8] truncate">{steps[step].desc}</p>
+                </div>
+              </div>
+              <p className="text-xs text-[#B9BBC8] leading-relaxed">
+                Travaux demandés, budget, délais et conditions : les informations utiles sont réunies dans une fiche.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setDemoOpen(true)}
+              className="mt-4 inline-flex items-center gap-2 border border-orange text-orange font-semibold text-sm rounded-xl py-3 px-5 hover:bg-orange/10 transition-colors"
+            >
+              <PlayCircle size={16} /> Voir la démo
+            </button>
+          </div>
+
+          <div className="hidden md:flex flex-col items-center justify-center shrink-0 w-64 h-64 rounded-xl border border-[#17334D] bg-[#031B30]">
+            <PlayCircle size={40} className="text-orange mb-2" />
+            <p className="text-xs text-[#B9BBC8]">Démo — 01:00</p>
+          </div>
+        </div>
+      </div>
+
+      <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
+    </section>
+  );
+}
+
+function TestimonialsSection() {
+  return (
+    <section className="px-4 md:px-6 py-10 md:py-16 max-w-7xl mx-auto w-full">
+      <div className="mb-6">
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">Leur expérience, avec leurs mots</span>
+        <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">Des entrepreneurs racontent leur candidature.</h2>
+      </div>
+
+      <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-6 flex flex-col md:flex-row items-center gap-5 md:gap-8">
+        <div className="w-full md:w-72 aspect-video shrink-0 rounded-xl border border-[#17334D] bg-[#031B30] flex flex-col items-center justify-center gap-2">
+          <PlayCircle size={32} className="text-orange" />
+          <p className="text-[11px] text-[#B9BBC8]">Témoignage vidéo — à intégrer</p>
+        </div>
+        <div className="flex-1 min-w-0">
+          <Quote size={20} className="text-orange mb-2" />
+          <p className="text-base md:text-lg font-bold text-white leading-snug">Son premier dossier, étape par étape.</p>
+          <p className="text-xs text-[#B9BBC8] mt-2">Témoignage 1 sur 2</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HomeFaqSection() {
+  const [open, setOpen] = useState<number | null>(0);
+  const faqs = [
+    { q: 'Puis-je consulter les marchés publics sans créer de compte ?', a: 'Oui, les marchés publics sont consultables librement. Vous pouvez commencer par une zone géographique ou par votre métier.' },
+    { q: 'Puis-je enregistrer une opportunité et revenir plus tard ?', a: 'Oui. Vos opportunités enregistrées sont réunies dans votre espace. Vous les retrouvez en vous connectant avec le lien envoyé à votre adresse e-mail.' },
+    { q: 'Suis-je obligé de candidater aux opportunités proposées ?', a: 'Non. Vous choisissez les opportunités qui vous intéressent et décidez des candidatures à engager. Aucun dossier n\'est déposé sans votre validation.' },
+  ];
+  return (
+    <section className="px-4 md:px-6 py-10 md:py-16 max-w-7xl mx-auto w-full">
+      <div className="mb-6">
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">Questions pratiques</span>
+        <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">Utiliser Marchés Direct.</h2>
+      </div>
+      <div className="space-y-3">
+        {faqs.map((item, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={item.q} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
+              <button
+                onClick={() => setOpen(isOpen ? null : i)}
+                className="w-full flex items-center justify-between p-4 text-left gap-3"
+              >
+                <span className="text-sm font-semibold text-white leading-snug">{item.q}</span>
+                {isOpen ? <ChevronUp size={18} className="text-orange shrink-0" /> : <Plus size={18} className="text-orange shrink-0" />}
+              </button>
+              {isOpen && (
+                <div className="px-4 pb-4 border-t border-[#17334D]">
+                  <p className="text-sm text-[#B9BBC8] leading-relaxed pt-4">{item.a}</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-5"><Link to="/faq" className="inline-flex items-center gap-2 text-orange font-semibold text-sm hover:gap-3 transition-all">Toutes les questions pratiques <ArrowRight size={14} /></Link></div>
+    </section>
+  );
+}
+
 function WhoWeAre() {
   const { t } = useLang();
   return (
@@ -815,10 +944,13 @@ export default function HomePage() {
         description="Trouvez et candidatez aux marchés publics, appels d'offres privés et missions de sous-traitance partout en France. Analyse IA du DCE, scoring de compatibilité et génération de dossier."
       />
       <HeroSection onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
+      <DemoWalkthroughSection />
+      <TestimonialsSection />
       <WhoWeAre />
       <GeographicSection />
       <SectorsSection />
       <NewsSection />
+      <HomeFaqSection />
       <FinalCTA onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
       <AppointmentModal open={appointmentOpen} onClose={() => setAppointmentOpen(false)} />
       <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
