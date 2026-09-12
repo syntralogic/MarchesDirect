@@ -28,6 +28,11 @@ export interface Company {
   subscription_status?: string | null;
   subscription_tier?: string | null;
   trial_ends_at?: string | null;
+  industry_sector?: string | null;
+  address_city?: string | null;
+  address_postal_code?: string | null;
+  description?: string | null;
+  contact_name?: string | null;
   [key: string]: unknown;
 }
 
