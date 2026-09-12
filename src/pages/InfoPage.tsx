@@ -102,6 +102,7 @@ export default function InfoPage() {
   const [callbackOpen, setCallbackOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [activeFaqTab, setActiveFaqTab] = useState(FAQ_SECTIONS[0].titleKey);
   const path = location.pathname;
 
   // ------- CONTACT PAGE -------
@@ -232,6 +233,7 @@ export default function InfoPage() {
           <p className="text-[#B9BBC8] text-[11px] md:text-base leading-relaxed">
             {t('infoMarketsText')}
           </p>
+          <a href="#mdq-team" className="inline-flex items-center gap-1 text-orange font-semibold text-sm mt-3 hover:gap-2 transition-all">{t('discoverUs')} <ArrowRight size={14} /></a>
         </div>
 
         <img src={aboutImage} className="w-80 rounded-xl mb-8" alt={t('infoAboutImageAlt')} />
@@ -289,7 +291,7 @@ export default function InfoPage() {
       </div>
 
       {/* SECTION 2: TEAM GRID */}
-      <div className="mb-10">
+      <div id="mdq-team" className="mb-10">
         <div className="mb-6">
           <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('teamTag')}</span>
           <h1 className="text-2xl md:text-5xl font-extrabold text-white leading-tight mt-2 mb-3">{t('teamTitle')}</h1>
@@ -469,7 +471,7 @@ export default function InfoPage() {
         </div>
       </div>
 
-      {/* SECTION 4: FAQ (Repeated for main page) — placed before the final CTA to match reference order */}
+      {/* SECTION 4: FAQ (tab selector) — placed before the final CTA to match reference order */}
       <div className="mb-10">
         <div className="mb-6">
           <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('faqTag')}</span>
@@ -477,43 +479,50 @@ export default function InfoPage() {
           <p className="text-xs md:text-sm text-[#B9BBC8]">{t('faqSub')}</p>
         </div>
 
-        {FAQ_SECTIONS.map((section) => (
-          <div key={section.titleKey} className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-orange uppercase tracking-widest">{t(section.titleKey)}</h2>
-              <div className="flex-1 h-px bg-orange/30 ml-4" />
-            </div>
+        <div className="flex flex-wrap gap-1 border border-[#17334D] rounded-xl p-1 w-fit mb-5">
+          {FAQ_SECTIONS.map((section) => (
+            <button
+              key={section.titleKey}
+              onClick={() => setActiveFaqTab(section.titleKey)}
+              className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
+                activeFaqTab === section.titleKey ? 'bg-orange/15 text-orange border border-orange' : 'text-[#B9BBC8] hover:text-white'
+              }`}
+            >
+              {t(section.titleKey)}
+            </button>
+          ))}
+        </div>
 
-            <div className="space-y-3">
-              {section.items.map((item, itemIndex) => {
-                const isOpen = openFaq === itemIndex && openSection === section.titleKey;
+        {FAQ_SECTIONS.filter((section) => section.titleKey === activeFaqTab).map((section) => (
+          <div key={section.titleKey} className="space-y-3">
+            {section.items.map((item, itemIndex) => {
+              const isOpen = openFaq === itemIndex && openSection === section.titleKey;
 
-                return (
-                  <div key={item.qKey} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => {
-                        setOpenSection(section.titleKey);
-                        setOpenFaq(isOpen ? null : itemIndex);
-                      }}
-                      className="w-full flex items-center justify-between p-4 text-left gap-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <item.icon size={20} className="text-orange shrink-0" />
-                        <span className="text-sm font-semibold text-white leading-snug">{t(item.qKey)}</span>
-                      </div>
-                      {isOpen ? <ChevronUp size={18} className="text-orange shrink-0" /> : <Plus size={18} className="text-orange shrink-0" />}
-                    </button>
-                    {isOpen && (
-                      <div className="px-4 pb-4 pl-12 border-t border-[#17334D]">
-                        <p className="text-sm text-[#B9BBC8] leading-relaxed pt-4 whitespace-pre-line">
-                          {t(item.aKey)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+              return (
+                <div key={item.qKey} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setOpenSection(section.titleKey);
+                      setOpenFaq(isOpen ? null : itemIndex);
+                    }}
+                    className="w-full flex items-center justify-between p-4 text-left gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon size={20} className="text-orange shrink-0" />
+                      <span className="text-sm font-semibold text-white leading-snug">{t(item.qKey)}</span>
+                    </div>
+                    {isOpen ? <ChevronUp size={18} className="text-orange shrink-0" /> : <Plus size={18} className="text-orange shrink-0" />}
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4 pl-12 border-t border-[#17334D]">
+                      <p className="text-sm text-[#B9BBC8] leading-relaxed pt-4 whitespace-pre-line">
+                        {t(item.aKey)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
