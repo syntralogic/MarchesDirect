@@ -1719,13 +1719,11 @@ export default function OpportunityDetailPage() {
                           </Link>
                         </div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => setScreen(1)}
-                        className="w-full border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors"
-                      >
-                        {t('compatibilityBack') || 'Retour'}
-                      </button>
+                      <div className="flex items-center justify-between pt-1">
+                        <button type="button" onClick={() => setScreen(1)} className="text-[11px] font-semibold text-[#5B6B80] hover:text-orange transition-colors">
+                          {t('compatibilityBack') || 'Retour'}
+                        </button>
+                      </div>
                       <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
                         {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
                       </button>
