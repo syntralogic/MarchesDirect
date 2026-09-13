@@ -358,6 +358,13 @@ export default function OpportunityDetailPage() {
   const [dossierPresentation, setDossierPresentation] = useState('');
   const [dossierPartners, setDossierPartners] = useState<{ name: string; role: string }[]>([]);
   const [dossierGenerating, setDossierGenerating] = useState(false);
+  // Inline Confidentialité/Préférences de contact disclosures on the lead
+  // form (client's 12 Sep concordance-apercu reference, exact HTML source
+  // this time - md8-preferences/md8-privacy) - replaces the plain links to
+  // existing pages that were there before.
+  const [contactPrefsOpen, setContactPrefsOpen] = useState(false);
+  const [privacyPanelOpen, setPrivacyPanelOpen] = useState(false);
+  const [contactMode, setContactMode] = useState<'followup' | 'request-only'>('followup');
   // Phone+email gate (client's newest brief, Écran 7): shown once SIRET is
   // known but leadCaptured is still false, in place of the fuller analysis
   // breakdown (criteria/eligibility/refine accordion) - global per session
@@ -1463,6 +1470,7 @@ export default function OpportunityDetailPage() {
                   { icon: Euro, ok: !!opportunity.estimated_value, label: t('strengthBudget') || 'Budget défini', desc: opportunity.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value)} € HT` : (t('strengthBudgetMissing') || "Le montant n'est pas communiqué.") },
                   { icon: MapPin, ok: !!opportunity.location_city, label: t('strengthLocation') || 'Localisation précisée', desc: [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ') || (t('strengthLocationMissing') || "La localisation n'est pas précisée.") },
                   { icon: Calendar, ok: !!opportunity.deadline, label: t('strengthCalendar') || 'Calendrier identifié', desc: opportunity.deadline ? formatDate(opportunity.deadline) : (t('strengthCalendarMissing') || "La date limite n'est pas communiquée.") },
+                  { icon: Landmark, ok: opportunity.journey === 'public_procurement', label: t('strengthPayment') || 'Paiement public', desc: opportunity.journey === 'public_procurement' ? (t('strengthPaymentDesc') || 'Les conditions de règlement du contrat vous permettent d\'évaluer vos besoins de trésorerie.') : (t('strengthPaymentMissing') || "Marché privé : les conditions de paiement dépendent du contrat.") },
                   { icon: Award, ok: matchScore.criteria.length > 0, label: t('strengthCriteria') || 'Critères de notation identifiés', desc: matchScore.criteria.length > 0 ? matchScore.criteria.map(c => c.label).join(', ') : (t('strengthCriteriaMissing') || "Les critères de notation ne sont pas détaillés sur cette fiche.") },
                 ].map((row, i) => (
                   <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
@@ -1600,7 +1608,10 @@ export default function OpportunityDetailPage() {
                         <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
                       </span>
                       <div>
-                        <p className="text-xs text-red-200">{t('scoreViewersToday') || "Cette annonce a été consultée par d'autres entreprises aujourd'hui."}</p>
+                        <p className="text-xs text-red-200">
+                          {t('scoreViewersToday', { count: getConsultationsCount(opportunity.id) })
+                            || `${getConsultationsCount(opportunity.id)} entreprises ont consulté cette annonce aujourd'hui`}
+                        </p>
                         <p className="text-[10px] text-red-300/70 mt-1">{t('illustrativeExampleComparative') || 'Exemple illustratif — compteur à vérifier.'}</p>
                       </div>
                     </div>
@@ -1642,13 +1653,56 @@ export default function OpportunityDetailPage() {
                         {t('leadConsentText')}
                       </p>
                       <div className="flex items-center gap-3">
-                        <a href="/confidentialite" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
+                        <button type="button" onClick={() => setContactPrefsOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
+                          {t('leadContactPreferences') || 'Préférences de contact'}
+                        </button>
+                        <button type="button" onClick={() => setPrivacyPanelOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
                           {t('privacy') || 'Confidentialité'}
-                        </a>
-                        <a href="/confidentialite#droits" target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
-                          {t('leadContactPreferences')}
-                        </a>
+                        </button>
                       </div>
+                      {contactPrefsOpen && (
+                        <div className="bg-[#031B30] border border-[#17334D] rounded-lg p-3 space-y-2">
+                          <p className="text-xs font-bold text-white">{t('contactPrefsTitle') || 'Vos préférences de contact'}</p>
+                          <label className="block">
+                            <span className="text-[11px] text-[#B9BBC8] block mb-1">{t('contactPrefsUsageLabel') || 'Utilisation de mes coordonnées'}</span>
+                            <select
+                              value={contactMode}
+                              onChange={e => setContactMode(e.target.value as 'followup' | 'request-only')}
+                              className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-orange/50"
+                            >
+                              <option value="followup">{t('contactPrefsFollowup') || "Suivi et offres d'accompagnement"}</option>
+                              <option value="request-only">{t('contactPrefsRequestOnly') || 'Suivi de ma demande uniquement'}</option>
+                            </select>
+                          </label>
+                          <p className="text-[11px] text-[#5B6B80]">{t('contactPrefsHelp') || 'Nous pouvons échanger au sujet de votre dossier et vous présenter notre accompagnement.'}</p>
+                          <p className="text-[11px] text-[#5B6B80]">{t('contactPrefsNote') || "Ce choix ne change pas l'envoi de votre dossier pré-rempli."}</p>
+                          {contactMode === 'request-only' && (
+                            <p className="text-[11px] text-green-400">{t('contactPrefsConfirmed') || 'Votre opposition aux sollicitations commerciales est prise en compte.'}</p>
+                          )}
+                          <button type="button" onClick={() => setContactPrefsOpen(false)} className="text-[11px] text-orange font-semibold hover:underline">
+                            {t('contactPrefsClose') || 'Fermer les préférences'}
+                          </button>
+                        </div>
+                      )}
+                      {privacyPanelOpen && (
+                        // Reference's own aside ("Avant publication, compléter la
+                        // notice avec l'identité du responsable, les bases
+                        // légales...") is a note to whoever finalizes the legal
+                        // copy, not end-user text - deliberately not reproduced
+                        // here. Real legal review (responsable de traitement,
+                        // bases légales RGPD, durée de conservation) still
+                        // needed before this is final; links to the fuller
+                        // /confidentialite page in the meantime.
+                        <div className="bg-[#031B30] border border-[#17334D] rounded-lg p-3 space-y-2">
+                          <p className="text-xs font-bold text-white">{t('privacyPanelTitle') || 'Vos données'}</p>
+                          <p className="text-[11px] text-[#5B6B80] leading-relaxed">
+                            {t('privacyPanelBody') || "Vos coordonnées servent à préparer et envoyer le dossier, à préciser votre demande et, selon vos préférences, à vous présenter les services d'accompagnement. Le choix « Suivi de ma demande uniquement » exclut les appels et messages de prospection ; seuls les échanges nécessaires au traitement de votre demande restent possibles."}
+                          </p>
+                          <Link to="/confidentialite" target="_blank" rel="noopener noreferrer" className="text-[11px] text-orange font-semibold hover:underline">
+                            {t('privacyPanelFullPolicy') || 'Consulter la politique de confidentialité complète'}
+                          </Link>
+                        </div>
+                      )}
                       <div className="flex gap-2.5 pt-1">
                         <button
                           type="button"
