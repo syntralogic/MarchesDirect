@@ -63,19 +63,16 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
             <span className="text-white">Trouvez des marchés adaptés</span>{' '}
             <span className="text-orange">à votre entreprise.</span>
           </h1>
-          {/* Moved above OpportunityPaths (13 Sep, client screenshot: circled
-              these two buttons wanting them visible on the first view).
-              Root cause of the repeated "pushed below the fold on mobile"
-              reports (9700399, 65360a3, and the 8b1cf54 revert before that)
-              was never spacing/padding - it was ordering: with 3 path cards
-              + the démo/témoignages grid sitting between the headline and
-              these buttons, the card is simply taller than a phone
-              viewport, so no amount of padding tweaking keeps the buttons
-              above the fold. Putting them right after the headline
-              guarantees they're on-screen immediately regardless of how
-              tall the rest of the card is; OpportunityPaths still renders
-              in full below.  */}
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-3 mb-5 md:mb-4">
+          {/* Reverted back to below OpportunityPaths (13 Sep, client's
+              follow-up screenshot: explicitly wants the original
+              cards-then-buttons order, like the "video" reference
+              screenshot - the 13 Sep move to above OpportunityPaths is
+              undone). If the below-the-fold complaint resurfaces on a
+              specific short viewport, that needs a fix that doesn't
+              reorder the buttons - e.g. shrinking OpportunityPaths itself
+              on mobile - not moving them again. */}
+          <div className="mb-5 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-3">
             <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3.5 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
               Prendre rendez-vous
             </button>
@@ -83,7 +80,6 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
               Être rappelé
             </button>
           </div>
-          <OpportunityPaths onDemoClick={() => setDemoOpen(true)} />
         </div>
       </div>
       <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
