@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone, Search,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -302,6 +302,12 @@ export default function OpportunityDetailPage() {
   
   // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
   const autoAdvancedRef = useRef(false);
+  // Concordance-apercu reference: an early "Recevoir mon dossier pré-rempli"
+  // CTA sits right under the score card, above the accordions - scrolls
+  // down to the existing lead-capture form (or advances straight to screen
+  // 3 if already authenticated/captured) rather than duplicating its logic.
+  const leadGateRef = useRef<HTMLDivElement>(null);
+  const leadEmailInputRef = useRef<HTMLInputElement>(null);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -1381,14 +1387,23 @@ export default function OpportunityDetailPage() {
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
 
-              {(isAuthenticated || leadCaptured) && (
-                <>
-                  <button type="button" onClick={() => setScreen(3)} className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-5">
-                    {t('scorePrefilledCta') || 'Recevoir mon dossier pré-rempli'}
-                  </button>
-                  <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
-                </>
-              )}
+              {/* Early "Recevoir mon dossier pré-rempli" CTA (concordance-apercu
+                  reference): sits right under the score card, above the two
+                  accordions, and always visible - for an authenticated/
+                  already-captured visitor it jumps straight to screen 3;
+                  otherwise it scrolls down to the existing lead-capture
+                  form rather than duplicating its logic. */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAuthenticated || leadCaptured) setScreen(3);
+                  else leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-5"
+              >
+                {t('scorePrefilledCta') || 'Recevoir mon dossier pré-rempli'}
+              </button>
+              <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
             </div>
 
             {/* "Affinez votre concordance" self-assessment accordion
@@ -1494,7 +1509,7 @@ export default function OpportunityDetailPage() {
                   // (the value obtained). This only gates saving the
                   // opportunity and moving to the next screen - it never
                   // hides the analysis, which is rendered above regardless.
-                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                  <div ref={leadGateRef} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                     <p className="flex items-center gap-2 text-base font-extrabold text-white mb-1">
                       <FileText size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
                     </p>
@@ -1617,24 +1632,25 @@ export default function OpportunityDetailPage() {
                     </div>
 
                     <form onSubmit={handleLeadSubmit} className="space-y-3">
-                      <div className="relative">
-                        <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                      <div>
+                        <label className="block text-xs font-semibold text-white mb-1.5">{t('leadEmailFieldLabel')}</label>
                         <input
+                          ref={leadEmailInputRef}
                           value={leadEmail}
                           onChange={e => setLeadEmail(e.target.value)}
                           type="email"
-                          placeholder={t('leadEmailLabel')}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          placeholder="vous@exemple.fr"
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                         />
                       </div>
-                      <div className="relative">
-                        <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                      <div>
+                        <label className="block text-xs font-semibold text-white mb-1.5">{t('leadPhoneFieldLabel')}</label>
                         <input
                           value={leadPhone}
                           onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           inputMode="numeric"
-                          placeholder={t('leadPhoneLabel')}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          placeholder="06 12 34 56 78"
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                         />
                       </div>
                       {leadError && <p className="text-xs text-red-400">{leadError}</p>}
@@ -1703,18 +1719,15 @@ export default function OpportunityDetailPage() {
                           </Link>
                         </div>
                       )}
-                      <div className="flex gap-2.5 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setScreen(1)}
-                          className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors"
-                        >
+                      <div className="flex items-center justify-between pt-1">
+                        <button type="button" onClick={() => setScreen(1)} className="text-[11px] font-semibold text-[#5B6B80] hover:text-orange transition-colors">
                           {t('compatibilityBack') || 'Retour'}
                         </button>
-                        <button type="submit" disabled={leadSubmitting} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                          {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
-                        </button>
                       </div>
+                      <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+                      </button>
+                      <p className="text-xs text-[#B9BBC8] text-center">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
                     </form>
                   </div>
                 )}
