@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy, Send,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage,
-  companiesApi, dossiersApi,
+  dossiersApi,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
   type ApiDossierRequest,
@@ -368,7 +368,6 @@ export default function OpportunityDetailPage() {
   // "Générer mon dossier" is pressed, per the client's exact wording.
   const [dossier, setDossier] = useState<ApiDossierRequest | null>(null);
   const [dossierResponseText, setDossierResponseText] = useState('');
-  const [dossierPresentation, setDossierPresentation] = useState('');
   const [dossierPartners, setDossierPartners] = useState<{ name: string; role: string }[]>([]);
   const [dossierGenerating, setDossierGenerating] = useState(false);
   // Inline Confidentialité/Préférences de contact disclosures on the lead
@@ -553,7 +552,6 @@ export default function OpportunityDetailPage() {
       setDossierResponseText(d.response_text || '');
       setDossierPartners(d.partners || []);
     }).catch(() => {});
-    companiesApi.me().then(c => setDossierPresentation(c.description || '')).catch(() => {});
   }, [id, isAuthenticated]);
 
   useEffect(() => {
@@ -875,13 +873,13 @@ export default function OpportunityDetailPage() {
           "Votre dossier" with the descriptive line directly underneath). */}
       {screen !== 1 && (
         <div className="mb-4">
-          <h2 className="text-xl font-extrabold text-white">
+          <h2 className={screen === 3 ? 'text-2xl font-extrabold text-white' : 'text-xl font-extrabold text-white'}>
             {screen === 2 ? (t('compatibilityTitle') || 'Concordance') : (t('detailDossier') || 'Votre dossier')}
           </h2>
-          <p className="text-xs text-[#B9BBC8] mt-1">
+          <p className="text-sm text-[#B9BBC8] mt-1">
             {screen === 2
               ? (t('compatibilitySubtitle') || 'Découvrez votre entreprise et son adéquation avec cette opportunité.')
-              : (t('detailDossierSubtitle') || 'Retrouvez vos documents et votre accompagnement.')}
+              : (t('detailDossierSubtitle') || 'Vos documents et votre accompagnement, au même endroit.')}
           </p>
         </div>
       )}
@@ -1886,9 +1884,21 @@ export default function OpportunityDetailPage() {
             </div>
           </div>
 
+          {/* "Préparer ma candidature" — client's reference screenshot (14
+              Sep, item 4 "interactive card") replaces the earlier 01-05
+              editable form with this simpler locked card: icon, one-line
+              description, a single full-width "Générer mon dossier" CTA
+              (locked padlock, same as the reference), and the
+              accompagnement note underneath. The 01-05 fields
+              (présentation, réponse, partenaires, pièces) stay collected
+              elsewhere on the page (Pièces de votre entreprise below,
+              CompanyVaultPage) rather than duplicated in this card; the
+              button still calls the same generate endpoint using whatever
+              is already on file, so no functionality is lost - only the
+              in-card manual-entry form is removed to match the reference. */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-bold text-white">{t('dossierGenerateTitle') || 'Votre dossier de candidature'}</h2>
+              <h2 className="text-sm font-bold text-white flex items-center gap-2"><Send size={15} className="text-orange" /> {t('dossierGenerateTitle') || 'Préparer ma candidature'}</h2>
               {dossier?.status && dossier.status !== 'draft' && (
                 <span className="text-[10px] font-bold text-green-400 bg-green-400/10 border border-green-400/30 rounded-full px-2 py-0.5 uppercase">
                   {dossier.status === 'requested' ? (t('dossierStatusRequested') || 'Demande envoyée')
@@ -1898,113 +1908,7 @@ export default function OpportunityDetailPage() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-[#B9BBC8] mb-4">{opportunity.title}</p>
-
-            {/* 01. Identification de l'Entreprise - read-only, from the
-                company profile, badge "Auto-rempli" per the reference. */}
-            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-white">01. {t('dossierIdentificationTitle') || "Identification de l'Entreprise"}</p>
-                <span className="text-[10px] font-semibold text-[#5B6B80] flex items-center gap-1"><Building2 size={11} /> {t('dossierAutoFilled') || 'Auto-rempli'}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                <div><span className="text-[#5B6B80]">{t('dossierFieldName') || 'Entreprise'}</span><p className="text-white font-medium truncate">{company?.name || '—'}</p></div>
-                <div><span className="text-[#5B6B80]">SIRET</span><p className="text-white font-medium">{company?.siret || '—'}</p></div>
-                <div><span className="text-[#5B6B80]">{t('dossierFieldAddress') || 'Adresse'}</span><p className="text-white font-medium truncate">{[company?.address_city, company?.address_postal_code].filter(Boolean).join(' ') || '—'}</p></div>
-                <div><span className="text-[#5B6B80]">{t('dossierFieldSector') || "Secteur d'activité"}</span><p className="text-white font-medium truncate">{company?.industry_sector || '—'}</p></div>
-              </div>
-            </div>
-
-            {/* 02. Présentation de l'Entreprise - editable, badge
-                "Suggestion" since it's a starting draft the company can
-                rewrite, saved to companies.description (reusable across
-                every dossier, not just this one). */}
-            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-white">02. {t('dossierPresentationTitle') || "Présentation de l'Entreprise"}</p>
-                <span className="text-[10px] font-semibold text-orange flex items-center gap-1"><Sparkles size={11} /> {t('dossierSuggestion') || 'Suggestion'}</span>
-              </div>
-              <textarea
-                value={dossierPresentation}
-                onChange={e => setDossierPresentation(e.target.value)}
-                rows={3}
-                placeholder={t('dossierPresentationPlaceholder') || 'Présentez votre entreprise, votre expérience et vos savoir-faire...'}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-              />
-            </div>
-
-            {/* 03. Votre réponse au marché - editable draft, this is what
-                gets sent to the chargé d'affaires to build on. */}
-            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-white">03. {t('dossierResponseTitle') || 'Votre réponse au marché'}</p>
-                <span className="text-[10px] font-semibold text-[#5B6B80] flex items-center gap-1"><Pencil size={11} /> {t('dossierPersonalize') || 'Personnalisez'}</span>
-              </div>
-              <textarea
-                value={dossierResponseText}
-                onChange={e => setDossierResponseText(e.target.value)}
-                rows={4}
-                placeholder={t('dossierResponsePlaceholder') || 'Décrivez votre approche pour répondre à ce marché...'}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-              />
-            </div>
-
-            {/* 04. Vos partenaires - co-traitance, optional, add/remove rows. */}
-            <div className="border border-[#17334D] rounded-xl p-4 mb-3">
-              <p className="text-xs font-bold text-white mb-2">04. {t('dossierPartnersTitle') || 'Vos partenaires'}</p>
-              {dossierPartners.length > 0 && (
-                <div className="space-y-2 mb-2">
-                  {dossierPartners.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input
-                        value={p.name}
-                        onChange={e => setDossierPartners(prev => prev.map((it, idx) => idx === i ? { ...it, name: e.target.value } : it))}
-                        placeholder={t('dossierPartnerName') || 'Nom du partenaire'}
-                        className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                      />
-                      <input
-                        value={p.role}
-                        onChange={e => setDossierPartners(prev => prev.map((it, idx) => idx === i ? { ...it, role: e.target.value } : it))}
-                        placeholder={t('dossierPartnerRole') || 'Rôle'}
-                        className="w-28 bg-[#031B30] border border-[#17334D] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
-                      />
-                      <button type="button" onClick={() => setDossierPartners(prev => prev.filter((_, idx) => idx !== i))} className="text-[#5B6B80] hover:text-red-400 transition-colors shrink-0">
-                        <XCircle size={15} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setDossierPartners(prev => [...prev, { name: '', role: '' }])}
-                className="flex items-center gap-1.5 text-xs font-semibold text-orange"
-              >
-                <Users size={13} /> {t('dossierAddPartner') || 'Ajouter un partenaire'}
-              </button>
-            </div>
-
-            {/* 05. Pièces à assembler - reuses the same company-document
-                checklist already tracked on this page (CHECKLIST_DOCS /
-                checklistDocs), so this isn't a second, separate source of
-                truth for the same 4 documents. */}
-            <div className="border border-[#17334D] rounded-xl p-4 mb-4">
-              <p className="text-xs font-bold text-white mb-2">05. {t('dossierAssembleTitle') || 'Pièces à assembler'}</p>
-              {CHECKLIST_DOCS.map(item => {
-                const done = checklistDocs.some(d => d.document_type === item.type);
-                return (
-                  <div key={item.type} className="flex items-center gap-2 py-1.5 text-xs">
-                    {done ? <CheckCircle2 size={14} className="text-green-400 shrink-0" /> : <span className="w-3.5 h-3.5 rounded-full border border-[#5B6B80] shrink-0" />}
-                    <span className={done ? 'text-white' : 'text-[#B9BBC8]'}>{t(item.labelKey) || item.type}</span>
-                  </div>
-                );
-              })}
-              {checklistDocs.length < CHECKLIST_DOCS.length && (
-                <Link to="/profil/dossier-entreprise" className="inline-block mt-1.5 text-xs font-semibold text-orange hover:underline">
-                  {t('dossierCompleteDocs') || 'Compléter mes pièces'}
-                </Link>
-              )}
-            </div>
+            <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierGenerateSub') || "Votre chargé d'affaires prépare et dépose votre candidature."}</p>
 
             {dossier?.status && dossier.status !== 'draft' ? (
               <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-2.5 rounded-xl justify-center">
@@ -2018,9 +1922,6 @@ export default function OpportunityDetailPage() {
                   if (!id) return;
                   setDossierGenerating(true);
                   try {
-                    if (dossierPresentation !== (company?.description || '')) {
-                      await companiesApi.updateMe({ description: dossierPresentation });
-                    }
                     const saved = await dossiersApi.generate(id, {
                       response_text: dossierResponseText,
                       partners: dossierPartners.filter(p => p.name.trim()),
@@ -2036,11 +1937,11 @@ export default function OpportunityDetailPage() {
                 }}
                 className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50"
               >
-                {dossierGenerating ? <Loader2 size={14} className="animate-spin" /> : null} {t('dossierGenerateCta') || 'Générer mon dossier'}
+                {dossierGenerating ? <Loader2 size={14} className="animate-spin" /> : <Lock size={13} />} {t('dossierGenerateCta') || 'Générer mon dossier'}
               </button>
             )}
-            <p className="text-[11px] text-[#5B6B80] text-center mt-2">
-              {t('dossierGenerateNote') || "Cette action envoie une demande à votre chargé d'affaires - aucun dépôt n'est réalisé automatiquement."}
+            <p className="text-[11px] text-[#5B6B80] mt-2">
+              {t('dossierGenerateNote') || "Préparation complète incluse dans l'accompagnement."}
             </p>
           </div>
 
@@ -2113,8 +2014,8 @@ export default function OpportunityDetailPage() {
               <h2 className="text-sm font-bold text-white">{t('dossierDceAnalysisTitle') || 'Analyse du DCE'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceAnalysisSub') || 'Les exigences, les points de vigilance et la préparation de votre réponse.'}</p>
-            <button type="button" onClick={() => { markDceViewed('analysis'); setEligibilityOpen(true); }} className="flex items-center gap-2 border border-orange/50 text-orange text-sm font-semibold px-4 py-2 rounded-xl hover:bg-orange/10 transition-colors">
-              <FileText size={13} /> {t('dossierDceAnalysisCta') || "Voir l'analyse"}
+            <button type="button" onClick={() => { markDceViewed('analysis'); setEligibilityOpen(true); }} className="flex items-center gap-2 border border-[#5b6d7d] text-white text-xs font-semibold px-3.5 py-2 rounded-lg hover:border-orange/50 transition-colors">
+              <Lock size={12} /> {t('dossierDceAnalysisCta') || "Voir l'analyse"}
             </button>
           </div>
 
@@ -2130,13 +2031,11 @@ export default function OpportunityDetailPage() {
                 { title: t('dossierCandidatureDocs') || 'Documents de candidature', desc: t('dossierCandidatureDocsDesc') || 'Informations de candidature et formulaires applicables.' },
                 { title: t('dossierCandidatureFinance') || 'Réponse financière', desc: t('dossierCandidatureFinanceDesc') || 'Chiffrage et cadre financiers du marché.' },
               ].map(item => (
-                <div key={item.title} className="flex items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="text-sm text-white font-semibold">{item.title}</p>
-                    <p className="text-xs text-[#B9BBC8]">{item.desc}</p>
-                    <p className="text-[11px] text-[#5B6B80] mt-0.5">{t('dossierGenerateNote') || "Inclus dans l'accompagnement."}</p>
-                  </div>
-                  <button type="button" onClick={() => setShowAccountManagerModal(true)} className="flex items-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors shrink-0">
+                <div key={item.title} className="py-4">
+                  <p className="text-sm text-white font-semibold">{item.title}</p>
+                  <p className="text-xs text-[#B9BBC8] mt-0.5">{item.desc}</p>
+                  <p className="text-[11px] text-[#5B6B80] mt-0.5 mb-3">{t('dossierCandidatureIncluded') || "Inclus dans l'accompagnement."}</p>
+                  <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold py-2.5 rounded-lg hover:border-orange/50 transition-colors">
                     <Lock size={12} /> {t('dossierGenerateCta') || 'Générer'}
                   </button>
                 </div>
@@ -2182,15 +2081,13 @@ export default function OpportunityDetailPage() {
               <Users size={15} className="text-orange" />
               <h2 className="text-sm font-bold text-white">{t('dossierHubSupportTitle') || 'Votre accompagnement'}</h2>
             </div>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierSupportSub') || "Un chargé d'affaires vous aide à préparer votre candidature et réaliser le dépôt."}</p>
-            <div className="flex items-center gap-4">
-              <button type="button" onClick={() => setShowAccountManagerModal(true)} className="bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-                {t('dossierHubSlot') || 'Prendre rendez-vous'}
-              </button>
-              <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="text-sm text-orange font-semibold hover:underline">
-                {t('dossierVerifyContact') || 'Vérifier mes coordonnées'}
-              </button>
-            </div>
+            <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierSupportSub') || "Un chargé d'affaires vous aide à préparer votre candidature et réalise le dépôt."}</p>
+            <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors mb-3">
+              {t('dossierHubSlot') || 'Prendre rendez-vous'}
+            </button>
+            <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="block text-sm text-orange font-semibold hover:underline">
+              {t('dossierVerifyContact') || 'Vérifier mes coordonnées'}
+            </button>
             {contactChoice === 'callback' && (
               <div className="mt-3 pt-3 border-t border-[#17334D]">
                 {callbackConfirmed ? (
