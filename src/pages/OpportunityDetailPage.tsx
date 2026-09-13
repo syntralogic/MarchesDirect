@@ -335,6 +335,8 @@ export default function OpportunityDetailPage() {
   // never from unverified self-reported answers).
   const [refineOpen, setRefineOpen] = useState(false);
   const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>({});
+  const [refineFinished, setRefineFinished] = useState(false);
+  const [excerptOpen, setExcerptOpen] = useState(false);
   const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -1334,10 +1336,15 @@ export default function OpportunityDetailPage() {
               {/* Illustrative comparable-win stat, deterministic per
                   opportunity (not random on every render/refresh) so it
                   doesn't flicker between values - still explicitly labeled
-                  illustrative per the reference. */}
+                  illustrative per the reference. Reference's own dot is
+                  red with a slow pulse (an "activity" signal), not the
+                  app's usual static orange dot. */}
               <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
                 <p className="text-sm font-bold text-white flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange shrink-0" />
+                  <span className="relative flex w-1.5 h-1.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                    <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
+                  </span>
                   {(() => {
                     let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
                     return (8 + (h % 18));
@@ -1349,6 +1356,14 @@ export default function OpportunityDetailPage() {
                 <p className="text-[10px] text-[#5B6B80] italic mt-2">{t('scoreComparableDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
               </div>
 
+              {/* Fixed copy, matching the reference word for word - kept
+                  separate from matchScore.whyRespond (shown just below,
+                  server-computed) since the reference treats this as a
+                  constant framing line, not a personalized one. */}
+              <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
+                <p className="text-sm text-white leading-relaxed"><span className="font-bold">{t('scoreStructuredTitle') || 'Une consultation structurée.'}</span> {t('scoreStructuredDesc') || 'Le lot, le budget et les critères donnent des repères concrets pour préparer votre candidature.'}</p>
+              </div>
+
               {matchScore.whyRespond && (
                 <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
                   <p className="text-sm text-white leading-relaxed">{matchScore.whyRespond}</p>
@@ -1358,26 +1373,42 @@ export default function OpportunityDetailPage() {
               {/* Fixed disclaimer (client's exact wording): this is never
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
+
+              {(isAuthenticated || leadCaptured) && (
+                <>
+                  <button type="button" onClick={() => setScreen(3)} className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-5">
+                    {t('scorePrefilledCta') || 'Recevoir mon dossier pré-rempli'}
+                  </button>
+                  <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
+                </>
+              )}
             </div>
 
             {/* "Affinez votre concordance" self-assessment accordion
                 (client's 12 Sep reference): purely a reflection prompt for
-                the visitor, doesn't alter the server-computed score. */}
+                the visitor, doesn't alter the server-computed score - the
+                reference's own note says as much ("Barème à valider avant
+                intégration"). The +1/-3/0 feedback per answer is shown
+                exactly as the reference specifies, but only as a per-
+                question note, never folded into matchScore.score itself. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
               <button type="button" onClick={() => setRefineOpen(o => !o)} className="w-full flex items-center justify-between text-left">
                 <span className="text-sm font-extrabold text-white">{t('refineTitle') || 'Affinez votre concordance'}</span>
                 <ChevronRight size={16} className={`text-orange shrink-0 transition-transform ${refineOpen ? 'rotate-90' : ''}`} />
               </button>
-              {!refineOpen && <p className="text-xs text-[#B9BBC8] mt-1">{t('refineSub') || '4 questions rapides - répondez pour affiner votre score.'}</p>}
+              {!refineOpen && <p className="text-xs text-[#B9BBC8] mt-1">{t('refineSub') || '4 réponses facultatives · expérience, moyens, zone et calendrier'}</p>}
               {refineOpen && (
                 <div className="mt-4 space-y-4">
+                  <p className="text-xs text-[#B9BBC8]">{t('refineHelp') || 'Vos réponses seront jointes à votre demande de dossier. Vous pouvez aussi le demander sans répondre.'}</p>
                   {[
-                    { key: 'experience', q: t('refineQ1') || 'Avez-vous déjà réalisé ce type de prestation ?' },
-                    { key: 'means', q: t('refineQ2') || 'Pouvez-vous mobiliser les moyens attendus pour ce marché ?' },
-                    { key: 'calendar', q: t('refineQ3') || 'Pouvez-vous respecter le calendrier indiqué ?' },
+                    { key: 'experience', q: t('refineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
+                    { key: 'capacity', q: t('refineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires pour cette prestation ?', help: t('refineQ2Help') || 'Vous-même, votre équipe ou vos partenaires.' },
+                    { key: 'location', q: t('refineQ3') || 'Pouvez-vous intervenir ou livrer dans la zone indiquée ?' },
+                    { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?', help: t('refineQ4Help') || 'Si le calendrier manque ou reste incertain, choisissez « À confirmer ».' },
                   ].map(row => (
                     <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
-                      <p className="text-xs text-white mb-2.5">{row.q}</p>
+                      <p className="text-xs font-bold text-white mb-1">{row.q}</p>
+                      {row.help && <p className="text-[11px] text-[#B9BBC8] mb-2">{row.help}</p>}
                       <div className="flex gap-2">
                         {(['oui', 'non', 'a_confirmer'] as const).map(opt => (
                           <button
@@ -1394,8 +1425,26 @@ export default function OpportunityDetailPage() {
                           </button>
                         ))}
                       </div>
+                      {refineAnswers[row.key] && (
+                        <p className="text-[11px] text-green-400 mt-2">
+                          {refineAnswers[row.key] === 'oui' ? (t('refineFeedbackYes') || '+1 point (simulation)') : refineAnswers[row.key] === 'non' ? (t('refineFeedbackNo') || '−3 points (simulation)') : (t('refineFeedbackUnsure') || '0 point (simulation)')}
+                        </p>
+                      )}
                     </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => setRefineFinished(true)}
+                    className="w-full border border-[#5b6d7d] text-white text-sm font-semibold py-2.5 rounded-xl hover:border-orange/50 transition-colors"
+                  >
+                    {t('refineFinish') || 'Terminé'}
+                  </button>
+                  {refineFinished && (
+                    <p className="text-xs text-green-400">{t('refineFinishedLabel') || 'Réponses enregistrées pour cette demande.'}</p>
+                  )}
+                  <p className="text-[11px] text-[#B9BBC8]">
+                    {t('refineNote') || 'Réponses déclaratives. Simulation : oui +1 point, non −3 points, à confirmer 0. Barème à valider avant intégration.'}
+                  </p>
                 </div>
               )}
             </div>
@@ -1431,15 +1480,7 @@ export default function OpportunityDetailPage() {
             </div>
           ) : null}
 
-                {(isAuthenticated || leadCaptured) ? (
-                  <button
-                    type="button"
-                    onClick={() => setScreen(3)}
-                    className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
-                  >
-                    {t('compatibilityContinue') || 'Continuer'}
-                  </button>
-                ) : (
+                {!(isAuthenticated || leadCaptured) && (
                   // Phone+email gate (client's newest brief, Écran 7): the
                   // visitor has already seen the score + why-it-matches above
                   // (the value obtained). This only gates saving the
@@ -1447,9 +1488,34 @@ export default function OpportunityDetailPage() {
                   // hides the analysis, which is rendered above regardless.
                   <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                     <p className="flex items-center gap-2 text-base font-extrabold text-white mb-1">
-                      <Mail size={17} className="text-orange shrink-0" /> {t('leadGateTitle')}
+                      <FileText size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
                     </p>
-                    <p className="text-xs text-[#B9BBC8] mb-4">{t('leadGateSub')}</p>
+                    <p className="text-xs text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || 'Recevez votre dossier de candidature pré-rempli pour votre entreprise et ce marché.'}</p>
+                    <p className="text-[11px] text-[#5B6B80] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
+
+                    <button type="button" onClick={() => setExcerptOpen(o => !o)} className="flex items-center gap-2 text-sm text-orange font-semibold hover:underline mb-3">
+                      <Search size={14} /> {t('scorePreviewSample') || 'Voir un extrait de mon dossier'}
+                    </button>
+                    {excerptOpen && (
+                      <div className="bg-[#F1F4F7] text-[#203242] rounded-xl p-4 mb-4 text-xs space-y-2">
+                        <p className="font-bold text-[15px]">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')}</p>
+                        <p className="text-[#4f6474]">{opportunity.title}</p>
+                        {siretCompany?.siret && <p><span className="text-[#4f6474]">SIRET</span> {siretCompany.siret}</p>}
+                        <p className="text-[#4f6474] pt-2 border-t border-[#c4d0da] mt-2">{t('scorePreviewNotice') || "Ce dossier est une base de préparation. Il n'est ni complet, ni validé, ni déposé."}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-2 bg-red-500/10 rounded-lg px-3 py-2.5 mb-4">
+                      <span className="relative flex w-1.5 h-1.5 shrink-0 mt-1">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                        <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
+                      </span>
+                      <div>
+                        <p className="text-xs text-red-200">{t('scoreViewersToday') || "Cette annonce a été consultée par d'autres entreprises aujourd'hui."}</p>
+                        <p className="text-[10px] text-red-300/70 mt-1">{t('illustrativeExampleComparative') || 'Exemple illustratif — compteur à vérifier.'}</p>
+                      </div>
+                    </div>
+
                     <form onSubmit={handleLeadSubmit} className="space-y-3">
                       <div className="relative">
                         <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
