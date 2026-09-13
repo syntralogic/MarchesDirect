@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Mail, Phone, Search,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -302,6 +302,14 @@ export default function OpportunityDetailPage() {
   
   // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
   const autoAdvancedRef = useRef(false);
+  // Client's 13 Sep concordance-apercu screenshots: the "Recevoir mon
+  // dossier pré-rempli" CTA sits right under the score card (before the
+  // two accordions below), always visible - not gated behind auth/
+  // leadCaptured. For an authenticated/already-captured visitor it jumps
+  // straight to screen 3; otherwise it scrolls down to the lead-capture
+  // card ("Ceci n'est qu'un aperçu") rather than duplicating that form's
+  // logic here.
+  const leadGateRef = useRef<HTMLDivElement>(null);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -334,6 +342,11 @@ export default function OpportunityDetailPage() {
   // matchScore (that stays 100% derived from real company/opportunity data,
   // never from unverified self-reported answers).
   const [refineOpen, setRefineOpen] = useState(false);
+  // "Les points forts de cette opportunité pour vous" (client's 13 Sep
+  // concordance-apercu screenshots): a collapsed-by-default accordion,
+  // matching "Affinez votre concordance" right above it - was previously
+  // always expanded with no toggle at all.
+  const [strengthsOpen, setStrengthsOpen] = useState(false);
   const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>({});
   const [refineFinished, setRefineFinished] = useState(false);
   const [excerptOpen, setExcerptOpen] = useState(false);
@@ -1318,9 +1331,9 @@ export default function OpportunityDetailPage() {
                 text. score/matchLabel/whyRespond are all server-computed
                 (matchScoreService.ts) - never independently derived here. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <h2 className="text-base font-extrabold text-white mb-1">{t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
-              <p className="text-xs text-[#B9BBC8] mb-4">{opportunity.title}</p>
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+              <h2 className="text-2xl font-extrabold text-white mb-2 leading-tight">{t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
+              <p className="text-sm text-[#B9BBC8] mb-5">{opportunity.title}</p>
+              <div className="flex flex-row items-start gap-5">
                 <div className="relative w-28 h-28 shrink-0">
                   <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
@@ -1335,8 +1348,8 @@ export default function OpportunityDetailPage() {
                   </div>
                 </div>
                 <div className="flex-1 w-full min-w-0">
-                  <p className="text-sm font-bold text-white flex items-center gap-2"><Gauge size={15} className="text-orange" /> {t('scoreIndexTitle') || 'Indice de concordance'}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">{t('scoreIndexDesc') || 'Ce score compare le profil de votre entreprise aux exigences du marché, à partir des informations disponibles. Vos réponses permettent de préciser cette évaluation.'}</p>
+                  <p className="text-base font-bold text-white">{t('scoreIndexTitle') || 'Indice de concordance'}</p>
+                  <p className="text-sm text-[#B9BBC8] mt-1.5 leading-relaxed">{t('scoreIndexDesc') || 'Ce score compare le profil de votre entreprise aux exigences du marché, à partir des informations disponibles. Vos réponses permettent de préciser cette évaluation.'}</p>
                 </div>
               </div>
 
@@ -1347,7 +1360,7 @@ export default function OpportunityDetailPage() {
                   red with a slow pulse (an "activity" signal), not the
                   app's usual static orange dot. */}
               <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
-                <p className="text-sm font-bold text-white flex items-center gap-2">
+                <p className="text-base font-bold text-white flex items-center gap-2">
                   <span className="relative flex w-1.5 h-1.5 shrink-0">
                     <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
                     <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
@@ -1357,7 +1370,7 @@ export default function OpportunityDetailPage() {
                     return (8 + (h % 18));
                   })()} {t('scoreComparableCount') || 'entreprises'}
                 </p>
-                <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">
+                <p className="text-sm text-[#B9BBC8] mt-1.5 leading-relaxed">
                   {t('scoreComparableDesc') || 'avec un indice de concordance comparable ont remporté un marché similaire au cours des 6 derniers mois.'}
                 </p>
                 <p className="text-[10px] text-[#5B6B80] italic mt-2">{t('scoreComparableDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
@@ -1381,14 +1394,24 @@ export default function OpportunityDetailPage() {
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
 
-              {(isAuthenticated || leadCaptured) && (
-                <>
-                  <button type="button" onClick={() => setScreen(3)} className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-5">
-                    {t('scorePrefilledCta') || 'Recevoir mon dossier pré-rempli'}
-                  </button>
-                  <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
-                </>
-              )}
+              {/* Client's 13 Sep concordance-apercu screenshots: this CTA is
+                  always visible here, right under the score card - not
+                  gated behind isAuthenticated/leadCaptured. An already-
+                  qualified visitor jumps straight to screen 3; everyone
+                  else scrolls down to the existing lead-capture card
+                  ("Ceci n'est qu'un aperçu") instead of duplicating its
+                  form logic. */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAuthenticated || leadCaptured) setScreen(3);
+                  else leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-5"
+              >
+                {t('scorePrefilledCta') || 'Recevoir mon dossier pré-rempli'}
+              </button>
+              <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
             </div>
 
             {/* "Affinez votre concordance" self-assessment accordion
@@ -1401,7 +1424,7 @@ export default function OpportunityDetailPage() {
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
               <button type="button" onClick={() => setRefineOpen(o => !o)} className="w-full flex items-center justify-between text-left">
                 <span className="text-sm font-extrabold text-white">{t('refineTitle') || 'Affinez votre concordance'}</span>
-                <ChevronRight size={16} className={`text-orange shrink-0 transition-transform ${refineOpen ? 'rotate-90' : ''}`} />
+                <ChevronDown size={16} className={`text-orange shrink-0 transition-transform ${refineOpen ? 'rotate-180' : ''}`} />
               </button>
               {!refineOpen && <p className="text-xs text-[#B9BBC8] mt-1">{t('refineSub') || '4 réponses facultatives · expérience, moyens, zone et calendrier'}</p>}
               {refineOpen && (
@@ -1463,8 +1486,12 @@ export default function OpportunityDetailPage() {
                 that piece of information is actually present in the
                 fiche - not an assessment of whether it's favorable. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <h2 className="text-sm font-extrabold text-white mb-3">{t('strengthsTitle') || 'Les points forts de cette opportunité pour vous'}</h2>
-              <div className="divide-y divide-[#17334D]">
+              <button type="button" onClick={() => setStrengthsOpen(o => !o)} className="w-full flex items-center justify-between text-left">
+                <span className="text-sm font-extrabold text-white">{t('strengthsTitle') || 'Les points forts de cette opportunité pour vous'}</span>
+                <ChevronDown size={16} className={`text-orange shrink-0 transition-transform ${strengthsOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {strengthsOpen && (
+              <div className="divide-y divide-[#17334D] mt-4">
                 {[
                   { icon: Briefcase, ok: !!opportunity.trade_name, label: t('strengthLot') || 'Lot / métier identifié', desc: opportunity.trade_name || (t('strengthLotMissing') || "Le métier n'est pas précisé sur cette fiche.") },
                   { icon: Euro, ok: !!opportunity.estimated_value, label: t('strengthBudget') || 'Budget défini', desc: opportunity.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value)} € HT` : (t('strengthBudgetMissing') || "Le montant n'est pas communiqué.") },
@@ -1484,6 +1511,7 @@ export default function OpportunityDetailPage() {
                   </div>
                 ))}
               </div>
+              )}
             </div>
             </div>
           ) : null}
@@ -1494,16 +1522,35 @@ export default function OpportunityDetailPage() {
                   // (the value obtained). This only gates saving the
                   // opportunity and moving to the next screen - it never
                   // hides the analysis, which is rendered above regardless.
-                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                    <p className="flex items-center gap-2 text-base font-extrabold text-white mb-1">
-                      <FileText size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
+                  <div ref={leadGateRef} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                    <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-2">
+                      <Copy size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
                     </p>
-                    <p className="text-xs text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || 'Recevez votre dossier de candidature pré-rempli pour votre entreprise et ce marché.'}</p>
-                    <p className="text-[11px] text-[#5B6B80] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
+                    <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || 'Recevez votre dossier de candidature pré-rempli pour votre entreprise et ce marché.'}</p>
+                    <p className="text-sm text-[#B9BBC8] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
 
-                    <button type="button" onClick={() => setExcerptOpen(o => !o)} className="flex items-center gap-2 text-sm text-orange font-semibold hover:underline mb-3">
-                      <Search size={14} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
-                    </button>
+                    {/* Client's 13 Sep concordance-apercu screenshots: the
+                        excerpt link and the "viewed today" counter sit
+                        together in one plain bordered box (no reddish
+                        tint) - only the counter's own text is colored. */}
+                    <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mb-4">
+                      <button type="button" onClick={() => setExcerptOpen(o => !o)} className="flex items-center gap-2 text-sm text-orange font-semibold hover:underline">
+                        <Search size={14} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
+                      </button>
+                      <div className="flex items-start gap-2 mt-3">
+                        <span className="relative flex w-1.5 h-1.5 shrink-0 mt-1">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                          <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
+                        </span>
+                        <div>
+                          <p className="text-sm text-red-200">
+                            {t('scoreViewersToday', { count: getConsultationsCount(opportunity.id) })
+                              || `${getConsultationsCount(opportunity.id)} entreprises ont consulté cette annonce aujourd'hui`}
+                          </p>
+                          <p className="text-[10px] text-red-300/70 mt-1">{t('illustrativeExampleComparative') || 'Exemple illustratif — compteur à vérifier.'}</p>
+                        </div>
+                      </div>
+                    </div>
                     {excerptOpen && (() => {
                       const answerLabel = (key: string) => {
                         const v = refineAnswers[key];
@@ -1602,39 +1649,25 @@ export default function OpportunityDetailPage() {
                       );
                     })()}
 
-                    <div className="flex items-start gap-2 bg-red-500/10 rounded-lg px-3 py-2.5 mb-4">
-                      <span className="relative flex w-1.5 h-1.5 shrink-0 mt-1">
-                        <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-                        <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
-                      </span>
-                      <div>
-                        <p className="text-xs text-red-200">
-                          {t('scoreViewersToday', { count: getConsultationsCount(opportunity.id) })
-                            || `${getConsultationsCount(opportunity.id)} entreprises ont consulté cette annonce aujourd'hui`}
-                        </p>
-                        <p className="text-[10px] text-red-300/70 mt-1">{t('illustrativeExampleComparative') || 'Exemple illustratif — compteur à vérifier.'}</p>
-                      </div>
-                    </div>
-
                     <form onSubmit={handleLeadSubmit} className="space-y-3">
-                      <div className="relative">
-                        <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                      <div>
+                        <label className="block text-sm font-semibold text-white mb-1.5">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
                         <input
                           value={leadEmail}
                           onChange={e => setLeadEmail(e.target.value)}
                           type="email"
-                          placeholder={t('leadEmailLabel')}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          placeholder={t('leadEmailPlaceholder') || 'vous@exemple.fr'}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                         />
                       </div>
-                      <div className="relative">
-                        <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5B6B80]" />
+                      <div>
+                        <label className="block text-sm font-semibold text-white mb-1.5">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
                         <input
                           value={leadPhone}
                           onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           inputMode="numeric"
-                          placeholder={t('leadPhoneLabel')}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
                         />
                       </div>
                       {leadError && <p className="text-xs text-red-400">{leadError}</p>}
@@ -1649,14 +1682,14 @@ export default function OpportunityDetailPage() {
                           to a contact-preferences center - there's no
                           separate one for an anonymous, not-yet-logged-in
                           visitor to land on). */}
-                      <p className="text-[11px] text-[#5B6B80] leading-relaxed">
+                      <p className="text-sm text-[#B9BBC8] leading-relaxed">
                         {t('leadConsentText')}
                       </p>
                       <div className="flex items-center gap-3">
-                        <button type="button" onClick={() => setContactPrefsOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
+                        <button type="button" onClick={() => setContactPrefsOpen(o => !o)} className="text-sm text-orange underline hover:text-orange/80 transition-colors">
                           {t('leadContactPreferences') || 'Préférences de contact'}
                         </button>
-                        <button type="button" onClick={() => setPrivacyPanelOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline hover:text-[#8895A6] transition-colors">
+                        <button type="button" onClick={() => setPrivacyPanelOpen(o => !o)} className="text-sm text-orange underline hover:text-orange/80 transition-colors">
                           {t('privacy') || 'Confidentialité'}
                         </button>
                       </div>
@@ -1703,18 +1736,15 @@ export default function OpportunityDetailPage() {
                           </Link>
                         </div>
                       )}
-                      <div className="flex gap-2.5 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setScreen(1)}
-                          className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors"
-                        >
-                          {t('compatibilityBack') || 'Retour'}
-                        </button>
-                        <button type="submit" disabled={leadSubmitting} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                          {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
-                        </button>
-                      </div>
+                      {/* Client's 13 Sep concordance-apercu screenshots: no
+                          "Retour" button down here - the page's persistent
+                          back arrow at the very top already covers
+                          navigation for every screen, and the reference
+                          only shows the single full-width submit CTA. */}
+                      <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+                      </button>
+                      <p className="text-center text-[11px] text-[#B9BBC8]">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
                     </form>
                   </div>
                 )}

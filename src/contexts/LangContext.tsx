@@ -947,8 +947,16 @@ const frTranslations: Translations = {
   leadGateSub: "Recevez votre dossier de candidature pré-rempli pour ce marché : renseignez votre e-mail et votre téléphone pour l'enregistrer et y accéder.",
   leadPhoneLabel: 'Numéro de téléphone portable',
   leadEmailLabel: 'Adresse e-mail',
+  // Client's 13 Sep concordance-apercu reference: labeled fields, not
+  // icon-only inputs - "Votre e-mail" / "Votre téléphone" above each
+  // input, plus example-format placeholders shown inside them.
+  leadEmailFieldLabel: 'Votre e-mail',
+  leadPhoneFieldLabel: 'Votre téléphone',
+  leadEmailPlaceholder: 'vous@exemple.fr',
+  leadPhonePlaceholder: '06 12 34 56 78',
   leadSubmit: 'Recevoir mon dossier pré-rempli',
-  leadConsentText: 'Marchés Direct (Zient Labs) utilise vos coordonnées pour vous envoyer votre étude et, si nécessaire, vous appeler pour faire le point sur votre demande.',
+  // Client's 13 Sep concordance-apercu reference, exact wording.
+  leadConsentText: 'Marchés Direct utilise vos coordonnées pour envoyer le dossier, préciser votre candidature par téléphone et présenter son accompagnement. Vous pouvez refuser la prospection dans vos préférences de contact.',
   leadContactPreferences: 'Préférences de contact',
   compatibilityBack: 'Retour',
   compatibilityContinue: 'Continuer',
@@ -2460,8 +2468,12 @@ const enTranslations: Translations = {
   leadGateSub: 'Get your pre-filled application file for this contract: enter your email and phone number to save it and access it.',
   leadPhoneLabel: 'Mobile phone number',
   leadEmailLabel: 'Email address',
+  leadEmailFieldLabel: 'Your email',
+  leadPhoneFieldLabel: 'Your phone number',
+  leadEmailPlaceholder: 'you@example.com',
+  leadPhonePlaceholder: '06 12 34 56 78',
   leadSubmit: 'Receive my pre-filled file',
-  leadConsentText: 'Marchés Direct (Zient Labs) uses your contact details to send you your study and, if needed, to call you about your request.',
+  leadConsentText: 'Marchés Direct uses your contact details to send you the file, follow up on your application by phone and present its support services. You can opt out of prospecting in your contact preferences.',
   leadContactPreferences: 'Contact preferences',
   compatibilityBack: 'Back',
   compatibilityContinue: 'Continue',
