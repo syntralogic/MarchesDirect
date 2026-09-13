@@ -1494,16 +1494,105 @@ export default function OpportunityDetailPage() {
                     <p className="text-[11px] text-[#5B6B80] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
 
                     <button type="button" onClick={() => setExcerptOpen(o => !o)} className="flex items-center gap-2 text-sm text-orange font-semibold hover:underline mb-3">
-                      <Search size={14} /> {t('scorePreviewSample') || 'Voir un extrait de mon dossier'}
+                      <Search size={14} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
                     </button>
-                    {excerptOpen && (
-                      <div className="bg-[#F1F4F7] text-[#203242] rounded-xl p-4 mb-4 text-xs space-y-2">
-                        <p className="font-bold text-[15px]">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')}</p>
-                        <p className="text-[#4f6474]">{opportunity.title}</p>
-                        {siretCompany?.siret && <p><span className="text-[#4f6474]">SIRET</span> {siretCompany.siret}</p>}
-                        <p className="text-[#4f6474] pt-2 border-t border-[#c4d0da] mt-2">{t('scorePreviewNotice') || "Ce dossier est une base de préparation. Il n'est ni complet, ni validé, ni déposé."}</p>
+                    {excerptOpen && (() => {
+                      const answerLabel = (key: string) => {
+                        const v = refineAnswers[key];
+                        return v === 'oui' ? (t('refineYes') || 'Oui') : v === 'non' ? (t('refineNo') || 'Non') : v === 'a_confirmer' ? (t('refineUnsure') || 'À confirmer') : (t('scorePreviewUnanswered') || 'Non renseigné');
+                      };
+                      return (
+                      <div className="bg-[#F1F4F7] text-[#203242] rounded-xl overflow-hidden mb-4 text-xs">
+                        <div className="bg-[#102D44] text-white px-4 py-4 border-t-4 border-orange">
+                          <p className="font-bold text-[15px] text-white">{t('brandName') || 'Marchés'} <span className="text-orange">{t('brandDirect') || 'Direct'}</span></p>
+                          <p className="text-[#c5d4e0] mt-3">{t('scorePreviewLabel') || 'Extrait personnalisé · démonstration'}</p>
+                          <h4 className="text-[19px] font-bold mt-1 mb-3">{t('scorePreviewDocTitle') || 'Votre dossier de candidature'}</h4>
+                          <div className="pt-3 border-t border-[#49627a]">
+                            <p className="font-bold">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')}</p>
+                            <p className="text-[#c5d4e0]">{opportunity.title}</p>
+                          </div>
+                        </div>
+                        <div className="p-4 space-y-4">
+                          <p className="text-[#4f6474]">{t('scorePreviewBaseLabel') || 'Base pré-remplie · à compléter avant dépôt'}</p>
+
+                          <section>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection01') || '01. Identification de l\'entreprise'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrefilled') || 'Pré-rempli'}</span></h4>
+                            <dl className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] gap-x-3 gap-y-1.5">
+                              <dt className="text-[#4f6474]">{t('scorePreviewCompanyName') || 'Raison sociale'}</dt><dd className="font-bold">{siretCompany?.name || '—'}</dd>
+                              <dt className="text-[#4f6474]">SIRET</dt><dd>{siretCompany?.siret || '—'}</dd>
+                              <dt className="text-[#4f6474]">{t('scorePreviewLocation') || 'Implantation'}</dt><dd>{[siretCompany?.city, siretCompany?.postal].filter(Boolean).join(' · ') || '—'}</dd>
+                              <dt className="text-[#4f6474]">{t('scorePreviewDeclaredActivity') || 'Activité déclarée'}</dt><dd>{siretCompany?.activity || siretCompany?.ape || '—'}</dd>
+                            </dl>
+                            {siretCompany?.statut && siretCompany.statut !== 'Active' && (
+                              <p className="border-l-2 border-[#bd7027] pl-2.5 text-[#664320] mt-2">
+                                {t('scorePreviewStatusNotice', { status: siretCompany.statut }) || `Statut « ${siretCompany.statut} » : l'identité et la situation de l'entreprise doivent être clarifiées avant d'utiliser ce dossier.`}
+                              </p>
+                            )}
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection02') || "02. Présentation de l'entreprise"} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewDrafted') || 'Pré-rédigée'}</span></h4>
+                            <p className="border-l-2 border-[#439377] bg-[#e5eee8] text-[#213c31] rounded-r p-3">
+                              <span className="block text-[#38654d] mb-1">{t('scorePreviewDraftLabel') || 'Texte préparé pour votre dossier'}</span>
+                              {t('scorePreviewDraftText', {
+                                company: siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise'),
+                                siret: siretCompany?.siret || '',
+                                city: siretCompany?.city || '',
+                                activity: siretCompany?.activity || siretCompany?.ape || '',
+                                opportunity: opportunity.title,
+                              }) || `${siretCompany?.name || 'Votre entreprise'}${siretCompany?.city ? ` est implantée à ${siretCompany.city}` : ''}${siretCompany?.siret ? ` sous le SIRET ${siretCompany.siret}` : ''}.${siretCompany?.activity || siretCompany?.ape ? ` Son activité déclarée concerne ${siretCompany.activity || siretCompany.ape}.` : ''} La présente préparation porte sur : ${opportunity.title}.`}
+                            </p>
+                            <p className="mt-2"><strong>{t('scorePreviewToComplete') || 'À compléter :'}</strong> {t('scorePreviewToCompleteDesc') || "présentation de l'équipe, organisation, moyens matériels et périmètre d'intervention effectivement assuré."}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03') || '03. Votre trame de réponse technique'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <p>{t('scorePreviewSection03Intro') || "Plan de rédaction proposé à partir de l'intitulé du marché. À adapter au dossier technique et à vos méthodes réelles."}</p>
+                            <ol className="mt-2 space-y-2">
+                              <li className="pb-2 border-b border-[#c4d0da]"><strong className="block">{t('scorePreviewMilestone1') || "Préparer l'intervention"}</strong>{t('scorePreviewMilestone1Desc') || "Décrire le repérage des éléments concernés, les accès, la protection des zones de travail et l'organisation de votre équipe."}</li>
+                              <li className="pb-2 border-b border-[#c4d0da]"><strong className="block">{t('scorePreviewMilestone2') || 'Organiser les travaux'}</strong>{t('scorePreviewMilestone2Desc') || "Présenter l'enchaînement proposé, les moyens mobilisés et la coordination des interventions."}</li>
+                              <li><strong className="block">{t('scorePreviewMilestone3') || 'Contrôler et remettre'}</strong>{t('scorePreviewMilestone3Desc') || "Préciser les contrôles, essais et réglages envisagés, puis les documents et consignes remis en fin d'intervention."}</li>
+                            </ol>
+                            <p className="border-l-2 border-[#bd7027] pl-2.5 text-[#664320] mt-2">{t('scorePreviewSection03Notice') || 'À renseigner : moyens prévus, effectif mobilisé, durée, contraintes du site et prestations exactes demandées.'}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection04') || 'Vos premières réponses'}</h4>
+                            <p className="text-[#4f6474] mb-2">{t('scorePreviewSection04Intro') || 'Les réponses renseignées dans la concordance sont reprises ici.'}</p>
+                            <dl className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] gap-x-3 gap-y-1.5">
+                              <dt className="text-[#4f6474]">{t('scorePreviewExperience') || 'Expérience similaire'}</dt><dd>{answerLabel('experience')}</dd>
+                              <dt className="text-[#4f6474]">{t('scorePreviewCapacity') || 'Moyens mobilisables'}</dt><dd>{answerLabel('capacity')}</dd>
+                              <dt className="text-[#4f6474]">{t('scorePreviewLocationZone') || "Zone d'intervention"}</dt><dd>{answerLabel('location')}</dd>
+                              <dt className="text-[#4f6474]">{t('scorePreviewCalendar') || 'Calendrier'}</dt><dd>{answerLabel('calendar')}</dd>
+                            </dl>
+                            <p className="mt-2"><strong>{t('scorePreviewRefToDetail') || 'Référence à détailler :'}</strong> {t('scorePreviewRefToDetailDesc') || "client, nature de la prestation, année, rôle de votre entreprise et résultat obtenu. Ces éléments restent à fournir."}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection05') || 'Pièces à rassembler'}</h4>
+                            <p className="text-[#4f6474] mb-2">{t('scorePreviewSection05Intro') || 'Liste de préparation indicative, à adapter aux pièces réellement demandées dans le règlement de consultation.'}</p>
+                            <ul className="list-disc pl-4 space-y-1.5">
+                              <li>{t('scorePreviewPiece1') || "Les justificatifs d'identification et les coordonnées du représentant de l'entreprise."}</li>
+                              <li>{t('scorePreviewPiece2') || 'Les références professionnelles utiles et les éléments décrivant vos moyens.'}</li>
+                              <li>{t('scorePreviewPiece3') || 'Les attestations, assurances ou qualifications demandées, avec leur validité à vérifier.'}</li>
+                              <li>{t('scorePreviewPiece4') || 'Les formulaires et pièces spécifiques exigés pour ce marché.'}</li>
+                            </ul>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection06') || 'Pour finaliser votre candidature'}</h4>
+                            <ol className="list-decimal pl-4 space-y-1.5">
+                              <li>{t('scorePreviewStep1') || 'Confirmer les informations et la situation de votre entreprise.'}</li>
+                              <li>{t('scorePreviewStep2') || 'Compléter vos références, vos moyens et le périmètre de votre réponse.'}</li>
+                              <li>{t('scorePreviewStep3') || "Rassembler les pièces demandées et relire l'ensemble."}</li>
+                              <li>{t('scorePreviewStep4') || "Vérifier les modalités et l'échéance du dépôt sur la plateforme officielle."}</li>
+                            </ol>
+                            <p className="border-l-2 border-[#bd7027] pl-2.5 text-[#664320] mt-2">{t('scorePreviewNotice') || "Ce dossier est une base de préparation. Il n'est ni complet, ni validé, ni déposé."}</p>
+                          </section>
+                        </div>
                       </div>
-                    )}
+                      );
+                    })()}
 
                     <div className="flex items-start gap-2 bg-red-500/10 rounded-lg px-3 py-2.5 mb-4">
                       <span className="relative flex w-1.5 h-1.5 shrink-0 mt-1">
