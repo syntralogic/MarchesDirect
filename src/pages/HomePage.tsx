@@ -139,9 +139,11 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
               <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
               <div className="text-[11px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug">{p.sub}</div>
             </div>
+            <div className="text-[11px] text-orange font-semibold whitespace-nowrap shrink-0">
+              {loading ? '…' : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
+            </div>
             <ChevronRight size={16} className="text-orange shrink-0 md:hidden" />
             <ChevronRight size={16} className="text-orange shrink-0 hidden md:block" />
-            {loading ? null : <span className="sr-only">{fmt(count)}</span>}
           </Link>
         );
       })}
