@@ -73,10 +73,10 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
               on mobile - not moving them again. */}
           <div className="mb-5 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
           <div className="flex flex-row gap-2 md:gap-3">
-            <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-2.5 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
+            <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
               Prendre rendez-vous
             </button>
-            <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-2.5 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/10 transition-colors">
+            <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/10 transition-colors">
               Être rappelé
             </button>
           </div>
@@ -137,7 +137,7 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
-              <div className="text-[11px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug hidden md:block">{p.sub}</div>
+              <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug">{p.sub}</div>
             </div>
             <div className="text-[11px] text-orange font-semibold whitespace-nowrap shrink-0">
               {loading ? '…' : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
@@ -151,14 +151,18 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
         <button onClick={onDemoClick} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all text-left">
           <PlayCircle size={18} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
-          <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
-          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug hidden md:block">Le parcours en 1 min</div>
+          <div className="min-w-0">
+            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
+            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 md:mt-0 leading-snug">Le parcours en 1 min</div>
+          </div>
         </button>
         <a href="#mdh-temoignages" className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all">
           <PlayCircle size={18} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
-          <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
-          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug hidden md:block">Leurs retours d'expérience</div>
+          <div className="min-w-0">
+            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
+            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 md:mt-0 leading-snug">Leurs retours d'expérience</div>
+          </div>
         </a>
       </div>
     </div>
