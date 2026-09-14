@@ -43,7 +43,7 @@ function normalizeFr(s: string): string {
 function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
   const [demoOpen, setDemoOpen] = useState(false);
   return (
-    <section className="px-3 md:px-6 pt-5 md:pt-10 pb-10 md:pb-10 max-w-3xl mx-auto w-full">
+    <section className="px-3 md:px-6 pt-3 md:pt-10 pb-10 md:pb-10 max-w-3xl mx-auto w-full">
       {/* Card-internal padding/margins/gaps reverted to their pre-65360a3
           sizes (12 Sep bug, found live 12 Sep 7:57pm): that commit grew
           these to make the whole card taller so the *next* heading ("De la
@@ -54,12 +54,12 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
           actually does what was wanted: it adds space AFTER the card,
           pushing later content down without touching what's visible
           inside the card itself - kept as-is. */}
-      <div className="border border-orange/40 rounded-2xl bg-[#061D32] p-4 md:p-6 orange-glow relative overflow-hidden">
+      <div className="border border-orange/40 rounded-2xl bg-[#061D32] p-3 md:p-6 orange-glow relative overflow-hidden">
         <div className="relative z-10">
           <span className="text-[11px] md:text-[11px] font-bold text-orange uppercase tracking-widest">
             Artisans · TPE · PME
           </span>
-          <h1 className="text-2xl md:text-3xl font-extrabold leading-tight mt-2.5 md:mt-2 mb-4 md:mb-3">
+          <h1 className="text-2xl md:text-3xl font-extrabold leading-tight mt-2 md:mt-2 mb-3 md:mb-3">
             <span className="text-white">Trouvez des marchés adaptés</span>{' '}
             <span className="text-orange">à votre entreprise.</span>
           </h1>
@@ -71,7 +71,7 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
               specific short viewport, that needs a fix that doesn't
               reorder the buttons - e.g. shrinking OpportunityPaths itself
               on mobile - not moving them again. */}
-          <div className="mb-5 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
+          <div className="mb-3 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
           <div className="flex flex-row gap-2 md:gap-3">
             <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
               Prendre rendez-vous
@@ -126,18 +126,18 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
     { icon: Handshake, title: 'Sous-traitance', sub: "Une partie d'un chantier ou d'une prestation à réaliser", href: '/parcours?type=sous-traitance', key: 'subcontracting' as const },
   ];
   return (
-    <div className="grid grid-cols-1 gap-1.5 md:gap-2">
+    <div className="grid grid-cols-1 gap-1 md:gap-2">
       {paths.map(p => {
         const count = counts[p.key];
         return (
-          <Link key={p.href} to={p.href} className="flex items-center gap-2.5 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all">
+          <Link key={p.href} to={p.href} className="flex items-center gap-2 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all">
             <div className="w-9 h-9 md:w-11 md:h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
               <p.icon size={18} className="text-orange md:hidden" />
               <p.icon size={22} className="text-orange hidden md:block" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
-              <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug">{p.sub}</div>
+              <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0.5 leading-tight md:leading-snug">{p.sub}</div>
             </div>
             <div className="text-[11px] text-orange font-semibold whitespace-nowrap shrink-0">
               {loading ? '…' : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
@@ -147,21 +147,21 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
           </Link>
         );
       })}
-      <div className="grid grid-cols-2 gap-1.5 md:gap-2">
-        <button onClick={onDemoClick} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all text-left">
+      <div className="grid grid-cols-2 gap-1 md:gap-2">
+        <button onClick={onDemoClick} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
           <PlayCircle size={18} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
           <div className="min-w-0">
             <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
-            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 md:mt-0 leading-snug">Le parcours en 1 min</div>
+            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Le parcours en 1 min</div>
           </div>
         </button>
-        <a href="#mdh-temoignages" className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2 md:p-3 hover:border-orange/50 group transition-all">
+        <a href="#mdh-temoignages" className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all">
           <PlayCircle size={18} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
           <div className="min-w-0">
             <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
-            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 md:mt-0 leading-snug">Leurs retours d'expérience</div>
+            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Leurs retours d'expérience</div>
           </div>
         </a>
       </div>
