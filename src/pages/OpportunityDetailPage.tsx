@@ -1514,18 +1514,27 @@ export default function OpportunityDetailPage() {
             </div>
           ) : null}
 
-                {!(isAuthenticated || leadCaptured) && (
-                  // Phone+email gate (client's newest brief, Écran 7): the
-                  // visitor has already seen the score + why-it-matches above
-                  // (the value obtained). This only gates saving the
-                  // opportunity and moving to the next screen - it never
-                  // hides the analysis, which is rendered above regardless.
-                  <div ref={leadGateRef} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                    <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-2">
-                      <Copy size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
+                {/* Client's 14 Sep report: logged-in/already-qualified
+                    visitors never saw this at all, since the whole block
+                    used to be gated behind !(isAuthenticated ||
+                    leadCaptured) - the excerpt toggle is useful to anyone,
+                    not just visitors still deciding whether to hand over
+                    contact info. Only the email/phone capture form itself
+                    stays gated below; the excerpt viewer is always here. */}
+                <div ref={leadGateRef} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                  {!(isAuthenticated || leadCaptured) ? (
+                    <>
+                      <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-2">
+                        <Copy size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
+                      </p>
+                      <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || 'Recevez votre dossier de candidature pré-rempli pour votre entreprise et ce marché.'}</p>
+                      <p className="text-sm text-[#B9BBC8] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
+                    </>
+                  ) : (
+                    <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-4">
+                      <Copy size={17} className="text-orange shrink-0" /> {t('scorePreviewAuthedTitle') || 'Extrait de votre dossier'}
                     </p>
-                    <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || 'Recevez votre dossier de candidature pré-rempli pour votre entreprise et ce marché.'}</p>
-                    <p className="text-sm text-[#B9BBC8] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
+                  )}
 
                     {/* Client's 13 Sep concordance-apercu screenshots: the
                         excerpt link and the "viewed today" counter sit
@@ -1661,6 +1670,7 @@ export default function OpportunityDetailPage() {
                       );
                     })()}
 
+                  {!(isAuthenticated || leadCaptured) && (
                     <form onSubmit={handleLeadSubmit} className="space-y-3">
                       <div>
                         <label className="block text-sm font-semibold text-white mb-1.5">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
@@ -1758,8 +1768,8 @@ export default function OpportunityDetailPage() {
                       </button>
                       <p className="text-center text-[11px] text-[#B9BBC8]">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
                     </form>
-                  </div>
-                )}
+                  )}
+                </div>
           </>
       )}
 
