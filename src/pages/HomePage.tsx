@@ -126,18 +126,18 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
     { icon: Handshake, title: 'Sous-traitance', sub: "Une partie d'un chantier ou d'une prestation à réaliser", href: '/parcours?type=sous-traitance', key: 'subcontracting' as const },
   ];
   return (
-    <div className="grid grid-cols-1 gap-2.5 md:gap-2">
+    <div className="grid grid-cols-1 gap-2 md:gap-2">
       {paths.map(p => {
         const count = counts[p.key];
         return (
-          <Link key={p.href} to={p.href} className="flex items-center gap-3 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3.5 md:p-3 hover:border-orange/50 group transition-all">
+          <Link key={p.href} to={p.href} className="flex items-center gap-3 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2.5 md:p-3 hover:border-orange/50 group transition-all">
             <div className="w-11 h-11 md:w-11 md:h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
               <p.icon size={22} className="text-orange md:hidden" />
               <p.icon size={22} className="text-orange hidden md:block" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
-              <div className="text-[11px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug">{p.sub}</div>
+              <div className="text-[11px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-snug hidden md:block">{p.sub}</div>
             </div>
             <div className="text-[11px] text-orange font-semibold whitespace-nowrap shrink-0">
               {loading ? '…' : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
@@ -147,18 +147,18 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
           </Link>
         );
       })}
-      <div className="grid grid-cols-2 gap-2.5 md:gap-2">
-        <button onClick={onDemoClick} className="flex flex-col items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3.5 md:p-3 hover:border-orange/50 group transition-all text-left">
+      <div className="grid grid-cols-2 gap-2 md:gap-2">
+        <button onClick={onDemoClick} className="flex flex-col items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2.5 md:p-3 hover:border-orange/50 group transition-all text-left">
           <PlayCircle size={22} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
           <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
-          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug">Le parcours en 1 min</div>
+          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug hidden md:block">Le parcours en 1 min</div>
         </button>
-        <a href="#mdh-temoignages" className="flex flex-col items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3.5 md:p-3 hover:border-orange/50 group transition-all">
+        <a href="#mdh-temoignages" className="flex flex-col items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-2.5 md:p-3 hover:border-orange/50 group transition-all">
           <PlayCircle size={22} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
           <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
-          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug">Leurs retours d'expérience</div>
+          <div className="text-[11px] md:text-[11px] text-[#B9BBC8] leading-snug hidden md:block">Leurs retours d'expérience</div>
         </a>
       </div>
     </div>
