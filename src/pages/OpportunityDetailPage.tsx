@@ -1680,14 +1680,14 @@ export default function OpportunityDetailPage() {
                           to a contact-preferences center - there's no
                           separate one for an anonymous, not-yet-logged-in
                           visitor to land on). */}
-                      <p className="text-sm text-[#B9BBC8] leading-relaxed">
+                      <p className="text-[11px] text-[#5B6B80] leading-relaxed">
                         {t('leadConsentText')}
                       </p>
                       <div className="flex items-center gap-3">
-                        <button type="button" onClick={() => setContactPrefsOpen(o => !o)} className="text-sm text-orange underline hover:text-orange/80 transition-colors">
+                        <button type="button" onClick={() => setContactPrefsOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline decoration-[#5B6B80]/50 hover:text-[#8B95A5] transition-colors">
                           {t('leadContactPreferences') || 'Préférences de contact'}
                         </button>
-                        <button type="button" onClick={() => setPrivacyPanelOpen(o => !o)} className="text-sm text-orange underline hover:text-orange/80 transition-colors">
+                        <button type="button" onClick={() => setPrivacyPanelOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline decoration-[#5B6B80]/50 hover:text-[#8B95A5] transition-colors">
                           {t('privacy') || 'Confidentialité'}
                         </button>
                       </div>
