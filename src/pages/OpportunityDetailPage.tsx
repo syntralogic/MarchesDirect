@@ -1609,39 +1609,53 @@ export default function OpportunityDetailPage() {
                             <p className="border-l-2 border-[#bd7027] pl-2.5 text-[#664320] mt-2">{t('scorePreviewSection03Notice') || 'À renseigner : moyens prévus, effectif mobilisé, durée, contraintes du site et prestations exactes demandées.'}</p>
                           </section>
 
-                          <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection04') || 'Vos premières réponses'}</h4>
-                            <p className="text-[#4f6474] mb-2">{t('scorePreviewSection04Intro') || 'Les réponses renseignées dans la concordance sont reprises ici.'}</p>
-                            <dl className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] gap-x-3 gap-y-1.5">
-                              <dt className="text-[#4f6474]">{t('scorePreviewExperience') || 'Expérience similaire'}</dt><dd>{answerLabel('experience')}</dd>
-                              <dt className="text-[#4f6474]">{t('scorePreviewCapacity') || 'Moyens mobilisables'}</dt><dd>{answerLabel('capacity')}</dd>
-                              <dt className="text-[#4f6474]">{t('scorePreviewLocationZone') || "Zone d'intervention"}</dt><dd>{answerLabel('location')}</dd>
-                              <dt className="text-[#4f6474]">{t('scorePreviewCalendar') || 'Calendrier'}</dt><dd>{answerLabel('calendar')}</dd>
-                            </dl>
-                            <p className="mt-2"><strong>{t('scorePreviewRefToDetail') || 'Référence à détailler :'}</strong> {t('scorePreviewRefToDetailDesc') || "client, nature de la prestation, année, rôle de votre entreprise et résultat obtenu. Ces éléments restent à fournir."}</p>
-                          </section>
+                          {/* Client's 13 Sep reference (marches-direct-memoire-defilement.html):
+                              first 2-3 "pages" fully readable, rest blurred
+                              with an unlock invitation - same email+phone
+                              capture already gates this whole excerpt, so
+                              this blur is the excerpt's own internal
+                              preview-of-a-preview, not a second signup. */}
+                          <div className="relative overflow-hidden rounded-lg -mx-1 px-1">
+                            <div className="filter blur-[3px] select-none pointer-events-none opacity-50 space-y-4">
+                              <section className="pt-3 border-t border-[#c4d0da]">
+                                <h4 className="font-bold mb-2">{t('scorePreviewSection04') || 'Vos premières réponses'}</h4>
+                                <p className="text-[#4f6474] mb-2">{t('scorePreviewSection04Intro') || 'Les réponses renseignées dans la concordance sont reprises ici.'}</p>
+                                <dl className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] gap-x-3 gap-y-1.5">
+                                  <dt className="text-[#4f6474]">{t('scorePreviewExperience') || 'Expérience similaire'}</dt><dd>{answerLabel('experience')}</dd>
+                                  <dt className="text-[#4f6474]">{t('scorePreviewCapacity') || 'Moyens mobilisables'}</dt><dd>{answerLabel('capacity')}</dd>
+                                  <dt className="text-[#4f6474]">{t('scorePreviewLocationZone') || "Zone d'intervention"}</dt><dd>{answerLabel('location')}</dd>
+                                  <dt className="text-[#4f6474]">{t('scorePreviewCalendar') || 'Calendrier'}</dt><dd>{answerLabel('calendar')}</dd>
+                                </dl>
+                                <p className="mt-2"><strong>{t('scorePreviewRefToDetail') || 'Référence à détailler :'}</strong> {t('scorePreviewRefToDetailDesc') || "client, nature de la prestation, année, rôle de votre entreprise et résultat obtenu. Ces éléments restent à fournir."}</p>
+                              </section>
 
-                          <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection05') || 'Pièces à rassembler'}</h4>
-                            <p className="text-[#4f6474] mb-2">{t('scorePreviewSection05Intro') || 'Liste de préparation indicative, à adapter aux pièces réellement demandées dans le règlement de consultation.'}</p>
-                            <ul className="list-disc pl-4 space-y-1.5">
-                              <li>{t('scorePreviewPiece1') || "Les justificatifs d'identification et les coordonnées du représentant de l'entreprise."}</li>
-                              <li>{t('scorePreviewPiece2') || 'Les références professionnelles utiles et les éléments décrivant vos moyens.'}</li>
-                              <li>{t('scorePreviewPiece3') || 'Les attestations, assurances ou qualifications demandées, avec leur validité à vérifier.'}</li>
-                              <li>{t('scorePreviewPiece4') || 'Les formulaires et pièces spécifiques exigés pour ce marché.'}</li>
-                            </ul>
-                          </section>
+                              <section className="pt-3 border-t border-[#c4d0da]">
+                                <h4 className="font-bold mb-2">{t('scorePreviewSection05') || 'Pièces à rassembler'}</h4>
+                                <p className="text-[#4f6474] mb-2">{t('scorePreviewSection05Intro') || 'Liste de préparation indicative, à adapter aux pièces réellement demandées dans le règlement de consultation.'}</p>
+                                <ul className="list-disc pl-4 space-y-1.5">
+                                  <li>{t('scorePreviewPiece1') || "Les justificatifs d'identification et les coordonnées du représentant de l'entreprise."}</li>
+                                  <li>{t('scorePreviewPiece2') || 'Les références professionnelles utiles et les éléments décrivant vos moyens.'}</li>
+                                  <li>{t('scorePreviewPiece3') || 'Les attestations, assurances ou qualifications demandées, avec leur validité à vérifier.'}</li>
+                                  <li>{t('scorePreviewPiece4') || 'Les formulaires et pièces spécifiques exigés pour ce marché.'}</li>
+                                </ul>
+                              </section>
 
-                          <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection06') || 'Pour finaliser votre candidature'}</h4>
-                            <ol className="list-decimal pl-4 space-y-1.5">
-                              <li>{t('scorePreviewStep1') || 'Confirmer les informations et la situation de votre entreprise.'}</li>
-                              <li>{t('scorePreviewStep2') || 'Compléter vos références, vos moyens et le périmètre de votre réponse.'}</li>
-                              <li>{t('scorePreviewStep3') || "Rassembler les pièces demandées et relire l'ensemble."}</li>
-                              <li>{t('scorePreviewStep4') || "Vérifier les modalités et l'échéance du dépôt sur la plateforme officielle."}</li>
-                            </ol>
-                            <p className="border-l-2 border-[#bd7027] pl-2.5 text-[#664320] mt-2">{t('scorePreviewNotice') || "Ce dossier est une base de préparation. Il n'est ni complet, ni validé, ni déposé."}</p>
-                          </section>
+                              <section className="pt-3 border-t border-[#c4d0da]">
+                                <h4 className="font-bold mb-2">{t('scorePreviewSection06') || 'Pour finaliser votre candidature'}</h4>
+                                <ol className="list-decimal pl-4 space-y-1.5">
+                                  <li>{t('scorePreviewStep1') || 'Confirmer les informations et la situation de votre entreprise.'}</li>
+                                  <li>{t('scorePreviewStep2') || 'Compléter vos références, vos moyens et le périmètre de votre réponse.'}</li>
+                                  <li>{t('scorePreviewStep3') || "Rassembler les pièces demandées et relire l'ensemble."}</li>
+                                  <li>{t('scorePreviewStep4') || "Vérifier les modalités et l'échéance du dépôt sur la plateforme officielle."}</li>
+                                </ol>
+                              </section>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center p-4">
+                              <p className="bg-[#0f2747] text-white text-xs font-bold text-center rounded-xl px-4 py-3 shadow-lg max-w-[85%]">
+                                {t('scorePreviewLocked') || 'Aperçu réservé — recevez l\'exemplaire complet gratuitement'}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       );
