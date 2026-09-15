@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useTrades } from '@/hooks/use-trades';
@@ -25,10 +26,25 @@ export default function SousTraitancePage() {
   const { companyKnown } = useCompanyKnown();
   const trades = useTrades();
   const [mode, setMode] = useState<'chantier' | 'partenaire'>('chantier');
-  const [location, setLocation] = useState('');
-  const [dept, setDept] = useState('Tous');
-  const [profession, setProfession] = useState('Tous');
+  // Filters live in the URL, not just component state - previously pure
+  // useState, so a card link into an opportunity then browser-back
+  // remounted this page fresh and silently dropped whatever métier/ville
+  // the visitor had selected (client's "liens de métiers perdaient le
+  // métier sélectionné" report).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [location, setLocationState] = useState(searchParams.get('city') || '');
+  const [dept, setDeptState] = useState(searchParams.get('department') || 'Tous');
+  const [profession, setProfessionState] = useState(searchParams.get('sector') || 'Tous');
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const updateParam = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value || value === 'Tous') next.delete(key); else next.set(key, value);
+    setSearchParams(next, { replace: true });
+  };
+  const setLocation = (v: string) => { setLocationState(v); updateParam('city', v); };
+  const setDept = (v: string) => { setDeptState(v); updateParam('department', v); };
+  const setProfession = (v: string) => { setProfessionState(v); updateParam('sector', v); };
 
   const selectedTradeId = profession === 'Tous' ? undefined : trades.find(tr => tr.name === profession)?.id;
 
