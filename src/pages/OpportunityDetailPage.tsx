@@ -370,6 +370,7 @@ export default function OpportunityDetailPage() {
   const [dossierResponseText, setDossierResponseText] = useState('');
   const [dossierPartners, setDossierPartners] = useState<{ name: string; role: string }[]>([]);
   const [dossierGenerating, setDossierGenerating] = useState(false);
+  const [dossierDownloading, setDossierDownloading] = useState(false);
   // Inline Confidentialité/Préférences de contact disclosures on the lead
   // form (client's 12 Sep concordance-apercu reference, exact HTML source
   // this time - md8-preferences/md8-privacy) - replaces the plain links to
@@ -1902,8 +1903,42 @@ export default function OpportunityDetailPage() {
               <Link to={`/opportunites/${id}/candidature`} className="bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
                 {t('dossierPrefilledConsult') || 'Consulter mon dossier'}
               </Link>
-              <button type="button" onClick={() => setDossierStepsOpen(true)} className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline">
-                <Download size={13} /> {t('dossierPrefilledDownload') || 'Télécharger'}
+              <button
+                type="button"
+                disabled={dossierDownloading}
+                onClick={async () => {
+                  // This used to just open the progress accordion (copy/paste
+                  // leftover) - produced no file at all, matching the
+                  // client's exact complaint. Wire it to the same package
+                  // download BidWorkspacePage already uses. Not logged in,
+                  // or nothing generated yet -> send to the workspace
+                  // page instead of failing silently on a 401/404.
+                  if (!isAuthenticated || !bid?.id || !bid.technical_memo_text) {
+                    navigate(`/opportunites/${id}/candidature`);
+                    return;
+                  }
+                  setDossierDownloading(true);
+                  try {
+                    const result = await tendersApi.downloadPackage(bid.id);
+                    if (result.url) {
+                      window.open(result.url, '_blank');
+                    } else if (result.blob) {
+                      const url = URL.createObjectURL(result.blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `dossier-candidature-${bid.id}.zip`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }
+                  } catch (err) {
+                    toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
+                  } finally {
+                    setDossierDownloading(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline disabled:opacity-50"
+              >
+                {dossierDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {t('dossierPrefilledDownload') || 'Télécharger'}
               </button>
             </div>
           </div>
@@ -1944,6 +1979,15 @@ export default function OpportunityDetailPage() {
                 disabled={dossierGenerating}
                 onClick={async () => {
                   if (!id) return;
+                  // Was firing the authed /generate call unconditionally -
+                  // a logged-out visitor got a raw 401 ("No token
+                  // provided") which the response interceptor then turns
+                  // into a "session expired" toast, even though they were
+                  // never logged in. Send them to log in first instead.
+                  if (!isAuthenticated) {
+                    navigate('/connexion', { state: { from: `/opportunites/${id}` } });
+                    return;
+                  }
                   setDossierGenerating(true);
                   try {
                     const saved = await dossiersApi.generate(id, {
