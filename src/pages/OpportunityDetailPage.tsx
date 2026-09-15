@@ -1918,57 +1918,76 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold text-white">{t('dossierPrefilledTitle') || 'Votre dossier pré-rempli'}</h2>
-              <span className="text-[11px] font-semibold text-green-400">{t('dossierPrefilledBadge') || 'Offert · disponible'}</span>
+              {/* Badge and CTAs used to say "Offert · disponible" and link
+                  straight to a RequireAuth route for every visitor, subscriber
+                  or not - an anonymous visitor got no explanation for why
+                  "available" meant a blank login screen (client's D02/D04:
+                  "présenté comme offert et disponible, mène à une connexion").
+                  The document genuinely does require an account (bid_responses
+                  is company-scoped server-side, not session-scoped like
+                  favorites), so the honest fix is telling the visitor that
+                  up front rather than promising zero-friction access. */}
+              <span className={`text-[11px] font-semibold ${isAuthenticated ? 'text-green-400' : 'text-orange'}`}>
+                {isAuthenticated ? (t('dossierPrefilledBadge') || 'Offert · disponible') : (t('dossierPrefilledBadgeLocked') || 'Offert · compte gratuit requis')}
+              </span>
             </div>
             <div className="flex items-start gap-3 mb-4">
               <span className="w-9 h-9 rounded-lg bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><FileText size={16} className="text-orange" /></span>
               <div>
                 <p className="text-sm font-semibold text-white">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')} × {opportunity.title}</p>
-                <p className="text-xs text-[#B9BBC8] mt-0.5">{t('dossierPrefilledDesc') || 'Votre entreprise, le lot retenu et une première trame de réponse rassemblés dans un document.'}</p>
+                <p className="text-xs text-[#B9BBC8] mt-0.5">
+                  {isAuthenticated
+                    ? (t('dossierPrefilledDesc') || 'Votre entreprise, le lot retenu et une première trame de réponse rassemblés dans un document.')
+                    : (t('dossierPrefilledDescLocked') || "Créez un compte gratuit (30 secondes) pour consulter et télécharger ce document - vous revenez directement ici après.")}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Link to={`/opportunites/${id}/candidature`} className="bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-                {t('dossierPrefilledConsult') || 'Consulter mon dossier'}
-              </Link>
-              <button
-                type="button"
-                disabled={dossierDownloading}
-                onClick={async () => {
-                  // This used to just open the progress accordion (copy/paste
-                  // leftover) - produced no file at all, matching the
-                  // client's exact complaint. Wire it to the same package
-                  // download BidWorkspacePage already uses. Not logged in,
-                  // or nothing generated yet -> send to the workspace
-                  // page instead of failing silently on a 401/404.
-                  if (!isAuthenticated || !bid?.id || !bid.technical_memo_text) {
-                    navigate(`/opportunites/${id}/candidature`);
-                    return;
-                  }
-                  setDossierDownloading(true);
-                  try {
-                    const result = await tendersApi.downloadPackage(bid.id);
-                    if (result.url) {
-                      window.open(result.url, '_blank');
-                    } else if (result.blob) {
-                      const url = URL.createObjectURL(result.blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `dossier-candidature-${bid.id}.zip`;
-                      a.click();
-                      URL.revokeObjectURL(url);
+            {isAuthenticated ? (
+              <div className="flex items-center gap-4">
+                <Link to={`/opportunites/${id}/candidature`} className="bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
+                  {t('dossierPrefilledConsult') || 'Consulter mon dossier'}
+                </Link>
+                <button
+                  type="button"
+                  disabled={dossierDownloading}
+                  onClick={async () => {
+                    if (!bid?.id || !bid.technical_memo_text) {
+                      navigate(`/opportunites/${id}/candidature`);
+                      return;
                     }
-                  } catch (err) {
-                    toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
-                  } finally {
-                    setDossierDownloading(false);
-                  }
-                }}
-                className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline disabled:opacity-50"
+                    setDossierDownloading(true);
+                    try {
+                      const result = await tendersApi.downloadPackage(bid.id);
+                      if (result.url) {
+                        window.open(result.url, '_blank');
+                      } else if (result.blob) {
+                        const url = URL.createObjectURL(result.blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `dossier-candidature-${bid.id}.zip`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }
+                    } catch (err) {
+                      toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
+                    } finally {
+                      setDossierDownloading(false);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline disabled:opacity-50"
+                >
+                  {dossierDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {t('dossierPrefilledDownload') || 'Télécharger'}
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/inscription"
+                state={{ from: `/opportunites/${id}/candidature` }}
+                className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
               >
-                {dossierDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {t('dossierPrefilledDownload') || 'Télécharger'}
-              </button>
-            </div>
+                <Lock size={13} /> {t('dossierPrefilledUnlock') || 'Créer mon accès gratuit'}
+              </Link>
+            )}
           </div>
 
           {/* "Préparer ma candidature" — client's reference screenshot (14

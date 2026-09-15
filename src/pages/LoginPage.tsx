@@ -43,7 +43,7 @@ export default function LoginPage() {
       </div>
 
       {mfa ? (
-        <MfaStep mfaToken={mfa.token} userId={mfa.userId} onDone={() => navigate('/tableau-de-bord', { replace: true })} />
+        <MfaStep mfaToken={mfa.token} userId={mfa.userId} onDone={() => navigate(location.state?.from || '/tableau-de-bord', { replace: true })} />
       ) : (
         <form onSubmit={handleSubmit} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
           {error && (
@@ -88,7 +88,7 @@ export default function LoginPage() {
       )}
 
       <p className="text-[11px] text-[#B9BBC8] text-center mt-5">
-        {t('loginNoAccount')} <Link to="/inscription" className="text-orange font-semibold hover:underline">{t('loginCreateAccount')}</Link>
+        {t('loginNoAccount')} <Link to="/inscription" state={location.state} className="text-orange font-semibold hover:underline">{t('loginCreateAccount')}</Link>
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, Building2, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLang } from '@/contexts/LangContext';
@@ -8,6 +8,7 @@ export default function SignupPage() {
   const { t } = useLang();
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation() as { state?: { from?: string } };
   const [form, setForm] = useState({ companyName: '', firstName: '', lastName: '', email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -32,7 +33,12 @@ export default function SignupPage() {
       setError(result.error);
       return;
     }
-    navigate('/tableau-de-bord', { replace: true });
+    // Was hardcoded to /tableau-de-bord - a visitor sent here from a
+    // RequireAuth redirect (e.g. "Consulter mon dossier" on an opportunity)
+    // landed on the dashboard after signing up instead of back on the
+    // dossier they were trying to reach, which read as the promised
+    // document going nowhere (client's D02/D04 reports).
+    navigate(location.state?.from || '/tableau-de-bord', { replace: true });
   };
 
   return (
@@ -129,7 +135,7 @@ export default function SignupPage() {
       </form>
 
       <p className="text-[11px] text-[#B9BBC8] text-center mt-5">
-        {t('signupHaveAccount')} <Link to="/connexion" className="text-orange font-semibold hover:underline">{t('signupLogin')}</Link>
+        {t('signupHaveAccount')} <Link to="/connexion" state={location.state} className="text-orange font-semibold hover:underline">{t('signupLogin')}</Link>
       </p>
     </div>
   );
