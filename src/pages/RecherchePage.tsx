@@ -55,6 +55,11 @@ export default function RecherchePage() {
   const [statutFilter, setStatutFilter] = useState('');
   const [montantMin, setMontantMin] = useState('');
   const [montantMax, setMontantMax] = useState('');
+  // R08 (client audit): "filtering isn't sorting" - filters existed but no
+  // explicit sort control did. Defaults to the same active-first/soonest-
+  // deadline order the results used before this control existed, so
+  // nothing changes until the visitor picks something else.
+  const [sort, setSort] = useState<'deadline' | 'recent' | 'match'>('deadline');
 
   const debouncedQuery = useDebounce(query, 400);
   const debouncedLocation = useDebounce(location, 400);
@@ -85,6 +90,7 @@ export default function RecherchePage() {
     status: statutFilter || undefined,
     min_value: applied.montantMin ? Number(applied.montantMin) : undefined,
     max_value: applied.montantMax ? Number(applied.montantMax) : undefined,
+    sort,
   });
 
   useEffect(() => {
@@ -224,10 +230,23 @@ export default function RecherchePage() {
           matches e.g. 340 opportunities, this showed "20 résultats" (one
           page) instead of 340, since LoadMoreButton already correctly
           uses `total` for the same data lower on this page. */}
-      <div className="mb-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-[11px] font-bold text-white">
           <span className="text-orange">{total}</span> {t('searchResults')}
         </h2>
+        <div className="relative shrink-0">
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value as 'deadline' | 'recent' | 'match')}
+            aria-label={t('sortLabel')}
+            className="bg-[#031B30] border border-[#17334D] rounded-md pl-2 pr-6 py-1.5 text-[10px] text-white focus:outline-none appearance-none cursor-pointer"
+          >
+            <option value="deadline">{t('sortDeadline')}</option>
+            <option value="recent">{t('sortRecent')}</option>
+            <option value="match">{t('sortMatch')}</option>
+          </select>
+          <ChevronDown size={9} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
+        </div>
       </div>
 
       {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">{t('searchLoading')}</div>}
