@@ -161,13 +161,17 @@ export default function ProfilPage() {
   };
 
   const handleChangePassword = async () => {
+    if (!currentPassword) {
+      toast.error(t('profilePasswordCurrentRequired') || 'Saisissez votre mot de passe actuel.');
+      return;
+    }
     if (!newPassword || newPassword !== confirmPassword) {
       toast.error(t('profilePasswordMismatch') || 'Les mots de passe ne correspondent pas.');
       return;
     }
     setChangingPassword(true);
     try {
-      await accountApi.changePassword(newPassword);
+      await accountApi.changePassword(currentPassword, newPassword);
       toast.success(t('profilePasswordChanged') || 'Mot de passe modifié. Reconnectez-vous.');
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       logout();
@@ -382,7 +386,7 @@ export default function ProfilPage() {
             </div>
             <button
               onClick={handleChangePassword}
-              disabled={changingPassword || !newPassword}
+              disabled={changingPassword || !newPassword || !currentPassword}
               className="text-xs text-orange border border-orange px-3 py-1.5 rounded-lg hover:bg-orange/10 transition-colors disabled:opacity-40 flex items-center gap-1.5"
             >
               {changingPassword && <Loader2 size={12} className="animate-spin" />}
