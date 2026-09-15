@@ -23,10 +23,22 @@ export default function RecherchePage() {
   // new comma-separated multi-value parsing (opportunities.ts).
   const initialRegions = searchParams.getAll('region');
   const initialCities = searchParams.getAll('city');
+  // Client's priority bug: the map's "departments" tab already sent every
+  // selected department as its own repeated `department=` param (see
+  // HomePage's buildSearchUrl), but this page never read `department` at
+  // all - so a Gironde + Dordogne map selection landed here with no
+  // location filter applied whatsoever and silently fell back to a
+  // national result list. Backend already accepts comma-separated
+  // department codes (routes/opportunities.ts); this was purely a missing
+  // read on the frontend.
+  const initialDepartments = searchParams.getAll('department');
   const initialCity = initialCities.join(', ');
   const initialRegion = initialRegions.join(', ');
-  const [location, setLocation] = useState(initialRegion || initialCity);
-  const [locationField] = useState<'region' | 'city'>(initialCity && !initialRegion ? 'city' : 'region');
+  const initialDepartment = initialDepartments.join(',');
+  const [location, setLocation] = useState(initialRegion || initialDepartment || initialCity);
+  const [locationField] = useState<'region' | 'department' | 'city'>(
+    initialDepartment && !initialRegion ? 'department' : (initialCity && !initialRegion ? 'city' : 'region')
+  );
   const tradeId = searchParams.get('trade_id') || undefined;
   const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
 
@@ -66,6 +78,7 @@ export default function RecherchePage() {
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
     region: locationField === 'region' ? (applied.location || undefined) : undefined,
+    department: locationField === 'department' ? (applied.location || undefined) : undefined,
     city: locationField === 'city' ? (applied.location || undefined) : undefined,
     trade_id: tradeId,
     journey: journeyParam,
