@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -56,6 +56,20 @@ import AdminSettings from '@/pages/AdminSettings';
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+
+  // Footer/menu links like "Zones géographiques" (#mdh-zones on the
+  // homepage) are plain anchor hashes, but react-router doesn't scroll to
+  // them on navigation from a different page - the target page mounted
+  // fine, just at the top, which looked like the link went nowhere. Wait a
+  // tick for the target section to actually be in the DOM, then scroll.
+  useEffect(() => {
+    if (!location.hash) return;
+    const id = location.hash.slice(1);
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [location.pathname, location.hash]);
 
   if (isAdmin) {
     return <div className="min-h-screen w-full bg-[#001326]">{children}</div>;

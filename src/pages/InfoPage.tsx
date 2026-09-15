@@ -190,7 +190,7 @@ export default function InfoPage() {
         </p>
 
         <a
-          href="#mdq-workflow"
+          href="#mdq-team"
           className="inline-flex items-center gap-2 bg-orange text-white font-semibold text-sm px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors"
         >
           Découvrir l'équipe <ArrowRight size={16} className="rotate-90" />
