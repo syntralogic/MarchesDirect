@@ -167,9 +167,10 @@ const frTranslations: Translations = {
   // Generic
   all: 'Tous',
   allF: 'Toutes',
-  sortRecent: 'Trier : Plus récents',
-  sortMatch: 'Trier : Meilleur match',
-  sortDeadline: 'Trier : Échéance proche',
+  sortLabel: 'Trier par',
+  sortRecent: 'Plus récents',
+  sortMatch: 'Pertinence',
+  sortDeadline: 'Échéance proche (défaut)',
 
   // Appels Page
   appelsTag: 'Marchés privés',
@@ -1710,9 +1711,10 @@ const enTranslations: Translations = {
   // Generic
   all: 'All',
   allF: 'All',
-  sortRecent: 'Sort: Most recent',
-  sortMatch: 'Sort: Best match',
-  sortDeadline: 'Sort: Upcoming deadline',
+  sortLabel: 'Sort by',
+  sortRecent: 'Most recent',
+  sortMatch: 'Relevance',
+  sortDeadline: 'Upcoming deadline (default)',
 
   // Appels Page
   appelsTag: 'Private Markets',

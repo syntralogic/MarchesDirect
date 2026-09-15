@@ -208,6 +208,10 @@ export type OpportunitySearchParams = {
   // "Nouveau" / date-published filter - backend already supports this
   // (routes/opportunities.ts), just wasn't exposed as a search param here.
   recent_days?: number;
+  // R08 (client audit): explicit sort control. 'match' only has an effect
+  // when q is also set (nothing to rank relevance against otherwise) -
+  // backend falls back to the default order in that case.
+  sort?: 'recent' | 'match' | 'deadline';
   page?: number;
   limit?: number;
 };
