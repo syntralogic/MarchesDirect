@@ -89,6 +89,33 @@ export default function OpportunityJourneyPage() {
   // picked, via the same municipality lookup used for city search.
   const [pickedDepartment, setPickedDepartment] = useState('');
   const [pickedRegion, setPickedRegion] = useState('');
+  // Client's audit (15 Sep): typing "Gironde"/"Dordogne" only ever matched
+  // communes containing that word, never the département itself; typing
+  // "33"/"24" (the code) matched nothing at all. And there was no way to
+  // pick more than one département at once. Direct département search -
+  // by name OR code - with multi-select, independent of the city search
+  // box above.
+  const [departementsGeoJson, setDepartementsGeoJson] = useState<{ code: string; nom: string }[] | null>(null);
+  const [selectedDepartments, setSelectedDepartments] = useState<{ code: string; nom: string }[]>([]);
+  useEffect(() => {
+    import('@/data/geo/departements.json').then(m => {
+      const features = ((m.default as { features: { properties: { code: string; nom: string } }[] }).features) || [];
+      setDepartementsGeoJson(features.map(f => f.properties));
+    }).catch(() => setDepartementsGeoJson([]));
+  }, []);
+  const departmentMatches = useMemo(() => {
+    const trimmed = citySearch.trim();
+    if (!trimmed || !departementsGeoJson) return [];
+    const q = trimmed.toLowerCase();
+    return departementsGeoJson
+      .filter(d => d.nom.toLowerCase().includes(q) || d.code === trimmed || d.code.replace(/^0/, '') === trimmed)
+      .slice(0, 6);
+  }, [citySearch, departementsGeoJson]);
+  const toggleDepartment = (d: { code: string; nom: string }) => {
+    setSelectedDepartments(prev =>
+      prev.some(p => p.code === d.code) ? prev.filter(p => p.code !== d.code) : [...prev, d]
+    );
+  };
   const [zoneResolving, setZoneResolving] = useState(false);
   // Surfaced when "Whole department"/"Whole region" can't actually be
   // resolved to a real department code / region name (no city context yet,
@@ -115,7 +142,11 @@ export default function OpportunityJourneyPage() {
 
   const debouncedQuery = useDebounce(query, 350);
   const WHOLE_AREA_PICKS = ['Département entier', 'Région entière', 'France entière'];
-  const cityForApi = WHOLE_AREA_PICKS.includes(pickedCity) ? '' : pickedCity.split(' — ')[0].split(',')[0].trim();
+  // Selected département chips (see selectedDepartments above) take
+  // priority over the single city/whole-area pick below when present.
+  const cityForApi = (selectedDepartments.length > 0 || WHOLE_AREA_PICKS.includes(pickedCity))
+    ? ''
+    : pickedCity.split(' — ')[0].split(',')[0].trim();
 
   // Client's audit (15 Sep): "un budget inférieur à 50 000 € conservait des
   // annonces privées beaucoup plus élevées, et un délai supérieur à 30 jours
@@ -155,7 +186,9 @@ export default function OpportunityJourneyPage() {
     // goes empty for both (see WHOLE_AREA_PICKS above) and neither param was
     // ever sent, so both silently behaved exactly like "Whole France" -
     // every opportunity nationwide, not just the visitor's department/region.
-    department: pickedCity === 'Département entier' ? (pickedDepartment || undefined) : undefined,
+    department: selectedDepartments.length > 0
+      ? selectedDepartments.map(d => d.code).join(',')
+      : (pickedCity === 'Département entier' ? (pickedDepartment || undefined) : undefined),
     region: pickedCity === 'Région entière' ? (pickedRegion || undefined) : undefined,
     min_value: amountRangeForApi().min,
     max_value: amountRangeForApi().max,
@@ -244,8 +277,20 @@ export default function OpportunityJourneyPage() {
     if (id === 'Sous-traitance') setSubRole(null);
   };
 
+  // Client's audit (15 Sep): "France entière + 50 km" / "Département
+  // entier + 50 km" labels stayed visible even though kilometres only ever
+  // mean anything around a specific city - a whole-area pick has no radius
+  // to speak of. Now: a real city keeps "Ville + N km"; a whole
+  // département/région/pays pick never shows a km suffix; selected
+  // département chips summarize as "Gironde — 33 + Dordogne — 24".
   const applyZone = () => {
-    if (pickedCity) setLocationLabel(`${pickedCity} + ${radius} km`);
+    if (selectedDepartments.length > 0) {
+      setLocationLabel(selectedDepartments.map(d => `${d.nom} — ${d.code}`).join(' + '));
+    } else if (pickedCity && !WHOLE_AREA_PICKS.includes(pickedCity)) {
+      setLocationLabel(`${pickedCity} + ${radius} km`);
+    } else if (pickedCity) {
+      setLocationLabel(pickedCity);
+    }
     setLocationModalOpen(false);
     setStep(4);
   };
@@ -299,6 +344,7 @@ export default function OpportunityJourneyPage() {
     setPickedRegion('');
     setPickedDepartment(department);
     setPickedCity('Département entier');
+    setSelectedDepartments([]);
   };
 
   const pickWholeRegion = async () => {
@@ -313,6 +359,7 @@ export default function OpportunityJourneyPage() {
     setPickedDepartment('');
     setPickedRegion(region);
     setPickedCity('Région entière');
+    setSelectedDepartments([]);
   };
 
   const pickWholeFrance = () => {
@@ -320,6 +367,7 @@ export default function OpportunityJourneyPage() {
     setPickedDepartment('');
     setPickedRegion('');
     setPickedCity('France entière');
+    setSelectedDepartments([]);
   };
 
   const stepLabels = [
@@ -790,13 +838,34 @@ export default function OpportunityJourneyPage() {
                 {cityApiLoading && citySearch.trim().length >= 2 && (
                   <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeySearching') || 'Recherche...'}</p>
                 )}
-                {!cityApiLoading && citySearch.trim().length >= 2 && citySuggestions.length === 0 && (
+                {!cityApiLoading && citySearch.trim().length >= 2 && citySuggestions.length === 0 && departmentMatches.length === 0 && (
                   <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeyNoCityFound') || 'Aucune ville trouvée.'}</p>
                 )}
+                {/* Département matches - by name ("Gironde") or code ("33") -
+                    shown above city matches so a département search isn't
+                    buried under similarly-named communes. Toggling one adds/
+                    removes it from selectedDepartments (multi-select); picking
+                    a city below clears any département chips since the two
+                    are mutually exclusive location modes. */}
+                {departmentMatches.map(d => {
+                  const isSelected = selectedDepartments.some(p => p.code === d.code);
+                  return (
+                    <button
+                      key={d.code}
+                      onClick={() => { toggleDepartment(d); setPickedCity(''); setPickedDepartment(''); setPickedRegion(''); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
+                        isSelected ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
+                      }`}
+                    >
+                      {isSelected ? <CheckCircle2 size={14} /> : <MapPin size={14} />}
+                      {d.nom} — {d.code}
+                    </button>
+                  );
+                })}
                 {citySuggestions.map(c => (
                   <button
                     key={c.name}
-                    onClick={() => { setPickedCity(`${c.name} — Ville`); setPickedDepartment(''); setPickedRegion(''); }}
+                    onClick={() => { setPickedCity(`${c.name} — Ville`); setPickedDepartment(''); setPickedRegion(''); setSelectedDepartments([]); }}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
                       pickedCity.startsWith(c.name) ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
                     }`}
@@ -806,8 +875,26 @@ export default function OpportunityJourneyPage() {
                 ))}
               </div>
 
+              {selectedDepartments.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {selectedDepartments.map(d => (
+                    <span key={d.code} className="flex items-center gap-1 bg-orange/10 text-orange text-[11px] font-semibold px-2.5 py-1.5 rounded-full">
+                      {d.nom} — {d.code}
+                      <button onClick={() => toggleDepartment(d)} aria-label={`Retirer ${d.nom}`}>
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Kilometres only ever mean something around a specific city -
+                  a whole département/région/pays or a set of selected
+                  départements has no radius to speak of. Disabled (not
+                  hidden, so the control doesn't jump around) once anything
+                  else is picked. */}
               <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">{t('journeySearchRadius')}</p>
-              <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className={`grid grid-cols-4 gap-2 mb-4 ${(selectedDepartments.length > 0 || WHOLE_AREA_PICKS.includes(pickedCity)) ? 'opacity-40 pointer-events-none' : ''}`}>
                 {RADIUS_OPTIONS.map(r => (
                   <button
                     key={r}
@@ -820,6 +907,7 @@ export default function OpportunityJourneyPage() {
                   </button>
                 ))}
               </div>
+
 
               <div className="space-y-1 mb-2">
                 <button
@@ -879,7 +967,7 @@ export default function OpportunityJourneyPage() {
 
               <button
                 onClick={applyZone}
-                disabled={!pickedCity}
+                disabled={!pickedCity && selectedDepartments.length === 0}
                 className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-40"
               >
                 {t('journeyApplyZone')}
