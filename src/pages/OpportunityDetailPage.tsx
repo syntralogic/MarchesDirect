@@ -2014,7 +2014,7 @@ export default function OpportunityDetailPage() {
           </div>
 
           {matchScore && matchScore.criteria.length > 0 && (
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            <div id="eligibility-analysis-block" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
               <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight') || "Pondération des critères de l'acheteur"}</h2>
               <div className="space-y-2.5">
                 {matchScore.criteria.map((c, i) => (
@@ -2062,17 +2062,43 @@ export default function OpportunityDetailPage() {
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceSub') || 'Les documents du marché et leurs versions.'}</p>
             <div className="flex items-center justify-between border-t border-[#17334D] pt-3">
-              <div>
-                <p className="text-sm text-white font-semibold">{t('dossierDceDocName') || 'Règlement de consultation'}</p>
-                <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
-              </div>
-              {opportunity.official_url ? (
-                <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
-                  {t('dossierDceConsult') || 'Consulter'}
-                </a>
-              ) : (
-                <button type="button" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">{t('dossierDceConsult') || 'Consulter'}</button>
-              )}
+              {(() => {
+                // Was always pointing "Règlement de consultation" at
+                // official_url, which is the BOAMP/DECP notice page, not
+                // the actual RC document - client's exact complaint. If
+                // the ingestion pipeline actually parsed a real RC file
+                // (dceDocuments), link to that and use its real name;
+                // otherwise be honest about what official_url actually is.
+                const rcDoc = dceDocuments.find(d => d.document_label === 'RC' && (d.status === 'downloaded' || d.status === 'parsed'));
+                if (rcDoc) {
+                  return (
+                    <>
+                      <div>
+                        <p className="text-sm text-white font-semibold">{DCE_LABEL_NAMES.RC}</p>
+                        <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
+                      </div>
+                      <a href={rcDoc.source_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
+                        {t('dossierDceConsult') || 'Consulter'}
+                      </a>
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    <div>
+                      <p className="text-sm text-white font-semibold">{t('dossierDceNoticeName') || "Avis du marché"}</p>
+                      <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
+                    </div>
+                    {opportunity.official_url ? (
+                      <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
+                        {t('dossierDceConsult') || 'Consulter'}
+                      </a>
+                    ) : (
+                      <button type="button" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">{t('dossierDceConsult') || 'Consulter'}</button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -2082,7 +2108,28 @@ export default function OpportunityDetailPage() {
               <h2 className="text-sm font-bold text-white">{t('dossierDceAnalysisTitle') || 'Analyse du DCE'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceAnalysisSub') || 'Les exigences, les points de vigilance et la préparation de votre réponse.'}</p>
-            <button type="button" onClick={() => { markDceViewed('analysis'); setEligibilityOpen(true); }} className="flex items-center gap-2 border border-[#5b6d7d] text-white text-xs font-semibold px-3.5 py-2 rounded-lg hover:border-orange/50 transition-colors">
+            <button
+              type="button"
+              onClick={() => {
+                // Was only setting state - the eligibility block it opens
+                // sits further up the page (in the criteria/weighting
+                // card), so the expanded content landed off-screen and
+                // looked like nothing happened, matching the client's
+                // "n'affiche pas l'analyse" complaint. Actually scroll to
+                // it once it's open. If there's genuinely nothing to show
+                // yet, say so instead of silently doing nothing.
+                markDceViewed('analysis');
+                if (!matchScore || matchScore.eligibility.length === 0) {
+                  toast.info(t('dossierDceAnalysisPending') || "L'analyse de ce marché est en cours de préparation.");
+                  return;
+                }
+                setEligibilityOpen(true);
+                requestAnimationFrame(() => {
+                  document.getElementById('eligibility-analysis-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+              }}
+              className="flex items-center gap-2 border border-[#5b6d7d] text-white text-xs font-semibold px-3.5 py-2 rounded-lg hover:border-orange/50 transition-colors"
+            >
               <Lock size={12} /> {t('dossierDceAnalysisCta') || "Voir l'analyse"}
             </button>
           </div>
@@ -2154,7 +2201,7 @@ export default function OpportunityDetailPage() {
               {t('dossierHubSlot') || 'Prendre rendez-vous'}
             </button>
             <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="block text-sm text-orange font-semibold hover:underline">
-              {t('dossierVerifyContact') || 'Vérifier mes coordonnées'}
+              {t('dossierVerifyContact') || 'Demander à être rappelé'}
             </button>
             {contactChoice === 'callback' && (
               <div className="mt-3 pt-3 border-t border-[#17334D]">
