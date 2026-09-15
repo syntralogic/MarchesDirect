@@ -9,6 +9,7 @@ import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingStat
 import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { LoadMoreButton } from '@/components/LoadMoreButton';
 import PageMeta from '@/components/common/PageMeta';
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock';
 
 export default function MarchesPublicsPage() {
   const { t } = useLang();
@@ -23,6 +24,7 @@ export default function MarchesPublicsPage() {
   const [sector, setSectorState] = useState(searchParams.get('sector') || 'Tous');
   const [status, setStatusState] = useState(searchParams.get('status') || 'Tous');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  useBodyScrollLock(filtersOpen); // L01: mobile filter drawer no longer lets the page scroll behind it
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);

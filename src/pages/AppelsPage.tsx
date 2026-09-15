@@ -9,6 +9,7 @@ import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingStat
 import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { LoadMoreButton } from '@/components/LoadMoreButton';
 import PageMeta from '@/components/common/PageMeta';
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock';
 
 export default function AppelsPage() {
   const { t } = useLang();
@@ -22,6 +23,7 @@ export default function AppelsPage() {
   const [location, setLocationState] = useState(searchParams.get('city') || '');
   const [sector, setSectorState] = useState(searchParams.get('sector') || 'Tous');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  useBodyScrollLock(filtersOpen); // L01: mobile filter drawer no longer lets the page scroll behind it
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);

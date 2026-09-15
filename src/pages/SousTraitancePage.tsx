@@ -9,6 +9,7 @@ import { OpportunitiesPendingState } from '@/components/OpportunitiesPendingStat
 import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { LoadMoreButton } from '@/components/LoadMoreButton';
 import PageMeta from '@/components/common/PageMeta';
+import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock';
 
 // label -> raw INSEE department code, since opportunities store the bare
 // code (e.g. "92") in `department`, not this display label.
@@ -36,6 +37,7 @@ export default function SousTraitancePage() {
   const [dept, setDeptState] = useState(searchParams.get('department') || 'Tous');
   const [profession, setProfessionState] = useState(searchParams.get('sector') || 'Tous');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  useBodyScrollLock(filtersOpen); // L01: mobile filter drawer no longer lets the page scroll behind it
 
   const updateParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);

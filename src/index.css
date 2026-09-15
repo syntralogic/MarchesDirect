@@ -162,6 +162,26 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Contre-audit 15 Sep 2026, L01 (mobile "clavier" pass): several
+     public-facing inputs use Tailwind's text-xs/text-sm (12/14px), e.g. the
+     location search on Appels/MarchesPublics/SousTraitance filter panels.
+     iOS Safari auto-zooms the whole page on focus for any text input under
+     16px - a well-documented WebKit behavior, not something layout review
+     alone would show without a real device. Scoped to actual form controls
+     at mobile widths only, so it doesn't change desktop or non-input text
+     sizing anywhere. !important is necessary here: it's overriding Tailwind
+     utility classes already applied inline in ~20 components, and doing
+     that per-component would mean re-touching every one of them (and
+     missing the next one added later) instead of fixing the behavior once.
+     Not verified on a real device from this environment (no phone/emulator
+     here) - this is the standard, well-known fix for the symptom, but still
+     needs confirming against the rest of L01's real-device pass. */
+  @media (max-width: 767px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
 }
 
 /* Brand utility classes */
