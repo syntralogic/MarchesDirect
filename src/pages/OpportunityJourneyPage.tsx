@@ -219,8 +219,16 @@ export default function OpportunityJourneyPage() {
   // client's report: "un délai supérieur à 30 jours conservait une échéance
   // du jour" (an opportunity due *today* was staying visible under "more
   // than 30 days left").
+  // R10 (contre-audit 15 Sep, correction partielle): the "aujourd'hui
+  // shown under +30 jours" bug above was fixed, but a listing with no
+  // deadline at all (displayed as "–") still matched every specific
+  // range because of the `!deadlineIso` passthrough - an unknown date
+  // isn't provably "dans plus de 30 jours". Only the unfiltered "Toutes"
+  // view should include undated listings now; every named range excludes
+  // them until we have a real date to test.
   const deadlineMatches = (deadlineIso: string): boolean => {
-    if (deadlineFilter === 'Toutes' || !deadlineIso) return true;
+    if (deadlineFilter === 'Toutes') return true;
+    if (!deadlineIso) return false;
     const days = (new Date(deadlineIso).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     if (deadlineFilter === 'Cette semaine') return days >= 0 && days <= 7;
     if (deadlineFilter === 'Ce mois-ci') return days >= 0 && days <= 31;
