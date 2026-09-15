@@ -387,8 +387,15 @@ function TeamSection() {
 
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#17334D]">
           <span className="text-sm font-semibold text-orange">Découvrir notre équipe</span>
+          {/* Client's audit (15 Sep): "Découvrir l'équipe doit conduire aux
+              portraits, pas aux étapes de fonctionnement." This linked to
+              /a-propos with no hash at all, so it landed at the top of that
+              page - the workflow/steps section - rather than the team
+              portraits further down (#mdq-team). App.tsx's AppLayout
+              already scrolls to any hash on route change; this link just
+              never supplied one. */}
           <Link
-            to="/a-propos"
+            to="/a-propos#mdq-team"
             className="w-10 h-10 rounded-full border border-orange text-orange flex items-center justify-center hover:bg-orange/10 transition-colors"
             aria-label="Découvrir notre équipe"
           >
