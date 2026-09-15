@@ -117,6 +117,29 @@ export default function OpportunityJourneyPage() {
   const WHOLE_AREA_PICKS = ['Département entier', 'Région entière', 'France entière'];
   const cityForApi = WHOLE_AREA_PICKS.includes(pickedCity) ? '' : pickedCity.split(' — ')[0].split(',')[0].trim();
 
+  // Client's audit (15 Sep): "un budget inférieur à 50 000 € conservait des
+  // annonces privées beaucoup plus élevées, et un délai supérieur à 30 jours
+  // conservait une échéance du jour" - dateFilter/deadlineFilter/amountFilter
+  // above were wired to their <select>s but never actually read by anything:
+  // no filter logic used them at all, so every combination showed the exact
+  // same unfiltered list. Budget maps to the backend's existing min_value/
+  // max_value (same params RecherchePage already sends); "Date de
+  // publication" maps to the backend's existing recent_days. Both are real
+  // server-side filters, so they apply across the full result set, not just
+  // whatever page happens to be loaded.
+  const amountRangeForApi = (): { min?: number; max?: number } => {
+    if (amountFilter === '< 50 000 €') return { max: 49999 };
+    if (amountFilter === '50 000 € – 200 000 €') return { min: 50000, max: 200000 };
+    if (amountFilter === '> 200 000 €') return { min: 200001 };
+    return {};
+  };
+  const recentDaysForApi = (): number | undefined => {
+    if (dateFilter === '24 dernières heures') return 1;
+    if (dateFilter === '7 derniers jours') return 7;
+    if (dateFilter === '30 derniers jours') return 30;
+    return undefined;
+  };
+
   // Was JOURNEY_CODE_MAP[types[0]] - the type step lets several opportunity
   // types be toggled on at once (and step 4's filter pills show every
   // selected type as active), but only the first-selected one was ever
@@ -134,11 +157,29 @@ export default function OpportunityJourneyPage() {
     // every opportunity nationwide, not just the visitor's department/region.
     department: pickedCity === 'Département entier' ? (pickedDepartment || undefined) : undefined,
     region: pickedCity === 'Région entière' ? (pickedRegion || undefined) : undefined,
+    min_value: amountRangeForApi().min,
+    max_value: amountRangeForApi().max,
+    recent_days: recentDaysForApi(),
   });
 
+  // Deadline has no backend range filter (unlike budget/date-published
+  // above), so this stays a client-side pass over whatever page is already
+  // loaded - same limitation the status filter below already has. Matches
+  // client's report: "un délai supérieur à 30 jours conservait une échéance
+  // du jour" (an opportunity due *today* was staying visible under "more
+  // than 30 days left").
+  const deadlineMatches = (deadlineIso: string): boolean => {
+    if (deadlineFilter === 'Toutes' || !deadlineIso) return true;
+    const days = (new Date(deadlineIso).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    if (deadlineFilter === 'Cette semaine') return days >= 0 && days <= 7;
+    if (deadlineFilter === 'Ce mois-ci') return days >= 0 && days <= 31;
+    if (deadlineFilter === 'Dans plus de 30 jours') return days > 30;
+    return true;
+  };
+
   const filteredResults = useMemo(
-    () => opportunities.filter(o => status === 'Tous' || o.status === status),
-    [opportunities, status]
+    () => opportunities.filter(o => (status === 'Tous' || o.status === status) && deadlineMatches(o.deadline)),
+    [opportunities, status, deadlineFilter]
   );
 
   // Header count: the page fetches PAGE_SIZE (100) at a time and appends
@@ -151,7 +192,7 @@ export default function OpportunityJourneyPage() {
   // q/city/department/region); only fall back to the loaded/filtered
   // count when the client-side status filter (not sent to the backend)
   // is narrowing the list further than `total` accounts for.
-  const displayResultCount = status === 'Tous' ? total : filteredResults.length;
+  const displayResultCount = (status === 'Tous' && deadlineFilter === 'Toutes') ? total : filteredResults.length;
 
   const filteredSuggestions = useMemo(() => {
     if (!query.trim()) return TRADE_SUGGESTIONS.slice(0, 3);
