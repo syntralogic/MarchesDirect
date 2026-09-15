@@ -176,9 +176,15 @@ function DemoWalkthroughSection() {
   const [demoOpen, setDemoOpen] = useState(false);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const steps = [
-    { label: 'Opportunité', title: 'Chauffage · lot 03', desc: 'Épinal · 120 000 € HT', card: { label: 'Opportunité', title: 'Chauffage · lot 03', meta: 'Épinal · 120 000 € HT', note: 'Critères et conditions' } },
-    { label: 'Concordance', title: '78 % de concordance', desc: 'Votre entreprise correspond aux critères demandés', card: { label: 'Concordance', title: '78 % de concordance', meta: 'Votre entreprise correspond aux critères demandés', note: 'Analyse IA' } },
-    { label: 'Dossier', title: 'Le besoin · les critères · le dossier', desc: "Votre chargé d'affaires prépare la candidature", card: { label: 'Dossier', title: 'Le besoin · les critères · le dossier', meta: "Votre chargé d'affaires prépare la candidature", note: 'Vous validez avant dépôt' } },
+    { label: 'Opportunité', title: 'Chauffage · lot 03', desc: 'Épinal · 120 000 € HT', card: { label: 'Opportunité', title: 'Chauffage · lot 03', meta: 'Épinal · 120 000 € HT', note: 'Critères et conditions' },
+      heading: 'Comprenez ce que l’acheteur attend.',
+      explain: 'Travaux demandés, budget, délais et conditions : les informations utiles sont réunies dans une fiche.' },
+    { label: 'Concordance', title: '78 % de concordance', desc: 'Votre entreprise correspond aux critères demandés', card: { label: 'Concordance', title: '78 % de concordance', meta: 'Votre entreprise correspond aux critères demandés', note: 'Analyse IA' },
+      heading: 'Voyez si cette opportunité vous correspond.',
+      explain: 'Notre IA compare votre profil aux exigences du marché et calcule un indice de correspondance clair, avec le détail de son calcul.' },
+    { label: 'Dossier', title: 'Le besoin · les critères · le dossier', desc: "Votre chargé d'affaires prépare la candidature", card: { label: 'Dossier', title: 'Le besoin · les critères · le dossier', meta: "Votre chargé d'affaires prépare la candidature", note: 'Vous validez avant dépôt' },
+      heading: 'Votre dossier est préparé pour vous.',
+      explain: "Le besoin, les critères de l'acheteur et le dossier de candidature sont réunis ; votre chargé d'affaires prépare, vous validez avant le dépôt." },
   ];
   return (
     <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
@@ -242,10 +248,10 @@ function DemoWalkthroughSection() {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-base md:text-lg font-bold text-white leading-snug mb-2">
-              Comprenez ce que l'acheteur attend.
+              {steps[step].heading}
             </h3>
             <p className="text-xs md:text-sm text-[#B9BBC8] leading-relaxed">
-              Travaux demandés, budget, délais et conditions : les informations utiles sont réunies dans une fiche.
+              {steps[step].explain}
             </p>
             <button
               onClick={() => setDemoOpen(true)}
@@ -551,7 +557,7 @@ function GeographicSection() {
   };
 
   return (
-    <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
+    <section id="mdh-zones" className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('nearYou')}</span>
       <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">
         Des opportunités partout en France.
