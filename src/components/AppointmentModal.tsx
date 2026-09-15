@@ -27,13 +27,40 @@ const MOTIFS = [
 // nothing here is presented to the user as a confirmed booking beyond that.
 // Flag for the client: real calendar integration (e.g. Cal.com/Google
 // Calendar) is needed if slots must reflect true staff availability.
-const AVAILABLE_SLOTS = [
-  { date: 'Lun 25 août', slots: ['09:00', '10:00', '14:00', '15:00'] },
-  { date: 'Mar 26 août', slots: ['09:30', '11:00', '14:30', '16:00'] },
-  { date: 'Mer 27 août', slots: ['10:00', '11:30', '15:00'] },
-  { date: 'Jeu 28 août', slots: ['09:00', '10:30', '14:00', '16:30'] },
-  { date: 'Ven 29 août', slots: ['09:00', '10:00', '11:00'] },
+//
+// Was a hardcoded "Lun 25 août" .. "Ven 29 août" week that just sat there
+// going stale (client's 15 Sep audit: still showing 25-29 August as
+// bookable). Generate the next 5 business days from today instead, keeping
+// the same per-weekday time patterns.
+const SLOT_TIMES_BY_WEEKDAY: string[][] = [
+  [], // Sunday - unused, business days only below
+  ['09:00', '10:00', '14:00', '15:00'], // Monday
+  ['09:30', '11:00', '14:30', '16:00'], // Tuesday
+  ['10:00', '11:30', '15:00'], // Wednesday
+  ['09:00', '10:30', '14:00', '16:30'], // Thursday
+  ['09:00', '10:00', '11:00'], // Friday
+  [], // Saturday - unused
 ];
+
+function nextBusinessDaySlots(count: number): { date: string; slots: string[] }[] {
+  const result: { date: string; slots: string[] }[] = [];
+  const cursor = new Date();
+  cursor.setDate(cursor.getDate() + 1); // start from tomorrow, not today
+  while (result.length < count) {
+    const day = cursor.getDay(); // 0 = Sunday, 6 = Saturday
+    if (day !== 0 && day !== 6) {
+      const label = cursor
+        .toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })
+        .replace(/^./, c => c.toUpperCase())
+        .replace('.', '');
+      result.push({ date: label, slots: SLOT_TIMES_BY_WEEKDAY[day] });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return result;
+}
+
+const AVAILABLE_SLOTS = nextBusinessDaySlots(5);
 
 export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
   const { t } = useLang();
