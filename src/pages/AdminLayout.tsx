@@ -103,7 +103,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className="relative w-64 h-full bg-[#031B30] border-r border-[#17334D]">
-            <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 p-2 rounded-lg text-[#B9BBC8] hover:text-white">
+            <button onClick={() => setMobileOpen(false)} aria-label={t('close')} className="absolute top-4 right-4 p-2 rounded-lg text-[#B9BBC8] hover:text-white">
               <X size={20} />
             </button>
             {SidebarContent}

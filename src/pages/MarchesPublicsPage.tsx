@@ -95,7 +95,7 @@ export default function MarchesPublicsPage() {
           <div className="relative w-[95%] bg-[#031B30] border border-[#17334D] rounded-2xl p-5 max-h-[85dvh] overflow-y-auto z-10 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-white text-sm">{t('appelsFilters')}</h3>
-              <button onClick={() => setFiltersOpen(false)}><X size={18} className="text-[#B9BBC8]" /></button>
+              <button onClick={() => setFiltersOpen(false)} aria-label={t('close')}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
             <FilterPanel />
             <button onClick={() => setFiltersOpen(false)} className="w-full mt-5 bg-orange text-white font-semibold text-sm py-3 rounded-xl">

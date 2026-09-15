@@ -144,7 +144,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
             <h2 className="text-lg font-bold text-brand-primary">{t('appointmentTitle')}</h2>
             <p className="text-xs text-brand-muted mt-0.5">Étape {step} sur 5</p>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-white/10 text-brand-muted hover:text-brand-primary transition-colors">
+          <button onClick={handleClose} aria-label={t('close')} className="p-2 rounded-lg hover:bg-white/10 text-brand-muted hover:text-brand-primary transition-colors">
             <X size={18} />
           </button>
         </div>

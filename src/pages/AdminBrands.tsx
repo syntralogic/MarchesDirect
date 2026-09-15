@@ -96,7 +96,7 @@ export default function AdminBrands() {
           <form onSubmit={handleCreate} className="relative w-full max-w-md bg-[#061D32] border border-[#17334D] rounded-2xl p-6 z-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-white">{t('adminBrandsNew')}</h2>
-              <button type="button" onClick={() => setModalOpen(false)}><X size={18} className="text-[#B9BBC8]" /></button>
+              <button type="button" onClick={() => setModalOpen(false)} aria-label={t('close')}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
             <div className="space-y-3">
               <div>

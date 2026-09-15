@@ -175,6 +175,7 @@ export default function TeamProfilePage() {
             {/* Close Button */}
             <button 
               onClick={() => { setSelectedMember(null); navigate('/how-it-works'); }}
+              aria-label={t('close')}
               className="absolute top-3 right-3 z-20 p-1.5 rounded-full bg-[#061D32]/80 border border-[#17334D] text-white hover:text-orange transition-colors"
             >
               <X size={16} />
