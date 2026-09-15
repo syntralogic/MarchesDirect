@@ -466,6 +466,13 @@ function GeographicSection() {
       const feature = geo?.features?.[0];
       const coords: [number, number] | null = feature ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : null;
       setCityResult({ name: feature?.properties?.city || query, coords });
+      // Client's audit (15 Sep): "il faut... centrer la carte sur la ville
+      // recherchée" - typing a city into the search box (as opposed to
+      // clicking a marker, which already did this via selectMapCity) found
+      // opportunities but never moved the map at all, so the map stayed
+      // wherever it happened to be while the results below it were for a
+      // totally different city.
+      if (coords) setCitiesPosition(p => ({ coordinates: coords, zoom: Math.max(p.zoom, 4) }));
     } catch {
       setCityResult({ name: query, coords: null });
       setCityOpportunities([]);
@@ -839,15 +846,36 @@ function GeographicSection() {
               </div>
             ) : (
               <div className="space-y-2">
-                {cityOpportunities.map(opp => (
-                  <Link key={opp.id} to={`/opportunites/${opp.id}`} className="block bg-[#031B30] border border-[#17334D] rounded-xl p-3 hover:border-orange/40 transition-colors">
-                    <p className="text-sm font-semibold text-white leading-snug mb-1">{opp.title}</p>
-                    <div className="flex flex-wrap gap-3 text-[10px] text-[#B9BBC8]">
-                      {opp.location_city && <span className="flex items-center gap-1"><MapPin size={10} /> {opp.location_city}</span>}
-                      {opp.deadline && <span>{new Date(opp.deadline).toLocaleDateString('fr-FR')}</span>}
-                    </div>
+                {/* Client's audit (15 Sep): "ajouter le nombre de résultats et
+                    'Voir toutes les opportunités de cette ville'" - a text
+                    search here only ever showed its capped 5-result preview
+                    with no total and no way to reach the rest, and gave no
+                    way to tell an open opportunity from an expired one. */}
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-xs text-[#B9BBC8]">
+                    <span className="text-orange font-semibold">{cityTotal}</span> opportunité{cityTotal !== 1 ? 's' : ''} à {cityResult.name}
+                  </p>
+                  <Link to={`/recherche?city=${encodeURIComponent(cityResult.name)}`} className="text-[11px] text-orange font-semibold hover:underline">
+                    Voir toutes les opportunités de cette ville
                   </Link>
-                ))}
+                </div>
+                {cityOpportunities.map(opp => {
+                  const isExpired = opp.status === 'expired' || opp.status === 'cancelled' || opp.status === 'awarded';
+                  return (
+                    <Link key={opp.id} to={`/opportunites/${opp.id}`} className="block bg-[#031B30] border border-[#17334D] rounded-xl p-3 hover:border-orange/40 transition-colors">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="text-sm font-semibold text-white leading-snug">{opp.title}</p>
+                        <span className={`shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${isExpired ? 'bg-[#17334D] text-[#B9BBC8]' : 'bg-orange/15 text-orange'}`}>
+                          {opp.status === 'expired' ? 'Expirée' : opp.status === 'cancelled' ? 'Annulée' : opp.status === 'awarded' ? 'Attribuée' : 'Ouverte'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-[10px] text-[#B9BBC8]">
+                        {opp.location_city && <span className="flex items-center gap-1"><MapPin size={10} /> {opp.location_city}</span>}
+                        {opp.deadline && <span>{new Date(opp.deadline).toLocaleDateString('fr-FR')}</span>}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
 

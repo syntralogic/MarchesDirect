@@ -71,4 +71,20 @@ export const frenchCitiesGeo: CityGeo[] = [
   { name: 'Chartres', coords: [1.4899, 48.4470], tier: 3 },
   { name: 'Vichy', coords: [3.4265, 46.1275], tier: 3 },
   { name: 'Narbonne', coords: [3.0038, 43.1839], tier: 3 },
+  // Client's audit (15 Sep) specifically searched these and found them
+  // missing from the map at any zoom level (only 57 towns existed here in
+  // total, none in Charente/Dordogne/Lot-et-Garonne despite Gironde itself
+  // being covered above). Not a full fix for "toutes les communes
+  // doivent pouvoir être recherchées" - the text search box already
+  // reaches every commune live via api-adresse.data.gouv.fr, but the map's
+  // clickable markers are still this static, curated list, not a live
+  // per-viewport lookup. A true fix needs the marker set itself to be
+  // fetched dynamically for the visible map area/zoom instead of hardcoded
+  // here - out of scope for this pass; these five close the specific gap
+  // reported.
+  { name: 'Angoulême', coords: [0.1558, 45.6486], tier: 3 },
+  { name: 'Soyaux', coords: [0.1892, 45.6472], tier: 3 },
+  { name: 'Périgueux', coords: [0.7211, 45.1848], tier: 3 },
+  { name: 'Bergerac', coords: [0.4827, 44.8508], tier: 3 },
+  { name: 'Marmande', coords: [0.1670, 44.5024], tier: 3 },
 ];

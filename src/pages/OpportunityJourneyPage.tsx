@@ -233,6 +233,18 @@ export default function OpportunityJourneyPage() {
   }, [query]);
 
   const debouncedCitySearch = useDebounce(citySearch, 300);
+  // Client's audit (15 Sep): "Aucune ville trouvée" could flash up before
+  // the search had actually finished, then the real city showed up right
+  // after (Angoulême, Périgueux, Bergerac all reproduced this). Cause:
+  // cityApiLoading only flips true once debouncedCitySearch updates - i.e.
+  // 300ms after the last keystroke - so during that debounce window
+  // cityApiLoading was still false and cityApiResults still held the
+  // previous (often empty) search's results, reading as "search finished,
+  // nothing found" when really the search hadn't started yet. Tracks
+  // whether citySearch has outrun debouncedCitySearch as its own pending
+  // state so the "no results" message only shows once a search for the
+  // *current* text has actually completed.
+  const citySearchPending = citySearch.trim() !== debouncedCitySearch.trim();
 
   useEffect(() => {
     if (locationModalOpen) setZoneError('');
@@ -835,10 +847,10 @@ export default function OpportunityJourneyPage() {
               </div>
 
               <div className="space-y-1 mb-4">
-                {cityApiLoading && citySearch.trim().length >= 2 && (
+                {(cityApiLoading || citySearchPending) && citySearch.trim().length >= 2 && (
                   <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeySearching') || 'Recherche...'}</p>
                 )}
-                {!cityApiLoading && citySearch.trim().length >= 2 && citySuggestions.length === 0 && departmentMatches.length === 0 && (
+                {!cityApiLoading && !citySearchPending && citySearch.trim().length >= 2 && citySuggestions.length === 0 && departmentMatches.length === 0 && (
                   <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeyNoCityFound') || 'Aucune ville trouvée.'}</p>
                 )}
                 {/* Département matches - by name ("Gironde") or code ("33") -
