@@ -1448,6 +1448,11 @@ const frTranslations: Translations = {
   dossierGenerateDesc: "Votre chargé d'affaires prépare et dépose votre candidature.",
   dossierGenerateSub: "Votre chargé d'affaires prépare et dépose votre candidature.",
   dossierGenerateCta: 'Générer mon dossier',
+  // D08 (contre-audit 15 Sep): "Générer" on a candidature doc opened the
+  // rendez-vous modal with no explanation - this pair backs the small
+  // explainer step shown first.
+  dossierExplainAccompagnement: "Ce document n'est pas généré automatiquement : votre chargé d'affaires le prépare avec vous, sur rendez-vous, en fonction des informations de ce marché et de votre entreprise.",
+  dossierExplainCta: 'Prendre rendez-vous avec mon chargé d\'affaires',
   dossierGenerateNote: "Préparation complète incluse dans l'accompagnement.",
   dossierDceTitle: 'DCE — Dossier de consultation',
   dossierDceSub: 'Les documents du marché et leurs versions.',
@@ -2990,6 +2995,8 @@ const enTranslations: Translations = {
   dossierGenerateDesc: 'Your account manager prepares and submits your application.',
   dossierGenerateSub: 'Your account manager prepares and submits your application.',
   dossierGenerateCta: 'Generate my application',
+  dossierExplainAccompagnement: "This document isn't generated automatically: your account manager prepares it with you, by appointment, based on this tender and your company.",
+  dossierExplainCta: 'Book an appointment with my account manager',
   dossierGenerateNote: 'Full preparation included in the support plan.',
   dossierDceTitle: 'Tender file (DCE)',
   dossierDceSub: 'The tender documents and their versions.',
