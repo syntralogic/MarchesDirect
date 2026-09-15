@@ -28,9 +28,10 @@ export function ChatbotWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
 
+  const [initAttempt, setInitAttempt] = useState(0);
+
   useEffect(() => {
     if (!open || initialized.current) return;
-    initialized.current = true;
     setLoading(true);
     setError(null);
     const sessionId = getSessionId();
@@ -45,13 +46,18 @@ export function ChatbotWidget() {
         setConversationId(conv.id);
         const history = await chatbotApi.getMessages(conv.id);
         setMessages(history);
+        // Only lock the guard on success - marking it done before the
+        // request even ran meant a failed init (network blip, 500) left
+        // conversationId null forever: input stayed disabled with the
+        // error shown, no way to recover short of a full page reload.
+        initialized.current = true;
       } catch (err) {
         setError(getApiErrorMessage(err, t('chatbotSendError')));
       } finally {
         setLoading(false);
       }
     })();
-  }, [open, t]);
+  }, [open, t, initAttempt]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -159,7 +165,20 @@ export function ChatbotWidget() {
             )}
           </div>
 
-          {error && <p className="text-[11px] text-red-400 px-4 pb-1">{error}</p>}
+          {error && (
+            <div className="flex items-center justify-between gap-2 px-4 pb-1">
+              <p className="text-[11px] text-red-400">{error}</p>
+              {!conversationId && (
+                <button
+                  type="button"
+                  onClick={() => setInitAttempt(n => n + 1)}
+                  className="text-[11px] font-semibold text-orange hover:underline shrink-0"
+                >
+                  {t('chatbotRetry') || 'Réessayer'}
+                </button>
+              )}
+            </div>
+          )}
 
           <form onSubmit={handleSend} className="p-3 border-t border-[#17334D] flex gap-2">
             <input
