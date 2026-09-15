@@ -62,7 +62,16 @@ export default function SecteursPage() {
           return (
             <Link
               key={sector.id}
-              to="/recherche"
+              // N02 (contre-audit 15 Sep): every card linked to bare
+              // '/recherche' with no filter at all - clicking "Espaces
+              // verts & paysagisme" landed on the full unfiltered national
+              // list (54 593 results, software/insurance at the top),
+              // same as every other sector. These 16 marketing sectors
+              // don't map 1:1 onto the real 15-trade taxonomy (trades.ts),
+              // so rather than guess a trade_id, pass the sector name as
+              // the free-text query - it rides the same AND'd, trade-
+              // classification-aware search R02/R04 already improved.
+              to={`/recherche?q=${encodeURIComponent(sector.name)}`}
               className="group bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 transition-all flex flex-col"
             >
               <div className="flex items-start gap-4 mb-4">

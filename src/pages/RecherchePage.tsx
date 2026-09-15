@@ -14,7 +14,12 @@ export default function RecherchePage() {
   const { companyKnown } = useCompanyKnown();
   const [searchParams] = useSearchParams();
 
-  const [query, setQuery] = useState('');
+  // N02 (contre-audit 15 Sep): a `q=` param arriving in the URL (from
+  // /secteurs cards, or anyone sharing a search link) was silently
+  // dropped - query/applied.query both always started empty, same class
+  // of bug as the department/region params above.
+  const initialQuery = searchParams.get('q') || '';
+  const [query, setQuery] = useState(initialQuery);
   // Client's map lets 2+ regions/departments/cities be selected at once
   // ("Nouvelle-Aquitaine, Bretagne") - HomePage's buildSearchUrl() already
   // sent every selection as its own repeated `region=` param, but this only
@@ -82,7 +87,7 @@ export default function RecherchePage() {
   // debounced ones as the user types, but the button (and Enter, via the
   // form's onSubmit) now bypasses the debounce and applies the raw
   // current field values right away.
-  const [applied, setApplied] = useState({ query: '', location: '', montantMin: '', montantMax: '' });
+  const [applied, setApplied] = useState({ query: initialQuery, location: '', montantMin: '', montantMax: '' });
   useEffect(() => {
     setApplied({ query: debouncedQuery, location: debouncedLocation, montantMin: debouncedMontantMin, montantMax: debouncedMontantMax });
   }, [debouncedQuery, debouncedLocation, debouncedMontantMin, debouncedMontantMax]);
