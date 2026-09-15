@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { apiClient, tokenStorage, getApiErrorMessage } from '@/lib/apiClient';
+import { apiClient, tokenStorage, getApiErrorMessage, ACCESS_TOKEN_KEY } from '@/lib/apiClient';
 import type { AuthUser, Company, RegisterPayload } from '@/types/auth';
 import { toast } from 'sonner';
 
@@ -50,7 +50,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error('Votre session a expire. Merci de vous reconnecter.');
     };
     window.addEventListener('md:session-expired', onExpired);
-    return () => window.removeEventListener('md:session-expired', onExpired);
+
+    // Contre-audit 15 Sep 2026, D02/D04: "No token provided" surfaced even
+    // though the visitor-facing UI was showing the logged-in state
+    // (Consulter/Télécharger, not the locked "Créer mon accès gratuit"
+    // CTA) - the request interceptor reads the access token straight from
+    // localStorage on every call, but nothing previously kept `user` (React
+    // state, per-tab) in sync with localStorage (shared across tabs) when
+    // it changed from *outside* this tab - e.g. logging out, or a session
+    // expiring, in another tab open to the same site. That left this tab's
+    // isAuthenticated stuck true with no access token behind it: exactly a
+    // "No token provided" 401 on the very next click, followed by the
+    // session-expired toast only once that click's request came back.
+    // The `storage` event fires in every OTHER tab (not the one that made
+    // the change) whenever localStorage changes, which is exactly the gap.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === ACCESS_TOKEN_KEY && !e.newValue) {
+        setUser(null);
+        setCompany(null);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      window.removeEventListener('md:session-expired', onExpired);
+      window.removeEventListener('storage', onStorage);
+    };
   }, [refreshProfile]);
 
   const login = async (email: string, password: string) => {
