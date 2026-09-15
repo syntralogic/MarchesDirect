@@ -1433,7 +1433,7 @@ const frTranslations: Translations = {
   dossierPiecesTitle: 'Pièces de votre entreprise',
   dossierPiecesVerified: 'vérifiées',
   dossierSupportSub: "Un chargé d'affaires vous aide à préparer votre candidature et réaliser le dépôt.",
-  dossierVerifyContact: 'Vérifier mes coordonnées',
+  dossierVerifyContact: 'Demander à être rappelé',
   dossierHubDashboard: 'Voir mon tableau de bord',
 
   // Tableau de bord (client's 12 Sep card spec)
@@ -2952,7 +2952,7 @@ const enTranslations: Translations = {
   dossierPiecesTitle: 'Your company documents',
   dossierPiecesVerified: 'verified',
   dossierSupportSub: 'An account manager helps you prepare your application and complete submission.',
-  dossierVerifyContact: 'Verify my contact details',
+  dossierVerifyContact: 'Request a callback',
   dossierHubDashboard: 'See my dashboard',
 
   // Tableau de bord (client's 12 Sep card spec)
