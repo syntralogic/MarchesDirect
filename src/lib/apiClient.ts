@@ -566,16 +566,15 @@ export const subscriptionsApi = {
 
 // Account security: password change and TOTP-based 2FA.
 //
-// NOTE (flag for client): POST /auth/password-reset/confirm changes the
-// password for whatever account the current access token belongs to, with
-// no verification of the "current password" at all - it just needs a valid
-// JWT. The Sécurité form still collects a current-password field to match
-// expected UX, but the backend can't actually check it today, so it isn't
-// sent. Worth a real fix (require + verify current password server-side)
-// before this ships to real users.
+// Fixed: now calls the dedicated /auth/change-password endpoint, which
+// requires and verifies currentPassword server-side before accepting
+// newPassword - previously this called password-reset/confirm (the
+// forgot-password flow's endpoint) with newPassword only, so the
+// current-password field the Sécurité form collects was never actually
+// checked, or even sent.
 export const accountApi = {
-  changePassword: async (newPassword: string) => {
-    const { data } = await apiClient.post('/auth/password-reset/confirm', { newPassword });
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const { data } = await apiClient.post('/auth/change-password', { currentPassword, newPassword });
     return data;
   },
   mfaEnable: async (): Promise<{ secret: string; qrCode: string; manualEntryKey: string }> => {
