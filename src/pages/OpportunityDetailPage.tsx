@@ -1415,11 +1415,12 @@ export default function OpportunityDetailPage() {
 
             {/* "Affinez votre concordance" self-assessment accordion
                 (client's 12 Sep reference): purely a reflection prompt for
-                the visitor, doesn't alter the server-computed score - the
-                reference's own note says as much ("Barème à valider avant
-                intégration"). The +1/-3/0 feedback per answer is shown
-                exactly as the reference specifies, but only as a per-
-                question note, never folded into matchScore.score itself. */}
+                the visitor, doesn't alter the server-computed score.
+                Client's 15 Sep audit: the illustrative +1/-3/0 points and
+                the "Barème à valider avant intégration" dev note were
+                leaking into the visitor-facing UI as if real - removed;
+                answers are just acknowledged and passed along with the
+                dossier request, nothing folded into matchScore.score. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
               <button type="button" onClick={() => setRefineOpen(o => !o)} className="w-full flex items-center justify-between text-left">
                 <span className="text-sm font-extrabold text-white">{t('refineTitle') || 'Affinez votre concordance'}</span>
@@ -1456,7 +1457,7 @@ export default function OpportunityDetailPage() {
                       </div>
                       {refineAnswers[row.key] && (
                         <p className="text-[11px] text-green-400 mt-2">
-                          {refineAnswers[row.key] === 'oui' ? (t('refineFeedbackYes') || '+1 point (simulation)') : refineAnswers[row.key] === 'non' ? (t('refineFeedbackNo') || '−3 points (simulation)') : (t('refineFeedbackUnsure') || '0 point (simulation)')}
+                          {t('refineFeedbackSaved') || 'Réponse enregistrée.'}
                         </p>
                       )}
                     </div>
@@ -1472,7 +1473,7 @@ export default function OpportunityDetailPage() {
                     <p className="text-xs text-green-400">{t('refineFinishedLabel') || 'Réponses enregistrées pour cette demande.'}</p>
                   )}
                   <p className="text-[11px] text-[#B9BBC8]">
-                    {t('refineNote') || 'Réponses déclaratives. Simulation : oui +1 point, non −3 points, à confirmer 0. Barème à valider avant intégration.'}
+                    {t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}
                   </p>
                 </div>
               )}
