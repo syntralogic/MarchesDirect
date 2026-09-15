@@ -75,6 +75,24 @@ export default function OpportunityJourneyPage() {
   const [types, setTypes] = useState<OppType[]>([initialType]);
   const [subRole, setSubRole] = useState<'suis' | 'cherche' | null>(null);
 
+  // Header's type menu links all point at this same /parcours route with
+  // just a different ?type= - React Router doesn't remount the page for a
+  // query-string-only change on the same route, so `types`/`step` (only
+  // ever initialized from the URL via useState above) stayed frozen at
+  // whatever they were on first mount. Client audit (15 Sep, N01): "Depuis
+  // Sous-traitance, clic sur Marchés publics : URL modifiée, mais contenu
+  // Sous-traitance encore présent après stabilisation." Re-sync whenever
+  // the URL's type actually changes while already on this page.
+  const typeParam = searchParams.get('type');
+  useEffect(() => {
+    const urlType = TYPE_SLUGS[typeParam || ''];
+    if (!urlType) return;
+    setTypes(prev => (prev.length === 1 && prev[0] === urlType ? prev : [urlType]));
+    setStep(2);
+    setSubRole(null);
+    setBuyerNeed(null);
+  }, [typeParam]);
+
   const [query, setQuery] = useState('');
   const [querySuggestOpen, setQuerySuggestOpen] = useState(false);
 
