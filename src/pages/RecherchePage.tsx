@@ -41,6 +41,13 @@ export default function RecherchePage() {
   );
   const tradeId = searchParams.get('trade_id') || undefined;
   const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
+  // G14 (contre-audit 15 Sep): header tag/title/sub and the results-count
+  // label were hardcoded to the "sous-traitant" wording no matter which
+  // journey brought the visitor here - a marchés-publics search still
+  // said "Je suis sous-traitant" / "missions compatibles". Pick the
+  // matching translation-key suffix; subcontracting (and no journey at
+  // all, e.g. a bare keyword search) keeps the original unsuffixed keys.
+  const headerKeySuffix = journeyParam === 'public_procurement' ? 'Public' : journeyParam === 'tender' ? 'Tender' : '';
 
   // Add state for radius (decorative for now - main list endpoint has no
   // geo-radius filter, only /stats/near does; out of scope for this fix)
@@ -111,12 +118,12 @@ export default function RecherchePage() {
       
       {/* Header */}
       <div className="mb-3">
-        <span className="text-[9px] font-bold text-orange uppercase tracking-widest mb-1 block">{t('searchHeaderTag')}</span>
+        <span className="text-[9px] font-bold text-orange uppercase tracking-widest mb-1 block">{t(`searchHeaderTag${headerKeySuffix}`)}</span>
         <h1 className="text-[20px] leading-tight font-extrabold text-white mb-1">
-          {t('searchHeaderTitle')}
+          {t(`searchHeaderTitle${headerKeySuffix}`)}
         </h1>
         <p className="text-[#B9BBC8] text-[11px] leading-snug">
-          {t('searchHeaderSub')}
+          {t(`searchHeaderSub${headerKeySuffix}`)}
         </p>
       </div>
 
@@ -232,7 +239,7 @@ export default function RecherchePage() {
           uses `total` for the same data lower on this page. */}
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-[11px] font-bold text-white">
-          <span className="text-orange">{total}</span> {t('searchResults')}
+          <span className="text-orange">{total}</span> {t(headerKeySuffix ? `searchResults${headerKeySuffix}` : 'searchResults')}
         </h2>
         <div className="relative shrink-0">
           <select

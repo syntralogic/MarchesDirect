@@ -127,9 +127,24 @@ const frTranslations: Translations = {
   selectedSectorValue: 'Travaux & construction',
 
   // Search Page
+  // G14 (contre-audit 15 Sep): this header/results vocabulary is
+  // "sous-traitant" framing hardcoded regardless of which opportunity type
+  // the visitor is actually browsing - a public-buyer marché showed "Je
+  // suis sous-traitant" / "missions compatibles" same as a subcontracting
+  // search. RecherchePage now picks the matching set below by journey
+  // param; these three keys stay as the subcontracting variant (also the
+  // fallback when no journey is specified, e.g. a bare keyword search).
   searchHeaderTag: 'Je suis sous-traitant',
   searchHeaderTitle: 'Trouvez des chantiers adaptés à votre entreprise.',
   searchHeaderSub: 'Des besoins de sous-traitance qualifiés selon votre métier, votre zone et vos disponibilités.',
+  searchHeaderTagPublic: 'Marchés publics',
+  searchHeaderTitlePublic: 'Trouvez des marchés publics adaptés à votre entreprise.',
+  searchHeaderSubPublic: 'Appels d’offres de collectivités et établissements publics selon votre métier et votre zone.',
+  searchHeaderTagTender: 'Appels d’offres privés',
+  searchHeaderTitleTender: 'Trouvez des appels d’offres privés adaptés à votre entreprise.',
+  searchHeaderSubTender: 'Projets de promoteurs, entreprises et donneurs d’ordre privés selon votre métier et votre zone.',
+  searchResultsPublic: 'marchés publics correspondants',
+  searchResultsTender: 'appels d’offres correspondants',
   searchKeywords: 'Mots-clés',
   searchKeywordsPlaceholder: 'Ex. peinture, électricité, gros œuvre...',
   searchLocation: 'Localisation',
@@ -1673,6 +1688,14 @@ const enTranslations: Translations = {
   searchHeaderTag: 'I am a subcontractor',
   searchHeaderTitle: 'Find worksites adapted to your company.',
   searchHeaderSub: 'Qualified subcontracting needs according to your trade, your area and your availability.',
+  searchHeaderTagPublic: 'Public tenders',
+  searchHeaderTitlePublic: 'Find public tenders adapted to your company.',
+  searchHeaderSubPublic: 'Contracts from public authorities and institutions matched to your trade and area.',
+  searchHeaderTagTender: 'Private tenders',
+  searchHeaderTitleTender: 'Find private tenders adapted to your company.',
+  searchHeaderSubTender: 'Projects from developers, companies and private buyers matched to your trade and area.',
+  searchResultsPublic: 'matching public tenders',
+  searchResultsTender: 'matching private tenders',
   searchKeywords: 'Keywords',
   searchKeywordsPlaceholder: 'Ex. painting, electricity, structural work...',
   searchLocation: 'Location',
