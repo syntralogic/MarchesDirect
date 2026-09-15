@@ -20,7 +20,7 @@ import {
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
   type ApiDossierRequest,
 } from '@/lib/apiClient';
-import { stripMarkdownArtifacts } from '@/lib/utils';
+import { stripMarkdownArtifacts, humanizeRawLabel } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
@@ -1067,13 +1067,13 @@ export default function OpportunityDetailPage() {
             // exact same string here under "Objet du marché" is precisely
             // the "je lis deux ou trois fois la même description" complaint,
             // so it's intentionally left out of this second list.
-            if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: facts.procedure_type.value });
+            if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: humanizeRawLabel(facts.procedure_type.value) || facts.procedure_type.value });
             if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
             if (facts.estimated_value?.available) rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
             if (facts.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
             if (facts.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
             if (facts.contract_duration?.available) rows.push({ label: t('dossierFactDuration'), value: facts.contract_duration.value });
-            if (facts.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: facts.submission_method.value });
+            if (facts.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: humanizeRawLabel(facts.submission_method.value) || facts.submission_method.value });
             if (facts.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
             if (facts.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
             // Attribution info only ever shows up once BOAMP/DECP actually
@@ -2521,7 +2521,7 @@ function OpportunityAnalysisAccordions({
             <button
               type="button"
               onClick={() => setOpenKey(cur => (cur === item.key ? null : item.key))}
-              className="w-full flex items-center gap-2.5 px-3.5 py-3.5 text-left"
+              className="w-full flex items-center gap-2.5 px-3.5 py-[18px] text-left"
               aria-expanded={isOpen}
             >
               <Icon size={16} className="text-orange shrink-0" />
