@@ -614,6 +614,11 @@ export default function OpportunityDetailPage() {
       .finally(() => setDceLoading(false));
   }, [id, isAuthenticated, t]);
 
+  // D03: the "Offert · disponible" promise only actually holds once the
+  // chargé d'affaires has approved the memo - see BidWorkspacePage's own
+  // download button, gated on this same field.
+  const dossierReady = isAuthenticated && !!bid?.is_technical_memo_approved;
+
   // Checklist fetch is independent of isPaid on purpose - spec 3.7 keeps
   // the company-document checklist addable regardless of subscription,
   // only the AI-assisted mémoire technique below it is gated.
@@ -1940,9 +1945,18 @@ export default function OpportunityDetailPage() {
                   The document genuinely does require an account (bid_responses
                   is company-scoped server-side, not session-scoped like
                   favorites), so the honest fix is telling the visitor that
-                  up front rather than promising zero-friction access. */}
-              <span className={`text-[11px] font-semibold ${isAuthenticated ? 'text-green-400' : 'text-orange'}`}>
-                {isAuthenticated ? (t('dossierPrefilledBadge') || 'Offert · disponible') : (t('dossierPrefilledBadgeLocked') || 'Offert · compte gratuit requis')}
+                  up front rather than promising zero-friction access.
+                  D03 follow-up: "disponible" was still shown to an
+                  authenticated visitor whose document was a draft awaiting
+                  the chargé d'affaires's approval (is_technical_memo_approved -
+                  BidWorkspacePage's own download button already gates on this
+                  same field) - same overpromise, one step later in the funnel. */}
+              <span className={`text-[11px] font-semibold ${dossierReady ? 'text-green-400' : 'text-orange'}`}>
+                {!isAuthenticated
+                  ? (t('dossierPrefilledBadgeLocked') || 'Offert · compte gratuit requis')
+                  : dossierReady
+                    ? (t('dossierPrefilledBadge') || 'Offert · disponible')
+                    : (t('dossierPrefilledBadgePending') || 'Offert · en préparation')}
               </span>
             </div>
             <div className="flex items-start gap-3 mb-4">
@@ -1950,9 +1964,11 @@ export default function OpportunityDetailPage() {
               <div>
                 <p className="text-sm font-semibold text-white">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')} × {opportunity.title}</p>
                 <p className="text-xs text-[#B9BBC8] mt-0.5">
-                  {isAuthenticated
-                    ? (t('dossierPrefilledDesc') || 'Votre entreprise, le lot retenu et une première trame de réponse rassemblés dans un document.')
-                    : (t('dossierPrefilledDescLocked') || "Créez un compte gratuit (30 secondes) pour consulter et télécharger ce document - vous revenez directement ici après.")}
+                  {!isAuthenticated
+                    ? (t('dossierPrefilledDescLocked') || "Créez un compte gratuit (30 secondes) pour consulter et télécharger ce document - vous revenez directement ici après.")
+                    : dossierReady
+                      ? (t('dossierPrefilledDesc') || 'Votre entreprise, le lot retenu et une première trame de réponse rassemblés dans un document.')
+                      : (t('dossierPrefilledDescPending') || "Votre chargé d'affaires prépare la version finale de ce document - vous serez prévenu dès qu'il est prêt à télécharger.")}
                 </p>
               </div>
             </div>
@@ -1965,7 +1981,21 @@ export default function OpportunityDetailPage() {
                   type="button"
                   disabled={dossierDownloading}
                   onClick={async () => {
-                    if (!bid?.id || !bid.technical_memo_text) {
+                    // D03 (contre-audit 15 Sep): this button only checked
+                    // technical_memo_text existed, but the real package
+                    // endpoint's document is a DRAFT until a human "chargé
+                    // d'affaires" approves it (is_technical_memo_approved -
+                    // see BidWorkspacePage, which already correctly disables
+                    // its own download button on this same condition). This
+                    // button didn't have that guard, so a visitor with a
+                    // generated-but-unapproved draft got a click that
+                    // either downloaded an unapproved draft (inconsistent
+                    // with the workspace page) or, depending on backend
+                    // state, hung/failed with no clear reason ("no file
+                    // detected" in the audit). Route through the same
+                    // waiting-state explanation as the else branch below
+                    // instead of attempting the request at all.
+                    if (!bid?.id || !bid.technical_memo_text || !bid.is_technical_memo_approved) {
                       navigate(`/opportunites/${id}/candidature`);
                       return;
                     }
