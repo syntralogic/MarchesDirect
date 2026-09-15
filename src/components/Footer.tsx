@@ -95,7 +95,7 @@ const FOOTER_COLS = [
   {
     titleKey: 'footerExplore',
     links: [
-      { labelKey: 'footerZones', href: '/#mdh-zones' },
+      { labelKey: 'footerZones', href: '/zones' },
       { labelKey: 'footerSectors', href: '/secteurs' },
       { labelKey: 'footerFaq', href: '/faq' },
       { labelKey: 'news', href: '/actualites' },
