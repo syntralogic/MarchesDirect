@@ -38,6 +38,14 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     setLoading(true);
     setError(null);
     setPage(1);
+    // R05 (contre-audit 15 Sep): opportunities/total from the *previous*
+    // query stayed on screen under "Chargement des opportunités..." until
+    // the new response landed - switching from plomberie to climatisation
+    // showed the old count and old cards for a moment under the new
+    // keyword. Clear them the instant a new search starts instead of
+    // waiting for the fetch to resolve.
+    setOpportunities([]);
+    setTotal(0);
 
     opportunitiesApi
       .search({ journey, region, city, department, trade_id, q, status, min_value, max_value, recent_days, sort, page: 1, limit: PAGE_SIZE })

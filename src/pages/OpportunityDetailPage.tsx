@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy, Send,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy, Send, X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -361,6 +362,13 @@ export default function OpportunityDetailPage() {
   const [quickPasswordDone, setQuickPasswordDone] = useState(false);
   const [quickPasswordDismissed, setQuickPasswordDismissed] = useState(false);
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
+  // D08 (contre-audit 15 Sep): each "Générer" button in the candidature
+  // docs list opened the rendez-vous booking modal directly, with no
+  // explanation of what happens - client's ask was an explanatory step
+  // first, not a full auto-generation feature. Holds the clicked doc's
+  // title/desc so a small explainer can show before handing off to
+  // AppointmentModal.
+  const [explainDoc, setExplainDoc] = useState<{ title: string; desc: string } | null>(null);
   // "Votre dossier" 5-section aperçu (client's 12 Sep dossier-demo
   // reference, Écran "3. Dossier") - replaces the old locked
   // "Préparer ma candidature" card below. Backed by dossier_requests
@@ -1882,7 +1890,7 @@ export default function OpportunityDetailPage() {
             const doneCount = steps.filter(s => s.done).length;
             const pct = Math.round((doneCount / steps.length) * 100);
             return (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+              <div id="dossier-progress-block" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-sm font-bold text-white">{t('dossierProgressTitle') || 'Avancement de votre dossier'}</h2>
                   <span className="text-orange font-extrabold text-lg">{pct} %</span>
@@ -2197,7 +2205,7 @@ export default function OpportunityDetailPage() {
                   <p className="text-sm text-white font-semibold">{item.title}</p>
                   <p className="text-xs text-[#B9BBC8] mt-0.5">{item.desc}</p>
                   <p className="text-[11px] text-[#5B6B80] mt-0.5 mb-3">{t('dossierCandidatureIncluded') || "Inclus dans l'accompagnement."}</p>
-                  <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold py-2.5 rounded-lg hover:border-orange/50 transition-colors">
+                  <button type="button" onClick={() => setExplainDoc({ title: item.title, desc: item.desc })} className="w-full flex items-center justify-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold py-2.5 rounded-lg hover:border-orange/50 transition-colors">
                     <Lock size={12} /> {t('dossierGenerateCta') || 'Générer'}
                   </button>
                 </div>
@@ -2232,7 +2240,24 @@ export default function OpportunityDetailPage() {
           </div>
 
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <button type="button" onClick={() => setDossierStepsOpen(o => !o)} className="w-full flex items-center gap-2">
+            {/* D07 (contre-audit 15 Sep): this accordion toggled
+                dossierStepsOpen but had no body of its own - the actual
+                step history lives in the "Avancement de votre dossier"
+                card near the top of the page, so clicking here looked
+                like nothing happened ("pas d'historique visible après
+                ouverture"), same off-screen-content class of bug as
+                dossierDceAnalysisCta above. Open it and scroll there
+                instead of duplicating the list in two places. */}
+            <button
+              type="button"
+              onClick={() => {
+                setDossierStepsOpen(true);
+                requestAnimationFrame(() => {
+                  document.getElementById('dossier-progress-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+              }}
+              className="w-full flex items-center gap-2"
+            >
               <ChevronRight size={14} className={`text-orange transition-transform ${dossierStepsOpen ? 'rotate-90' : ''}`} />
               <span className="text-sm font-bold text-white">{t('dossierProgressAccordion') || "Suivi de l'avancement"}</span>
             </button>
@@ -2451,6 +2476,31 @@ export default function OpportunityDetailPage() {
       )}
 
       <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
+
+      {explainDoc && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setExplainDoc(null)} />
+          <div className="relative bg-[#061D32] border border-[#17334D] rounded-t-2xl md:rounded-2xl p-5 w-full md:max-w-sm">
+            <button type="button" onClick={() => setExplainDoc(null)} className="absolute top-4 right-4 text-[#B9BBC8] hover:text-white">
+              <X size={18} />
+            </button>
+            <span className="w-10 h-10 rounded-lg bg-orange/15 border border-orange/30 flex items-center justify-center mb-3"><FileText size={17} className="text-orange" /></span>
+            <h3 className="text-sm font-bold text-white mb-1">{explainDoc.title}</h3>
+            <p className="text-xs text-[#B9BBC8] mb-4">{explainDoc.desc}</p>
+            <p className="text-xs text-[#B9BBC8] mb-5">
+              {t('dossierExplainAccompagnement') || "Ce document n'est pas généré automatiquement : votre chargé d'affaires le prépare avec vous, sur rendez-vous, en fonction des informations de ce marché et de votre entreprise."}
+            </p>
+            <button
+              type="button"
+              onClick={() => { setExplainDoc(null); setShowAccountManagerModal(true); }}
+              className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
+            >
+              <Calendar size={14} /> {t('dossierExplainCta') || 'Prendre rendez-vous avec mon chargé d\'affaires'}
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
