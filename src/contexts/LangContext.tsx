@@ -942,6 +942,20 @@ const frTranslations: Translations = {
   siretSubmit: 'Identifier mon entreprise',
   siretInputTooShort: 'Indiquez un SIRET (14 chiffres) ou le nom de l\'entreprise.',
   refineTitle: 'Affinez votre analyse',
+  // Distinct from refineTitle/refineQ1-3 above, which belong to the
+  // (currently unused) RefineAnalysisAccordion component - this block was
+  // accidentally reusing those keys, so this live "Affinez votre
+  // concordance" accordion was silently showing that component's
+  // qualification/reference/team questions instead of its own
+  // experience/capacity/zone/calendar ones (client's 15 Sep audit).
+  concordRefineTitle: 'Affinez votre concordance',
+  concordRefineSub: '4 réponses facultatives · expérience, moyens, zone et calendrier',
+  concordRefineQ1: 'Avez-vous déjà réalisé une prestation similaire ?',
+  concordRefineQ2: 'Pouvez-vous mobiliser les moyens nécessaires pour cette prestation ?',
+  concordRefineQ3: 'Pouvez-vous intervenir ou livrer dans la zone indiquée ?',
+  concordRefineYes: 'Oui',
+  concordRefineNo: 'Non',
+  concordRefineUnsure: 'À confirmer',
   refineOptional: 'Optionnel · 3 questions',
   leadGateTitle: "Ceci n'est qu'un aperçu",
   leadGateSub: "Recevez votre dossier de candidature pré-rempli pour ce marché : renseignez votre e-mail et votre téléphone pour l'enregistrer et y accéder.",
@@ -2465,6 +2479,14 @@ const enTranslations: Translations = {
   siretSubmit: 'Identify my company',
   siretInputTooShort: 'Enter a SIRET (14 digits) or the company name.',
   refineTitle: 'Refine your analysis',
+  concordRefineTitle: 'Refine your match',
+  concordRefineSub: '4 optional answers · experience, capacity, area and timeline',
+  concordRefineQ1: 'Have you already delivered a similar service?',
+  concordRefineQ2: 'Can you mobilise the resources needed for this service?',
+  concordRefineQ3: 'Can you operate or deliver in the indicated area?',
+  concordRefineYes: 'Yes',
+  concordRefineNo: 'No',
+  concordRefineUnsure: 'To confirm',
   refineOptional: 'Optional · 3 questions',
   leadGateTitle: 'This is just a preview',
   leadGateSub: 'Get your pre-filled application file for this contract: enter your email and phone number to save it and access it.',
