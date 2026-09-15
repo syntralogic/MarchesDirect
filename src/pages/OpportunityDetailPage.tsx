@@ -401,7 +401,10 @@ export default function OpportunityDetailPage() {
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{10}$/.test(leadPhone)) {
+    // Was just /^\d{10}$/ - accepted any 10 digits including all-zero
+    // numbers like "0000000000" (client's 15 Sep audit). A real French
+    // fixed/mobile line starts with 0 then 1-9, never a second 0.
+    if (!/^0[1-9]\d{8}$/.test(leadPhone)) {
       setLeadError(t('leadPhoneInvalid') || 'Le téléphone doit contenir 10 chiffres.');
       return;
     }
