@@ -469,11 +469,35 @@ export default function OpportunityDetailPage() {
   }, [id, isAuthenticated]);
 
   useEffect(() => {
-    if (screen !== 3 || !isAuthenticated) return;
-    favoritesApi.list()
-      .then(list => setSavedOpportunities(list.map(o => ({ id: o.id, title: o.title, location_city: o.location_city, estimated_value: o.estimated_value }))))
-      .catch(() => setSavedOpportunities([]));
-  }, [screen, isAuthenticated]);
+    if (screen !== 3) return;
+    if (isAuthenticated) {
+      favoritesApi.list()
+        .then(list => setSavedOpportunities(list.map(o => ({ id: o.id, title: o.title, location_city: o.location_city, estimated_value: o.estimated_value }))))
+        .catch(() => setSavedOpportunities([]));
+      return;
+    }
+    // Anonymous visitor: there's no account to hold "favorites" yet, but the
+    // selector's whole point (client's 10 Sep spec) is switching between
+    // opportunities *this visitor* has already engaged with. That's exactly
+    // what CONFIRMED_OPPS_KEY tracks - every opportunity they've identified
+    // their company on in this browser. Was only ever read for the
+    // single-id `isOpportunityConfirmed` check above; never used to build
+    // this list, so the selector stayed empty (current-opportunity-only)
+    // for every visitor who hadn't logged in.
+    const confirmedIds = Object.keys(getConfirmedOpportunities()).filter(oppId => oppId !== id);
+    if (confirmedIds.length === 0) { setSavedOpportunities([]); return; }
+    let cancelled = false;
+    Promise.all(
+      confirmedIds.map(oppId =>
+        opportunitiesApi.getById(oppId)
+          .then(o => ({ id: o.id, title: o.title, location_city: o.location_city, estimated_value: o.estimated_value }))
+          .catch(() => null) // e.g. since-removed listing - drop it, don't fail the whole selector
+      )
+    ).then(results => {
+      if (!cancelled) setSavedOpportunities(results.filter((o): o is NonNullable<typeof o> => o !== null));
+    });
+    return () => { cancelled = true; };
+  }, [screen, isAuthenticated, id]);
 
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;

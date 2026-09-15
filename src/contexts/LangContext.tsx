@@ -1161,6 +1161,7 @@ const frTranslations: Translations = {
   chatbotPlaceholder: 'Posez une question sur vos opportunités, votre dossier ou la plateforme.',
   chatbotInputPlaceholder: 'Écrivez votre message...',
   chatbotSendError: 'Échec de l\'envoi du message.',
+  chatbotRetry: 'Réessayer',
 
   // Opportunity Card translations
   amount: 'Montant',
@@ -2688,6 +2689,7 @@ const enTranslations: Translations = {
   chatbotPlaceholder: 'Ask a question about your opportunities, your file or the platform.',
   chatbotInputPlaceholder: 'Write your message...',
   chatbotSendError: 'Failed to send message.',
+  chatbotRetry: 'Retry',
 
   // Opportunity Card translations - English
   amount: 'Amount',
