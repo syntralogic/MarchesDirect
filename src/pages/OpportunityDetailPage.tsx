@@ -57,6 +57,12 @@ function formatFactDeadline(value: string) {
     : parsed.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// Client's audit (15 Sep): "Remplacer les libellés bruts comme APPEL_OFFRE
+// par des intitulés lisibles." Handled centrally by humanizeRawLabel in
+// lib/utils.ts (already applied to procedure_type/submission_method below) -
+// AI extraction is deliberately literal about source text, and BOAMP/DECP
+// notices themselves carry these as raw ALL_CAPS_WITH_UNDERSCORES codes.
+
 // Client's 12 Sep report: the dossier hub's "Vos opportunités enregistrées"
 // selector showed full opportunity titles as option text, running 3-4 lines
 // on a real (long) BOAMP title. Asked for one line: shortened title, plus
@@ -2697,7 +2703,22 @@ function OpportunityAnalysisAccordions({
   const [openKey, setOpenKey] = useState<string | null>(items[0]?.key ?? null);
   const [sourceOpen, setSourceOpen] = useState(false);
 
-  if (items.length === 0) return null;
+  // Client's audit (15 Sep): "gérer clairement les annonces dont le
+  // descriptif ou l'analyse sont encore incomplets, pour que la suite du
+  // parcours ne donne pas une impression de précision que les informations
+  // disponibles ne permettent pas." Returning null here rendered a silent
+  // gap - no accordions, no explanation - which reads as "nothing to say
+  // about this opportunity" rather than "still being analyzed", right
+  // before the rest of the journey (concordance, dossier) proceeds as if
+  // it had full information to work from.
+  if (items.length === 0) {
+    return (
+      <div className="border border-[#17334D] rounded-xl bg-[#031B30] px-4 py-4 flex items-center gap-2.5">
+        <Loader2 size={15} className="text-orange shrink-0" />
+        <p className="text-xs text-[#B9BBC8]">{t('detailAnalysisIncomplete') || "Analyse détaillée en cours de génération pour cette opportunité."}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
