@@ -1423,17 +1423,17 @@ export default function OpportunityDetailPage() {
                 dossier request, nothing folded into matchScore.score. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
               <button type="button" onClick={() => setRefineOpen(o => !o)} className="w-full flex items-center justify-between text-left">
-                <span className="text-sm font-extrabold text-white">{t('refineTitle') || 'Affinez votre concordance'}</span>
+                <span className="text-sm font-extrabold text-white">{t('concordRefineTitle') || 'Affinez votre concordance'}</span>
                 <ChevronDown size={16} className={`text-orange shrink-0 transition-transform ${refineOpen ? 'rotate-180' : ''}`} />
               </button>
-              {!refineOpen && <p className="text-xs text-[#B9BBC8] mt-1">{t('refineSub') || '4 réponses facultatives · expérience, moyens, zone et calendrier'}</p>}
+              {!refineOpen && <p className="text-xs text-[#B9BBC8] mt-1">{t('concordRefineSub') || '4 réponses facultatives · expérience, moyens, zone et calendrier'}</p>}
               {refineOpen && (
                 <div className="mt-4 space-y-4">
                   <p className="text-xs text-[#B9BBC8]">{t('refineHelp') || 'Vos réponses seront jointes à votre demande de dossier. Vous pouvez aussi le demander sans répondre.'}</p>
                   {[
-                    { key: 'experience', q: t('refineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
-                    { key: 'capacity', q: t('refineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires pour cette prestation ?', help: t('refineQ2Help') || 'Vous-même, votre équipe ou vos partenaires.' },
-                    { key: 'location', q: t('refineQ3') || 'Pouvez-vous intervenir ou livrer dans la zone indiquée ?' },
+                    { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
+                    { key: 'capacity', q: t('concordRefineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires pour cette prestation ?', help: t('refineQ2Help') || 'Vous-même, votre équipe ou vos partenaires.' },
+                    { key: 'location', q: t('concordRefineQ3') || 'Pouvez-vous intervenir ou livrer dans la zone indiquée ?' },
                     { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?', help: t('refineQ4Help') || 'Si le calendrier manque ou reste incertain, choisissez « À confirmer ».' },
                   ].map(row => (
                     <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
@@ -1451,7 +1451,7 @@ export default function OpportunityDetailPage() {
                                 : 'border-[#17334D] text-[#B9BBC8] hover:border-orange/40'
                             }`}
                           >
-                            {opt === 'oui' ? (t('refineYes') || 'Oui') : opt === 'non' ? (t('refineNo') || 'Non') : (t('refineUnsure') || 'À confirmer')}
+                            {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : opt === 'non' ? (t('concordRefineNo') || 'Non') : (t('concordRefineUnsure') || 'À confirmer')}
                           </button>
                         ))}
                       </div>
