@@ -4,7 +4,7 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 // VITE_API_URL in .env (see .env.example) — falls back to local dev.
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const ACCESS_TOKEN_KEY = 'md_access_token';
+export const ACCESS_TOKEN_KEY = 'md_access_token';
 const REFRESH_TOKEN_KEY = 'md_refresh_token';
 
 export const tokenStorage = {
@@ -85,6 +85,20 @@ export interface ApiError {
 
 export function getApiErrorMessage(err: unknown, fallback = 'Une erreur est survenue.'): string {
   if (axios.isAxiosError(err)) {
+    // Contre-audit 15 Sep 2026, D02/D04: visitor-facing screens were
+    // surfacing the raw backend auth strings ("No token provided",
+    // "Invalid token", "Token expired") verbatim via toast - internal
+    // wording never meant for an end user, and confusing right alongside
+    // the separate "Votre session a expire" toast the response
+    // interceptor already fires for the same failed request (see below).
+    // Route a 401 on a real protected endpoint through that one consistent
+    // human message instead of whatever string the middleware happened to
+    // throw. Excludes /auth/* the same way the response interceptor above
+    // does - login/register 401s are real "wrong password"/"invalid link"
+    // errors with their own specific message, not an expired session.
+    if (err.response?.status === 401 && !err.config?.url?.includes('/auth/')) {
+      return 'Votre session a expire. Merci de vous reconnecter.';
+    }
     const data = err.response?.data as ApiError | undefined;
     // Some backend error responses (e.g. requireActiveSubscription) send a
     // machine-readable `error` code alongside a human-readable `message` -
