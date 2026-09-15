@@ -21,7 +21,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     ? params
     : { journey: params };
 
-  const { journey, region, city, department, trade_id, q, status, min_value, max_value } = searchParams;
+  const { journey, region, city, department, trade_id, q, status, min_value, max_value, recent_days } = searchParams;
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -40,7 +40,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     setPage(1);
 
     opportunitiesApi
-      .search({ journey, region, city, department, trade_id, q, status, min_value, max_value, page: 1, limit: PAGE_SIZE })
+      .search({ journey, region, city, department, trade_id, q, status, min_value, max_value, recent_days, page: 1, limit: PAGE_SIZE })
       .then((data) => {
         if (cancelled || thisRequest !== requestId.current) return;
         setOpportunities(data.results.map(apiOpportunityToDisplay));
@@ -64,7 +64,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     return () => {
       cancelled = true;
     };
-  }, [journey, region, city, department, trade_id, q, status, min_value, max_value]);
+  }, [journey, region, city, department, trade_id, q, status, min_value, max_value, recent_days]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || page >= totalPages) return;
@@ -73,7 +73,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     setLoadingMore(true);
 
     opportunitiesApi
-      .search({ journey, region, city, department, trade_id, q, status, min_value, max_value, page: nextPage, limit: PAGE_SIZE })
+      .search({ journey, region, city, department, trade_id, q, status, min_value, max_value, recent_days, page: nextPage, limit: PAGE_SIZE })
       .then((data) => {
         if (thisRequest !== requestId.current) return; // filters changed underneath us
         setOpportunities((prev) => [...prev, ...data.results.map(apiOpportunityToDisplay)]);
@@ -86,7 +86,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
       .finally(() => {
         setLoadingMore(false);
       });
-  }, [journey, region, city, department, trade_id, q, status, min_value, max_value, page, totalPages, loadingMore]);
+  }, [journey, region, city, department, trade_id, q, status, min_value, max_value, recent_days, page, totalPages, loadingMore]);
 
   return {
     opportunities,

@@ -205,6 +205,9 @@ export type OpportunitySearchParams = {
   min_value?: number;
   max_value?: number;
   status?: string;
+  // "Nouveau" / date-published filter - backend already supports this
+  // (routes/opportunities.ts), just wasn't exposed as a search param here.
+  recent_days?: number;
   page?: number;
   limit?: number;
 };
