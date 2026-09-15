@@ -12,9 +12,11 @@ const frTranslations: Translations = {
   howItWorks: 'Comment ça marche',
   pricing: 'Tarifs',
   search: 'Recherche',
+  clearSearch: 'Effacer la recherche',
   dashboard: 'Tableau de bord',
   profile: 'Profil',
   contact: 'Contact',
+  close: 'Fermer',
   // Hero
   heroLine1: 'Votre prochaine opportunité',
   heroLine2: 'commence ici.',
@@ -1553,9 +1555,11 @@ const enTranslations: Translations = {
   howItWorks: 'How it works',
   pricing: 'Pricing',
   search: 'Search',
+  clearSearch: 'Clear search',
   dashboard: 'Dashboard',
   profile: 'Profile',
   contact: 'Contact',
+  close: 'Close',
   // Hero
   heroLine1: 'Your next opportunity',
   heroLine2: 'starts here.',

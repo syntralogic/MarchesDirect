@@ -568,7 +568,7 @@ export default function OpportunityJourneyPage() {
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-9 py-2.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
               />
               {query && (
-                <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]">
+                <button onClick={() => setQuery('')} aria-label={t('clearSearch')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]">
                   <X size={14} />
                 </button>
               )}
@@ -682,7 +682,7 @@ export default function OpportunityJourneyPage() {
                 onChange={e => setQuery(e.target.value)}
                 className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-9 pr-9 py-2.5 text-sm text-white focus:outline-none focus:border-orange"
               />
-              <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]">
+              <button onClick={() => setQuery('')} aria-label={t('clearSearch')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]">
                 <X size={14} />
               </button>
             </div>
@@ -849,7 +849,7 @@ export default function OpportunityJourneyPage() {
           <div className="relative w-full md:max-w-md bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10 max-h-[85dvh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-[#17334D]">
               <h3 className="text-sm font-bold text-white">{t('journeyChooseLocation')}</h3>
-              <button onClick={() => setLocationModalOpen(false)}><X size={18} className="text-[#B9BBC8]" /></button>
+              <button onClick={() => setLocationModalOpen(false)} aria-label={t('close')}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
 
             <div className="p-4">
@@ -1015,7 +1015,7 @@ export default function OpportunityJourneyPage() {
           <div className="relative w-full md:max-w-md bg-[#031B30] border border-[#17334D] rounded-t-2xl md:rounded-2xl shadow-2xl z-10 max-h-[85dvh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-[#17334D]">
               <h3 className="text-sm font-bold text-white flex items-center gap-2"><Filter size={14} className="text-orange" /> {t('appelsFilters')}</h3>
-              <button onClick={() => setFiltersOpen(false)}><X size={18} className="text-[#B9BBC8]" /></button>
+              <button onClick={() => setFiltersOpen(false)} aria-label={t('close')}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
 
             <div className="p-4 space-y-4">

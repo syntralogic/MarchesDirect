@@ -88,7 +88,7 @@ export function Header() {
               >
                 {t('bookAppointment')}
               </button>
-              <Link to="/profil" className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors">
+              <Link to="/profil" aria-label={t('profile')} className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors">
                 <User size={18} />
               </Link>
             </div>

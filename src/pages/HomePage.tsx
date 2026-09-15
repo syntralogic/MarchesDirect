@@ -719,7 +719,7 @@ function GeographicSection() {
                             </p>
                           )}
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); removeSelection(item); }} className="text-red-400 hover:text-red-300 shrink-0 ml-1">
+                        <button onClick={(e) => { e.stopPropagation(); removeSelection(item); }} aria-label={`Retirer ${name}`} className="text-red-400 hover:text-red-300 shrink-0 ml-1">
                           <X size={12} />
                         </button>
                       </div>

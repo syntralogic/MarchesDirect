@@ -26,7 +26,7 @@ export default function DemoVideoModal({ open, onClose }: { open: boolean; onClo
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-lg bg-[#061D32] border border-[#17334D] rounded-2xl overflow-hidden">
-        <button onClick={onClose} className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-colors">
+        <button onClick={onClose} aria-label="Fermer" className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white hover:bg-black/60 transition-colors">
           <X size={16} />
         </button>
 

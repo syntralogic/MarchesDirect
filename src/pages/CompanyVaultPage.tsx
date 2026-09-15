@@ -80,7 +80,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="bg-[#061D32] border border-[#17334D] rounded-t-2xl md:rounded-2xl w-full md:max-w-md max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-white">{title}</h3>
-          <button onClick={onClose}><X size={18} className="text-[#B9BBC8]" /></button>
+          <button onClick={onClose} aria-label="Fermer"><X size={18} className="text-[#B9BBC8]" /></button>
         </div>
         {children}
       </div>
