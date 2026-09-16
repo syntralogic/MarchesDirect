@@ -354,11 +354,16 @@ function Section({ title, onAdd, addLabel, children }: { title: string; onAdd: (
 }
 
 function Row({ children, onDelete }: { children: React.ReactNode; onDelete?: () => void }) {
+  const { t } = useLang();
   return (
     <div className="flex items-center gap-3 p-3 bg-[#031B30] border border-[#17334D] rounded-xl">
       {children}
       {onDelete && (
-        <button onClick={onDelete} className="text-[#B9BBC8] hover:text-red-400 transition-colors shrink-0">
+        <button
+          onClick={onDelete}
+          aria-label={t('vaultDeleteDocument') || 'Supprimer ce document'}
+          className="text-[#B9BBC8] hover:text-red-400 transition-colors shrink-0"
+        >
           <Trash2 size={14} />
         </button>
       )}

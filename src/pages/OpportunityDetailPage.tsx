@@ -1934,7 +1934,7 @@ export default function OpportunityDetailPage() {
             return (
               <div id="dossier-progress-block" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm font-bold text-white">{t('dossierProgressTitle') || 'Avancement de votre dossier'}</h2>
+                  <h2 className="text-lg font-bold text-white">{t('dossierProgressTitle') || 'Avancement de votre dossier'}</h2>
                   <span className="text-orange font-extrabold text-lg">{pct} %</span>
                 </div>
                 <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden mb-2">
@@ -1967,7 +1967,7 @@ export default function OpportunityDetailPage() {
 
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-white">{t('dossierPrefilledTitle') || 'Votre dossier pré-rempli'}</h2>
+              <h2 className="text-lg font-bold text-white">{t('dossierPrefilledTitle') || 'Votre dossier pré-rempli'}</h2>
               {/* Badge and CTAs used to say "Offert · disponible" and link
                   straight to a RequireAuth route for every visitor, subscriber
                   or not - an anonymous visitor got no explanation for why
@@ -2180,7 +2180,7 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-1">
               <FileText size={15} className="text-orange" />
-              <h2 className="text-sm font-bold text-white">{t('dossierDceTitle') || 'DCE — Dossier de consultation'}</h2>
+              <h2 className="text-lg font-bold text-white">{t('dossierDceTitle') || 'DCE — Dossier de consultation'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceSub') || 'Les documents du marché et leurs versions.'}</p>
             <div className="flex items-center justify-between border-t border-[#17334D] pt-3">
@@ -2227,7 +2227,7 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-1">
               <Search size={15} className="text-orange" />
-              <h2 className="text-sm font-bold text-white">{t('dossierDceAnalysisTitle') || 'Analyse du DCE'}</h2>
+              <h2 className="text-lg font-bold text-white">{t('dossierDceAnalysisTitle') || 'Analyse du DCE'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceAnalysisSub') || 'Les exigences, les points de vigilance et la préparation de votre réponse.'}</p>
             <button
@@ -2259,7 +2259,7 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <FileText size={15} className="text-orange" />
-              <h2 className="text-sm font-bold text-white">{t('dossierCandidatureTitle') || 'Dossier de candidature'}</h2>
+              <h2 className="text-lg font-bold text-white">{t('dossierCandidatureTitle') || 'Dossier de candidature'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3 -mt-2">{t('dossierCandidatureSub') || "Les documents que votre chargé d'affaires prépare avec vous."}</p>
             <div className="divide-y divide-[#17334D]">
@@ -2333,7 +2333,7 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-1">
               <Users size={15} className="text-orange" />
-              <h2 className="text-sm font-bold text-white">{t('dossierHubSupportTitle') || 'Votre accompagnement'}</h2>
+              <h2 className="text-lg font-bold text-white">{t('dossierHubSupportTitle') || 'Votre accompagnement'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierSupportSub') || "Un chargé d'affaires vous aide à préparer votre candidature et réalise le dépôt."}</p>
             <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors mb-3">
