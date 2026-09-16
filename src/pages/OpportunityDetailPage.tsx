@@ -16,7 +16,7 @@ import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId, getConsultationsToday } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage,
-  dossiersApi,
+  dossiersApi, siretApi,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
   type ApiDossierRequest,
@@ -241,7 +241,7 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, completeSignup } = useAuth();
-  const { company: anonSiretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, captureLead } = useCompanyKnown();
+  const { company: anonSiretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, phoneVerified, captureLead, confirmPhoneVerified } = useCompanyKnown();
 
   // The company card (below) and the "Dossier prep" checklist both key off
   // `siretCompany`, but that comes from CompanyKnownContext, which only ever
@@ -396,6 +396,20 @@ export default function OpportunityDetailPage() {
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
   const [justUnlockedAnalysis, setJustUnlockedAnalysis] = useState(false);
+  // C08 (contre-audit 15 Sep 2026): "Mettre en œuvre le contrôle SMS
+  // convenu, avec saisie et correction simples". Phone format validation
+  // (handleLeadSubmit below) proved the number is well-formed, not that the
+  // visitor actually holds it - this adds the missing possession check.
+  // otpSent tracks whether *this mount* has fired the send, separately from
+  // phoneVerified (session-wide, from CompanyKnownContext) so a returning
+  // visitor who captured a phone earlier but never verified it gets a code
+  // sent automatically (effect below) instead of being stuck with no
+  // resend affordance.
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
 
   // Once contact info exists anywhere (this mount's own lead form, an
   // earlier session via CompanyKnownContext, or a logged-in account),
@@ -424,17 +438,71 @@ export default function OpportunityDetailPage() {
     setLeadSubmitting(true);
     setLeadError(null);
     const { error } = await captureLead(leadPhone, leadEmail, id);
+    setLeadSubmitting(false);
     if (error) {
       setLeadError(error);
-    } else {
+      return;
+    }
+    // C08: coordinates saved, but the visitor doesn't reach Dossier
+    // (screen 3) yet - a code is sent to the phone just captured and must
+    // be confirmed first. sendOtp() below both fires the request and flips
+    // otpSent, shared with the auto-send effect for a returning,
+    // not-yet-verified visitor.
+    await sendOtp(leadPhone);
+  };
+
+  // Fires POST /siret/lead/otp/request for the given phone. Shared by the
+  // initial submit above, the "Renvoyer le code" button, and the auto-send
+  // effect below (a visitor who already has leadCaptured=true from an
+  // earlier session but never completed OTP verification).
+  const sendOtp = async (phone: string) => {
+    setOtpSending(true);
+    setOtpError(null);
+    try {
+      await siretApi.requestPhoneOtp(phone, getSessionId());
+      setOtpSent(true);
+    } catch (err) {
+      setOtpError(getApiErrorMessage(err, "L'envoi du code a échoué. Réessayez."));
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  // A visitor whose phone was captured in an earlier session (leadCaptured
+  // true from CompanyKnownContext's initial status load) but who never
+  // completed the OTP step still needs a code sent - without this, they'd
+  // see the "saisir le code" screen with no code ever having been sent and
+  // no way to trigger one except the resend button.
+  const phoneForOtp = leadPhone || contextLeadPhone || '';
+  useEffect(() => {
+    if (!isAuthenticated && leadCaptured && !phoneVerified && !otpSent && !otpSending && phoneForOtp) {
+      sendOtp(phoneForOtp);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, leadCaptured, phoneVerified, phoneForOtp]);
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{4,8}$/.test(otpCode)) {
+      setOtpError(t('otpCodeInvalid') || 'Saisissez le code reçu par SMS.');
+      return;
+    }
+    setOtpSubmitting(true);
+    setOtpError(null);
+    try {
+      await siretApi.confirmPhoneOtp(phoneForOtp, otpCode, getSessionId());
+      confirmPhoneVerified();
       // Client's exact button label is "Enregistrer et continuer" - one
       // action, not submit-then-a-second-tap. Was previously just setting
       // leadCaptured and leaving the visitor on the same screen with a
       // "Continuer" button that had appeared in the form's place.
       setJustUnlockedAnalysis(true);
       setScreen(3);
+    } catch (err) {
+      setOtpError(getApiErrorMessage(err, 'Code incorrect. Vérifiez le code reçu par SMS.'));
+    } finally {
+      setOtpSubmitting(false);
     }
-    setLeadSubmitting(false);
   };
 
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
@@ -1607,7 +1675,45 @@ export default function OpportunityDetailPage() {
                         <div className="p-4 space-y-4">
                           <p className="text-[#4f6474]">{t('scorePreviewBaseLabel') || 'Base pré-remplie · à compléter avant dépôt'}</p>
 
-                          <section>
+                          {/* C07 (contre-audit 15 Sep): the excerpt read as a
+                              short generic fiche (identity + presentation +
+                              one-paragraph trame + piece list) rather than a
+                              real technical memo with a sommaire and enough
+                              substance to fill the promised 10-15 pages.
+                              Two changes: (1) an actual table of contents up
+                              front, listing every section including the
+                              blurred ones, so the document reads as one
+                              continuous mémoire rather than a 6-block
+                              summary; (2) the single "trame de réponse
+                              technique" paragraph is split into the sections
+                              a real technical memo for a public/private
+                              tender actually needs (context, methodology,
+                              means, planning, QSE) instead of one generic
+                              3-bullet plan - each with enough guidance text
+                              to represent a real page once filled in, not
+                              filler. Nothing here is fabricated company data:
+                              every section is either real (siretCompany/
+                              opportunity fields, the visitor's own refine
+                              answers) or explicitly marked "à compléter",
+                              same discipline as before this change. */}
+                          <section className="pt-1">
+                            <h4 className="font-bold mb-2 text-[13px]">{t('scorePreviewSommaireTitle') || 'Sommaire'}</h4>
+                            <ol className="space-y-1 text-[#4f6474]">
+                              <li className="flex justify-between gap-2"><span>01. {t('scorePreviewSection01Title') || "Identification de l'entreprise"}</span><span>p.1</span></li>
+                              <li className="flex justify-between gap-2"><span>02. {t('scorePreviewSection02Title') || "Présentation de l'entreprise"}</span><span>p.2</span></li>
+                              <li className="flex justify-between gap-2"><span>03. {t('scorePreviewSection03aTitle') || 'Contexte et enjeux du marché'}</span><span>p.3</span></li>
+                              <li className="flex justify-between gap-2"><span>04. {t('scorePreviewSection03bTitle') || "Méthodologie d'intervention"}</span><span>p.4-6</span></li>
+                              <li className="flex justify-between gap-2"><span>05. {t('scorePreviewSection03cTitle') || 'Moyens humains et matériels'}</span><span>p.7</span></li>
+                              <li className="flex justify-between gap-2"><span>06. {t('scorePreviewSection03dTitle') || "Planning prévisionnel d'exécution"}</span><span>p.8</span></li>
+                              <li className="flex justify-between gap-2"><span>07. {t('scorePreviewSection03eTitle') || 'Démarche qualité, sécurité et environnement'}</span><span>p.9</span></li>
+                              <li className="flex justify-between gap-2 opacity-60"><span>08. {t('scorePreviewSection04Title') || 'Vos premières réponses'}</span><span>p.10</span></li>
+                              <li className="flex justify-between gap-2 opacity-60"><span>09. {t('scorePreviewSection05Title') || 'Pièces à rassembler'}</span><span>p.11-12</span></li>
+                              <li className="flex justify-between gap-2 opacity-60"><span>10. {t('scorePreviewSection06Title') || 'Pour finaliser votre candidature'}</span><span>p.13</span></li>
+                            </ol>
+                            <p className="text-[10px] text-[#7c8b98] mt-2">{t('scorePreviewSommaireNote') || 'Pagination indicative : la longueur réelle dépend du contenu que vous complétez dans chaque section.'}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
                             <h4 className="font-bold mb-2">{t('scorePreviewSection01') || '01. Identification de l\'entreprise'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrefilled') || 'Pré-rempli'}</span></h4>
                             <dl className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] gap-x-3 gap-y-1.5">
                               <dt className="text-[#4f6474]">{t('scorePreviewCompanyName') || 'Raison sociale'}</dt><dd className="font-bold">{siretCompany?.name || '—'}</dd>
@@ -1638,7 +1744,13 @@ export default function OpportunityDetailPage() {
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection03') || '03. Votre trame de réponse technique'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03a') || '03. Contexte et enjeux du marché'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <p>{t('scorePreviewSection03aBody', { opportunity: opportunity.title }) || `Rappel de l'objet du marché (« ${opportunity.title} »), des attentes du donneur d'ordre telles qu'elles ressortent du dossier de consultation, et des points de vigilance identifiés dans l'annonce.`}</p>
+                            <p className="mt-1">{t('scorePreviewSection03aNotice') || "À renseigner : votre lecture des enjeux propres à ce marché (contraintes de site, délais, exigences particulières du règlement de consultation)."}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03') || '04. Méthodologie d\'intervention'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
                             <p>{t('scorePreviewSection03Intro') || "Plan de rédaction proposé à partir de l'intitulé du marché. À adapter au dossier technique et à vos méthodes réelles."}</p>
                             <ol className="mt-2 space-y-2">
                               <li className="pb-2 border-b border-[#c4d0da]"><strong className="block">{t('scorePreviewMilestone1') || "Préparer l'intervention"}</strong>{t('scorePreviewMilestone1Desc') || "Décrire le repérage des éléments concernés, les accès, la protection des zones de travail et l'organisation de votre équipe."}</li>
@@ -1646,6 +1758,24 @@ export default function OpportunityDetailPage() {
                               <li><strong className="block">{t('scorePreviewMilestone3') || 'Contrôler et remettre'}</strong>{t('scorePreviewMilestone3Desc') || "Préciser les contrôles, essais et réglages envisagés, puis les documents et consignes remis en fin d'intervention."}</li>
                             </ol>
                             <p className="border-l-2 border-[#bd7027] pl-2.5 text-[#664320] mt-2">{t('scorePreviewSection03Notice') || 'À renseigner : moyens prévus, effectif mobilisé, durée, contraintes du site et prestations exactes demandées.'}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03c') || '05. Moyens humains et matériels'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <p>{t('scorePreviewSection03cBody') || "Effectif dédié à ce chantier, qualifications mobilisées, matériel et véhicules affectés. Un tableau récapitulatif (nom du poste, nombre, qualification) est attendu ici."}</p>
+                            <p className="mt-1 border-l-2 border-[#bd7027] pl-2.5 text-[#664320]">{t('scorePreviewSection03cNotice') || 'À renseigner : effectif réel affecté, qualifications et habilitations, liste du matériel mobilisé.'}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03d') || '06. Planning prévisionnel d\'exécution'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <p>{t('scorePreviewSection03dBody') || "Calendrier prévisionnel des phases décrites en section 04 (préparation, exécution, réception), rapporté à l'échéance de ce marché. Un planning détaillé (Gantt ou tableau par semaine) est attendu ici."}</p>
+                            <p className="mt-1 border-l-2 border-[#bd7027] pl-2.5 text-[#664320]">{t('scorePreviewSection03dNotice') || "À renseigner : dates réelles, durée d'exécution envisagée, jalons intermédiaires."}</p>
+                          </section>
+
+                          <section className="pt-3 border-t border-[#c4d0da]">
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03e') || '07. Démarche qualité, sécurité et environnement'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <p>{t('scorePreviewSection03eBody') || "Dispositions prévues en matière de sécurité (plan de prévention, EPI), de contrôle qualité (auto-contrôles, réception) et de gestion environnementale (déchets, nuisances) sur ce chantier."}</p>
+                            <p className="mt-1 border-l-2 border-[#bd7027] pl-2.5 text-[#664320]">{t('scorePreviewSection03eNotice') || 'À renseigner : certifications détenues (Qualibat, RGE, MASE...), procédures internes applicables à ce marché.'}</p>
                           </section>
 
                           {/* Client's 13 Sep reference (marches-direct-memoire-defilement.html):
@@ -1657,7 +1787,7 @@ export default function OpportunityDetailPage() {
                           <div className="relative overflow-hidden rounded-lg -mx-1 px-1">
                             <div className="filter blur-[3px] select-none pointer-events-none opacity-50 space-y-4">
                               <section className="pt-3 border-t border-[#c4d0da]">
-                                <h4 className="font-bold mb-2">{t('scorePreviewSection04') || 'Vos premières réponses'}</h4>
+                                <h4 className="font-bold mb-2">{t('scorePreviewSection04') || '08. Vos premières réponses'}</h4>
                                 <p className="text-[#4f6474] mb-2">{t('scorePreviewSection04Intro') || 'Les réponses renseignées dans la concordance sont reprises ici.'}</p>
                                 <dl className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] gap-x-3 gap-y-1.5">
                                   <dt className="text-[#4f6474]">{t('scorePreviewExperience') || 'Expérience similaire'}</dt><dd>{answerLabel('experience')}</dd>
@@ -1669,7 +1799,7 @@ export default function OpportunityDetailPage() {
                               </section>
 
                               <section className="pt-3 border-t border-[#c4d0da]">
-                                <h4 className="font-bold mb-2">{t('scorePreviewSection05') || 'Pièces à rassembler'}</h4>
+                                <h4 className="font-bold mb-2">{t('scorePreviewSection05') || '09. Pièces à rassembler'}</h4>
                                 <p className="text-[#4f6474] mb-2">{t('scorePreviewSection05Intro') || 'Liste de préparation indicative, à adapter aux pièces réellement demandées dans le règlement de consultation.'}</p>
                                 <ul className="list-disc pl-4 space-y-1.5">
                                   <li>{t('scorePreviewPiece1') || "Les justificatifs d'identification et les coordonnées du représentant de l'entreprise."}</li>
@@ -1680,7 +1810,7 @@ export default function OpportunityDetailPage() {
                               </section>
 
                               <section className="pt-3 border-t border-[#c4d0da]">
-                                <h4 className="font-bold mb-2">{t('scorePreviewSection06') || 'Pour finaliser votre candidature'}</h4>
+                                <h4 className="font-bold mb-2">{t('scorePreviewSection06') || '10. Pour finaliser votre candidature'}</h4>
                                 <ol className="list-decimal pl-4 space-y-1.5">
                                   <li>{t('scorePreviewStep1') || 'Confirmer les informations et la situation de votre entreprise.'}</li>
                                   <li>{t('scorePreviewStep2') || 'Compléter vos références, vos moyens et le périmètre de votre réponse.'}</li>
@@ -1797,6 +1927,50 @@ export default function OpportunityDetailPage() {
                         {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
                       </button>
                       <p className="text-center text-[11px] text-[#B9BBC8]">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
+                    </form>
+                  )}
+
+                  {/* C08 (contre-audit 15 Sep 2026): "Le téléphone réel
+                      devait être vérifié avant accès au document offert."
+                      Shown once the phone/email above are captured but not
+                      yet OTP-confirmed - replaces the form (same card, no
+                      extra navigation) rather than advancing to screen 3,
+                      so an unverified phone can never reach the Dossier hub. */}
+                  {!isAuthenticated && leadCaptured && !phoneVerified && (
+                    <form onSubmit={handleOtpSubmit} className="space-y-3">
+                      <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-1">
+                        <Copy size={17} className="text-orange shrink-0" /> {t('otpTitle') || 'Vérifiez votre téléphone'}
+                      </p>
+                      <p className="text-sm text-[#B9BBC8]">
+                        {otpSending && !otpSent
+                          ? (t('otpSending') || 'Envoi du code en cours…')
+                          : (t('otpSentTo', { phone: phoneForOtp }) || `Un code à 6 chiffres a été envoyé par SMS au ${phoneForOtp}.`)}
+                      </p>
+                      <div>
+                        <label className="block text-sm font-semibold text-white mb-1.5">{t('otpCodeFieldLabel') || 'Code reçu par SMS'}</label>
+                        <input
+                          value={otpCode}
+                          onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                          inputMode="numeric"
+                          autoFocus
+                          placeholder={t('otpCodePlaceholder') || '123456'}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white tracking-[0.3em] placeholder:tracking-normal placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                        />
+                      </div>
+                      {otpError && <p className="text-xs text-red-400">{otpError}</p>}
+                      <button type="submit" disabled={otpSubmitting || !otpCode} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                        {otpSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('otpConfirm') || 'Vérifier le code'}
+                      </button>
+                      <div className="text-[11px] text-[#5B6B80]">
+                        <button
+                          type="button"
+                          onClick={() => { setOtpCode(''); sendOtp(phoneForOtp); }}
+                          disabled={otpSending}
+                          className="underline decoration-[#5B6B80]/50 hover:text-[#8B95A5] transition-colors disabled:opacity-50"
+                        >
+                          {t('otpResend') || 'Renvoyer le code'}
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>

@@ -468,6 +468,10 @@ export type ApiSiretStatus = {
   leadCaptured?: boolean;
   phone?: string | null;
   email?: string | null;
+  // C08 (contre-audit 15 Sep 2026): true only once POST /siret/lead/otp/confirm
+  // has succeeded for this session's phone - a captured phone alone no
+  // longer counts as "verified".
+  phoneVerified?: boolean;
 };
 
 // Prototype V17 "reconnaissance d'entreprise" flow (see backend
@@ -493,6 +497,19 @@ export const siretApi = {
   // viewed so the account manager knows why to call.
   captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string): Promise<{ leadCaptured: boolean }> => {
     const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId });
+    return data;
+  },
+  // C08 (contre-audit 15 Sep): real SMS possession check on top of the
+  // phone format validation above. requestPhoneOtp sends the code (or, in
+  // an environment with no SMS provider configured, logs it server-side -
+  // see smsOtpService.ts), confirmPhoneOtp checks it and flips
+  // phone_verified_at on the lead.
+  requestPhoneOtp: async (phone: string, sessionId: string): Promise<{ sent: boolean }> => {
+    const { data } = await apiClient.post('/siret/lead/otp/request', { phone, sessionId });
+    return data;
+  },
+  confirmPhoneOtp: async (phone: string, code: string, sessionId: string): Promise<{ phoneVerified: boolean }> => {
+    const { data } = await apiClient.post('/siret/lead/otp/confirm', { phone, code, sessionId });
     return data;
   },
 };
