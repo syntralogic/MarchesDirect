@@ -2207,11 +2207,17 @@ export default function OpportunityDetailPage() {
                 // "n'affiche pas l'analyse" complaint. Actually scroll to
                 // it once it's open. If there's genuinely nothing to show
                 // yet, say so instead of silently doing nothing.
-                markDceViewed('analysis');
+                // D05 (contre-audit 15 Sep): "l'avancement passe de 20 % à
+                // 40 %, sans analyse affichée." markDceViewed ran before
+                // the check below, so the pending branch still credited the
+                // step and returned - progress advanced on a click that
+                // showed nothing but a toast. Only mark the step once the
+                // analysis is actually on screen.
                 if (!matchScore || matchScore.eligibility.length === 0) {
                   toast.info(t('dossierDceAnalysisPending') || "L'analyse de ce marché est en cours de préparation.");
                   return;
                 }
+                markDceViewed('analysis');
                 setEligibilityOpen(true);
                 requestAnimationFrame(() => {
                   document.getElementById('eligibility-analysis-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
