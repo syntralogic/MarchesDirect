@@ -191,6 +191,7 @@ export function ChatbotWidget() {
             <button
               type="submit"
               disabled={loading || sending || !input.trim()}
+              aria-label={t('chatbotSend') || 'Envoyer le message'}
               className="bg-orange text-white rounded-xl w-9 h-9 flex items-center justify-center disabled:opacity-40 shrink-0"
             >
               <Send size={14} />
