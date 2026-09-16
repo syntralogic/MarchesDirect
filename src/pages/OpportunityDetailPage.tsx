@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, Sparkles, AlertTriangle,
-  CheckCircle2, XCircle, HelpCircle, LogIn, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
+  ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
+  CheckCircle2, XCircle, HelpCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
   Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy, Send, X,
 } from 'lucide-react';
@@ -181,11 +181,6 @@ function isRedundantWithTitle(text: string | null | undefined, title: string | n
   const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
   return normalize(text) === normalize(title);
 }
-
-const DOC_LABELS: Record<string, string> = {
-  kbis: 'Extrait KBIS', insurance: "Attestation d'assurance décennale", dc1: 'DC1 (lettre de candidature)',
-  dc2: 'DC2 (déclaration du candidat)', dume: 'DUME', attestation_fiscale: 'Attestation fiscale', attestation_sociale: 'Attestation sociale',
-};
 
 // DCE viewer (écran 8): document_label is the ingestion pipeline's own
 // best-effort tag (see schema.sql - 'RC', 'CCAP', 'CCTP', 'AAPC', 'Autre').
@@ -451,14 +446,8 @@ export default function OpportunityDetailPage() {
 
   const [tender, setTender] = useState<ApiTender | null>(null);
   const [bid, setBid] = useState<ApiBidResponse | null>(null);
-  const [dceLoading, setDceLoading] = useState(false);
   const [checklistDocs, setChecklistDocs] = useState<ApiCompanyDocument[]>([]);
-  const [checklistCertCount, setChecklistCertCount] = useState(0);
-  const [checklistRefCount, setChecklistRefCount] = useState(0);
-  const [checklistLoading, setChecklistLoading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [dceError, setDceError] = useState<string | null>(null);
+
   // C06 (contre-audit 15 Sep): real distinct-session view count for the
   // "X entreprises ont consulté cette annonce aujourd'hui" card, replacing
   // the seeded-random placeholder (getConsultationsCount below stays as
@@ -583,7 +572,6 @@ export default function OpportunityDetailPage() {
   // no reason to gate this behind the paid subscription like the AI
   // analysis/bid-package cards below it are.
   const [dceDocuments, setDceDocuments] = useState<ApiTenderDocument[]>([]);
-  const [dceDocsExpanded, setDceDocsExpanded] = useState(false);
 
   useEffect(() => {
     if (!id || !isAuthenticated) return;
@@ -608,8 +596,6 @@ export default function OpportunityDetailPage() {
 
   useEffect(() => {
     if (!id || !isAuthenticated) return;
-    setDceLoading(true);
-    setDceError(null);
     tendersApi.get(id)
       .then(async tData => {
         setTender(tData);
@@ -620,9 +606,8 @@ export default function OpportunityDetailPage() {
         if (b.dce_viewed_at) setDceViewed(true);
         if (b.dce_analysis_viewed_at) setDceAnalysisViewed(true);
       })
-      .catch(err => setDceError(getApiErrorMessage(err, t('detailDCEAnalysisFailed') || "Impossible de charger le dossier.")))
-      .finally(() => setDceLoading(false));
-  }, [id, isAuthenticated, t]);
+      .catch(() => {});
+  }, [id, isAuthenticated]);
 
   // D03: the "Offert · disponible" promise only actually holds once the
   // chargé d'affaires has approved the memo - see BidWorkspacePage's own
@@ -634,44 +619,10 @@ export default function OpportunityDetailPage() {
   // only the AI-assisted mémoire technique below it is gated.
   useEffect(() => {
     if (!isAuthenticated) return;
-    setChecklistLoading(true);
-    Promise.all([companyVaultApi.documents.list(), companyVaultApi.certifications.list(), companyVaultApi.references.list()])
-      .then(([docs, certs, refs]) => {
-        setChecklistDocs(docs);
-        setChecklistCertCount(certs.length);
-        setChecklistRefCount(refs.length);
-      })
-      .catch(() => {})
-      .finally(() => setChecklistLoading(false));
+    companyVaultApi.documents.list()
+      .then(setChecklistDocs)
+      .catch(() => {});
   }, [isAuthenticated]);
-
-  const handleAnalyze = async () => {
-    if (!tender) return;
-    setAnalyzing(true);
-    setDceError(null);
-    try {
-      const updated = await tendersApi.analyze(tender.id);
-      setTender(updated);
-    } catch (err) {
-      setDceError(getApiErrorMessage(err, t('detailDCEAnalysisFailed')));
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  const handleGenerate = async () => {
-    if (!bid) return;
-    setGenerating(true);
-    setDceError(null);
-    try {
-      const result = await tendersApi.generateBidDocuments(bid.id);
-      setBid(result.bid);
-    } catch (err) {
-      setDceError(getApiErrorMessage(err, t('detailBidGenerationFailed')));
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   const handleBookSlot = async (slotLabel: string) => {
     if (!id) return;
@@ -2370,176 +2321,6 @@ export default function OpportunityDetailPage() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* DOSSIER & CANDIDATURE — Page 3 ("Remaining Flow") */}
-      {screen === 3 && (
-        !isAuthenticated ? (
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6 text-center">
-            <p className="text-sm text-white font-semibold mb-1">{t('dossierAnalysisTitle')}</p>
-            <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierLoginRequired')}</p>
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              <Link to="/connexion" state={{ from: `/opportunites/${id}` }} className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-                <LogIn size={14} /> {t('loginButton')}
-              </Link>
-              <Link to="/inscription" state={{ from: `/opportunites/${id}` }} className="inline-flex items-center gap-2 border border-[#17334D] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:border-orange/50 transition-colors">
-                {t('signupCreateProfile')}
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Spec 3.7: dossier entreprise checklist - always addable, not
-                behind the subscription gate below. */}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white mb-3">{t('checklistTitle')}</h2>
-              {checklistLoading ? (
-                <div className="h-16 bg-[#17334D]/40 rounded-lg animate-pulse" />
-              ) : (
-                <div className="space-y-2">
-                  {CHECKLIST_DOCS.map(item => {
-                    const done = checklistDocs.some(d => d.document_type === item.type);
-                    return (
-                      <div key={item.type} className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
-                        <span className="text-[#B9BBC8]">{t(item.labelKey)}</span>
-                        {done ? (
-                          <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
-                        ) : (
-                          <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <div className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
-                    <span className="text-[#B9BBC8]">{t('checklistQualification')}</span>
-                    {checklistCertCount > 0 ? (
-                      <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
-                    ) : (
-                      <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-[#B9BBC8]">{t('checklistReferences')}</span>
-                    {checklistRefCount > 0 ? (
-                      <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
-                    ) : (
-                      <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* DCE - Dossier de consultation (écran 8): the buyer's raw
-                published documents, grouped by type. Public info once the
-                notice exists - shown regardless of subscription status. */}
-            {dceDocuments.length > 0 && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-1"><FileText size={15} className="text-orange" /> DCE — Dossier de consultation</h2>
-                <p className="text-xs text-[#B9BBC8] mb-3">Consulter les documents sources publiés par l'acheteur.</p>
-                <div className="space-y-2 mb-3">
-                  {Object.entries(
-                    dceDocuments.reduce<Record<string, ApiTenderDocument[]>>((groups, d) => {
-                      const key = d.document_label || 'Autre';
-                      (groups[key] ||= []).push(d);
-                      return groups;
-                    }, {})
-                  ).map(([label, docs]) => (
-                    <div key={label} className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2 last:pb-0">
-                      <span className="text-white font-semibold">{DCE_LABEL_NAMES[label] || label}</span>
-                      <span className="text-[#B9BBC8]">{docs.length > 1 ? `${docs.length} fichiers` : docs[0].mime_type?.includes('pdf') ? 'PDF' : 'fichier'}</span>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={() => setDceDocsExpanded(v => !v)} className="text-xs font-semibold text-orange hover:underline">
-                  {dceDocsExpanded ? 'Réduire' : `Voir les ${dceDocuments.length} documents du DCE`}
-                </button>
-                {dceDocsExpanded && (
-                  <div className="mt-3 space-y-1.5">
-                    {dceDocuments.map(doc => (
-                      <a
-                        key={doc.id}
-                        href={doc.status === 'downloaded' || doc.status === 'parsed' ? doc.source_url : undefined}
-                        target="_blank" rel="noreferrer"
-                        className={`flex items-center justify-between gap-2 text-[11px] px-2.5 py-2 rounded-lg border border-[#17334D] ${doc.status === 'failed' ? 'opacity-50' : 'hover:border-orange/50'} transition-colors`}
-                      >
-                        <span className="text-white truncate">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || doc.document_label || 'Document'}</span>
-                        {doc.status === 'failed' ? (
-                          <span className="text-red-400 shrink-0">Indisponible</span>
-                        ) : (
-                          <Download size={12} className="text-orange shrink-0" />
-                        )}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {dceLoading ? (
-          <div className="flex items-center justify-center py-10 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('dossierLoading')}</div>
-        ) : (
-          <div className="space-y-4">
-            {/* DCE analysis */}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-white flex items-center gap-2"><FileText size={15} className="text-orange" /> {t('dossierDCEAnalysis')}</h2>
-                {tender?.dce_analysis_status !== 'analyzed' && (
-                  <button onClick={handleAnalyze} disabled={analyzing} className="flex items-center gap-1.5 text-xs text-orange border border-orange px-3 py-1.5 rounded-lg hover:bg-orange/10 transition-colors disabled:opacity-40">
-                    {analyzing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />} {t('dossierAnalyzeDCE')}
-                  </button>
-                )}
-              </div>
-              {tender?.dce_analysis_status === 'analyzed' ? (
-                <div className="space-y-2 text-xs text-[#B9BBC8]">
-                  {tender.complexity_assessment && <p>{t('dossierComplexity')} : <span className="text-white font-semibold">{tender.complexity_assessment}</span></p>}
-                  {tender.estimated_effort_hours != null && <p>{t('dossierEstimatedEffort')} : <span className="text-white font-semibold">{tender.estimated_effort_hours} h</span></p>}
-                  {tender.required_documents && tender.required_documents.length > 0 && (
-                    <div className="pt-2">
-                      <p className="text-[#B9BBC8] mb-1">{t('dossierRequiredDocs')}</p>
-                      <ul className="list-disc list-inside space-y-0.5 text-white">
-                        {tender.required_documents.map((d, i) => <li key={i}>{d}</li>)}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-[#B9BBC8]">{tender?.dce_analysis_status === 'processing' ? t('dossierProcessing') : t('dossierNotAnalyzed')}</p>
-              )}
-            </div>
-
-            {/* Bid package */}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-3"><FileText size={15} className="text-orange" /> {t('dossierBidPackage')}</h2>
-
-              {bid?.missing_documents && bid.missing_documents.length > 0 && (
-                <div className="flex items-start gap-2 p-3 bg-orange/5 border border-orange/20 rounded-xl text-xs text-brand-muted mb-3">
-                  <AlertTriangle size={14} className="text-orange shrink-0 mt-0.5" />
-                  <span>
-                    {t('dossierMissingDocs')} : {bid.missing_documents.map(d => DOC_LABELS[d] || d).join(', ')}.{' '}
-                    <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline">{t('dossierAddDocs')}</Link>
-                  </span>
-                </div>
-              )}
-              {bid?.technical_memo_text && (
-                <div className="flex items-center gap-2 text-xs text-green-400 mb-3"><CheckCircle2 size={14} /> {t('dossierDocsGenerated')}</div>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-1.5 text-xs text-white bg-[#031B30] border border-[#17334D] px-3 py-2 rounded-lg hover:border-orange/50 transition-colors disabled:opacity-40">
-                  {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {t('dossierGenerateDocs')}
-                </button>
-                <Link to={`/opportunites/${id}/candidature`} className="flex items-center gap-1.5 text-xs text-white bg-orange px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors">
-                  <FileText size={13} /> {bid?.technical_memo_text ? t('dossierReviewValidate') : t('dossierManageBid')}
-                </Link>
-              </div>
-            </div>
-
-            {dceError && <p className="text-xs text-red-400">{dceError}</p>}
-          </div>
-        )}
-          </div>
-        )
       )}
 
       <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
