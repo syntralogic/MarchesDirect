@@ -106,6 +106,13 @@ export default function OpportunityJourneyPage() {
   // pickWholeRegion below) from whatever city the visitor searched or
   // picked, via the same municipality lookup used for city search.
   const [pickedDepartment, setPickedDepartment] = useState('');
+  // G07 (contre-audit 15 Sep): picking "Département entier" from Bordeaux
+  // showed "(33)" with no department name at all - resolveAreaFromCity only
+  // ever returns a code (from the municipality lookup's context string), and
+  // nothing turned that code into "Gironde". departementsGeoJson (loaded
+  // just below for the département search box) already has the full
+  // code->nom list, so this just looks the code up in it once resolved.
+  const [pickedDepartmentName, setPickedDepartmentName] = useState('');
   const [pickedRegion, setPickedRegion] = useState('');
   // Client's audit (15 Sep): typing "Gironde"/"Dordogne" only ever matched
   // communes containing that word, never the département itself; typing
@@ -326,6 +333,12 @@ export default function OpportunityJourneyPage() {
       setLocationLabel(selectedDepartments.map(d => `${d.nom} — ${d.code}`).join(' + '));
     } else if (pickedCity && !WHOLE_AREA_PICKS.includes(pickedCity)) {
       setLocationLabel(`${pickedCity} + ${radius} km`);
+    } else if (pickedCity === 'Département entier') {
+      // G07: this used to fall through to the generic `pickedCity` label
+      // below, i.e. literally the string "Département entier" with no
+      // indication of which one - the same missing-name gap as the picker
+      // dialog itself, just surfacing again once applied.
+      setLocationLabel(pickedDepartmentName ? `${pickedDepartmentName} — ${pickedDepartment}` : pickedCity);
     } else if (pickedCity) {
       setLocationLabel(pickedCity);
     }
@@ -381,6 +394,14 @@ export default function OpportunityJourneyPage() {
     }
     setPickedRegion('');
     setPickedDepartment(department);
+    // Codes in the lookup's context string aren't always zero-padded the
+    // same way departements.json stores them (see the department filter's
+    // own padding fix in opportunities.ts) - compare both forms so "Gironde"
+    // still resolves whether the context said "33" or "033".
+    const match = (departementsGeoJson || []).find(
+      (d) => d.code === department || d.code.replace(/^0+/, '') === department.replace(/^0+/, '')
+    );
+    setPickedDepartmentName(match?.nom || '');
     setPickedCity('Département entier');
     setSelectedDepartments([]);
   };
@@ -395,6 +416,7 @@ export default function OpportunityJourneyPage() {
       return;
     }
     setPickedDepartment('');
+    setPickedDepartmentName('');
     setPickedRegion(region);
     setPickedCity('Région entière');
     setSelectedDepartments([]);
@@ -403,6 +425,7 @@ export default function OpportunityJourneyPage() {
   const pickWholeFrance = () => {
     setZoneError('');
     setPickedDepartment('');
+    setPickedDepartmentName('');
     setPickedRegion('');
     setPickedCity('France entière');
     setSelectedDepartments([]);
@@ -890,7 +913,7 @@ export default function OpportunityJourneyPage() {
                   return (
                     <button
                       key={d.code}
-                      onClick={() => { toggleDepartment(d); setPickedCity(''); setPickedDepartment(''); setPickedRegion(''); }}
+                      onClick={() => { toggleDepartment(d); setPickedCity(''); setPickedDepartment(''); setPickedDepartmentName(''); setPickedRegion(''); }}
                       className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
                         isSelected ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
                       }`}
@@ -903,7 +926,7 @@ export default function OpportunityJourneyPage() {
                 {citySuggestions.map(c => (
                   <button
                     key={c.name}
-                    onClick={() => { setPickedCity(`${c.name} — Ville`); setPickedDepartment(''); setPickedRegion(''); setSelectedDepartments([]); }}
+                    onClick={() => { setPickedCity(`${c.name} — Ville`); setPickedDepartment(''); setPickedDepartmentName(''); setPickedRegion(''); setSelectedDepartments([]); }}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
                       pickedCity.startsWith(c.name) ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
                     }`}
@@ -926,25 +949,33 @@ export default function OpportunityJourneyPage() {
                 </div>
               )}
 
-              {/* Kilometres only ever mean something around a specific city -
-                  a whole département/région/pays or a set of selected
-                  départements has no radius to speak of. Disabled (not
-                  hidden, so the control doesn't jump around) once anything
-                  else is picked. */}
-              <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">{t('journeySearchRadius')}</p>
-              <div className={`grid grid-cols-4 gap-2 mb-4 ${(selectedDepartments.length > 0 || WHOLE_AREA_PICKS.includes(pickedCity)) ? 'opacity-40 pointer-events-none' : ''}`}>
-                {RADIUS_OPTIONS.map(r => (
-                  <button
-                    key={r}
-                    onClick={() => setRadius(r)}
-                    className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${
-                      radius === r ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
-                    }`}
-                  >
-                    {r} km
-                  </button>
-                ))}
-              </div>
+              {/* G07 (contre-audit 15 Sep): kilometres only ever mean
+                  something around a specific city, and the previous
+                  behaviour was to keep this block visible but disabled
+                  once a whole area was picked - which is exactly what the
+                  audit flagged ("les boutons km restent dans le dialogue").
+                  Removed from the layout entirely instead, the same way the
+                  radius <select> is absent for "Whole department" elsewhere
+                  in the app - a control with nothing to control shouldn't
+                  occupy space, disabled or not. */}
+              {!(selectedDepartments.length > 0 || WHOLE_AREA_PICKS.includes(pickedCity)) && (
+                <>
+                  <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">{t('journeySearchRadius')}</p>
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    {RADIUS_OPTIONS.map(r => (
+                      <button
+                        key={r}
+                        onClick={() => setRadius(r)}
+                        className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                          radius === r ? 'border-orange bg-orange/10 text-orange' : 'border-[#17334D] text-[#B9BBC8]'
+                        }`}
+                      >
+                        {r} km
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
 
               <div className="space-y-1 mb-2">
@@ -960,7 +991,9 @@ export default function OpportunityJourneyPage() {
                     {pickedCity === 'Département entier' && <CheckCircle2 size={14} />}
                     {t('journeyWholeDept')}
                     {pickedCity === 'Département entier' && pickedDepartment && (
-                      <span className="text-[10px] text-[#B9BBC8] font-normal">({pickedDepartment})</span>
+                      <span className="text-[10px] text-[#B9BBC8] font-normal">
+                        ({pickedDepartmentName ? `${pickedDepartmentName} — ${pickedDepartment}` : pickedDepartment})
+                      </span>
                     )}
                   </span>
                   {zoneResolving ? <Loader2 size={14} className="text-orange animate-spin" /> : <ChevronRight size={14} className="text-orange" />}

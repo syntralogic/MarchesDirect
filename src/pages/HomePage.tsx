@@ -455,14 +455,20 @@ function GeographicSection() {
     opportunitiesApi.statsByRegion()
       .then(({ regions }) => {
         const map: Record<string, number> = {};
-        regions.forEach(r => { map[normalizeFr(r.region)] = r.count; });
+        // G13: was `map[key] = r.count`, which silently overwrote an
+        // earlier variant's count instead of adding to it if two rows ever
+        // normalized to the same key here (the real fix is upstream - see
+        // /stats/regions - which now sums server-side and returns one row
+        // per region; this is a defensive fallback so a future upstream
+        // slip degrades to double-counting rather than losing counts again).
+        regions.forEach(r => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
         setRegionCounts(map);
       })
       .catch(() => setRegionCounts({}));
     opportunitiesApi.statsByDepartment()
       .then(({ departments }) => {
         const map: Record<string, number> = {};
-        departments.forEach(d => { map[d.department] = d.count; });
+        departments.forEach(d => { map[d.department] = (map[d.department] || 0) + d.count; });
         setDeptCounts(map);
       })
       .catch(() => setDeptCounts({}));
