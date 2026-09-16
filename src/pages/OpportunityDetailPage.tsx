@@ -2028,9 +2028,16 @@ export default function OpportunityDetailPage() {
               button still calls the same generate endpoint using whatever
               is already on file, so no functionality is lost - only the
               in-card manual-entry form is removed to match the reference. */}
+          {/* D13 (contre-audit 15 Sep): three of this hub's card titles
+              ("Préparer ma candidature", "Pondération des critères de
+              l'acheteur", "Continuer mes recherches") were left at text-sm
+              from an earlier pass while every other card title in this
+              same redesigned hub uses text-lg - unmeasured/inconsistent
+              typography, matching the audit's complaint. Normalized to the
+              size used throughout the rest of the hub. */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2"><Send size={15} className="text-orange" /> {t('dossierGenerateTitle') || 'Préparer ma candidature'}</h2>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2"><Send size={15} className="text-orange" /> {t('dossierGenerateTitle') || 'Préparer ma candidature'}</h2>
               {dossier?.status && dossier.status !== 'draft' && (
                 <span className="text-[10px] font-bold text-green-400 bg-green-400/10 border border-green-400/30 rounded-full px-2 py-0.5 uppercase">
                   {dossier.status === 'requested' ? (t('dossierStatusRequested') || 'Demande envoyée')
@@ -2088,7 +2095,7 @@ export default function OpportunityDetailPage() {
 
           {matchScore && matchScore.criteria.length > 0 && (
             <div id="eligibility-analysis-block" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-sm font-bold text-white mb-3">{t('scoreCriteriaWeight') || "Pondération des critères de l'acheteur"}</h2>
+              <h2 className="text-lg font-bold text-white mb-3">{t('scoreCriteriaWeight') || "Pondération des critères de l'acheteur"}</h2>
               <div className="space-y-2.5">
                 {matchScore.criteria.map((c, i) => (
                   <div key={i}>
@@ -2319,7 +2326,7 @@ export default function OpportunityDetailPage() {
           </div>
 
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <h2 className="text-sm font-bold text-white mb-3">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</h2>
+            <h2 className="text-lg font-bold text-white mb-3">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</h2>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubMoreSub') || "Retrouvez vos opportunités enregistrées et choisissez les prochaines candidatures."}</p>
             <Link to="/tableau-de-bord" className="text-sm text-orange font-semibold hover:underline">{t('dossierHubDashboard') || 'Voir mon tableau de bord'}</Link>
           </div>
