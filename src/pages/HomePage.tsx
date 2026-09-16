@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2, Handshake, ChevronRight, Globe,
-  Building, ArrowRight, Zap, Settings, Monitor, Truck, Briefcase,
+  Building, ArrowRight,
   Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X,
   PlayCircle, ChevronLeft, ChevronUp, Plus,
-  Flame, Paintbrush, Lightbulb, Hammer, Sparkles, Trees, Users, ArrowUpRight,
+  Users, ArrowUpRight,
   Euro, FileText, Clock, Lock, Shield, Calendar, Trophy,
 } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
@@ -15,7 +15,8 @@ import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import DemoVideoModal from '@/components/DemoVideoModal';
 import { CallbackModal } from '@/components/CallbackModal';
-import { allSectors } from '@/data/mockData';
+import { tradesApi, type ApiTrade } from '@/lib/apiClient';
+import { tradeIcon } from '@/lib/tradeIcons';
 import { frenchCitiesGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 import { useOpportunityCounts } from '@/hooks/use-opportunity-counts';
@@ -925,27 +926,36 @@ function GeographicSection() {
 // ---------------------------------------------------------------------------
 function SectorsSection() {
   const { t } = useLang();
-  const iconMap: Record<string, React.ElementType> = {
-    Flame, Paintbrush, Lightbulb, Hammer, Sparkles, Trees,
-    Building2, Zap, Settings, Monitor, Truck, Briefcase,
-  };
-  const fallbackIcons: React.ElementType[] = [Flame, Paintbrush, Lightbulb, Hammer, Sparkles, Trees];
+  // A04/Q04 (contre-audit 15 Sep): this rendered 6 of the 16 hand-written
+  // marketing "sector families" from mockData.ts (Travaux & construction,
+  // Services aux entreprises...) with hardcoded counts - generic labels
+  // standing in for the real métiers, exactly what the audit flagged.
+  // Fetches the real trades taxonomy (GET /api/trades) instead, the same
+  // one classification/search/match-score already use, with a live count
+  // per trade rather than a number typed into mockData.ts once and never
+  // updated. Cards link by trade_id (an exact filter) instead of the old
+  // free-text-search-on-a-marketing-label workaround.
+  const [trades, setTrades] = useState<ApiTrade[] | null>(null);
+  useEffect(() => {
+    tradesApi.list().then(setTrades).catch(() => setTrades([]));
+  }, []);
+
   return (
     <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('sectors') || "Secteurs d'activité"}</span>
       <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-5">Quel est votre métier ?</h2>
 
       <div className="grid grid-cols-2 gap-3">
-        {allSectors.slice(0, 6).map((sector, idx) => {
-          const Icon = iconMap[sector.icon] || fallbackIcons[idx % fallbackIcons.length] || Building2;
+        {(trades || []).slice(0, 6).map((trade) => {
+          const Icon = tradeIcon(trade.slug);
           return (
-            <Link key={sector.id} to="/secteurs" className="flex flex-col items-start gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-3.5 hover:border-orange/50 group transition-all">
+            <Link key={trade.id} to={`/recherche?trade_id=${trade.id}`} className="flex flex-col items-start gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-3.5 hover:border-orange/50 group transition-all">
               <div className="w-11 h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0 group-hover:bg-orange/20 transition-colors">
                 <Icon size={22} className="text-orange" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-white group-hover:text-orange transition-colors leading-snug">{sector.name}</div>
-                <div className="text-[11px] text-[#B9BBC8] mt-0.5">{sector.count.toLocaleString('fr-FR')} opportunités</div>
+                <div className="text-sm font-semibold text-white group-hover:text-orange transition-colors leading-snug">{trade.name}</div>
+                <div className="text-[11px] text-[#B9BBC8] mt-0.5">{trade.opportunity_count.toLocaleString('fr-FR')} opportunités</div>
               </div>
             </Link>
           );
