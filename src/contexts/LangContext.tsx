@@ -1179,6 +1179,10 @@ const frTranslations: Translations = {
   chatbotLoading: 'Chargement...',
   chatbotPlaceholder: 'Posez une question sur vos opportunités, votre dossier ou la plateforme.',
   chatbotInputPlaceholder: 'Écrivez votre message...',
+  chatbotSend: 'Envoyer le message',
+  teamLinkedinLabel: 'Profil LinkedIn de',
+  teamEmailLabel: 'Contacter',
+  teamEmailLabelSuffix: 'par e-mail',
   chatbotSendError: 'Échec de l\'envoi du message.',
   chatbotRetry: 'Réessayer',
 
@@ -2731,6 +2735,10 @@ const enTranslations: Translations = {
   chatbotLoading: 'Loading...',
   chatbotPlaceholder: 'Ask a question about your opportunities, your file or the platform.',
   chatbotInputPlaceholder: 'Write your message...',
+  chatbotSend: 'Send message',
+  teamLinkedinLabel: 'LinkedIn profile of',
+  teamEmailLabel: 'Contact',
+  teamEmailLabelSuffix: 'by email',
   chatbotSendError: 'Failed to send message.',
   chatbotRetry: 'Retry',
 

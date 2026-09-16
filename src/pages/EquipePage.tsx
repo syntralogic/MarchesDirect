@@ -38,11 +38,23 @@ export default function EquipePage() {
               <p className="text-xs text-[#B9BBC8] mt-3 leading-relaxed">{member.description}</p>
             </div>
             {/* Actions */}
+            {/* N07 (contre-audit 15 Sep): "certains boutons ... restent sans
+                nom dans la lecture accessible." Both of these are
+                icon-only, so a screen reader announced them as bare
+                "button" with no indication of who they contact. Named per
+                member rather than generically, since the card repeats for
+                every team member. */}
             <div className="flex justify-center gap-3 pt-4 border-t border-[#17334D]">
-              <button className="p-2 rounded-lg border border-[#17334D] text-[#B9BBC8] hover:border-orange/40 hover:text-orange transition-colors">
+              <button
+                aria-label={`${t('teamLinkedinLabel') || 'Profil LinkedIn de'} ${member.name}`}
+                className="p-2 rounded-lg border border-[#17334D] text-[#B9BBC8] hover:border-orange/40 hover:text-orange transition-colors"
+              >
                 <Linkedin size={14} />
               </button>
-              <button className="p-2 rounded-lg border border-[#17334D] text-[#B9BBC8] hover:border-orange/40 hover:text-orange transition-colors">
+              <button
+                aria-label={`${t('teamEmailLabel') || 'Contacter'} ${member.name} ${t('teamEmailLabelSuffix') || 'par e-mail'}`}
+                className="p-2 rounded-lg border border-[#17334D] text-[#B9BBC8] hover:border-orange/40 hover:text-orange transition-colors"
+              >
                 <Mail size={14} />
               </button>
             </div>
