@@ -139,6 +139,14 @@ export default function InternationalPage() {
                   ))}
                 </div>
               </div>
+              {/* Client's audit (15 Sep): "Vérifier le bouton d'exploration
+                  des opportunités internationales, qui n'a pas ouvert de
+                  résultats." This page is market-overview content with no
+                  live opportunity listing behind it (no international
+                  ingestion source exists yet), so a button promising to
+                  "Explorer" a country's opportunities could only ever open
+                  a callback-request modal - which reads as broken/dead
+                  once clicked. Relabeled to say exactly what it does. */}
               <button onClick={() => setCallbackOpen(true)} className="w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2">
                 {t('intlExplore')} {active.name} <ArrowRight size={14} />
               </button>
