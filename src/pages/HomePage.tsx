@@ -372,8 +372,18 @@ function TeamSection() {
         </p>
 
         <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-3 md:p-4 flex gap-3 md:gap-4">
-          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-2 border-orange overflow-hidden shrink-0">
-            <img src={mem1} alt="Maria" className="w-full h-full object-cover" />
+          {/* Client audit (15 Sep), A03: the portrait rendered as an 80/96px
+              circle where the spec calls for a 110x144 portrait frame, and
+              the alt text said "Maria" while the card underneath names Elena
+              Popescu - a screen reader announced a different person from the
+              one on screen (InfoPage's copy of this card already had the
+              right name; this one was never updated with it).
+              Sized in explicit pixels rather than a Tailwind scale step
+              because the spec is in pixels and the previous responsive
+              w-20/md:w-24 pair is what let it drift off-spec in the first
+              place. */}
+          <div className="w-[110px] h-[144px] rounded-xl border-2 border-orange overflow-hidden shrink-0">
+            <img src={mem1} alt="Elena Popescu" className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
             <div className="text-[11px] text-[#B9BBC8]">Votre premier contact</div>

@@ -265,12 +265,18 @@ export default function InfoPage() {
           Nos outils facilitent la recherche et l'analyse. Votre chargé d'affaires vous aide à décider et prépare votre dossier avec vous.
         </p>
 
+        {/* Client audit (15 Sep), Q03: these tabs measured 54px against a
+            ~73px spec. The height was never stated anywhere - it fell out of
+            px-2/py-2.5 plus two 11px lines, so it moved with the label text
+            and there was nothing to measure against. Stated explicitly and
+            centred below, so a longer label grows the box rather than
+            silently changing its height. */}
         <div className="grid grid-cols-4 gap-2 mb-4">
           {WORKFLOW_STEPS.map((s, i) => (
             <button
               key={s.n}
               onClick={() => setActiveStep(i as 0 | 1 | 2 | 3)}
-              className={`rounded-xl border px-2 py-2.5 text-center transition-colors ${
+              className={`min-h-[73px] flex flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition-colors ${
                 activeStep === i ? 'border-orange bg-orange/10' : 'border-[#17334D] bg-[#031B30] hover:border-orange/40'
               }`}
             >
