@@ -2167,7 +2167,16 @@ export default function OpportunityDetailPage() {
                         {t('dossierDceConsult') || 'Consulter'}
                       </a>
                     ) : (
-                      <button type="button" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">{t('dossierDceConsult') || 'Consulter'}</button>
+                      // D05 (contre-audit 15 Sep): this used to be a live
+                      // "Consulter" button with no href and no document
+                      // behind it - clicking it still called
+                      // markDceViewed('dce'), so "DCE consulté" flipped to
+                      // done and the progress bar jumped 20%→40% even
+                      // though nothing was actually shown ("aucune analyse
+                      // ne s'affiche" in the audit). Don't mark a step
+                      // complete for an action that didn't do anything;
+                      // say plainly that there's no document yet instead.
+                      <span className="text-xs text-[#5B6B80] shrink-0">{t('dossierDceNotAvailable') || 'Document pas encore disponible'}</span>
                     )}
                   </>
                 );
