@@ -388,7 +388,11 @@ function TeamSection() {
           </div>
           <div className="min-w-0">
             <div className="text-[11px] text-[#B9BBC8]">Votre premier contact</div>
-            <div className="text-lg md:text-xl font-extrabold text-white leading-tight">Elena Popescu</div>
+            {/* A03 also specifies the name at 26px; text-lg/md:text-xl
+                resolved to 18/20px, which is what the counter-audit
+                re-measured ("nom 20 px" against the 26px reference).
+                Pinned in px for the same reason as the frame above. */}
+            <div className="text-[26px] font-extrabold text-white leading-tight">Elena Popescu</div>
             <div className="text-xs text-[#B9BBC8] mb-2">Assistante de direction</div>
             <p className="text-[11px] md:text-xs text-[#B9BBC8] leading-relaxed">
               Elena accueille votre demande et vous oriente vers le bon interlocuteur.
