@@ -13,7 +13,7 @@ import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { SaveButton } from '@/components/SaveButton';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
-import { trackVisitorEvent, getSessionId } from '@/lib/visitorTracking';
+import { trackVisitorEvent, getSessionId, getConsultationsToday } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage,
   dossiersApi,
@@ -459,6 +459,11 @@ export default function OpportunityDetailPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [dceError, setDceError] = useState<string | null>(null);
+  // C06 (contre-audit 15 Sep): real distinct-session view count for the
+  // "X entreprises ont consulté cette annonce aujourd'hui" card, replacing
+  // the seeded-random placeholder (getConsultationsCount below stays as
+  // the fallback while this loads / if it fails).
+  const [realConsultations, setRealConsultations] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -472,6 +477,11 @@ export default function OpportunityDetailPage() {
       .catch(err => setError(getApiErrorMessage(err, t('detailLoadError'))))
       .finally(() => setLoading(false));
   }, [id, t]);
+
+  useEffect(() => {
+    if (!id) return;
+    getConsultationsToday(id).then(setRealConsultations);
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -875,9 +885,18 @@ export default function OpportunityDetailPage() {
         <div className="space-y-2.5 mt-4">
           {(() => {
             const companiesCount = getInterestedCompaniesCount(opportunity.id);
-            const consultationsCount = getConsultationsCount(opportunity.id);
             const companiesDotPx = socialProofDotSizePx(companiesCount, 7, 18, 6, 14);
-            const consultationsDotPx = socialProofDotSizePx(consultationsCount, 2, 5, 6, 11);
+            // C06 (contre-audit 15 Sep): "chiffres de réussite et de
+            // consultation encore annoncés comme illustrations" - this
+            // second card used to be the same seeded-random placeholder as
+            // the first, just with its own disclaimer. Now backed by real
+            // distinct-session view counts (realConsultations, fetched
+            // above from /api/visitor-events/consultations/:id) - no
+            // disclaimer needed since it's no longer a placeholder, and
+            // the card is hidden entirely while loading or on a fetch
+            // failure (null) or when there's genuinely nothing to report
+            // (0) rather than ever showing a fabricated number.
+            const consultationsDotPx = realConsultations != null ? socialProofDotSizePx(realConsultations, 2, 5, 6, 11) : 0;
             return (
               <>
                 <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4">
@@ -893,24 +912,27 @@ export default function OpportunityDetailPage() {
                   </p>
                   <p className="text-[11px] text-[#5B6B80] mt-2">{t('statsDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
                 </div>
-                <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
-                  <p className="flex items-center gap-2 text-xs text-[#EAF0F6] leading-relaxed">
-                    <span
-                      className="rounded-full bg-red-500 shrink-0 animate-pulse"
-                      style={{ width: consultationsDotPx, height: consultationsDotPx }}
-                    />
-                    <span>
-                      <span className="font-bold text-white">{consultationsCount} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
-                      {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
-                    </span>
-                  </p>
-                </div>
+                {realConsultations != null && realConsultations > 0 && (
+                  <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
+                    <p className="flex items-center gap-2 text-xs text-[#EAF0F6] leading-relaxed">
+                      <span
+                        className="rounded-full bg-red-500 shrink-0 animate-pulse"
+                        style={{ width: consultationsDotPx, height: consultationsDotPx }}
+                      />
+                      <span>
+                        <span className="font-bold text-white">{realConsultations} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
+                        {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
+                      </span>
+                    </p>
+                  </div>
+                )}
               </>
             );
           })()}
         </div>
       </div>
       )}
+
 
       {/* Page title — one distinct, clearly-titled screen per step instead
           of tabs on a single long scroll. Screen 1's title lives inside the
@@ -1530,7 +1552,16 @@ export default function OpportunityDetailPage() {
                 matchScore fields already on this page - never a separate
                 fabricated data source. Each item is true/false on whether
                 that piece of information is actually present in the
-                fiche - not an assessment of whether it's favorable. */}
+                fiche - not an assessment of whether it's favorable.
+                Contre-audit 15 Sep, C05: the payment row's label used to
+                stay "Paiement public" even on a private-market opportunity
+                (only its desc switched to the private-market explanation),
+                so a private fiche showed a public-sounding title next to a
+                private-sounding sentence. Every other row here keeps a
+                neutral category label regardless of ok/not-ok ("Budget
+                défini" stays put whether or not a budget exists) - renamed
+                to match that same convention instead of a state-specific
+                title. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
               <button type="button" onClick={() => setStrengthsOpen(o => !o)} className="w-full flex items-center justify-between text-left">
                 <span className="text-sm font-extrabold text-white">{t('strengthsTitle') || 'Les points forts de cette opportunité pour vous'}</span>
@@ -1543,7 +1574,7 @@ export default function OpportunityDetailPage() {
                   { icon: Euro, ok: !!opportunity.estimated_value, label: t('strengthBudget') || 'Budget défini', desc: opportunity.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value)} € HT` : (t('strengthBudgetMissing') || "Le montant n'est pas communiqué.") },
                   { icon: MapPin, ok: !!opportunity.location_city, label: t('strengthLocation') || 'Localisation précisée', desc: [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ') || (t('strengthLocationMissing') || "La localisation n'est pas précisée.") },
                   { icon: Calendar, ok: !!opportunity.deadline, label: t('strengthCalendar') || 'Calendrier identifié', desc: opportunity.deadline ? formatDate(opportunity.deadline) : (t('strengthCalendarMissing') || "La date limite n'est pas communiquée.") },
-                  { icon: Landmark, ok: opportunity.journey === 'public_procurement', label: t('strengthPayment') || 'Paiement public', desc: opportunity.journey === 'public_procurement' ? (t('strengthPaymentDesc') || 'Les conditions de règlement du contrat vous permettent d\'évaluer vos besoins de trésorerie.') : (t('strengthPaymentMissing') || "Marché privé : les conditions de paiement dépendent du contrat.") },
+                  { icon: Landmark, ok: opportunity.journey === 'public_procurement', label: t('strengthPayment') || 'Conditions de paiement', desc: opportunity.journey === 'public_procurement' ? (t('strengthPaymentDesc') || 'Les conditions de règlement du contrat vous permettent d\'évaluer vos besoins de trésorerie.') : (t('strengthPaymentMissing') || "Marché privé : les conditions de paiement dépendent du contrat.") },
                   { icon: Award, ok: matchScore.criteria.length > 0, label: t('strengthCriteria') || 'Critères de notation identifiés', desc: matchScore.criteria.length > 0 ? matchScore.criteria.map(c => c.label).join(', ') : (t('strengthCriteriaMissing') || "Les critères de notation ne sont pas détaillés sur cette fiche.") },
                 ].map((row, i) => (
                   <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">

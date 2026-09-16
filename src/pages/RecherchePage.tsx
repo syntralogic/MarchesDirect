@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, Loader2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
@@ -8,6 +8,14 @@ import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
 import { LoadMoreButton } from '@/components/LoadMoreButton';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
+import { frenchRegions } from '@/data/mockData';
+
+// Same accent/case fold HomePage.tsx uses for its (working) department
+// autocomplete - not exported from there, small enough to duplicate here
+// rather than widen that file's surface for one shared helper.
+function normalizeFr(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
 
 export default function RecherchePage() {
   const { t } = useLang();
@@ -41,8 +49,49 @@ export default function RecherchePage() {
   const initialRegion = initialRegions.join(', ');
   const initialDepartment = initialDepartments.join(',');
   const [location, setLocation] = useState(initialRegion || initialDepartment || initialCity);
-  const [locationField] = useState<'region' | 'department' | 'city'>(
-    initialDepartment && !initialRegion ? 'department' : (initialCity && !initialRegion ? 'city' : 'region')
+  // G05 (contre-audit 15 Sep): "Ville ou département" typed as free text
+  // (e.g. "Gironde", no map/URL involved) returned zero results. Root
+  // cause: locationField used to be a single value FROZEN at mount from
+  // whichever URL param happened to be present, defaulting to 'region'
+  // whenever none were - so free typing with no prior URL context always
+  // got sent as region=<text>, silently wrong for a département or city
+  // name (and 'region' isn't even an option this field's own label
+  // offers - it promises "Ville ou département" only). Re-resolved on
+  // every search submission instead, against the same department dataset
+  // (data/geo/departements.json) the working new-formulaire autocomplete
+  // already uses, so typing "Gironde" here now resolves the same way it
+  // does there.
+  const [departements, setDepartements] = useState<{ code: string; nom: string }[] | null>(null);
+  useEffect(() => {
+    import('@/data/geo/departements.json').then((m) => {
+      const features = ((m.default as { features: { properties: { code: string; nom: string } }[] }).features) || [];
+      setDepartements(features.map((f) => f.properties));
+    }).catch(() => setDepartements([]));
+  }, []);
+  const regionNamesFolded = useMemo(() => new Set(frenchRegions.map((r) => normalizeFr(r.name))), []);
+  const resolveLocationField = (text: string): 'region' | 'department' | 'city' => {
+    const parts = text.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 0) return 'city';
+    if (parts.every((p) => regionNamesFolded.has(normalizeFr(p)))) return 'region';
+    if (departements && parts.every((p) => departements.some((d) => d.code === p || normalizeFr(d.nom) === normalizeFr(p)))) {
+      return 'department';
+    }
+    return 'city';
+  };
+  const resolveLocationValue = (text: string, field: 'region' | 'department' | 'city'): string => {
+    if (field !== 'department' || !departements) return text;
+    // Backend expects département codes, not names - map any typed names
+    // ("Gironde") to their code ("33") the same way the map/autocomplete
+    // flows already do.
+    return text
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => departements.find((d) => normalizeFr(d.nom) === normalizeFr(p))?.code || p)
+      .join(',');
+  };
+  const [locationField, setLocationField] = useState<'region' | 'department' | 'city'>(
+    initialDepartment && !initialRegion ? 'department' : (initialCity && !initialRegion ? 'city' : (initialRegion ? 'region' : resolveLocationField(location)))
   );
   const tradeId = searchParams.get('trade_id') || undefined;
   const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
@@ -89,8 +138,11 @@ export default function RecherchePage() {
   // current field values right away.
   const [applied, setApplied] = useState({ query: initialQuery, location: '', montantMin: '', montantMax: '' });
   useEffect(() => {
-    setApplied({ query: debouncedQuery, location: debouncedLocation, montantMin: debouncedMontantMin, montantMax: debouncedMontantMax });
-  }, [debouncedQuery, debouncedLocation, debouncedMontantMin, debouncedMontantMax]);
+    const field = resolveLocationField(debouncedLocation);
+    setLocationField(field);
+    setApplied({ query: debouncedQuery, location: resolveLocationValue(debouncedLocation, field), montantMin: debouncedMontantMin, montantMax: debouncedMontantMax });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery, debouncedLocation, debouncedMontantMin, debouncedMontantMax, departements]);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
@@ -115,7 +167,9 @@ export default function RecherchePage() {
   // both the "Rechercher" button and submitting the form (Enter key).
   const handleSearch = () => {
     (document.activeElement as HTMLElement | null)?.blur();
-    setApplied({ query, location, montantMin, montantMax });
+    const field = resolveLocationField(location);
+    setLocationField(field);
+    setApplied({ query, location: resolveLocationValue(location, field), montantMin, montantMax });
   };
 
   return (

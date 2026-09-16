@@ -37,3 +37,19 @@ export function trackVisitorEvent(eventType: VisitorEventType, eventLabel?: stri
     // ignore
   }
 }
+
+// C06 (contre-audit 15 Sep): replaces the old seeded-random "X entreprises
+// ont consulté cette annonce aujourd'hui" with a real count of distinct
+// visitor sessions that actually fired a view_opportunity event for this
+// id (see routes/visitorEvents.ts). Returns null on any failure so the
+// caller can hide the block entirely rather than show a stale/fake number.
+export async function getConsultationsToday(opportunityId: string): Promise<number | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/visitor-events/consultations/${opportunityId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.count === 'number' ? data.count : null;
+  } catch {
+    return null;
+  }
+}
