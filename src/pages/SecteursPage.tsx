@@ -1,47 +1,35 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Building2, Zap, Settings, Monitor, Truck, Briefcase, ArrowRight,
-  Leaf, Sparkles, ShieldCheck, Home, UtensilsCrossed, HeartPulse,
-  GraduationCap, Megaphone, Wheat, PlusCircle,
-} from 'lucide-react';
-import { allSectors } from '@/data/mockData';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { tradesApi, ApiTrade } from '@/lib/apiClient';
+import { tradeIcon } from '@/lib/tradeIcons';
 import { useLang } from '@/contexts/LangContext';
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Building2, Zap, Settings, Monitor, Truck, Briefcase,
-  Leaf, Sparkles, ShieldCheck, Home, UtensilsCrossed, HeartPulse,
-  GraduationCap, Megaphone, Wheat, PlusCircle,
-};
-
-const SECTOR_DETAILS: Record<string, { description: string; examples: string[] }> = {
-  'Travaux & construction': {
-    description: 'Marchés de travaux publics, bâtiments, réhabilitation, génie civil et aménagement urbain.',
-    examples: ['Réhabilitation de voirie', 'Construction d\'équipements sportifs', 'Travaux de peinture', 'Maçonnerie générale'],
-  },
-  'Énergie & environnement': {
-    description: 'Projets liés aux énergies renouvelables, efficacité énergétique et gestion environnementale.',
-    examples: ['Installation photovoltaïque', 'Audit énergétique', 'Traitement des eaux', 'Gestion des déchets'],
-  },
-  'Industrie & maintenance': {
-    description: 'Prestations de maintenance industrielle, équipements techniques et fournitures spécialisées.',
-    examples: ['Maintenance préventive', 'Fourniture de machines', 'Contrôle qualité', 'Instrumentation'],
-  },
-  'Informatique & télécoms': {
-    description: 'Marchés de services IT, infrastructures réseau, logiciels et développement numérique.',
-    examples: ['Infrastructure réseau', 'Développement logiciel', 'Cybersécurité', 'Cloud et hébergement'],
-  },
-  'Transport & logistique': {
-    description: 'Services de transport, logistique urbaine, flotte et mobilité.',
-    examples: ['Transport scolaire', 'Logistique urbaine', 'Location de véhicules', 'Livraison de proximité'],
-  },
-  'Services aux entreprises': {
-    description: 'Nettoyage, gardiennage, services administratifs, formation et conseils professionnels.',
-    examples: ['Nettoyage de locaux', 'Gardiennage', 'Formation professionnelle', 'Conseil RH'],
-  },
-};
-
+// A04/Q04 (contre-audit 15 Sep): "generic FAQ tabs, sector families ki
+// jagah concrete métiers wapas nahi laaye gaye" - this page was showing 16
+// hand-written marketing "sector families" (Travaux & construction,
+// Services aux entreprises...) with hardcoded opportunity counts, instead
+// of the real métiers (Peinture, Plomberie, Maçonnerie...) the
+// classification pipeline, search ranking and match score already use
+// everywhere else. N02's fix comment on the old cards said as much
+// directly: "these 16 marketing sectors don't map 1:1 onto the real
+// 15-trade taxonomy" - and worked around the mismatch with a free-text
+// search instead of a real filter, rather than closing the gap.
+// Fetches the real taxonomy from GET /api/trades (id, name, slug,
+// description, live opportunity_count) so the cards, the counts and the
+// click-through filter are all the same 16 trades the rest of the app
+// already reasons about - trade_id, not a marketing label, so the link
+// below is an exact filter rather than a fuzzy text search.
 export default function SecteursPage() {
   const { t } = useLang();
+  const [trades, setTrades] = useState<ApiTrade[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    tradesApi.list()
+      .then(setTrades)
+      .catch(() => setError(true));
+  }, []);
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12">
@@ -54,54 +42,47 @@ export default function SecteursPage() {
         </p>
       </div>
 
-      {/* Sectors grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {allSectors.map(sector => {
-          const Icon = ICON_MAP[sector.icon] || Building2;
-          const details = SECTOR_DETAILS[sector.name];
-          return (
-            <Link
-              key={sector.id}
-              // N02 (contre-audit 15 Sep): every card linked to bare
-              // '/recherche' with no filter at all - clicking "Espaces
-              // verts & paysagisme" landed on the full unfiltered national
-              // list (54 593 results, software/insurance at the top),
-              // same as every other sector. These 16 marketing sectors
-              // don't map 1:1 onto the real 15-trade taxonomy (trades.ts),
-              // so rather than guess a trade_id, pass the sector name as
-              // the free-text query - it rides the same AND'd, trade-
-              // classification-aware search R02/R04 already improved.
-              to={`/recherche?q=${encodeURIComponent(sector.name)}`}
-              className="group bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 transition-all flex flex-col"
-            >
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-11 h-11 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
-                  <Icon size={22} className="text-orange" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-white group-hover:text-orange transition-colors">{sector.name}</h3>
-                  <span className="text-xs text-orange font-semibold">{sector.count.toLocaleString('fr-FR')} opportunités</span>
-                </div>
-              </div>
-              {details && (
-                <>
-                  <p className="text-xs text-[#B9BBC8] leading-relaxed mb-4">{details.description}</p>
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {details.examples.map(ex => (
-                      <span key={ex} className="text-xs text-[#B9BBC8] bg-[#031B30] border border-[#17334D] px-2 py-1 rounded-lg">
-                        {ex}
-                      </span>
-                    ))}
+      {!trades && !error && (
+        <div className="flex items-center justify-center py-16 text-[#B9BBC8]">
+          <Loader2 size={22} className="animate-spin" />
+        </div>
+      )}
+
+      {error && (
+        <p className="text-sm text-red-400">{t('sectorsLoadError') || 'Impossible de charger les métiers pour le moment.'}</p>
+      )}
+
+      {/* Trades grid */}
+      {trades && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {trades.map(trade => {
+            const Icon = tradeIcon(trade.slug);
+            return (
+              <Link
+                key={trade.id}
+                to={`/recherche?trade_id=${trade.id}`}
+                className="group bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 transition-all flex flex-col"
+              >
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-11 h-11 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
+                    <Icon size={22} className="text-orange" />
                   </div>
-                </>
-              )}
-              <div className="flex items-center gap-1 text-xs text-orange font-semibold mt-auto">
-                {t('sectorsSeeOpp')} <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-white group-hover:text-orange transition-colors">{trade.name}</h3>
+                    <span className="text-xs text-orange font-semibold">{trade.opportunity_count.toLocaleString('fr-FR')} opportunités</span>
+                  </div>
+                </div>
+                {trade.description && (
+                  <p className="text-xs text-[#B9BBC8] leading-relaxed mb-4">{trade.description}</p>
+                )}
+                <div className="flex items-center gap-1 text-xs text-orange font-semibold mt-auto">
+                  {t('sectorsSeeOpp')} <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

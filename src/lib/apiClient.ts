@@ -391,8 +391,17 @@ export const subcontractNeedsApi = {
   },
 };
 
+export type ApiTrade = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  cpv_code: string | null;
+  opportunity_count: number;
+};
+
 export const tradesApi = {
-  list: async () => {
+  list: async (): Promise<ApiTrade[]> => {
     const { data } = await apiClient.get('/trades');
     return data;
   },
