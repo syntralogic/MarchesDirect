@@ -874,6 +874,7 @@ const frTranslations: Translations = {
   detailDossierSubtitle: 'Retrouvez vos documents et votre accompagnement.',
   detailNoDescription: 'Aucune description disponible pour cette opportunité.',
   detailOfficialNoticeLink: "Voir l'annonce officielle",
+  detailAnalysisGroupTitle: "Analyse de l'opportunité",
   detailAccordionPresentation: 'Présentation du marché',
   detailAccordionConditions: 'Conditions et points à vérifier',
   detailAccordionEntreprises: 'Entreprises concernées',
@@ -1450,6 +1451,7 @@ const frTranslations: Translations = {
   dossierGenerateDesc: "Votre chargé d'affaires prépare et dépose votre candidature.",
   dossierGenerateSub: "Votre chargé d'affaires prépare et dépose votre candidature.",
   dossierGenerateCta: 'Générer mon dossier',
+  dossierGenerateCtaShort: 'Générer',
   // D08 (contre-audit 15 Sep): "Générer" on a candidature doc opened the
   // rendez-vous modal with no explanation - this pair backs the small
   // explainer step shown first.
@@ -2434,6 +2436,7 @@ const enTranslations: Translations = {
   detailDossierSubtitle: 'Find your documents and your support.',
   detailNoDescription: 'No description available for this opportunity.',
   detailOfficialNoticeLink: 'View the official notice',
+  detailAnalysisGroupTitle: 'Opportunity analysis',
   detailAccordionPresentation: 'Contract Overview',
   detailAccordionConditions: 'Conditions and Points to Check',
   detailAccordionEntreprises: 'Relevant Companies',
@@ -3000,6 +3003,7 @@ const enTranslations: Translations = {
   dossierGenerateDesc: 'Your account manager prepares and submits your application.',
   dossierGenerateSub: 'Your account manager prepares and submits your application.',
   dossierGenerateCta: 'Generate my application',
+  dossierGenerateCtaShort: 'Generate',
   dossierExplainAccompagnement: "This document isn't generated automatically: your account manager prepares it with you, by appointment, based on this tender and your company.",
   dossierExplainCta: 'Book an appointment with my account manager',
   dossierGenerateNote: 'Full preparation included in the support plan.',
