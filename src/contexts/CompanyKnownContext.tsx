@@ -11,9 +11,15 @@ interface CompanyKnownContextType {
   leadCaptured: boolean;
   leadPhone: string | null;
   leadEmail: string | null;
+  // C08: whether leadPhone has passed the SMS OTP check, not just format
+  // validation. Set locally by confirmPhoneVerified() once the OTP step
+  // succeeds - the backend has no reason to re-report it on every status
+  // poll since it never goes back to false within a session.
+  phoneVerified: boolean;
   lookup: (query: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
   confirm: (siret: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
   captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null }>;
+  confirmPhoneVerified: () => void;
 }
 
 const CompanyKnownContext = createContext<CompanyKnownContextType | undefined>(undefined);
@@ -26,6 +32,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
   const [leadCaptured, setLeadCaptured] = useState(false);
   const [leadPhone, setLeadPhone] = useState<string | null>(null);
   const [leadEmail, setLeadEmail] = useState<string | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,6 +46,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
         setLeadCaptured(!!status.leadCaptured);
         setLeadPhone(status.phone || null);
         setLeadEmail(status.email || null);
+        setPhoneVerified(!!status.phoneVerified);
       })
       .catch(() => {
         // Non-fatal: just stays unidentified until the visitor tries the
@@ -99,16 +107,27 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
     try {
       await siretApi.captureLead(phone, email, getSessionId(), opportunityId);
       setLeadCaptured(true);
+      // A freshly submitted/edited phone hasn't been OTP-confirmed yet, even
+      // if an earlier phone this session was. confirmPhoneVerified() below
+      // is the only thing allowed to set this back to true.
+      if (phone !== leadPhone) setPhoneVerified(false);
       setLeadPhone(phone);
       setLeadEmail(email);
       return { error: null };
     } catch (err) {
       return { error: getApiErrorMessage(err, "L'enregistrement de vos coordonnées a échoué.") };
     }
+  }, [leadPhone]);
+
+  // C08: called by the OTP confirmation UI once POST /siret/lead/otp/confirm
+  // succeeds. Local-only flip (the backend has already persisted it) so the
+  // Dossier-access gate re-renders immediately without another round trip.
+  const confirmPhoneVerified = useCallback(() => {
+    setPhoneVerified(true);
   }, []);
 
   return (
-    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, candidates, loading, leadCaptured, leadPhone, leadEmail, lookup, confirm, captureLead }}>
+    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, candidates, loading, leadCaptured, leadPhone, leadEmail, phoneVerified, lookup, confirm, captureLead, confirmPhoneVerified }}>
       {children}
     </CompanyKnownContext.Provider>
   );
