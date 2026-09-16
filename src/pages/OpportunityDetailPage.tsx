@@ -2239,8 +2239,15 @@ export default function OpportunityDetailPage() {
                   <p className="text-sm text-white font-semibold">{item.title}</p>
                   <p className="text-xs text-[#B9BBC8] mt-0.5">{item.desc}</p>
                   <p className="text-[11px] text-[#5B6B80] mt-0.5 mb-3">{t('dossierCandidatureIncluded') || "Inclus dans l'accompagnement."}</p>
+                  {/* D11 (contre-audit 15 Sep): "Reprendre les libellés
+                      courts « Générer » ... alléger les répétitions." These
+                      per-document rows shared dossierGenerateCta with the
+                      page's main CTA, so each one rendered the full
+                      "Générer mon dossier" - repeating the long label down
+                      the list even though the row above already names the
+                      document. Own short key. */}
                   <button type="button" onClick={() => setExplainDoc({ title: item.title, desc: item.desc })} className="w-full flex items-center justify-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold py-2.5 rounded-lg hover:border-orange/50 transition-colors">
-                    <Lock size={12} /> {t('dossierGenerateCta') || 'Générer'}
+                    <Lock size={12} /> {t('dossierGenerateCtaShort') || 'Générer'}
                   </button>
                 </div>
               ))}
@@ -2580,6 +2587,15 @@ function OpportunityAnalysisAccordions({
 
   return (
     <div className="space-y-2">
+      {/* O04 (contre-audit 15 Sep): "« Analyse de l'opportunité » à remettre
+          au-dessus des accordéons selon l'audit esthétique - ce titre de
+          groupe n'a pas été retrouvé dans la fiche privée contrôlée." The
+          three accordions rendered as a bare stack with no group heading
+          tying them together, so nothing on the page said these three
+          sections are the analysis of the opportunity. */}
+      <h2 className="text-lg font-bold text-white mb-3">
+        {t('detailAnalysisGroupTitle') || "Analyse de l'opportunité"}
+      </h2>
       {items.map(item => {
         const isOpen = openKey === item.key;
         const Icon = item.icon;

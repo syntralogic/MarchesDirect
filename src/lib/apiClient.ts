@@ -239,7 +239,7 @@ export type ApiMatchScore = {
   scoreTitle: string;
   scoreNote: string;
   scoreDisclaimer: string;
-  matchLabel: string;
+  matchLabel: string | null;
   positiveFactors: { label: string; points: number }[];
   warning: string | null;
   criteria: { label: string; weight: number }[];
