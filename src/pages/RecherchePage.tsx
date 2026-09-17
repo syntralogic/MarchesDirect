@@ -120,6 +120,9 @@ export default function RecherchePage() {
   // maps to the default "no status filter" browse view rather than a
   // literal status value.
   const [statutFilter, setStatutFilter] = useState('');
+  // R04's deeper fix already classifies opportunities server-side; this is
+  // just the control that was missing to actually filter by it.
+  const [natureFilter, setNatureFilter] = useState<string[]>([]);
   const [montantMin, setMontantMin] = useState('');
   const [montantMax, setMontantMax] = useState('');
   // R08 (client audit): "filtering isn't sorting" - filters existed but no
@@ -158,6 +161,7 @@ export default function RecherchePage() {
     trade_id: tradeId,
     journey: journeyParam,
     status: statutFilter || undefined,
+    nature: natureFilter.length > 0 ? natureFilter.join(',') : undefined,
     min_value: applied.montantMin ? Number(applied.montantMin) : undefined,
     max_value: applied.montantMax ? Number(applied.montantMax) : undefined,
     sort,
@@ -256,6 +260,29 @@ export default function RecherchePage() {
               <option value="cancelled">{t('searchStatutCancelled')}</option>
             </select>
             <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="mb-2.5">
+          <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchNature')}</label>
+          <div className="flex flex-wrap gap-1.5">
+            {(['travaux', 'fournitures', 'etudes', 'mixte'] as const).map(n => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setNatureFilter(cur => cur.includes(n) ? cur.filter(x => x !== n) : [...cur, n])}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${
+                  natureFilter.includes(n)
+                    ? 'bg-orange/15 border-orange text-orange'
+                    : 'bg-[#031B30] border-[#17334D] text-[#B9BBC8] hover:border-[#2A4A6B]'
+                }`}
+              >
+                {n === 'travaux' ? t('natureTravaux') || 'Travaux'
+                  : n === 'fournitures' ? t('natureFournitures') || 'Fournitures'
+                  : n === 'etudes' ? t('natureEtudes') || 'Études'
+                  : t('natureMixte') || 'Mixte'}
+              </button>
+            ))}
           </div>
         </div>
 

@@ -219,6 +219,12 @@ export type OpportunitySearchParams = {
   min_value?: number;
   max_value?: number;
   status?: string;
+  // R04's actual deeper fix (backend/utils/naturePrestation.ts, already
+  // shipped) classifies every opportunity as travaux/fournitures/etudes/
+  // mixte and the backend already accepts this filter - it just had no
+  // frontend control anywhere, so a visitor had no way to ask for "travaux
+  // only" even though the data to do it precisely now exists.
+  nature?: string;
   // "Nouveau" / date-published filter - backend already supports this
   // (routes/opportunities.ts), just wasn't exposed as a search param here.
   recent_days?: number;
@@ -468,7 +474,7 @@ export type ApiSiretStatus = {
   leadCaptured?: boolean;
   phone?: string | null;
   email?: string | null;
-  // C08 (contre-audit 15 Sep 2026): true only once POST /siret/lead/otp/confirm
+  // C08 (contre-audit 15 Sep 2026): true only once POST /siret/phone/verification/confirm
   // has succeeded for this session's phone - a captured phone alone no
   // longer counts as "verified".
   phoneVerified?: boolean;
@@ -502,14 +508,24 @@ export const siretApi = {
   // C08 (contre-audit 15 Sep): real SMS possession check on top of the
   // phone format validation above. requestPhoneOtp sends the code (or, in
   // an environment with no SMS provider configured, logs it server-side -
-  // see smsOtpService.ts), confirmPhoneOtp checks it and flips
+  // see phoneVerificationService.ts), confirmPhoneOtp checks it and flips
   // phone_verified_at on the lead.
+  //
+  // These three paths must match backend/src/routes/siret.ts exactly -
+  // they previously pointed at an invented '/siret/lead/otp/*' that never
+  // existed server-side (two sessions built C08 independently and never
+  // ran the two halves together), so every request/confirm silently 404'd
+  // and the OTP screen could never actually complete.
+  getPhoneVerificationConfig: async (): Promise<{ required: boolean }> => {
+    const { data } = await apiClient.get('/siret/phone/verification/config');
+    return data;
+  },
   requestPhoneOtp: async (phone: string, sessionId: string): Promise<{ sent: boolean }> => {
-    const { data } = await apiClient.post('/siret/lead/otp/request', { phone, sessionId });
+    const { data } = await apiClient.post('/siret/phone/verification/request', { phone, sessionId });
     return data;
   },
   confirmPhoneOtp: async (phone: string, code: string, sessionId: string): Promise<{ phoneVerified: boolean }> => {
-    const { data } = await apiClient.post('/siret/lead/otp/confirm', { phone, code, sessionId });
+    const { data } = await apiClient.post('/siret/phone/verification/confirm', { phone, code, sessionId });
     return data;
   },
 };
