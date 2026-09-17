@@ -2,14 +2,13 @@ import { createPortal } from 'react-dom';
 import { X, PlayCircle, Clock } from 'lucide-react';
 
 // Client brief (10-image spec): a visible "Voir la démo — 40 sec" button on
-// the first mobile screen, next to "Guide d'utilisation". No actual video
-// exists yet to embed - rather than fabricate a placeholder video or link
-// to a fake asset, this reads a real URL from VITE_DEMO_VIDEO_URL and shows
-// an honest "coming soon" state when it isn't set, so nothing here ever
-// claims to show content that doesn't exist. Once the client provides the
-// real video (link or file), setting that one env var on Vercel is the only
-// change needed - no code change, no redeploy of this component.
-const DEMO_VIDEO_URL = import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined;
+// the first mobile screen, next to "Guide d'utilisation". VITE_DEMO_VIDEO_URL
+// still lets an external host (Vimeo/YouTube/CDN) override this with a
+// single env var and no code change, but the client has since provided the
+// actual video - bundled at public/demo.mp4 (compressed from the original
+// 8.6 MB WhatsApp export to ~2.4 MB, H.264/AAC, faststart for streaming) so
+// there's a real default instead of the "coming soon" placeholder.
+const DEMO_VIDEO_URL = (import.meta.env.VITE_DEMO_VIDEO_URL as string | undefined) || '/demo.mp4';
 
 const toEmbedUrl = (url: string): string => {
   const yt = url.match(/(?:youtu\.be\/|youtube\.com\/watch\?v=)([\w-]+)/);

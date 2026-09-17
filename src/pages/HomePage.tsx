@@ -202,7 +202,7 @@ function DemoWalkthroughSection() {
             <PlayCircle size={18} className="text-orange" />
             <span className="text-[11px] font-bold text-white uppercase tracking-widest">Démo vidéo</span>
           </div>
-          <span className="text-[11px] font-bold text-white bg-black/40 border border-[#17334D] rounded-md px-2 py-0.5">01:00</span>
+          <span className="text-[11px] font-bold text-white bg-black/40 border border-[#17334D] rounded-md px-2 py-0.5">00:52</span>
         </div>
         <div className="relative h-40 md:h-56 flex items-center justify-center">
           <div className="absolute left-0 top-4 bg-[#061D32]/90 border border-[#17334D] rounded-lg px-3 py-2 text-[11px] text-white w-40">
