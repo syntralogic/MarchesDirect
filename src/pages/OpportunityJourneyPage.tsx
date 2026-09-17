@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Building, Building2, Handshake, ChevronRight, ArrowLeft, ArrowRight,
+  Building, Building2, Handshake, ChevronRight, ChevronDown, ArrowLeft, ArrowRight,
   Search, X, MapPin, CheckCircle2, SlidersHorizontal, Calendar, Target,
   Paintbrush, Zap, Filter, Loader2, PartyPopper,
 } from 'lucide-react';
@@ -203,6 +203,14 @@ export default function OpportunityJourneyPage() {
   // "Appels d'offres" silently searched only "Marchés publics".
   const journeyForApi = types.map(ty => JOURNEY_CODE_MAP[ty]).join(',');
 
+  // R08 (contre-audit 15 Sep): "Filtrer n'est toujours pas trier." The
+  // backend's ?sort= (recent/deadline/match) and RecherchePage's own
+  // dropdown for it already existed - this page (the /parcours guided
+  // flow, where most of the audit's filter testing happened) never had
+  // the equivalent control at all, despite the hook already accepting the
+  // param. Same three options and keys as RecherchePage's, for consistency.
+  const [sort, setSort] = useState<'deadline' | 'recent' | 'match'>('deadline');
+
   const { opportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     journey: journeyForApi,
     q: debouncedQuery || undefined,
@@ -218,6 +226,7 @@ export default function OpportunityJourneyPage() {
     min_value: amountRangeForApi().min,
     max_value: amountRangeForApi().max,
     recent_days: recentDaysForApi(),
+    sort,
   });
 
   // Deadline has no backend range filter (unlike budget/date-published
@@ -265,6 +274,12 @@ export default function OpportunityJourneyPage() {
     return TRADE_SUGGESTIONS.filter(s => s.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
   }, [query]);
 
+  // R08 (contre-audit 15 Sep): "Filtrer n'est toujours pas trier." The
+  // backend's ?sort= (recent/deadline/match) and RecherchePage's own
+  // dropdown for it already existed - this page (the /parcours guided
+  // flow, where most of the audit's filter testing happened) never had
+  // the equivalent control at all, despite the hook already accepting the
+  // param. Same three options and keys as RecherchePage's, for consistency.
   const debouncedCitySearch = useDebounce(citySearch, 300);
   // Client's audit (15 Sep): "Aucune ville trouvée" could flash up before
   // the search had actually finished, then the real city showed up right
@@ -796,18 +811,33 @@ export default function OpportunityJourneyPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-bold text-white">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <h2 className="text-xs font-bold text-white shrink-0">
               <span className="text-orange">{displayResultCount}</span> {displayResultCount !== 1 ? t('journeyResultsPlural') : t('journeyResults')}
             </h2>
-            <button
-              onClick={() => setFiltersOpen(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${
-                filtersOpen ? 'border-orange text-orange bg-orange/10' : 'border-[#17334D] text-[#B9BBC8]'
-              }`}
-            >
-              <SlidersHorizontal size={13} /> {t('appelsFilters')}
-            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="relative shrink-0">
+                <select
+                  value={sort}
+                  onChange={e => setSort(e.target.value as 'deadline' | 'recent' | 'match')}
+                  aria-label={t('sortLabel')}
+                  className="bg-[#031B30] border border-[#17334D] rounded-md pl-2 pr-6 py-1.5 text-[10px] text-white focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="deadline">{t('sortDeadline')}</option>
+                  <option value="recent">{t('sortRecent')}</option>
+                  <option value="match">{t('sortMatch')}</option>
+                </select>
+                <ChevronDown size={9} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
+              </div>
+              <button
+                onClick={() => setFiltersOpen(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium shrink-0 ${
+                  filtersOpen ? 'border-orange text-orange bg-orange/10' : 'border-[#17334D] text-[#B9BBC8]'
+                }`}
+              >
+                <SlidersHorizontal size={13} /> {t('appelsFilters')}
+              </button>
+            </div>
           </div>
 
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">{t('journeyLoading')}</div>}
