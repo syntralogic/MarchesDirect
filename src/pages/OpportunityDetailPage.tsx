@@ -410,6 +410,19 @@ export default function OpportunityDetailPage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+  // Whether the backend actually requires phone verification right now
+  // (false in any environment with no SMS provider configured - see
+  // GET /siret/phone/verification/config). null while unknown, which is
+  // deliberately treated the same as "not required" below: the backend's
+  // own comment on that endpoint is explicit that showing this step when
+  // it can't be completed (no code will ever arrive) is worse than
+  // skipping it, so this never blocks on a still-loading config.
+  const [otpRequired, setOtpRequired] = useState<boolean | null>(null);
+  useEffect(() => {
+    siretApi.getPhoneVerificationConfig()
+      .then(r => setOtpRequired(r.required))
+      .catch(() => setOtpRequired(false));
+  }, []);
 
   // D06 (contre-audit 15 Sep): "Le formulaire de modification prévu
   // n'apparaissait pas. Le clic fait apparaître une proposition « Être
@@ -486,7 +499,7 @@ export default function OpportunityDetailPage() {
     await sendOtp(leadPhone);
   };
 
-  // Fires POST /siret/lead/otp/request for the given phone. Shared by the
+  // Fires POST /siret/phone/verification/request for the given phone. Shared by the
   // initial submit above, the "Renvoyer le code" button, and the auto-send
   // effect below (a visitor who already has leadCaptured=true from an
   // earlier session but never completed OTP verification).
@@ -510,11 +523,11 @@ export default function OpportunityDetailPage() {
   // no way to trigger one except the resend button.
   const phoneForOtp = leadPhone || contextLeadPhone || '';
   useEffect(() => {
-    if (!isAuthenticated && leadCaptured && !phoneVerified && !otpSent && !otpSending && phoneForOtp) {
+    if (otpRequired && !isAuthenticated && leadCaptured && !phoneVerified && !otpSent && !otpSending && phoneForOtp) {
       sendOtp(phoneForOtp);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, leadCaptured, phoneVerified, phoneForOtp]);
+  }, [otpRequired, isAuthenticated, leadCaptured, phoneVerified, phoneForOtp]);
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2004,8 +2017,22 @@ export default function OpportunityDetailPage() {
                       Shown once the phone/email above are captured but not
                       yet OTP-confirmed - replaces the form (same card, no
                       extra navigation) rather than advancing to screen 3,
-                      so an unverified phone can never reach the Dossier hub. */}
-                  {!isAuthenticated && leadCaptured && !phoneVerified && (
+                      so an unverified phone can never reach the Dossier hub.
+                      Gated on otpRequired: this only ever fires today for a
+                      *returning* visitor (leadCaptured already true from an
+                      earlier session, loaded via GET /siret/status) whose
+                      phone was never OTP-confirmed. A brand-new visitor
+                      whose captureLead call gets rejected 403
+                      phone_not_verified never reaches leadCaptured=true in
+                      the first place (see CompanyKnownContext.captureLead),
+                      so that submission just surfaces the backend's error
+                      text via leadError on the original form with no path
+                      to the code-entry step from there - a real remaining
+                      gap, out of scope for this pass (needs captureLead's
+                      403 handled as its own case, not just an error
+                      string). Left as a comment rather than silently
+                      patched over. */}
+                  {otpRequired && !isAuthenticated && leadCaptured && !phoneVerified && (
                     <form onSubmit={handleOtpSubmit} className="space-y-3">
                       <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-1">
                         <Copy size={17} className="text-orange shrink-0" /> {t('otpTitle') || 'Vérifiez votre téléphone'}
