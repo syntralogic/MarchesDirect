@@ -119,7 +119,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
     }
   }, [leadPhone]);
 
-  // C08: called by the OTP confirmation UI once POST /siret/lead/otp/confirm
+  // C08: called by the OTP confirmation UI once POST /siret/phone/verification/confirm
   // succeeds. Local-only flip (the backend has already persisted it) so the
   // Dossier-access gate re-renders immediately without another round trip.
   const confirmPhoneVerified = useCallback(() => {
