@@ -411,6 +411,41 @@ export default function OpportunityDetailPage() {
   const [otpSubmitting, setOtpSubmitting] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
 
+  // D06 (contre-audit 15 Sep): "Le formulaire de modification prévu
+  // n'apparaissait pas. Le clic fait apparaître une proposition « Être
+  // rappelé, sans créneau précis », pas le formulaire attendu." Once
+  // leadCaptured flips true the phone/email form above disappears for
+  // good (line ~1555/1703 below) and nothing in the Dossier screen ever
+  // showed what was actually captured or let the visitor fix a typo -
+  // there was no edit path at all behind whatever triggered the callback
+  // suggestion the audit saw. Reuses captureLead itself as the "update":
+  // it's the same upsert the initial form calls.
+  const [editingContact, setEditingContact] = useState(false);
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editContactError, setEditContactError] = useState<string | null>(null);
+  const [editContactSaving, setEditContactSaving] = useState(false);
+  const handleContactUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^0[1-9]\d{8}$/.test(editPhone)) {
+      setEditContactError(t('leadPhoneInvalid') || 'Le téléphone doit contenir 10 chiffres.');
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(editEmail)) {
+      setEditContactError(t('leadEmailInvalid') || "L'e-mail n'est pas valide.");
+      return;
+    }
+    setEditContactSaving(true);
+    setEditContactError(null);
+    const { error } = await captureLead(editPhone, editEmail, id);
+    setEditContactSaving(false);
+    if (error) {
+      setEditContactError(error);
+    } else {
+      setEditingContact(false);
+    }
+  };
+
   // Once contact info exists anywhere (this mount's own lead form, an
   // earlier session via CompanyKnownContext, or a logged-in account),
   // carry it into slotForm so the "suivi & rappel" step never re-asks.
@@ -1990,6 +2025,48 @@ export default function OpportunityDetailPage() {
           {justUnlockedAnalysis && (
             <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
               <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
+            </div>
+          )}
+
+          {(contextLeadPhone || contextLeadEmail) && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
+              {editingContact ? (
+                <form onSubmit={handleContactUpdate} className="space-y-3">
+                  <p className="text-sm font-bold text-white">{t('dossierVerifyContactTitle') || 'Vérifier mes coordonnées'}</p>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#B9BBC8] mb-1">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
+                    <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#B9BBC8] mb-1">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
+                    <input value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder={t('leadEmailPlaceholder') || 'vous@exemple.fr'} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
+                  </div>
+                  {editContactError && <p className="text-xs text-red-400">{editContactError}</p>}
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={editContactSaving} className="flex-1 bg-orange text-white text-xs font-bold py-2 rounded-lg disabled:opacity-50">
+                      {editContactSaving ? <Loader2 size={13} className="animate-spin mx-auto" /> : (t('dossierSaveContact') || 'Enregistrer')}
+                    </button>
+                    <button type="button" onClick={() => setEditingContact(false)} className="flex-1 border border-[#17334D] text-[#B9BBC8] text-xs font-semibold py-2 rounded-lg">
+                      {t('cancel') || 'Annuler'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1">{t('dossierVerifyContactTitle') || 'Vérifier mes coordonnées'}</p>
+                    <p className="text-sm text-white truncate">{contextLeadPhone || '—'}</p>
+                    <p className="text-sm text-white truncate">{contextLeadEmail || '—'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setEditPhone(contextLeadPhone || ''); setEditEmail(contextLeadEmail || ''); setEditContactError(null); setEditingContact(true); }}
+                    className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-orange hover:underline"
+                  >
+                    <Pencil size={12} /> {t('siretModify') || 'Modifier'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
