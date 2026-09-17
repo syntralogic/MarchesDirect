@@ -440,6 +440,34 @@ function GeographicSection() {
   const [cityLoading, setCityLoading] = useState(false);
   const [position, setPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
   const [citiesPosition, setCitiesPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
+  // G09 (contre-audit 15 Sep): "10 noms à faible zoom, 57 à fort zoom... les
+  // quatre villes signalées absentes des marqueurs" - Angoulême, Périgueux,
+  // Bergerac et Marmande stayed missing "au niveau élevé testé" even though
+  // the total count (57) was already correct.
+  //
+  // Root cause: citiesPosition.zoom was doing two unrelated jobs at once -
+  // (1) how many city labels to reveal (the tier system below), which the
+  // client's own wording treats as a country-wide density dial ("57" is a
+  // constant regardless of where you're looking, per the audit's repeated
+  // identical count), and (2) the ZoomableGroup's actual optical
+  // magnification, which shrinks the visible geographic area around
+  // whatever citiesPosition.coordinates happens to be. Clicking "+"
+  // repeatedly (with coordinates still at the default center) increases
+  // both at once - at zoom 8 the visible viewport is a small fraction of
+  // France around that fixed point, so any tier-3 city far from it (all
+  // four flagged cities sit ~200-280km southwest, near Bordeaux) is
+  // logically "in" the 57-city count but physically clipped off-screen by
+  // the SVG viewport - invisible no matter how far past its own tier
+  // threshold you zoom, unless you'd also happened to drag/search/click
+  // your way over there first.
+  //
+  // Decoupled: labelDensity is now the only thing the +/- buttons and the
+  // tier thresholds below read. citiesPosition (real pan+zoom, still fully
+  // driven by drag, search and city clicks) is untouched by it, so
+  // increasing density reveals more names across whatever's currently on
+  // screen - including the whole of France at the default view - instead
+  // of also shrinking what's on screen.
+  const [labelDensity, setLabelDensity] = useState(1);
 
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({});
   const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
@@ -527,10 +555,10 @@ function GeographicSection() {
 
   const visibleCities = frenchCitiesGeo.filter(c => {
     if (c.tier === 1) return true;
-    if (c.tier === 2) return citiesPosition.zoom >= 2;
-    return citiesPosition.zoom >= 4;
+    if (c.tier === 2) return labelDensity >= 2;
+    return labelDensity >= 4;
   });
-  const zoomLevelLabel = citiesPosition.zoom >= 4 ? 'Élevé' : citiesPosition.zoom >= 2 ? 'Moyen' : 'Faible';
+  const zoomLevelLabel = labelDensity >= 4 ? 'Élevé' : labelDensity >= 2 ? 'Moyen' : 'Faible';
 
   useEffect(() => {
     if (!search.trim()) return;
@@ -852,9 +880,9 @@ function GeographicSection() {
               )}
 
               <div className="absolute top-3 right-3 flex flex-col gap-2">
-                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
-                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
-                <button onClick={() => setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 })} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
+                <button onClick={() => setLabelDensity(d => Math.min(d * 1.5, 8))} aria-label="Afficher plus de villes" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
+                <button onClick={() => setLabelDensity(d => Math.max(d / 1.5, 1))} aria-label="Afficher moins de villes" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
+                <button onClick={() => { setLabelDensity(1); setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 }); }} aria-label="Recentrer la carte" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
               </div>
 
               <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-2.5 py-1.5">
