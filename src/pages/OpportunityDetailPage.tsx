@@ -1037,7 +1037,23 @@ export default function OpportunityDetailPage() {
                 )}
                 {(!opportunity.ai_summary || isRedundantWithTitle(opportunity.ai_summary, opportunity.title))
                   && (!opportunity.description || isRedundantWithTitle(opportunity.description, opportunity.title)) && (
-                  <p className="text-sm text-[#B9BBC8]">{t('detailNoDescription')}</p>
+                  // O03 (contre-audit 15 Sep): "Différencier une donnée
+                  // absente de la source, une analyse en attente et une
+                  // erreur." This was a single flat "no description"
+                  // message regardless of why nothing was there - a
+                  // classification that's still queued, one that failed
+                  // outright, and one that finished and genuinely found
+                  // nothing to add (the source notice itself is just
+                  // that terse) all read identically. Same
+                  // ai_classification_status the quick-stats block above
+                  // already reads.
+                  <p className="text-sm text-[#B9BBC8]">
+                    {opportunity.ai_classification_status === 'failed'
+                      ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
+                      : (opportunity.ai_classification_status === 'not_analyzed' || opportunity.ai_classification_status === 'processing' || !opportunity.ai_classification_status)
+                        ? (t('detailAnalysisPending') || 'Analyse en cours de génération pour cette opportunité.')
+                        : (t('detailNoDescription'))}
+                  </p>
                 )}
               </>
             )}
@@ -1067,7 +1083,19 @@ export default function OpportunityDetailPage() {
               stated team size or duration) - never a placeholder. */}
           {(() => {
             const facts = opportunity.ai_extracted_facts;
-            const factsPending = !facts;
+            // O03 (contre-audit 15 Sep): "Différencier une donnée absente de
+            // la source, une analyse en attente et une erreur." This used
+            // `!facts` as a proxy for "pending" - but the real signal
+            // (ai_classification_status) already exists on the record and
+            // was never read here. A 'failed' row showed the same "revenez
+            // bientôt" pending message as a genuinely queued one (it won't
+            // ever finish on its own), and a 'classified' row that simply
+            // found nothing worth extracting read as if analysis were still
+            // running, when it's actually done - there's just nothing more
+            // to say about that particular notice.
+            const status = opportunity.ai_classification_status;
+            const factsPending = !facts && (status === 'not_analyzed' || status === 'processing' || !status);
+            const factsFailed = !facts && status === 'failed';
             const cells: { label: string; value: string }[] = [];
             if (opportunity.estimated_value != null) cells.push({ label: t('quickStatAmount') || 'Montant', value: formatAmount(opportunity.estimated_value, opportunity.currency) });
             if (facts?.team_size_estimate?.available) cells.push({ label: t('quickStatTeam') || 'Équipe', value: facts.team_size_estimate.value });
@@ -1091,7 +1119,13 @@ export default function OpportunityDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-[#B9BBC8]">{factsPending ? (t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.') : (t('quickStatUnavailable') || 'Peu de détails disponibles pour ce marché.')}</p>
+                  <p className="text-xs text-[#B9BBC8]">
+                    {factsFailed
+                      ? (t('quickStatFailed') || "L'analyse automatique de ce marché a échoué. Les informations de la source restent consultables via le lien officiel.")
+                      : factsPending
+                        ? (t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.')
+                        : (t('quickStatUnavailable') || 'Peu de détails disponibles pour ce marché.')}
+                  </p>
                 )}
                 {facts?.contract_object?.available
                   && !isRedundantWithTitle(facts.contract_object.value, opportunity.title)
