@@ -98,10 +98,16 @@ export default function RecherchePage() {
   // G14 (contre-audit 15 Sep): header tag/title/sub and the results-count
   // label were hardcoded to the "sous-traitant" wording no matter which
   // journey brought the visitor here - a marchés-publics search still
-  // said "Je suis sous-traitant" / "missions compatibles". Pick the
-  // matching translation-key suffix; subcontracting (and no journey at
-  // all, e.g. a bare keyword search) keeps the original unsuffixed keys.
-  const headerKeySuffix = journeyParam === 'public_procurement' ? 'Public' : journeyParam === 'tender' ? 'Tender' : '';
+  // said "Je suis sous-traitant" / "missions compatibles". Fixed for the
+  // header's own type-menu links (which do send journey=...), but the
+  // map on HomePage (buildSearchUrl) links to /recherche with region/
+  // department/city/trade_id params and NEVER a journey - those searches
+  // mix every opportunity type by geography or sector, yet still fell
+  // into this same '' branch and inherited the subcontractor-specific
+  // wording by default. Genuine subcontracting (explicit journeyParam)
+  // keeps the original unsuffixed keys; no journey at all now gets its
+  // own neutral wording instead of silently reusing subcontracting's.
+  const headerKeySuffix = journeyParam === 'public_procurement' ? 'Public' : journeyParam === 'tender' ? 'Tender' : journeyParam === 'subcontracting' ? '' : 'Neutral';
 
   // Add state for radius (decorative for now - main list endpoint has no
   // geo-radius filter, only /stats/near does; out of scope for this fix)
