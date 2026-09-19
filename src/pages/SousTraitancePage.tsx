@@ -165,7 +165,32 @@ export default function SousTraitancePage() {
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
           {!loading && error && <OpportunitiesPendingState />}
           {!loading && !error && results.length === 0 && (
-            <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
+            <div className="text-center py-10 px-4">
+              {hasFilters ? (
+                <>
+                  <p className="text-[11px] text-[#B9BBC8] mb-2">{t('appelsEmptyFiltered') || 'Aucune opportunité ne correspond à ces critères.'}</p>
+                  <button onClick={resetFilters} className="text-xs font-semibold text-orange hover:underline">{t('appelsReset') || 'Réinitialiser les filtres'}</button>
+                </>
+              ) : (
+                // Client report (sous-traitance quasi vide): unlike Batiweb/
+                // tender, there is genuinely no ingestion source at all for
+                // the subcontracting opportunity_type - nothing in
+                // dataCollectionService or the classification pipeline ever
+                // sets it, so this pool is structurally empty by
+                // construction, not just thin. Said honestly, and pointed
+                // at the one real path that can populate this journey:
+                // companies posting their own needs (subcontract_needs /
+                // "Je cherche un sous-traitant").
+                <>
+                  <p className="text-[11px] text-[#B9BBC8] max-w-[42ch] mx-auto mb-3">
+                    {t('subEmptyNoFilters') || "Peu de missions de sous-traitance sont publiées pour le moment - ce sont les entreprises elles-mêmes qui les déposent."}
+                  </p>
+                  <a href="/parcours?type=sous-traitance" className="text-xs font-semibold text-orange hover:underline">
+                    {t('subEmptyCta') || 'Publier un besoin de sous-traitance →'}
+                  </a>
+                </>
+              )}
+            </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -134,7 +134,31 @@ export default function AppelsPage() {
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
           {!loading && error && <OpportunitiesPendingState />}
           {!loading && !error && results.length === 0 && (
-            <div className="text-center text-[11px] text-[#B9BBC8] py-8">Aucune opportunité ne correspond à ces critères.</div>
+            <div className="text-center py-10 px-4">
+              {hasFilters ? (
+                <>
+                  <p className="text-[11px] text-[#B9BBC8] mb-2">{t('appelsEmptyFiltered') || 'Aucune opportunité ne correspond à ces critères.'}</p>
+                  <button onClick={resetFilters} className="text-xs font-semibold text-orange hover:underline">{t('appelsReset') || 'Réinitialiser les filtres'}</button>
+                </>
+              ) : (
+                // Client report (appels d'offres privés quasi vides):
+                // BOAMP/PLACE/TED/DECP only cover public procurement -
+                // Batiweb is the sole private-tender source, so this pool
+                // is genuinely thin right now regardless of filters. The
+                // old flat "no match for these criteria" message was
+                // misleading with zero filters applied - it implies
+                // narrowing is the problem when the real issue is volume.
+                // Said honestly instead, with somewhere else to go.
+                <>
+                  <p className="text-[11px] text-[#B9BBC8] max-w-[42ch] mx-auto mb-3">
+                    {t('appelsEmptyNoFilters') || "Peu d'appels d'offres privés sont disponibles pour le moment - de nouvelles opportunités sont ajoutées régulièrement."}
+                  </p>
+                  <a href="/marches-publics" className="text-xs font-semibold text-orange hover:underline">
+                    {t('appelsEmptyCta') || 'Voir les marchés publics en attendant →'}
+                  </a>
+                </>
+              )}
+            </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
