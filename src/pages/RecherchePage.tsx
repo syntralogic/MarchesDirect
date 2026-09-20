@@ -21,7 +21,7 @@ function normalizeFr(s: string): string {
 export default function RecherchePage() {
   const { t } = useLang();
   const { companyKnown } = useCompanyKnown();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // N02 (contre-audit 15 Sep): a `q=` param arriving in the URL (from
   // /secteurs cards, or anyone sharing a search link) was silently
@@ -120,17 +120,29 @@ export default function RecherchePage() {
   // recently-published rows per opportunityStatusJob's comments), so it
   // maps to the default "no status filter" browse view rather than a
   // literal status value.
-  const [statutFilter, setStatutFilter] = useState('');
+  // Client (19/20 Sep): "les retours en arrière doivent conserver ...
+  // les critères de recherche." searchParams was read-only here - nothing
+  // typed into search/location/filters/sort ever got written back to the
+  // URL, so browser back re-mounted this page against whatever URL it
+  // happened to arrive on (often empty), silently discarding everything
+  // the visitor had actually searched for. Every filter now round-trips
+  // both ways: read here on mount, and written back below whenever it
+  // changes (see the setSearchParams effect near `applied`).
+  const [statutFilter, setStatutFilter] = useState(searchParams.get('status') || '');
   // R04's deeper fix already classifies opportunities server-side; this is
   // just the control that was missing to actually filter by it.
-  const [natureFilter, setNatureFilter] = useState<string[]>([]);
-  const [montantMin, setMontantMin] = useState('');
-  const [montantMax, setMontantMax] = useState('');
+  const [natureFilter, setNatureFilter] = useState<string[]>(
+    searchParams.get('nature')?.split(',').filter(Boolean) || []
+  );
+  const [montantMin, setMontantMin] = useState(searchParams.get('min_value') || '');
+  const [montantMax, setMontantMax] = useState(searchParams.get('max_value') || '');
   // R08 (client audit): "filtering isn't sorting" - filters existed but no
   // explicit sort control did. Defaults to the same active-first/soonest-
   // deadline order the results used before this control existed, so
   // nothing changes until the visitor picks something else.
-  const [sort, setSort] = useState<'deadline' | 'recent' | 'match'>('deadline');
+  const [sort, setSort] = useState<'deadline' | 'recent' | 'match'>(
+    (searchParams.get('sort') as 'deadline' | 'recent' | 'match' | null) || 'deadline'
+  );
 
   const debouncedQuery = useDebounce(query, 400);
   const debouncedLocation = useDebounce(location, 400);
@@ -146,13 +158,44 @@ export default function RecherchePage() {
   // debounced ones as the user types, but the button (and Enter, via the
   // form's onSubmit) now bypasses the debounce and applies the raw
   // current field values right away.
-  const [applied, setApplied] = useState({ query: initialQuery, location: '', montantMin: '', montantMax: '' });
+  // Was hardcoded location: '' here even when a URL param (region/
+  // department/city) had already seeded the `location` field above - so
+  // the very first search fired (before the debounce effect below ever
+  // runs) went out with no location filter at all, briefly showing
+  // unfiltered/national results before narrowing a moment later. Seeds
+  // from the same value `location` itself was just initialized from.
+  const [applied, setApplied] = useState({ query: initialQuery, location: initialRegion || initialDepartment || initialCity, montantMin: searchParams.get('min_value') || '', montantMax: searchParams.get('max_value') || '' });
   useEffect(() => {
     const field = resolveLocationField(debouncedLocation);
     setLocationField(field);
     setApplied({ query: debouncedQuery, location: resolveLocationValue(debouncedLocation, field), montantMin: debouncedMontantMin, montantMax: debouncedMontantMax });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, debouncedLocation, debouncedMontantMin, debouncedMontantMax, departements]);
+
+  // Writes the actually-applied search state back into the URL (replace,
+  // not push, so this doesn't spam browser history on every keystroke/
+  // filter change) - the other half of the fix above. Without this,
+  // reaching this page any way other than a literal reload always started
+  // from an empty/stale URL, and `applied`/statutFilter/natureFilter/sort
+  // typed or picked afterward were never reflected there - so a later
+  // back-navigation (or reload, or copying the link) always lost them.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (applied.query) next.set('q', applied.query);
+    if (applied.location) {
+      const values = applied.location.split(',').map((s) => s.trim()).filter(Boolean);
+      values.forEach((v) => next.append(locationField, v));
+    }
+    if (tradeId) next.set('trade_id', tradeId);
+    if (journeyParam) next.set('journey', journeyParam);
+    if (statutFilter) next.set('status', statutFilter);
+    if (natureFilter.length > 0) next.set('nature', natureFilter.join(','));
+    if (applied.montantMin) next.set('min_value', applied.montantMin);
+    if (applied.montantMax) next.set('max_value', applied.montantMax);
+    if (sort !== 'deadline') next.set('sort', sort);
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applied, locationField, tradeId, journeyParam, statutFilter, natureFilter, sort]);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
