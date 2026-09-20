@@ -349,7 +349,33 @@ export default function OpportunityDetailPage() {
   // matching "Affinez votre concordance" right above it - was previously
   // always expanded with no toggle at all.
   const [strengthsOpen, setStrengthsOpen] = useState(false);
-  const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>({});
+  // Client (19 Sep): "les retours en arrière doivent conserver l'entreprise,
+  // les réponses et les critères de recherche." Company identification
+  // (CompanyKnownContext) and search criteria (RecherchePage's own
+  // sessionStorage/URL state) already survive client-side navigation - this
+  // was the one gap: refineAnswers is local component state, so leaving
+  // this fiche and coming back (even just SPA back/forward, not just a full
+  // reload) remounted the page with every "Affinez votre concordance"
+  // answer wiped. Same per-opportunity sessionStorage pattern already used
+  // for getConsultationsCount above.
+  const refineAnswersStorageKey = id ? `md_refine_answers_${id}` : null;
+  const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>(() => {
+    if (!refineAnswersStorageKey) return {};
+    try {
+      const raw = sessionStorage.getItem(refineAnswersStorageKey);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  useEffect(() => {
+    if (!refineAnswersStorageKey) return;
+    try {
+      sessionStorage.setItem(refineAnswersStorageKey, JSON.stringify(refineAnswers));
+    } catch {
+      // sessionStorage unavailable - answers just won't survive navigation this session
+    }
+  }, [refineAnswers, refineAnswersStorageKey]);
   const [refineFinished, setRefineFinished] = useState(false);
   const [excerptOpen, setExcerptOpen] = useState(false);
   const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);

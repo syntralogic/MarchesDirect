@@ -18,8 +18,9 @@ const toEmbedUrl = (url: string): string => {
   return url; // direct .mp4 or already-an-embed URL
 };
 
-export default function DemoVideoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function DemoVideoModal({ open, onClose, videoUrl, title }: { open: boolean; onClose: () => void; videoUrl?: string; title?: string }) {
   if (!open) return null;
+  const url = videoUrl !== undefined ? videoUrl : DEMO_VIDEO_URL;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -29,8 +30,8 @@ export default function DemoVideoModal({ open, onClose }: { open: boolean; onClo
           <X size={16} />
         </button>
 
-        {DEMO_VIDEO_URL ? (
-          DEMO_VIDEO_URL.endsWith('.mp4') ? (
+        {url ? (
+          url.endsWith('.mp4') ? (
             // The bundled demo.mp4 is a portrait screen recording
             // (478x850, ~9:16) - forcing it into a 16:9 aspect-video box
             // (the embed case below) pillarboxed it down to a small strip
@@ -38,23 +39,23 @@ export default function DemoVideoModal({ open, onClose }: { open: boolean; onClo
             // clip's aspect ratio and capped by viewport height instead, so
             // it fills the modal properly on a phone.
             <div className="aspect-[478/850] max-h-[80vh] mx-auto bg-black">
-              <video src={DEMO_VIDEO_URL} controls autoPlay className="w-full h-full object-contain" />
+              <video src={url} controls autoPlay className="w-full h-full object-contain" />
             </div>
           ) : (
             <div className="aspect-video bg-black">
               <iframe
-                src={toEmbedUrl(DEMO_VIDEO_URL)}
+                src={toEmbedUrl(url)}
                 className="w-full h-full"
                 allow="autoplay; fullscreen"
                 allowFullScreen
-                title="Démo Marchés Direct"
+                title={title || "Démo Marchés Direct"}
               />
             </div>
           )
         ) : (
           <div className="aspect-video flex flex-col items-center justify-center gap-3 p-6 text-center">
             <PlayCircle size={40} className="text-orange/60" />
-            <p className="text-sm font-semibold text-white">Vidéo de démonstration bientôt disponible</p>
+            <p className="text-sm font-semibold text-white">{title ? `${title} — vidéo bientôt disponible` : 'Vidéo de démonstration bientôt disponible'}</p>
             <p className="text-xs text-[#B9BBC8] flex items-center gap-1.5">
               <Clock size={12} /> En attendant, découvrez le fonctionnement dans le guide d'utilisation.
             </p>

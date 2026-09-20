@@ -195,31 +195,21 @@ function DemoWalkthroughSection() {
 
       <button
         onClick={() => setDemoOpen(true)}
-        className="w-full text-left rounded-2xl border border-[#17334D] bg-gradient-to-br from-[#0B2A46] to-[#061D32] p-4 md:p-6 mb-6 relative overflow-hidden hover:border-orange/50 transition-colors"
+        className="w-full text-left rounded-2xl border border-[#17334D] bg-[#061D32] mb-6 relative overflow-hidden hover:border-orange/50 transition-colors group"
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <PlayCircle size={18} className="text-orange" />
-            <span className="text-[11px] font-bold text-white uppercase tracking-widest">Démo vidéo</span>
-          </div>
-          <span className="text-[11px] font-bold text-white bg-black/40 border border-[#17334D] rounded-md px-2 py-0.5">00:52</span>
-        </div>
-        <div className="relative h-40 md:h-56 flex items-center justify-center">
-          <div className="absolute left-0 top-4 bg-[#061D32]/90 border border-[#17334D] rounded-lg px-3 py-2 text-[11px] text-white w-40">
-            <div className="font-bold">Marchés <span className="text-orange">Direct</span></div>
-            <div className="text-[#B9BBC8] text-[10px] mt-1">Votre opportunité · Installation de chaudière</div>
-          </div>
-          <div className="absolute right-0 top-2 bg-white rounded-lg px-3 py-2 text-[#061D32] shadow-lg w-28">
-            <div className="text-2xl font-extrabold leading-none">78 %</div>
-            <div className="text-[10px] text-[#061D32]/70 font-medium">Concordance</div>
-          </div>
-          <span className="relative w-14 h-14 rounded-full bg-orange flex items-center justify-center shadow-lg">
+        {/* Client (20 Sep): real thumbnail image for the demo video, click
+            opens the actual demo (DemoVideoModal / public/demo.mp4) -
+            replaces the hand-built div mockup that used to stand in for it. */}
+        <img
+          src="/testimonials/demo-plateforme.jpeg"
+          alt="Démo de la plateforme : de l'offre au dossier"
+          className="w-full h-auto block"
+        />
+        <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+          <span className="w-14 h-14 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
             <PlayCircle size={28} className="text-white" />
           </span>
-        </div>
-        <p className="text-sm md:text-base font-bold text-white mt-4 leading-snug">
-          Choisissez votre zone.<br />Découvrez comment candidater.
-        </p>
+        </span>
       </button>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
@@ -293,11 +283,21 @@ function DemoWalkthroughSection() {
 // TESTIMONIALS ("Des entrepreneurs racontent leur candidature.")
 // ---------------------------------------------------------------------------
 function TestimonialsSection() {
+  // Client (20 Sep): "Les trois photos que je t'ai envoyées serviront de
+  // vignettes pour les vidéos sur le site. Lorsqu'un visiteur cliquera sur
+  // l'une d'elles, il accédera à la vidéo correspondante." Real thumbnails
+  // (with their own baked-in text/branding) replace the old hand-built
+  // placeholder circle + "À intégrer" badge. The third image (plateforme
+  // demo) is wired above to the real public/demo.mp4. These two are
+  // testimonial-specific clips the client hasn't sent video files for yet -
+  // only the thumbnails - so they honestly fall back to DemoVideoModal's
+  // "vidéo bientôt disponible" state on click rather than faking a video.
   const slides = [
-    { title: 'Son premier dossier, étape par étape.', note: 'Portrait, identité du client et vidéo à intégrer.' },
-    { title: "De la recherche à la signature, sans stress.", note: 'Portrait, identité du client et vidéo à intégrer.' },
+    { title: 'Un contrat de plus de 345 000 € — maintenance de chaudières.', image: '/testimonials/temoignage-chaudieres.jpeg', alt: 'Témoignage client : contrat de plus de 345 000 € en maintenance de chaudières' },
+    { title: 'Un contrat de plus de 125 000 € — menuiseries pour un lotissement (exemple fictif).', image: '/testimonials/exemple-menuiseries.jpeg', alt: 'Exemple fictif : contrat de plus de 125 000 € en pose de fenêtres et portes' },
   ];
   const [i, setI] = useState(0);
+  const [videoOpen, setVideoOpen] = useState(false);
   const slide = slides[i];
   return (
     <section id="mdh-temoignages" className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
@@ -309,45 +309,40 @@ function TestimonialsSection() {
       </h2>
 
       <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-4 md:p-5">
-        <div className="relative rounded-xl border border-[#17334D] bg-[#031B30] overflow-hidden">
-          <div className="flex items-center justify-between px-3 pt-3">
-            <div className="flex items-center gap-2">
-              <PlayCircle size={16} className="text-orange" />
-              <span className="text-[10px] font-bold text-white uppercase tracking-widest">Témoignage vidéo</span>
-            </div>
-            <span className="text-[10px] font-bold text-white bg-orange rounded-md px-2 py-0.5">À intégrer</span>
-          </div>
-
-          <div className="flex items-center justify-between px-3 py-6">
-            <button
-              onClick={() => setI((i - 1 + slides.length) % slides.length)}
-              className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
-              aria-label="Témoignage précédent"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="w-14 h-14 rounded-full bg-orange flex items-center justify-center shadow-lg">
+        <button
+          onClick={() => setVideoOpen(true)}
+          className="relative w-full rounded-xl border border-[#17334D] overflow-hidden block group"
+        >
+          <img src={slide.image} alt={slide.alt} className="w-full h-auto block" />
+          <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+            <span className="w-14 h-14 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
               <PlayCircle size={28} className="text-white" />
             </span>
-            <button
-              onClick={() => setI((i + 1) % slides.length)}
-              className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
-              aria-label="Témoignage suivant"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
+          </span>
+        </button>
 
-          <p className="px-4 pb-4 text-sm md:text-base font-bold text-white leading-snug">
-            {slide.title}
+        <div className="flex items-center justify-center gap-3 mt-3">
+          <button
+            onClick={() => setI((i - 1 + slides.length) % slides.length)}
+            className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
+            aria-label="Témoignage précédent"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <p className="text-[11px] text-[#B9BBC8] text-center">
+            Témoignage {i + 1} sur {slides.length}
           </p>
+          <button
+            onClick={() => setI((i + 1) % slides.length)}
+            className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
+            aria-label="Témoignage suivant"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
-
-        <p className="text-[11px] text-[#B9BBC8] mt-3">{slide.note}</p>
-        <p className="text-[11px] text-[#B9BBC8] text-center mt-3">
-          Témoignage {i + 1} sur {slides.length}
-        </p>
       </div>
+
+      <DemoVideoModal open={videoOpen} onClose={() => setVideoOpen(false)} videoUrl="" title={slide.title} />
     </section>
   );
 }
