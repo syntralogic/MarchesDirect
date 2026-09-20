@@ -255,6 +255,16 @@ export type ApiMatchScore = {
   scoreDisclaimer: string;
   matchLabel: string | null;
   positiveFactors: { label: string; points: number }[];
+  // Line-by-line numerical justification of `score` (every criterion, earned
+  // or not, with points) plus the formula that turns the points into the
+  // displayed percentage. Optional: older backends don't send it.
+  scoreBreakdown?: {
+    kind: 'listing' | 'profile';
+    items: { label: string; points: number; maxPoints: number; earned: boolean; detail: string }[];
+    earnedPoints: number;
+    cappedPoints: number;
+    formula: string;
+  };
   warning: string | null;
   criteria: { label: string; weight: number }[];
   eligibility: { label: string; note: string; required: boolean; met: boolean | null }[];
