@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
@@ -10,6 +11,12 @@ import { getSessionId } from '@/lib/visitorTracking';
 interface AppointmentModalProps {
   open: boolean;
   onClose: () => void;
+  // When the modal is opened from a context that already knows why the
+  // visitor wants a rendez-vous (e.g. a specific tender's dossier page), the
+  // motif is pre-selected (step 1 is skipped) and the market is attached to
+  // the lead so the visitor isn't asked to re-state what the page implies.
+  defaultMotif?: string;
+  marketLabel?: string;
 }
 
 const MOTIFS = [
@@ -63,10 +70,14 @@ function nextBusinessDaySlots(count: number): { date: string; slots: string[] }[
 
 const AVAILABLE_SLOTS = nextBusinessDaySlots(5);
 
-export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
+export function AppointmentModal({ open, onClose, defaultMotif, marketLabel }: AppointmentModalProps) {
   const { t } = useLang();
   const { brandId } = useBrand();
   const { user, company } = useAuth();
+  // Anonymous visitors who identified their company (SIRET) and left their
+  // email/phone on the dossier flow have no AuthContext account - their
+  // details live here instead.
+  const { company: anonCompany, leadEmail, leadPhone } = useCompanyKnown();
   const [step, setStep] = useState(1);
   const [motif, setMotif] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -89,12 +100,20 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
       const nom = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : (company?.contact_name || '');
       return {
         nom: nom || f.nom,
-        entreprise: company?.name || f.entreprise,
-        email: user?.email || company?.email || f.email,
-        telephone: company?.phone || f.telephone,
+        entreprise: company?.name || anonCompany?.name || f.entreprise,
+        email: user?.email || company?.email || leadEmail || f.email,
+        telephone: company?.phone || leadPhone || f.telephone,
       };
     });
-  }, [open, user, company]);
+  }, [open, user, company, anonCompany, leadEmail, leadPhone]);
+
+  // Motif already implied by the page that opened the modal: pre-select it
+  // and start at the date step instead of asking again.
+  useEffect(() => {
+    if (!open || !defaultMotif) return;
+    setMotif(m => m || defaultMotif);
+    setStep(s => (s === 1 ? 2 : s));
+  }, [open, defaultMotif]);
 
   // Client's 12 Sep report: opening this modal (now reachable from several
   // new "Générer mon dossier" buttons on the dossier hub) left the page
@@ -146,7 +165,7 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
         phone: form.telephone || undefined,
         companyName: form.entreprise || undefined,
         leadSource: 'appointment_modal',
-        message: `Motif : ${motif}\nCréneau souhaité : ${selectedDate} à ${selectedSlot}`,
+        message: `Motif : ${motif}${marketLabel ? `\nMarché : ${marketLabel}` : ''}\nCréneau souhaité : ${selectedDate} à ${selectedSlot}`,
         sessionId: getSessionId(),
       });
       setStep(5);
@@ -191,6 +210,12 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
         </div>
 
         <div className="p-5">
+          {marketLabel && step < 5 && (
+            <p className="text-xs text-brand-muted mb-4 -mt-1">
+              Marché : <span className="text-brand-primary font-medium">{marketLabel}</span>
+              {motif && step > 1 && <> · Motif : <span className="text-brand-primary font-medium">{motif}</span></>}
+            </p>
+          )}
           {/* Step 1: Motif */}
           {step === 1 && (
             <div>
