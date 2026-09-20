@@ -18,7 +18,7 @@ interface CompanyKnownContextType {
   phoneVerified: boolean;
   lookup: (query: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
   confirm: (siret: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
-  captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null }>;
+  captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null; dossierEmailed?: boolean }>;
   confirmPhoneVerified: () => void;
 }
 
@@ -105,7 +105,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
   // never re-asked on another opportunity.
   const captureLead = useCallback(async (phone: string, email: string, opportunityId?: string) => {
     try {
-      await siretApi.captureLead(phone, email, getSessionId(), opportunityId);
+      const result = await siretApi.captureLead(phone, email, getSessionId(), opportunityId);
       setLeadCaptured(true);
       // A freshly submitted/edited phone hasn't been OTP-confirmed yet, even
       // if an earlier phone this session was. confirmPhoneVerified() below
@@ -113,7 +113,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
       if (phone !== leadPhone) setPhoneVerified(false);
       setLeadPhone(phone);
       setLeadEmail(email);
-      return { error: null };
+      return { error: null, dossierEmailed: result.dossierEmailed };
     } catch (err) {
       return { error: getApiErrorMessage(err, "L'enregistrement de vos coordonnées a échoué.") };
     }
