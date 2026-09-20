@@ -556,6 +556,22 @@ export default function OpportunityDetailPage() {
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
+  // Client (19 Sep): "reproduire le fonctionnement de la carte interactive:
+  // les réponses aux quatre questions doivent afficher les points ajoutés
+  // et actualiser immédiatement le score, selon le barème prévu. Exemple:
+  // +2 points, puis passage de 50% à 52%. Modifier une réponse doit
+  // également recalculer le résultat." The 15 Sep contre-audit had this
+  // refinement block as pure self-reflection with zero effect on the score
+  // (illustrative points were leaking into the UI as if real, so they were
+  // removed entirely) - the client is now asking for the opposite: a real,
+  // stated barème that genuinely moves the number, live, as each question
+  // is answered or changed. refineAdjustment is a plain derived value off
+  // refineAnswers (not its own state), so changing any answer recomputes
+  // it automatically on the next render - no separate "recalculate" step
+  // needed to satisfy "modifier une réponse doit également recalculer".
+  const REFINE_POINTS: Record<'oui' | 'non' | 'a_confirmer', number> = { oui: 2, non: -3, a_confirmer: 0 };
+  const refineAdjustment = Object.values(refineAnswers).reduce((sum: number, v) => sum + (v ? REFINE_POINTS[v] : 0), 0);
+  const displayScore = matchScore ? Math.max(0, Math.min(100, matchScore.score + refineAdjustment)) : 0;
   const [siretInput, setSiretInput] = useState('');
   const [siretSubmitting, setSiretSubmitting] = useState(false);
   const [siretError, setSiretError] = useState<string | null>(null);
@@ -1508,16 +1524,28 @@ export default function OpportunityDetailPage() {
                     <circle
                       cx="50" cy="50" r="42" fill="none" stroke="#FF7A00" strokeWidth="10" strokeLinecap="round"
                       strokeDasharray={2 * Math.PI * 42}
-                      strokeDashoffset={2 * Math.PI * 42 * (1 - matchScore.score / 100)}
+                      strokeDashoffset={2 * Math.PI * 42 * (1 - displayScore / 100)}
+                      className="transition-[stroke-dashoffset] duration-500 ease-out"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-extrabold text-white">{matchScore.score}%</span>
+                    <span className="text-2xl font-extrabold text-white">{displayScore}%</span>
+                    {refineAdjustment !== 0 && (
+                      <span className={`text-[10px] font-bold ${refineAdjustment > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {refineAdjustment > 0 ? '+' : ''}{refineAdjustment} pts
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex-1 w-full min-w-0">
                   <p className="text-base font-bold text-white">{t('scoreIndexTitle') || 'Indice de concordance'}</p>
                   <p className="text-sm text-[#B9BBC8] mt-1.5 leading-relaxed">{t('scoreIndexDesc') || 'Ce score compare le profil de votre entreprise aux exigences du marché, à partir des informations disponibles. Vos réponses permettent de préciser cette évaluation.'}</p>
+                  {/* Client (19 Sep): "expliquer sur quels critères repose le
+                      pourcentage." Barème stated once, next to the number it
+                      affects, rather than left implicit. */}
+                  <p className="text-[11px] text-[#B9BBC8] mt-2">
+                    {t('scoreBaremeExplain') || 'Le score de base évalue le marché ; chaque réponse "Affinez votre concordance" ci-dessous l\'ajuste : Oui = +2, À confirmer = 0, Non = −3 points.'}
+                  </p>
                 </div>
               </div>
 
@@ -1625,8 +1653,10 @@ export default function OpportunityDetailPage() {
                         ))}
                       </div>
                       {refineAnswers[row.key] && (
-                        <p className="text-[11px] text-green-400 mt-2">
-                          {t('refineFeedbackSaved') || 'Réponse enregistrée.'}
+                        <p className={`text-[11px] mt-2 font-semibold ${
+                          REFINE_POINTS[refineAnswers[row.key]!] > 0 ? 'text-green-400' : REFINE_POINTS[refineAnswers[row.key]!] < 0 ? 'text-red-400' : 'text-[#B9BBC8]'
+                        }`}>
+                          {REFINE_POINTS[refineAnswers[row.key]!] > 0 ? '+' : ''}{REFINE_POINTS[refineAnswers[row.key]!]} {t('refinePointsLabel') || 'points'}
                         </p>
                       )}
                     </div>
