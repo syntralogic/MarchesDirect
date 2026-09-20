@@ -17,7 +17,7 @@ import DemoVideoModal from '@/components/DemoVideoModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { tradesApi, type ApiTrade } from '@/lib/apiClient';
 import { tradeIcon } from '@/lib/tradeIcons';
-import { frenchCitiesGeo } from '@/data/frenchCitiesGeo';
+import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 import { useOpportunityCounts } from '@/hooks/use-opportunity-counts';
 
@@ -577,6 +577,44 @@ function GeographicSection() {
     const [lng, lat] = c.coords;
     return Math.abs(lng - centerLng) <= halfLng && Math.abs(lat - centerLat) <= halfLat;
   });
+  // Client (19/20 Sep): "afficher trois ou quatre villes principales par
+  // département... Bordeaux, Mérignac et Pessac se chevauchent." Tier
+  // filtering above has no notion of department - once tier 3 opens up,
+  // every close-together small town in the same département (Bordeaux +
+  // Mérignac + Pessac sit within ~8km of each other) appears at once. Cap
+  // each département to 4 markers: always keep its highest-tier city
+  // (the anchor), then greedily add whichever remaining candidate is
+  // farthest from what's already picked, so the picks spread across the
+  // département (e.g. Bordeaux, Libourne, Langon, Arcachon) instead of
+  // clustering around the first one found.
+  const MAX_CITIES_PER_DEPARTMENT = 4;
+  const visibleCitiesCapped = (() => {
+    const byDept = new Map<string, CityGeo[]>();
+    for (const c of visibleCities) {
+      const list = byDept.get(c.department) || [];
+      list.push(c);
+      byDept.set(c.department, list);
+    }
+    const distSq = (a: [number, number], b: [number, number]) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+    const result: CityGeo[] = [];
+    for (const list of byDept.values()) {
+      if (list.length <= MAX_CITIES_PER_DEPARTMENT) { result.push(...list); continue; }
+      const sortedByTier = [...list].sort((a, b) => a.tier - b.tier);
+      const chosen: CityGeo[] = [sortedByTier[0]];
+      const remaining = sortedByTier.slice(1);
+      while (chosen.length < MAX_CITIES_PER_DEPARTMENT && remaining.length > 0) {
+        let bestIdx = 0, bestMinDist = -1;
+        remaining.forEach((cand, i) => {
+          const minDist = Math.min(...chosen.map(ch => distSq(ch.coords, cand.coords)));
+          if (minDist > bestMinDist) { bestMinDist = minDist; bestIdx = i; }
+        });
+        chosen.push(remaining[bestIdx]);
+        remaining.splice(bestIdx, 1);
+      }
+      result.push(...chosen);
+    }
+    return result;
+  })();
   const zoomLevelLabel = labelDensity >= 4 ? 'Élevé' : labelDensity >= 2 ? 'Moyen' : 'Faible';
 
   useEffect(() => {
@@ -882,13 +920,25 @@ function GeographicSection() {
                         ))
                       }
                     </Geographies>
-                    {visibleCities.map(city => {
+                    {visibleCitiesCapped.map(city => {
                       const isSelected = selectedCities.some(c => c.name === city.name);
                       return (
                         <Marker key={city.name} coordinates={city.coords} onClick={() => selectMapCity(city)} style={{ default: { cursor: 'pointer' } }}>
+                          {/* Client (19/20 Sep): "cliquer sur le texte «Libourne»
+                              ne sélectionnait pas la ville, alors que cliquer sur
+                              son point fonctionnait" + "surface suffisante pour
+                              une sélection au doigt." onClick already sits on
+                              the whole <Marker> group, so in principle the text
+                              should fire it too - but an invisible, generously
+                              sized hit-target spanning both the dot and the
+                              label removes any doubt (small text glyphs are an
+                              unreliable tap target on their own, especially on
+                              mobile) rather than relying on SVG event bubbling
+                              through a 9-11px <text> element. */}
+                          <rect x={-24} y={-22} width={48} height={30} fill="transparent" style={{ cursor: 'pointer' }} />
                           {isSelected && <circle r={11} fill="#FF6500" fillOpacity={0.25} />}
                           <circle r={isSelected ? 6 : 4} fill="#FF6500" stroke="#fff" strokeWidth={1.2} />
-                          <text textAnchor="middle" y={-9} style={{ fontSize: isSelected ? 11 : 9, fill: '#fff', fontWeight: isSelected ? 700 : 600, cursor: 'pointer' }}>
+                          <text textAnchor="middle" y={-9} style={{ fontSize: isSelected ? 11 : 9, fill: '#fff', fontWeight: isSelected ? 700 : 600, cursor: 'pointer', pointerEvents: 'none' }}>
                             {city.name}
                           </text>
                         </Marker>
