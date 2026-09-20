@@ -215,6 +215,14 @@ export type OpportunitySearchParams = {
   trade_id?: string;
   region?: string;
   city?: string;
+  // Client audit (19 Sep): city-radius search never filtered by actual
+  // distance - see backend's geocodingService.ts/geocodingBackfillJob.ts.
+  // When both are present alongside radius_km, the backend replaces the
+  // city text-match with a real Haversine distance filter. Omit either
+  // and city (if set) falls back to the existing text-match behavior.
+  lat?: number;
+  lng?: number;
+  radius_km?: number;
   department?: string;
   min_value?: number;
   max_value?: number;
@@ -260,6 +268,23 @@ export const opportunitiesApi = {
       { params }
     );
     return data;
+  },
+  // Client audit (19 Sep): city-radius search never filtered by actual
+  // distance. Resolves a typed city to coordinates via our backend (which
+  // proxies France's official api-adresse.data.gouv.fr) so the search can
+  // then send real lat/lng/radius_km instead of a plain city-name match.
+  geocodeCity: async (city: string, department?: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const { data } = await apiClient.get<{ lat: number; lng: number }>('/opportunities/geocode-city', {
+        params: { city, department },
+      });
+      return data;
+    } catch {
+      // 404 (unresolvable city) or a network hiccup - either way, callers
+      // fall back to the existing city text-match, not an error the
+      // visitor needs to see for what's a progressive enhancement.
+      return null;
+    }
   },
   getCounts: async () => {
     const { data } = await apiClient.get<{ total: number; public_procurement: number; tender: number; subcontracting: number }>(

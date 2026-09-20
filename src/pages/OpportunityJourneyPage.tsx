@@ -101,6 +101,11 @@ export default function OpportunityJourneyPage() {
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
   const [pickedCity, setPickedCity] = useState('');
+  // Coordinates for the currently picked real city (not a whole-area pick,
+  // and not one of the static mockData.ts fallback cities, which have no
+  // coordinates - see the cities import above). null falls back to the
+  // existing city-name text match, same as before this fix.
+  const [pickedCityCoords, setPickedCityCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [radius, setRadius] = useState(50);
   // "Département entier" / "Région entière" need an actual department code
   // / region name to filter by - resolved on demand (see pickWholeDept /
@@ -157,7 +162,12 @@ export default function OpportunityJourneyPage() {
   // the same live api-adresse.data.gouv.fr municipality search HomePage's
   // city search already uses, falling back to the static popular-cities
   // list when the box is empty or the lookup fails.
-  const [cityApiResults, setCityApiResults] = useState<{ name: string }[]>([]);
+  // Client audit (19 Sep): city-radius search never filtered by actual
+  // distance because this autocomplete only ever kept the city NAME from
+  // api-adresse.data.gouv.fr's response and threw away the coordinates it
+  // returns right alongside it. lat/lng now carried through so a real
+  // radius filter has something to filter on (see pickedCityCoords below).
+  const [cityApiResults, setCityApiResults] = useState<{ name: string; lat?: number; lng?: number }[]>([]);
   const [cityApiLoading, setCityApiLoading] = useState(false);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -215,7 +225,12 @@ export default function OpportunityJourneyPage() {
   const { opportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     journey: journeyForApi,
     q: debouncedQuery || undefined,
-    city: cityForApi || undefined,
+    // Real distance filter when the picked city resolved to coordinates
+    // (see pickedCityCoords above); otherwise the existing city text-match.
+    city: cityForApi && !pickedCityCoords ? cityForApi : undefined,
+    lat: cityForApi && pickedCityCoords ? pickedCityCoords.lat : undefined,
+    lng: cityForApi && pickedCityCoords ? pickedCityCoords.lng : undefined,
+    radius_km: cityForApi && pickedCityCoords ? radius : undefined,
     // "Whole department" / "whole region" were previously no-ops: cityForApi
     // goes empty for both (see WHOLE_AREA_PICKS above) and neither param was
     // ever sent, so both silently behaved exactly like "Whole France" -
@@ -313,10 +328,16 @@ export default function OpportunityJourneyPage() {
         if (cancelled) return;
         const features = data?.features || [];
         const seen = new Set<string>();
-        const results: { name: string }[] = [];
+        const results: { name: string; lat?: number; lng?: number }[] = [];
         for (const f of features) {
           const name = f?.properties?.city || f?.properties?.name;
-          if (name && !seen.has(name)) { seen.add(name); results.push({ name }); }
+          if (!name || seen.has(name)) continue;
+          seen.add(name);
+          // GeoJSON order is [lng, lat] - flipped here, once, at the
+          // boundary, so nothing downstream has to remember that.
+          const coords = f?.geometry?.coordinates;
+          const [lng, lat] = Array.isArray(coords) && coords.length === 2 ? coords : [undefined, undefined];
+          results.push({ name, lat, lng });
         }
         setCityApiResults(results);
       })
@@ -421,6 +442,7 @@ export default function OpportunityJourneyPage() {
     );
     setPickedDepartmentName(match?.nom || '');
     setPickedCity('Département entier');
+    setPickedCityCoords(null);
     setSelectedDepartments([]);
   };
 
@@ -437,6 +459,7 @@ export default function OpportunityJourneyPage() {
     setPickedDepartmentName('');
     setPickedRegion(region);
     setPickedCity('Région entière');
+    setPickedCityCoords(null);
     setSelectedDepartments([]);
   };
 
@@ -446,6 +469,7 @@ export default function OpportunityJourneyPage() {
     setPickedDepartmentName('');
     setPickedRegion('');
     setPickedCity('France entière');
+    setPickedCityCoords(null);
     setSelectedDepartments([]);
   };
 
@@ -959,7 +983,7 @@ export default function OpportunityJourneyPage() {
                   return (
                     <button
                       key={d.code}
-                      onClick={() => { toggleDepartment(d); setPickedCity(''); setPickedDepartment(''); setPickedDepartmentName(''); setPickedRegion(''); }}
+                      onClick={() => { toggleDepartment(d); setPickedCity(''); setPickedCityCoords(null); setPickedDepartment(''); setPickedDepartmentName(''); setPickedRegion(''); }}
                       className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
                         isSelected ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
                       }`}
@@ -972,7 +996,7 @@ export default function OpportunityJourneyPage() {
                 {citySuggestions.map(c => (
                   <button
                     key={c.name}
-                    onClick={() => { setPickedCity(`${c.name} — Ville`); setPickedDepartment(''); setPickedDepartmentName(''); setPickedRegion(''); setSelectedDepartments([]); }}
+                    onClick={() => { setPickedCity(`${c.name} — Ville`); setPickedCityCoords(c.lat !== undefined && c.lng !== undefined ? { lat: c.lat, lng: c.lng } : null); setPickedDepartment(''); setPickedDepartmentName(''); setPickedRegion(''); setSelectedDepartments([]); }}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
                       pickedCity.startsWith(c.name) ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
                     }`}
