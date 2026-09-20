@@ -456,13 +456,23 @@ function GeographicSection() {
   // threshold you zoom, unless you'd also happened to drag/search/click
   // your way over there first.
   //
-  // Decoupled: labelDensity is now the only thing the +/- buttons and the
-  // tier thresholds below read. citiesPosition (real pan+zoom, still fully
-  // driven by drag, search and city clicks) is untouched by it, so
-  // increasing density reveals more names across whatever's currently on
-  // screen - including the whole of France at the default view - instead
-  // of also shrinking what's on screen.
-  const [labelDensity, setLabelDensity] = useState(1);
+  // Client audit (19 Sep), point 3: "les boutons + / − ajoutent ou
+  // retirent des noms de villes sans agrandir ou réduire réellement la
+  // carte. Ces boutons doivent modifier le véritable zoom." The G09 fix
+  // above (decoupling label density from citiesPosition.zoom) solved that
+  // bug but created this one - the buttons stopped touching the map's
+  // actual optical zoom at all, which reads as broken zoom controls (and
+  // is: a "+" that doesn't visually enlarge anything is not a zoom
+  // control). Re-merged, but the G09 root cause (a city geographically far
+  // from citiesPosition.coordinates being "revealed" by tier yet clipped
+  // off-screen by a narrow high-zoom viewport) is fixed properly this time
+  // instead of by decoupling: visibleCities below now also checks whether
+  // a city actually falls within the currently visible area (derived from
+  // citiesPosition itself), so the reveal-by-tier and what's physically
+  // on-screen can never disagree again - the buttons drive real zoom, and
+  // "which cities show" adapts to both the zoom level AND the visible part
+  // of the map, per the client's own wording for this point.
+  const labelDensity = citiesPosition.zoom;
 
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({});
   const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
@@ -548,10 +558,24 @@ function GeographicSection() {
     handleCitySearch(city.name);
   };
 
+  // Rough (non-Mercator-accurate, but this codebase already treats
+  // coordinates as plain lng/lat everywhere, not a real GIS projection) half
+  // -span of what's visible around citiesPosition.coordinates at the
+  // current zoom. BASE_HALF_* sized so zoom=1 comfortably covers mainland
+  // France (~-5 to 9.5° lng, ~41 to 51° lat) end to end from the default
+  // center - a city genuinely tier-revealed can only fail the bounds check
+  // once you've actually zoomed/panned in far enough that it's realistically
+  // off-screen, not before.
+  const BASE_HALF_LNG = 8;
+  const BASE_HALF_LAT = 6;
+  const [centerLng, centerLat] = citiesPosition.coordinates;
+  const halfLng = BASE_HALF_LNG / citiesPosition.zoom;
+  const halfLat = BASE_HALF_LAT / citiesPosition.zoom;
   const visibleCities = frenchCitiesGeo.filter(c => {
-    if (c.tier === 1) return true;
-    if (c.tier === 2) return labelDensity >= 2;
-    return labelDensity >= 4;
+    const tierRevealed = c.tier === 1 || (c.tier === 2 && labelDensity >= 2) || (c.tier === 3 && labelDensity >= 4);
+    if (!tierRevealed) return false;
+    const [lng, lat] = c.coords;
+    return Math.abs(lng - centerLng) <= halfLng && Math.abs(lat - centerLat) <= halfLat;
   });
   const zoomLevelLabel = labelDensity >= 4 ? 'Élevé' : labelDensity >= 2 ? 'Moyen' : 'Faible';
 
@@ -875,9 +899,9 @@ function GeographicSection() {
               )}
 
               <div className="absolute top-3 right-3 flex flex-col gap-2">
-                <button onClick={() => setLabelDensity(d => Math.min(d * 1.5, 8))} aria-label="Afficher plus de villes" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
-                <button onClick={() => setLabelDensity(d => Math.max(d / 1.5, 1))} aria-label="Afficher moins de villes" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
-                <button onClick={() => { setLabelDensity(1); setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 }); }} aria-label="Recentrer la carte" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
+                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} aria-label="Zoomer" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
+                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} aria-label="Dézoomer" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
+                <button onClick={() => setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 })} aria-label="Recentrer la carte" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
               </div>
 
               <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-2.5 py-1.5">
