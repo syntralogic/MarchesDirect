@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
@@ -14,20 +14,33 @@ import { useBodyScrollLock } from '@/hooks/use-body-scroll-lock';
 
 // label -> raw INSEE department code, since opportunities store the bare
 // code (e.g. "92") in `department`, not this display label.
-const DEPARTMENTS: { label: string; code: string }[] = [
-  { label: 'Tous', code: 'Tous' },
-  { label: 'Hauts-de-Seine (92)', code: '92' },
-  { label: 'Yvelines (78)', code: '78' },
-  { label: 'Alpes-Maritimes (06)', code: '06' },
-  { label: 'Isère (38)', code: '38' },
-  { label: 'Rhône (69)', code: '69' },
-];
+//
+// Point 6 (20 Sep client audit): "Le filtre département de ce catalogue
+// reste limité à 92, 78, 06, 38 et 69." This was a 5-entry placeholder
+// list (looks like an early Paris/Lyon/Nice test set) - every other
+// department was simply impossible to select here, even though the
+// backend filters on the real code for any of the 101. Loaded the same
+// way RecherchePage already loads the real, full list (departements.json,
+// the same data the working new-formulaire autocomplete uses) instead of
+// a second hardcoded subset that can drift from it.
+type DeptOption = { label: string; code: string };
+const ALL_DEPARTMENTS_FALLBACK: DeptOption[] = [{ label: 'Tous', code: 'Tous' }];
 
 export default function SousTraitancePage() {
   const { t } = useLang();
   const { companyKnown } = useCompanyKnown();
   const trades = useTrades();
   const [mode, setMode] = useState<'chantier' | 'partenaire'>('chantier');
+  const [departments, setDepartments] = useState<DeptOption[]>(ALL_DEPARTMENTS_FALLBACK);
+  useEffect(() => {
+    import('@/data/geo/departements.json').then((m) => {
+      const features = ((m.default as { features: { properties: { code: string; nom: string } }[] }).features) || [];
+      const real = features
+        .map((f) => ({ label: `${f.properties.nom} (${f.properties.code})`, code: f.properties.code }))
+        .sort((a, b) => a.code.localeCompare(b.code));
+      setDepartments([{ label: 'Tous', code: 'Tous' }, ...real]);
+    }).catch(() => {});
+  }, []);
   // Filters live in the URL, not just component state - previously pure
   // useState, so a card link into an opportunity then browser-back
   // remounted this page fresh and silently dropped whatever métier/ville
@@ -74,7 +87,7 @@ export default function SousTraitancePage() {
       <div>
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('subDept')}</label>
         <select value={dept} onChange={e => setDept(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
-          {DEPARTMENTS.map(d => <option key={d.code} value={d.code}>{d.label}</option>)}
+          {departments.map(d => <option key={d.code} value={d.code}>{d.label}</option>)}
         </select>
       </div>
       <div>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -74,7 +74,22 @@ export default function OpportunityJourneyPage() {
   const [callbackOpen, setCallbackOpen] = useState(false);
 
   const [types, setTypes] = useState<OppType[]>([initialType]);
-  const [subRole, setSubRole] = useState<'suis' | 'cherche' | null>(null);
+  // Point 6 (20 Sep client audit): "Je cherche un sous-traitant" mène à
+  // l'inscription; revenir en arrière fait toujours perdre le rôle
+  // choisi." Clicking through to /inscription is a full route change -
+  // this page unmounts, so plain useState can't survive it regardless of
+  // the type-resync effect below. sessionStorage does; scoped to this tab
+  // only, cleared once a role is actively deselected (type switch, "Non,
+  // je cherche du travail" etc. already call setSubRole(null)).
+  const [subRole, setSubRoleState] = useState<'suis' | 'cherche' | null>(
+    () => (sessionStorage.getItem('md_journey_subrole') as 'suis' | 'cherche' | null) || null
+  );
+  const setSubRole = (v: 'suis' | 'cherche' | null) => {
+    setSubRoleState(v);
+    try {
+      if (v) sessionStorage.setItem('md_journey_subrole', v); else sessionStorage.removeItem('md_journey_subrole');
+    } catch { /* private-browsing/storage-disabled: role just won't survive a full remount */ }
+  };
 
   // Header's type menu links all point at this same /parcours route with
   // just a different ?type= - React Router doesn't remount the page for a
@@ -85,10 +100,21 @@ export default function OpportunityJourneyPage() {
   // Sous-traitance encore présent après stabilisation." Re-sync whenever
   // the URL's type actually changes while already on this page.
   const typeParam = searchParams.get('type');
+  // Point 6 (20 Sep client audit): "revenir en arrière fait toujours
+  // perdre le rôle choisi" - this reset step/subRole/buyerNeed on every
+  // mount whenever a `type` URL param was present, not just when it
+  // actually changed. Navigating to /inscription and back remounts this
+  // page with the same unchanged `type` still in the URL, so the
+  // unconditional resets below fired again and wiped the subRole
+  // ("cherche un sous-traitant") the visitor had already picked. Tracks
+  // the last type this effect actually applied so a remount with the
+  // same type is a no-op instead of forcing a fresh reset.
+  const appliedTypeRef = useRef<OppType | null>(initialType);
   useEffect(() => {
     const urlType = TYPE_SLUGS[typeParam || ''];
-    if (!urlType) return;
-    setTypes(prev => (prev.length === 1 && prev[0] === urlType ? prev : [urlType]));
+    if (!urlType || urlType === appliedTypeRef.current) return;
+    appliedTypeRef.current = urlType;
+    setTypes([urlType]);
     setStep(2);
     setSubRole(null);
     setBuyerNeed(null);
