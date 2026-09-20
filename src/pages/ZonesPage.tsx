@@ -3,6 +3,16 @@ import { ChevronRight, MapPin, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLang } from '@/contexts/LangContext';
 import { frenchRegions } from '@/data/mockData';
+import { opportunitiesApi } from '@/lib/apiClient';
+
+// Same accent/case fold HomePage.tsx's map uses for matching /stats/regions'
+// raw (not-always-consistently-accented) region strings against the real
+// 13-region list, so this page's counts agree with the map's and the
+// search results' instead of drifting again the way the old hardcoded
+// numbers did.
+function normalizeFr(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
 
 // Client's contre-audit (15 Sep 2026), ticket N03: this route is meant to
 // be a geographic entry point ("/zones affichait une page de secteur ...
@@ -19,6 +29,24 @@ export default function ZonesPage() {
   const navigate = useNavigate();
   const [deptQuery, setDeptQuery] = useState('');
   const [departements, setDepartements] = useState<{ code: string; nom: string }[] | null>(null);
+  // Client's 20 Sep audit: this page showed hardcoded counts baked into
+  // mockData.frenchRegions (Nouvelle-Aquitaine: 1432, Grand Est: 987 - the
+  // exact stale numbers the audit quoted) while the homepage map and the
+  // actual search results, both reading live /stats/regions data, showed
+  // the real current totals (3 938 / 3 807). Fetches the same endpoint
+  // HomePage's map uses, so this page can't drift from what clicking
+  // through to /recherche actually returns again.
+  const [regionCounts, setRegionCounts] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    opportunitiesApi.statsByRegion()
+      .then(({ regions }) => {
+        const map: Record<string, number> = {};
+        regions.forEach((r) => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
+        setRegionCounts(map);
+      })
+      .catch(() => setRegionCounts({}));
+  }, []);
 
   useEffect(() => {
     import('@/data/geo/departements.json').then((m) => {
@@ -111,7 +139,11 @@ export default function ZonesPage() {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-bold text-white">{region.name}</h3>
-              <p className="text-xs text-[#B9BBC8]">{region.count} {t('zoneOpportunitiesCount') || 'opportunités'}</p>
+              <p className="text-xs text-[#B9BBC8]">
+                {regionCounts === null
+                  ? '…'
+                  : `${regionCounts[normalizeFr(region.name)] ?? 0} ${t('zoneOpportunitiesCount') || 'opportunités'}`}
+              </p>
             </div>
             <ChevronRight size={18} className="text-orange shrink-0 ml-auto group-hover:translate-x-1 transition-transform" />
           </Link>
