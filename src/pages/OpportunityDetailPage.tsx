@@ -75,65 +75,6 @@ function compactOpportunityLabel(title: string, city: string | null, value: numb
   const shortTitle = title.length > titleBudget ? `${title.slice(0, titleBudget - 1).trimEnd()}…` : title;
   return suffix ? `${shortTitle} — ${suffix}` : shortTitle;
 }
-// Client's brief (11 Sep, "compteurs" spec, exact wording): two display-only
-// social-proof counters on the opportunity card - NOT tied to real data
-// ("aucun système de comptage réel"), explicitly because a real 0/1 count on
-// most fiches would be less convincing than a plausible-looking one, and the
-// client was clear these must never be presented as real statistics anywhere
-// they could be checked (no admin toggle to make them "real" later without
-// this comment being revisited).
-//
-// "13 entreprises" - one fixed number per fiche, range 7-18 weighted toward
-// 7-15, red dot does NOT pulse. Seeded from the opportunity id so the same
-// fiche shows the same number on every visit/reload (no flicker on
-// re-render) while different fiches naturally land on different numbers.
-function getInterestedCompaniesCount(opportunityId: string): number {
-  const seed = hashStringToUnit(opportunityId + ':companies');
-  // 80% of fiches land in the tighter 7-15 range the client asked to
-  // favour, the rest spread across the full 7-18 range.
-  if (seed < 0.8) return 7 + Math.floor((seed / 0.8) * 9); // 7-15
-  return 16 + Math.floor(((seed - 0.8) / 0.2) * 3); // 16-18
-}
-// Consultation counter - one value from {2,3,4,5} per fiche, red dot DOES
-// pulse (client: "conserver la légère pulsation"). Client also asked to
-// avoid repeating the same value on two consecutively-viewed fiches -
-// tracked via sessionStorage since that's a cross-page-navigation
-// constraint, not something a single component instance can know on its
-// own. Falls back to the seeded value alone if sessionStorage is
-// unavailable (private browsing etc.) - still random per fiche, just
-// without the no-repeat guarantee.
-function getConsultationsCount(opportunityId: string): number {
-  const options = [2, 3, 4, 5];
-  const seed = hashStringToUnit(opportunityId + ':consultations');
-  let value = options[Math.floor(seed * options.length)];
-  try {
-    const storageKey = 'md_last_consultation';
-    const raw = sessionStorage.getItem(storageKey);
-    const last = raw ? JSON.parse(raw) as { id: string; value: number } : null;
-    if (last && last.id === opportunityId) {
-      // Same fiche shown again this session (e.g. back/forward nav) - keep
-      // the same number rather than reassigning on every visit.
-      return last.value;
-    }
-    if (last && last.value === value) {
-      // Bump to the next option in the fixed cycle so two fiches viewed
-      // back-to-back never show the same count.
-      value = options[(options.indexOf(value) + 1) % options.length];
-    }
-    sessionStorage.setItem(storageKey, JSON.stringify({ id: opportunityId, value }));
-  } catch {
-    // sessionStorage unavailable - value stays the seeded one, just without
-    // the cross-fiche no-repeat guarantee.
-  }
-  return value;
-}
-function hashStringToUnit(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
-  }
-  return (hash % 10000) / 10000;
-}
 // Client's follow-up (11 Sep, dossier-demo message): the red dot on the two
 // social-proof cards must scale in size with the number it's next to
 // ("dont la taille augmente ou diminue selon les données affichées") - not
@@ -633,6 +574,14 @@ export default function OpportunityDetailPage() {
   const REFINE_POINTS: Record<'oui' | 'non' | 'a_confirmer', number> = { oui: 2, non: -3, a_confirmer: 0 };
   const refineAdjustment = Object.values(refineAnswers).reduce((sum: number, v) => sum + (v ? REFINE_POINTS[v] : 0), 0);
   const displayScore = matchScore ? Math.max(0, Math.min(100, matchScore.score + refineAdjustment)) : 0;
+  // 20 Sep audit (Marssac): Concordance said "Le métier n'est pas précisé"
+  // while the notice is plainly about isolation thermique extérieure. The
+  // backend now links/infers the trade itself; if it still has none, the AI's
+  // own matched-trade name is the next real signal before admitting the
+  // métier is unknown.
+  const tradeLabel = opportunity?.trade_name
+    || opportunity?.ai_matched_trades?.find(m => m.trade_name)?.trade_name
+    || null;
   // Client (20 Sep): "dès que les quatre questions sont renseignées, le bloc
   // se ferme automatiquement... Lorsqu'on le rouvre pour corriger ses
   // réponses, il doit rester ouvert pendant les modifications." So this only
@@ -1037,65 +986,31 @@ export default function OpportunityDetailPage() {
           <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('detailDeadline')} : {formatDate(opportunity.deadline)}</span>
           <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
         </div>
-        {/* Social-proof counters, redesigned as 2 cards (client feedback,
-            11 Sep, screenshot): the pill-badge version above wasn't
-            acceptable ("eyse nhi chalega") - client sent the Concordance
-            screen's card style as the reference to match instead
-            ("eyse ho", "yehi 2 cards, baki kuch nahi"). Counts and
-            randomization logic are UNCHANGED (getInterestedCompaniesCount/
-            getConsultationsCount) - only the presentation moved from
-            pill -> card. Kept the disclaimer line on card 1, matching the
-            reference card's own "Exemple illustratif" wording, since these
-            numbers were always meant to be display-only (see the counter
-            functions above), never shown as a verified statistic. */}
-        <div className="space-y-2.5 mt-4">
-          {(() => {
-            const companiesCount = getInterestedCompaniesCount(opportunity.id);
-            const companiesDotPx = socialProofDotSizePx(companiesCount, 7, 18, 6, 14);
-            // C06 (contre-audit 15 Sep): "chiffres de réussite et de
-            // consultation encore annoncés comme illustrations" - this
-            // second card used to be the same seeded-random placeholder as
-            // the first, just with its own disclaimer. Now backed by real
-            // distinct-session view counts (realConsultations, fetched
-            // above from /api/visitor-events/consultations/:id) - no
-            // disclaimer needed since it's no longer a placeholder, and
-            // the card is hidden entirely while loading or on a fetch
-            // failure (null) or when there's genuinely nothing to report
-            // (0) rather than ever showing a fabricated number.
-            const consultationsDotPx = realConsultations != null ? socialProofDotSizePx(realConsultations, 2, 5, 6, 11) : 0;
-            return (
-              <>
-                <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4">
-                  <p className="flex items-center gap-2 text-sm font-bold text-white">
-                    <span
-                      className="rounded-full bg-red-500 shrink-0"
-                      style={{ width: companiesDotPx, height: companiesDotPx }}
-                    />
-                    {companiesCount} {t('interestedCompaniesLabel') || 'entreprises intéressées'}
-                  </p>
-                  <p className="text-xs text-[#B9BBC8] mt-1.5 leading-relaxed">
-                    {t('interestedCompaniesBody') || 'consultent actuellement cette opportunité.'}
-                  </p>
-                  <p className="text-[11px] text-[#5B6B80] mt-2">{t('statsDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
-                </div>
-                {realConsultations != null && realConsultations > 0 && (
-                  <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
-                    <p className="flex items-center gap-2 text-xs text-[#EAF0F6] leading-relaxed">
-                      <span
-                        className="rounded-full bg-red-500 shrink-0 animate-pulse"
-                        style={{ width: consultationsDotPx, height: consultationsDotPx }}
-                      />
-                      <span>
-                        <span className="font-bold text-white">{realConsultations} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
-                        {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
-                      </span>
-                    </p>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-        </div>
+        {/* 20 Sep client audit: "les statistiques illustratives restent
+            visibles." The "N entreprises intéressées" card (a number seeded
+            from the opportunity id, captioned "Exemple illustratif —
+            statistique à vérifier") is gone: a placeholder figure has no
+            place on a fiche whatever its caption says. Only the real
+            distinct-session consultation count (realConsultations, from
+            /api/visitor-events/consultations/:id) remains, and it stays
+            hidden while loading, on a fetch failure, or when it is 0 -
+            never a fabricated number. */}
+        {realConsultations != null && realConsultations > 0 && (
+          <div className="space-y-2.5 mt-4">
+            <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
+              <p className="flex items-center gap-2 text-xs text-[#EAF0F6] leading-relaxed">
+                <span
+                  className="rounded-full bg-red-500 shrink-0 animate-pulse"
+                  style={{ width: socialProofDotSizePx(realConsultations, 2, 5, 6, 11), height: socialProofDotSizePx(realConsultations, 2, 5, 6, 11) }}
+                />
+                <span>
+                  <span className="font-bold text-white">{realConsultations} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
+                  {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
+                </span>
+              </p>
+            </div>
+          </div>
+        )}
       </div>
       )}
 
@@ -1160,11 +1075,18 @@ export default function OpportunityDetailPage() {
                   // ai_classification_status the quick-stats block above
                   // already reads.
                   <p className="text-sm text-[#B9BBC8]">
+                    {/* 20 Sep audit (Romainville): "Analyse en cours de
+                        génération" was shown for not_analyzed / missing
+                        statuses too, i.e. indefinitely for any fiche the
+                        batch job never reached. The backend now classifies
+                        and summarises on open, so "en cours" is only
+                        honest while a run is genuinely active
+                        ('processing'); otherwise say what is true. */}
                     {opportunity.ai_classification_status === 'failed'
                       ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
-                      : (opportunity.ai_classification_status === 'not_analyzed' || opportunity.ai_classification_status === 'processing' || !opportunity.ai_classification_status)
+                      : opportunity.ai_classification_status === 'processing'
                         ? (t('detailAnalysisPending') || 'Analyse en cours de génération pour cette opportunité.')
-                        : (t('detailNoDescription'))}
+                        : (t('detailNoDescription') || "Aucune description détaillée n'est disponible pour cette annonce. Consultez l'annonce officielle ci-dessous.")}
                   </p>
                 )}
               </>
@@ -1206,7 +1128,7 @@ export default function OpportunityDetailPage() {
             // running, when it's actually done - there's just nothing more
             // to say about that particular notice.
             const status = opportunity.ai_classification_status;
-            const factsPending = !facts && (status === 'not_analyzed' || status === 'processing' || !status);
+            const factsPending = !facts && status === 'processing';
             const factsFailed = !facts && status === 'failed';
             const cells: { label: string; value: string }[] = [];
             if (opportunity.estimated_value != null) cells.push({ label: t('quickStatAmount') || 'Montant', value: formatAmount(opportunity.estimated_value, opportunity.currency) });
@@ -1260,6 +1182,10 @@ export default function OpportunityDetailPage() {
             const facts = opportunity.ai_extracted_facts;
             const risks = Array.isArray(facts?.key_risks?.value) ? facts.key_risks.value : [];
             if (facts && (!facts.key_risks?.available || risks.length === 0)) return null; // analyzed, genuinely nothing to flag
+            // 20 Sep audit: with no facts at all this card used to promise
+            // "Analyse en cours" whatever the status (including never-run and
+            // failed). Only claim a run in progress while one actually is.
+            if (!facts && opportunity.ai_classification_status !== 'processing') return null;
             return (
               <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
                 <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
@@ -1591,11 +1517,8 @@ export default function OpportunityDetailPage() {
             <div className="space-y-4">
             {/* Concordance card (client's 12 Sep concordance-apercu
                 reference): ring + "Indice de concordance" description
-                beside it, an illustrative comparable-companies stat (the
-                reference itself labels this "Exemple illustratif -
-                statistique à vérifier", so it's presented as a plausible,
-                clearly-illustrative figure, not a real backend metric), and
-                a highlighted quote using the server-computed whyRespond
+                beside it, the numerical breakdown of the score (20 Sep
+                audit), and a highlighted quote using the server-computed whyRespond
                 text. score/matchLabel/whyRespond are all server-computed
                 (matchScoreService.ts) - never independently derived here. */}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
@@ -1633,36 +1556,79 @@ export default function OpportunityDetailPage() {
                 </div>
               </div>
 
-              {/* Illustrative comparable-win stat, deterministic per
-                  opportunity (not random on every render/refresh) so it
-                  doesn't flicker between values - still explicitly labeled
-                  illustrative per the reference. Reference's own dot is
-                  red with a slow pulse (an "activity" signal), not the
-                  app's usual static orange dot. */}
-              <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
-                <p className="text-base font-bold text-white flex items-center gap-2">
-                  <span className="relative flex w-1.5 h-1.5 shrink-0">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-                    <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
-                  </span>
-                  {(() => {
-                    let h = 0; for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-                    return (8 + (h % 18));
-                  })()} {t('scoreComparableCount') || 'entreprises'}
-                </p>
-                <p className="text-sm text-[#B9BBC8] mt-1.5 leading-relaxed">
-                  {t('scoreComparableDesc') || 'avec un indice de concordance comparable ont remporté un marché similaire au cours des 6 derniers mois.'}
-                </p>
-                <p className="text-[10px] text-[#5B6B80] italic mt-2">{t('scoreComparableDisclaimer') || 'Exemple illustratif — statistique à vérifier.'}</p>
-              </div>
+              {/* Numerical justification of the base score (20 Sep audit:
+                  "la justification chiffrée du score initial reste
+                  insuffisante"). Every criterion is listed with the points it
+                  earned out of its maximum and the reason, followed by the
+                  formula that leads to the percentage above - so the number
+                  can be reconciled line by line instead of being taken on
+                  trust. The user's own "Affinez" adjustment is shown as its
+                  own last line. */}
+              {matchScore.scoreBreakdown && (
+                <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
+                  <p className="text-sm font-bold text-white mb-1">{t('scoreBreakdownTitle') || 'Comment ce score est calculé'}</p>
+                  <p className="text-[11px] text-[#B9BBC8] mb-3">
+                    {matchScore.scoreBreakdown.kind === 'listing'
+                      ? (t('scoreBreakdownListingIntro') || "Ce score de base évalue la complétude de l'annonce, pas votre entreprise. Chaque critère rapporte des points :")
+                      : (t('scoreBreakdownProfileIntro') || "Ce score compare votre profil à l'annonce. Chaque critère rapporte des points :")}
+                  </p>
+                  <ul className="divide-y divide-[#17334D]">
+                    {matchScore.scoreBreakdown.items.map(item => (
+                      <li key={item.label} className="py-2 flex items-start gap-2.5">
+                        {item.earned
+                          ? <CheckCircle2 size={14} className="text-green-400 shrink-0 mt-0.5" />
+                          : <span className="w-[14px] h-[14px] rounded-full border border-[#5B6B80] shrink-0 mt-0.5" />}
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-semibold ${item.earned ? 'text-white' : 'text-[#B9BBC8]'}`}>{item.label}</p>
+                          <p className="text-[11px] text-[#5B6B80] mt-0.5">{item.detail}</p>
+                        </div>
+                        <span className={`text-xs font-bold shrink-0 ${item.earned ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+                          {item.points} / {item.maxPoints}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 pt-3 border-t border-[#17334D] space-y-1.5">
+                    <p className="text-[11px] text-[#B9BBC8] leading-relaxed">{matchScore.scoreBreakdown.formula}</p>
+                    {refineAdjustment !== 0 && (
+                      <p className="text-[11px] text-[#B9BBC8] leading-relaxed">
+                        {(t('scoreBreakdownAdjust') || 'Vos réponses « Affinez votre concordance » : {pts} pts.').replace('{pts}', `${refineAdjustment > 0 ? '+' : ''}${refineAdjustment}`)}
+                        {' '}{(t('scoreBreakdownFinal') || 'Score affiché : {base} % {sign} {abs} = {final} %.')
+                          .replace('{base}', String(matchScore.score)).replace('{sign}', refineAdjustment > 0 ? '+' : '−')
+                          .replace('{abs}', String(Math.abs(refineAdjustment))).replace('{final}', String(displayScore))}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              {/* Fixed copy, matching the reference word for word - kept
-                  separate from matchScore.whyRespond (shown just below,
-                  server-computed) since the reference treats this as a
-                  constant framing line, not a personalized one. */}
-              <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
-                <p className="text-sm text-white leading-relaxed"><span className="font-bold">{t('scoreStructuredTitle') || 'Une consultation structurée.'}</span> {t('scoreStructuredDesc') || 'Le lot, le budget et les critères donnent des repères concrets pour préparer votre candidature.'}</p>
-              </div>
+              {/* The "N entreprises avec un indice comparable ont remporté un
+                  marché similaire" card was removed (20 Sep audit): its number
+                  was derived from the opportunity id, not from any award
+                  data, so it was an invented statistic even with its
+                  "Exemple illustratif" caption. */}
+
+              {/* 20 Sep audit: this was fixed copy claiming "Le lot, le budget
+                  et les critères donnent des repères concrets" on every fiche,
+                  including ones with no announced amount. It now only names
+                  what the notice actually provides. */}
+              {(() => {
+                const repères: string[] = [];
+                if (tradeLabel) repères.push(t('scoreReperLot') || 'le lot');
+                if (opportunity.estimated_value) repères.push(t('scoreReperBudget') || 'le budget');
+                if (opportunity.deadline) repères.push(t('scoreReperDeadline') || "l'échéance");
+                if (repères.length === 0) return null;
+                const list = repères.length > 1 ? `${repères.slice(0, -1).join(', ')} et ${repères[repères.length - 1]}` : repères[0];
+                return (
+                  <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
+                    <p className="text-sm text-white leading-relaxed">
+                      <span className="font-bold">{t('scoreStructuredTitle') || 'Ce que l\'annonce précise.'}</span>{' '}
+                      {(t('scoreStructuredDescDyn') || 'Repères disponibles pour préparer votre candidature : {list}.').replace('{list}', list)}
+                      {!opportunity.estimated_value && ` ${t('scoreBudgetNotCommunicated') || "Le montant n'est pas communiqué."}`}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {matchScore.whyRespond && (
                 <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
@@ -1721,11 +1687,11 @@ export default function OpportunityDetailPage() {
                 return { status: 'to_verify', text: `${base} ${t('concordUnconfirmed') || "Capacité non confirmée par l'entreprise."}` };
               };
               const location = [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ');
-              const metierRow = opportunity.trade_name
+              const metierRow = tradeLabel
                 ? { status: siretCompany?.activity ? 'identified' as const : 'to_verify' as const,
                     text: siretCompany?.activity
-                      ? `${t('concordMetierDemande') || 'Prestation demandée'} : ${opportunity.trade_name} · ${t('concordMetierDeclare') || 'activité déclarée'} : ${siretCompany.activity}`
-                      : `${t('concordMetierDemande') || 'Prestation demandée'} : ${opportunity.trade_name} · ${t('concordMetierManquant') || "activité de l'entreprise non renseignée"}` }
+                      ? `${t('concordMetierDemande') || 'Prestation demandée'} : ${tradeLabel} · ${t('concordMetierDeclare') || 'activité déclarée'} : ${siretCompany.activity}`
+                      : `${t('concordMetierDemande') || 'Prestation demandée'} : ${tradeLabel} · ${t('concordMetierManquant') || "activité de l'entreprise non renseignée"}` }
                 : { status: 'to_verify' as const, text: t('concordMetierAbsent') || "Le métier n'est pas précisé sur cette fiche." };
               const localisationRow = answerNote(
                 'location',
@@ -1881,7 +1847,7 @@ export default function OpportunityDetailPage() {
                 section a row lands in. */}
             {(() => {
               const rows = [
-                { icon: Briefcase, ok: !!opportunity.trade_name, label: t('strengthLot') || 'Lot / métier identifié', desc: opportunity.trade_name || (t('strengthLotMissing') || "Le métier n'est pas précisé sur cette fiche."), verifyLabel: t('verifyLot') || 'Métier à confirmer' },
+                { icon: Briefcase, ok: !!tradeLabel, label: t('strengthLot') || 'Lot / métier identifié', desc: tradeLabel || (t('strengthLotMissing') || "Le métier n'est pas précisé sur cette fiche."), verifyLabel: t('verifyLot') || 'Métier à confirmer' },
                 { icon: Euro, ok: !!opportunity.estimated_value, label: t('strengthBudget') || 'Budget défini', desc: opportunity.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value)} € HT` : (t('strengthBudgetMissing') || "Le montant n'est pas communiqué."), verifyLabel: t('verifyBudget') || 'Budget à vérifier' },
                 { icon: MapPin, ok: !!opportunity.location_city, label: t('strengthLocation') || 'Localisation précisée', desc: [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ') || (t('strengthLocationMissing') || "La localisation n'est pas précisée."), verifyLabel: t('verifyLocation') || 'Localisation à vérifier' },
                 { icon: Calendar, ok: !!opportunity.deadline, label: t('strengthCalendar') || 'Calendrier identifié', desc: opportunity.deadline ? formatDate(opportunity.deadline) : (t('strengthCalendarMissing') || "La date limite n'est pas communiquée."), verifyLabel: t('verifyCalendar') || 'Échéance à vérifier' },
@@ -1970,19 +1936,17 @@ export default function OpportunityDetailPage() {
                       <button type="button" onClick={() => setExcerptOpen(o => !o)} className="flex items-center gap-2 text-sm text-orange font-semibold hover:underline">
                         <Search size={14} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
                       </button>
-                      <div className="flex items-start gap-2 mt-3">
-                        <span className="relative flex w-1.5 h-1.5 shrink-0 mt-1">
-                          <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-                          <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
-                        </span>
-                        <div>
+                      {realConsultations != null && realConsultations > 0 && (
+                        <div className="flex items-start gap-2 mt-3">
+                          <span className="relative flex w-1.5 h-1.5 shrink-0 mt-1">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                            <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
+                          </span>
                           <p className="text-sm text-red-200">
-                            {t('scoreViewersToday', { count: getConsultationsCount(opportunity.id) })
-                              || `${getConsultationsCount(opportunity.id)} entreprises ont consulté cette annonce aujourd'hui`}
+                            {realConsultations} {t('consultationsLabel') || 'consultations récentes'}
                           </p>
-                          <p className="text-[10px] text-red-300/70 mt-1">{t('illustrativeExampleComparative') || 'Exemple illustratif — compteur à vérifier.'}</p>
                         </div>
-                      </div>
+                      )}
                     </div>
                     {excerptOpen && (() => {
                       const answerLabel = (key: string) => {
@@ -2421,7 +2385,7 @@ export default function OpportunityDetailPage() {
             <div className="mt-3">
               <h2 className="text-sm font-bold text-white">{opportunity.title}</h2>
               <p className="text-xs text-[#B9BBC8] mt-1">
-                {opportunity.trade_name}
+                {tradeLabel}
                 {opportunity.deadline && <> · {formatDate(opportunity.deadline)}</>}
               </p>
             </div>
