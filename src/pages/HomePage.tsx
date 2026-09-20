@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Building2, Handshake, ChevronRight, Globe,
@@ -9,7 +9,7 @@ import {
   Euro, FileText, Clock, Lock, Shield, Calendar, Trophy,
 } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
-import { geoCentroid } from 'd3-geo';
+import { geoCentroid, geoMercator } from 'd3-geo';
 import { useLang } from '@/contexts/LangContext';
 import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -20,6 +20,7 @@ import { tradeIcon } from '@/lib/tradeIcons';
 import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 import { useOpportunityCounts } from '@/hooks/use-opportunity-counts';
+import { DEFAULT_CITY_RADIUS_KM } from '@/lib/searchRadius';
 
 import mem1 from "@/assets/1.jpeg";
 
@@ -432,7 +433,17 @@ function GeographicSection() {
   const [cityResult, setCityResult] = useState<{ name: string; coords: [number, number] | null } | null>(null);
   const [cityOpportunities, setCityOpportunities] = useState<ApiOpportunity[]>([]);
   const [cityTotal, setCityTotal] = useState(0);
+  // Perimeter the cityTotal above was actually computed with: DEFAULT_CITY_RADIUS_KM
+  // when the city resolved to coordinates (real distance filter, same as
+  // /recherche), null when it fell back to a plain city-name match.
+  const [cityRadiusKm, setCityRadiusKm] = useState<number | null>(null);
   const [cityLoading, setCityLoading] = useState(false);
+  // Counter shown on the "Voir les opportunités autour de …" button - always
+  // computed for the whole selection with the same rule /recherche applies
+  // (one city -> real radius; several cities -> plain name match), so the
+  // announced perimeter and the number can never disagree.
+  const [selectionCount, setSelectionCount] = useState<{ total: number; radiusKm: number | null } | null>(null);
+  const selectionRequestId = useRef(0);
   const [position, setPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
   const [citiesPosition, setCitiesPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
   // G09 (contre-audit 15 Sep): "10 noms à faible zoom, 57 à fort zoom... les
@@ -515,6 +526,19 @@ function GeographicSection() {
   const getRegionCount = (name: string) => regionCounts[normalizeFr(name)] ?? 0;
   const getDeptCount = (code: string, name: string) => deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0;
 
+  // Same rule as /recherche (RecherchePage): a single city is resolved to
+  // coordinates through the backend geocoder and searched with a real
+  // DEFAULT_CITY_RADIUS_KM distance filter; if it can't be resolved we fall
+  // back to the plain city-name match and report radiusKm = null so the UI
+  // doesn't announce a perimeter it didn't apply.
+  const searchAroundCity = async (name: string, limit: number) => {
+    const coords = await opportunitiesApi.geocodeCity(name);
+    const data = coords
+      ? await opportunitiesApi.search({ journey: undefined, lat: coords.lat, lng: coords.lng, radius_km: DEFAULT_CITY_RADIUS_KM, limit })
+      : await opportunitiesApi.search({ journey: undefined, city: name, limit });
+    return { results: data.results, total: data.pagination.total, radiusKm: coords ? DEFAULT_CITY_RADIUS_KM : null };
+  };
+
   const handleCitySearch = async (override?: string) => {
     const raw = override ?? cityQuery;
     if (!raw.trim()) return;
@@ -522,14 +546,15 @@ function GeographicSection() {
     setCityLoading(true);
     const query = raw.trim();
     try {
-      const [searchData, geo] = await Promise.all([
-        opportunitiesApi.search({ journey: undefined, city: query, limit: 5 }),
+      const [around, geo] = await Promise.all([
+        searchAroundCity(query, 5),
         fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=1`)
           .then(r => r.ok ? r.json() : null)
           .catch(() => null),
       ]);
-      setCityOpportunities(searchData.results);
-      setCityTotal(searchData.pagination.total);
+      setCityOpportunities(around.results);
+      setCityTotal(around.total);
+      setCityRadiusKm(around.radiusKm);
       const feature = geo?.features?.[0];
       const coords: [number, number] | null = feature ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : null;
       const resolvedName = feature?.properties?.city || query;
@@ -558,11 +583,36 @@ function GeographicSection() {
       setCityResult({ name: query, coords: null });
       setCityOpportunities([]);
       setCityTotal(0);
+      setCityRadiusKm(null);
       if (override === undefined) setSelectedCities([]);
     } finally {
       setCityLoading(false);
     }
   };
+
+  // Count for the "Voir les opportunités autour de …" button: recomputed
+  // whenever the selection changes so it always describes exactly what the
+  // /recherche link will show (see buildSearchUrl / RecherchePage).
+  useEffect(() => {
+    const names = selectedCities.map(c => c.name);
+    if (names.length === 0) { setSelectionCount(null); return; }
+    const requestId = ++selectionRequestId.current;
+    setSelectionCount(null);
+    (async () => {
+      try {
+        if (names.length === 1) {
+          const { total, radiusKm } = await searchAroundCity(names[0], 1);
+          if (selectionRequestId.current === requestId) setSelectionCount({ total, radiusKm });
+        } else {
+          const data = await opportunitiesApi.search({ journey: undefined, city: names.join(','), limit: 1 });
+          if (selectionRequestId.current === requestId) setSelectionCount({ total: data.pagination.total, radiusKm: null });
+        }
+      } catch {
+        if (selectionRequestId.current === requestId) setSelectionCount(null);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCities]);
 
   const selectMapCity = (city: { name: string; coords: [number, number] }) => {
     setCitiesPosition(p => ({ coordinates: city.coords, zoom: Math.max(p.zoom, 4) }));
@@ -627,6 +677,50 @@ function GeographicSection() {
         remaining.splice(bestIdx, 1);
       }
       result.push(...chosen);
+    }
+    return result;
+  })();
+  // 20 Sep audit (location point 1): "Bordeaux/Libourne et Langon/Marmande
+  // se chevauchent au zoom." Two separate causes:
+  //  1. Markers sat inside <ZoomableGroup>, which scales its children, so
+  //     dots and labels grew with the zoom exactly as fast as the distances
+  //     between cities did - zooming in could never pull neighbours apart.
+  //     They are now counter-scaled (1 / zoom) so a marker keeps a constant
+  //     on-screen size and zooming genuinely separates close cities.
+  //  2. The per-département cap above knows nothing about cities of
+  //     *different* départements sitting next to each other (Langon 33 /
+  //     Marmande 47). Labels are now decluttered in screen space: cities
+  //     are placed by priority (selected first, then tier) and any city
+  //     whose label box would touch an already-placed one is hidden until
+  //     the visitor zooms in far enough to have room for it.
+  // Same projection ComposableMap is configured with below (react-simple-maps
+  // translates to width/2, height/2 by default).
+  const cityProjection = geoMercator().center([2.454, 46.6]).scale(2600).translate([390, 310]);
+  const visibleCitiesDeclutter = (() => {
+    const zoom = citiesPosition.zoom;
+    const centerPx = cityProjection(citiesPosition.coordinates) || [390, 310];
+    const toScreen = (coords: [number, number]): [number, number] | null => {
+      const p = cityProjection(coords);
+      return p ? [(p[0] - centerPx[0]) * zoom, (p[1] - centerPx[1]) * zoom] : null;
+    };
+    const LABEL_CHAR_W = 5.6; // ~9px semi-bold
+    const PAD = 4;
+    const boxFor = (c: CityGeo, [x, y]: [number, number]) => {
+      const w = c.name.length * LABEL_CHAR_W + 8;
+      return { l: x - w / 2 - PAD, r: x + w / 2 + PAD, t: y - 20 - PAD, b: y + 6 + PAD };
+    };
+    const isSel = (c: CityGeo) => selectedCities.some(sc => sc.name === c.name);
+    const ordered = [...visibleCitiesCapped].sort((a, b) => Number(isSel(b)) - Number(isSel(a)) || a.tier - b.tier || a.name.localeCompare(b.name));
+    const placed: { l: number; r: number; t: number; b: number }[] = [];
+    const result: CityGeo[] = [];
+    for (const c of ordered) {
+      const px = toScreen(c.coords);
+      if (!px) continue;
+      const box = boxFor(c, px);
+      const collides = placed.some(o => box.l < o.r && box.r > o.l && box.t < o.b && box.b > o.t);
+      if (collides && !isSel(c)) continue;
+      placed.push(box);
+      result.push(c);
     }
     return result;
   })();
@@ -935,10 +1029,11 @@ function GeographicSection() {
                         ))
                       }
                     </Geographies>
-                    {visibleCitiesCapped.map(city => {
+                    {visibleCitiesDeclutter.map(city => {
                       const isSelected = selectedCities.some(c => c.name === city.name);
                       return (
                         <Marker key={city.name} coordinates={city.coords} onClick={() => selectMapCity(city)} style={{ default: { cursor: 'pointer' } }}>
+                          <g transform={`scale(${1 / citiesPosition.zoom})`}>
                           {/* Client (19/20 Sep): "cliquer sur le texte «Libourne»
                               ne sélectionnait pas la ville, alors que cliquer sur
                               son point fonctionnait" + "surface suffisante pour
@@ -956,6 +1051,7 @@ function GeographicSection() {
                           <text textAnchor="middle" y={-9} style={{ fontSize: isSelected ? 11 : 9, fill: '#fff', fontWeight: isSelected ? 700 : 600, cursor: 'pointer', pointerEvents: 'none' }}>
                             {city.name}
                           </text>
+                          </g>
                         </Marker>
                       );
                     })}
@@ -988,7 +1084,9 @@ function GeographicSection() {
             ) : cityOpportunities.length === 0 ? (
               <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-6 text-center">
                 <p className="text-sm font-semibold text-white">{cityResult.name}</p>
-                <p className="text-xs text-[#B9BBC8] mt-1">Aucune opportunité pour le moment.</p>
+                <p className="text-xs text-[#B9BBC8] mt-1">
+                  {cityRadiusKm ? `Aucune opportunité dans un rayon de ${cityRadiusKm} km.` : 'Aucune opportunité pour le moment.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -999,10 +1097,11 @@ function GeographicSection() {
                     way to tell an open opportunity from an expired one. */}
                 <div className="flex items-center justify-between px-1">
                   <p className="text-xs text-[#B9BBC8]">
-                    <span className="text-orange font-semibold">{cityTotal}</span> opportunité{cityTotal !== 1 ? 's' : ''} à {cityResult.name}
+                    <span className="text-orange font-semibold">{cityTotal}</span> opportunité{cityTotal !== 1 ? 's' : ''}{' '}
+                    {cityRadiusKm ? `dans un rayon de ${cityRadiusKm} km autour de ${cityResult.name}` : `à ${cityResult.name}`}
                   </p>
                   <Link to={`/recherche?city=${encodeURIComponent(cityResult.name)}`} className="text-[11px] text-orange font-semibold hover:underline">
-                    Voir toutes les opportunités de cette ville
+                    Voir toutes les opportunités {cityRadiusKm ? `dans ces ${cityRadiusKm} km` : 'de cette ville'}
                   </Link>
                 </div>
                 {cityOpportunities.map(opp => {
@@ -1027,7 +1126,10 @@ function GeographicSection() {
 
             {selectedCities.length > 0 && (
               <Link to={buildSearchUrl()} className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 rounded-xl hover:bg-orange/10 transition-colors">
-                Voir les opportunités autour de {selectedCities.map((c, i) => (<span key={i}>{i > 0 && ', '}{c.name}</span>))} ({cityTotal}) <ArrowRight size={14} />
+                {selectedCities.length === 1 && selectionCount?.radiusKm ? 'Voir les opportunités autour de ' : 'Voir les opportunités à '}
+                {selectedCities.map((c, i) => (<span key={i}>{i > 0 && ', '}{c.name}</span>))}
+                {selectedCities.length === 1 && selectionCount?.radiusKm ? ` (${selectionCount.radiusKm} km)` : ''}
+                {selectionCount ? ` — ${selectionCount.total}` : ''} <ArrowRight size={14} />
               </Link>
             )}
           </>

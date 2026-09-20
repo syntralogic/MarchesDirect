@@ -11,6 +11,7 @@ import { trackVisitorEvent } from '@/lib/visitorTracking';
 import { LoadMoreButton } from '@/components/LoadMoreButton';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { frenchRegions } from '@/data/mockData';
+import { DEFAULT_CITY_RADIUS_KM, CITY_RADIUS_OPTIONS_KM } from '@/lib/searchRadius';
 
 // Same accent/case fold HomePage.tsx uses for its (working) department
 // autocomplete - not exported from there, small enough to duplicate here
@@ -184,7 +185,7 @@ export default function RecherchePage() {
   // complaint (tsc did flag it: TS2448/TS2454). This is very likely the
   // actual cause behind "search shows nothing" reports for /recherche -
   // the page would throw before ever reaching a fetch call.
-  const [radius, setRadius] = useState('50');
+  const [radius, setRadius] = useState(String(DEFAULT_CITY_RADIUS_KM));
   // Client audit (19 Sep): this radius was decorative - the main list
   // endpoint had no geo-radius filter at all (only /stats/near did), so
   // "Angoulême à 25 km" and "Angoulême à 200 km" returned identical
@@ -196,6 +197,11 @@ export default function RecherchePage() {
   // blocking the search on geocoding succeeding.
   const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(null);
   const cityGeocodeRequestId = useRef(0);
+  // 20 Sep audit: the km selector must only exist where a radius means
+  // something - around exactly one named city. Empty / "France" (whole
+  // country), regions, departments and multi-city selections never show it.
+  const typedCities = location.split(',').map(c => c.trim()).filter(Boolean);
+  const showRadius = resolveLocationField(location) === 'city' && typedCities.length === 1 && !isWholeFranceText(location);
   useEffect(() => {
     if (locationField !== 'city' || !applied.location) {
       setCityCoords(null);
@@ -207,7 +213,12 @@ export default function RecherchePage() {
     // Haversine filter can express; multi-city stays on the existing
     // text-match path (cityCoords null keeps it there, see useOpportunities
     // call below).
-    const firstCity = applied.location.split(',')[0]?.trim();
+    // 20 Sep audit: the comment above promised multi-city stays on the
+    // text-match path, but the first city was geocoded regardless, so
+    // "Libourne, Langon" silently became a radius search around Libourne
+    // only. Now genuinely single-city-only.
+    const cities = applied.location.split(',').map(c => c.trim()).filter(Boolean);
+    const firstCity = cities.length === 1 ? cities[0] : '';
     if (!firstCity) {
       setCityCoords(null);
       return;
@@ -317,7 +328,7 @@ export default function RecherchePage() {
         </div>
 
         <div className="flex gap-2 mb-2">
-          <div className={locationField === 'city' ? 'flex-1' : 'flex-[2]'}>
+          <div className={showRadius ? 'flex-1' : 'flex-[2]'}>
             <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchLocation')}</label>
             <div className="relative">
               <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
@@ -341,7 +352,7 @@ export default function RecherchePage() {
               Now genuinely filters by distance in city mode (see
               cityCoords above) instead of the click-through-only version
               this comment used to describe. */}
-          {locationField === 'city' && (
+          {showRadius && (
             <div className="flex-1">
               <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchRadius')}</label>
               <div className="relative">
@@ -351,9 +362,9 @@ export default function RecherchePage() {
                   onChange={e => setRadius(e.target.value)}
                   className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
                 >
-                  <option value="50">50 km</option>
-                  <option value="100">100 km</option>
-                  <option value="200">200 km</option>
+                  {CITY_RADIUS_OPTIONS_KM.map(km => (
+                    <option key={km} value={String(km)}>{km} km</option>
+                  ))}
                 </select>
                 <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
               </div>
