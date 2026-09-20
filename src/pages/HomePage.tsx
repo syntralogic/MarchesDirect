@@ -888,7 +888,7 @@ function GeographicSection() {
                         <Marker key={city.name} coordinates={city.coords} onClick={() => selectMapCity(city)} style={{ default: { cursor: 'pointer' } }}>
                           {isSelected && <circle r={11} fill="#FF6500" fillOpacity={0.25} />}
                           <circle r={isSelected ? 6 : 4} fill="#FF6500" stroke="#fff" strokeWidth={1.2} />
-                          <text textAnchor="middle" y={-9} style={{ fontSize: isSelected ? 11 : 9, fill: '#fff', fontWeight: isSelected ? 700 : 600, pointerEvents: 'none' }}>
+                          <text textAnchor="middle" y={-9} style={{ fontSize: isSelected ? 11 : 9, fill: '#fff', fontWeight: isSelected ? 700 : 600, cursor: 'pointer' }}>
                             {city.name}
                           </text>
                         </Marker>
