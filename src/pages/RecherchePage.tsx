@@ -213,7 +213,7 @@ export default function RecherchePage() {
         </div>
 
         <div className="flex gap-2 mb-2">
-          <div className="flex-1">
+          <div className={locationField === 'city' ? 'flex-1' : 'flex-[2]'}>
             <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchLocation')}</label>
             <div className="relative">
               <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
@@ -226,22 +226,35 @@ export default function RecherchePage() {
               />
             </div>
           </div>
-          <div className="flex-1">
-            <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchRadius')}</label>
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8] font-semibold text-[10px]">⌖</span>
-              <select 
-                value={radius}
-                onChange={e => setRadius(e.target.value)}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
-              >
-                <option value="50">50 km</option>
-                <option value="100">100 km</option>
-                <option value="200">200 km</option>
-              </select>
-              <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
+          {/* Client (19 Sep): "une région sélectionnée doit couvrir toute
+              cette région, sans +50 km. Même principe pour les
+              départements. Le rayon kilométrique concerne uniquement une
+              recherche autour d'une ville." This radius control is also
+              purely decorative (see the comment on the `radius` state
+              above - the main list endpoint has no geo-radius param at
+              all), which made it actively misleading rather than just
+              unused: typing a region/department showed "+ 50 km" sitting
+              right next to it as if a radius were narrowing that already-
+              precise area, when nothing was applying it either way. Hidden
+              outside city mode instead of just sitting there unexplained. */}
+          {locationField === 'city' && (
+            <div className="flex-1">
+              <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchRadius')}</label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8] font-semibold text-[10px]">⌖</span>
+                <select 
+                  value={radius}
+                  onChange={e => setRadius(e.target.value)}
+                  className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="50">50 km</option>
+                  <option value="100">100 km</option>
+                  <option value="200">200 km</option>
+                </select>
+                <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="mb-2.5">
