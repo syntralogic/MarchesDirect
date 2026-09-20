@@ -532,7 +532,21 @@ function GeographicSection() {
       setCityTotal(searchData.pagination.total);
       const feature = geo?.features?.[0];
       const coords: [number, number] | null = feature ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : null;
-      setCityResult({ name: feature?.properties?.city || query, coords });
+      const resolvedName = feature?.properties?.city || query;
+      setCityResult({ name: resolvedName, coords });
+      // Client's audit (20 Sep, location point 5): typing a city into this
+      // box updated cityOpportunities/cityTotal/cityResult but never
+      // touched selectedCities - which is what the "Voir les opportunités
+      // autour de ..." button's label AND its /recherche?city= link are
+      // built from (see the tab==='cities' href below and the button
+      // around line ~1015). So after picking Libourne on the map (setting
+      // selectedCities) and then typing "Périgueux" here, the button kept
+      // reading "autour de Libourne" with Périgueux's count grafted onto
+      // it, and its link still pointed at Libourne (empty results). Only
+      // do this for a text-box search (no override) - selectMapCity
+      // passes an override and manages selectedCities itself for its own
+      // multi-marker toggle behaviour, which this must not clobber.
+      if (override === undefined) setSelectedCities(coords ? [{ name: resolvedName, coords }] : []);
       // Client's audit (15 Sep): "il faut... centrer la carte sur la ville
       // recherchée" - typing a city into the search box (as opposed to
       // clicking a marker, which already did this via selectMapCity) found
@@ -544,6 +558,7 @@ function GeographicSection() {
       setCityResult({ name: query, coords: null });
       setCityOpportunities([]);
       setCityTotal(0);
+      if (override === undefined) setSelectedCities([]);
     } finally {
       setCityLoading(false);
     }
