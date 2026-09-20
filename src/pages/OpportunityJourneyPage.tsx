@@ -134,6 +134,36 @@ export default function OpportunityJourneyPage() {
       setDepartementsGeoJson(features.map(f => f.properties));
     }).catch(() => setDepartementsGeoJson([]));
   }, []);
+  // Client's audit (20 Sep, location point 6): typing "Nouvelle-Aquitaine"
+  // or "Grand Est" found nothing here - the field only ever searched
+  // cities and départements, never régions, so picking a région required
+  // first searching an unrelated city and then clicking "Région entière"
+  // to have it resolved from that city. Direct région search, same pattern
+  // as départements above but single-select (a région choice replaces any
+  // prior one, matching how picking "Région entière" already behaves).
+  const [regionsGeoJson, setRegionsGeoJson] = useState<{ code: string; nom: string }[] | null>(null);
+  useEffect(() => {
+    import('@/data/geo/regions.json').then(m => {
+      const features = ((m.default as { features: { properties: { code: string; nom: string } }[] }).features) || [];
+      setRegionsGeoJson(features.map(f => f.properties));
+    }).catch(() => setRegionsGeoJson([]));
+  }, []);
+  const regionMatches = useMemo(() => {
+    const trimmed = citySearch.trim();
+    if (!trimmed || !regionsGeoJson) return [];
+    const q = trimmed.toLowerCase();
+    return regionsGeoJson.filter(r => r.nom.toLowerCase().includes(q)).slice(0, 6);
+  }, [citySearch, regionsGeoJson]);
+  const pickRegionDirectly = (regionName: string) => {
+    setZoneError('');
+    setPickedDepartment('');
+    setPickedDepartmentName('');
+    setPickedRegion(regionName);
+    setPickedCity('Région entière');
+    setPickedCityCoords(null);
+    setSelectedDepartments([]);
+    setCitySearch('');
+  };
   const departmentMatches = useMemo(() => {
     const trimmed = citySearch.trim();
     if (!trimmed || !departementsGeoJson) return [];
@@ -378,6 +408,13 @@ export default function OpportunityJourneyPage() {
       // indication of which one - the same missing-name gap as the picker
       // dialog itself, just surfacing again once applied.
       setLocationLabel(pickedDepartmentName ? `${pickedDepartmentName} — ${pickedDepartment}` : pickedCity);
+    } else if (pickedCity === 'Région entière') {
+      // Same gap as G07 above, just never fixed for région: this fell
+      // through to the bare "Région entière" label with no region name -
+      // client's 20 Sep audit point 7 (label staying stuck on the old
+      // zone after a Ville -> Département -> Région transition) is this
+      // same class of bug, one level up.
+      setLocationLabel(pickedRegion ? `${pickedRegion} (${t('journeyWholeRegion') || 'Région entière'})` : pickedCity);
     } else if (pickedCity) {
       setLocationLabel(pickedCity);
     }
@@ -969,9 +1006,24 @@ export default function OpportunityJourneyPage() {
                 {(cityApiLoading || citySearchPending) && citySearch.trim().length >= 2 && (
                   <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeySearching') || 'Recherche...'}</p>
                 )}
-                {!cityApiLoading && !citySearchPending && citySearch.trim().length >= 2 && citySuggestions.length === 0 && departmentMatches.length === 0 && (
+                {!cityApiLoading && !citySearchPending && citySearch.trim().length >= 2 && citySuggestions.length === 0 && departmentMatches.length === 0 && regionMatches.length === 0 && (
                   <p className="text-[11px] text-[#B9BBC8] px-3 py-1.5">{t('journeyNoCityFound') || 'Aucune ville trouvée.'}</p>
                 )}
+                {/* Région matches - shown first since a région name (like a
+                    département name) should never be shadowed by an
+                    unrelated commune sharing part of the word. */}
+                {regionMatches.map(r => (
+                  <button
+                    key={r.code}
+                    onClick={() => pickRegionDirectly(r.nom)}
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
+                      pickedRegion === r.nom && pickedCity === 'Région entière' ? 'bg-orange/10 text-orange' : 'text-white hover:bg-[#061D32]'
+                    }`}
+                  >
+                    {pickedRegion === r.nom && pickedCity === 'Région entière' ? <CheckCircle2 size={14} /> : <MapPin size={14} />}
+                    {r.nom} ({t('journeyWholeRegion') || 'Région entière'})
+                  </button>
+                ))}
                 {/* Département matches - by name ("Gironde") or code ("33") -
                     shown above city matches so a département search isn't
                     buried under similarly-named communes. Toggling one adds/
