@@ -71,9 +71,20 @@ export default function RecherchePage() {
     }).catch(() => setDepartements([]));
   }, []);
   const regionNamesFolded = useMemo(() => new Set(frenchRegions.map((r) => normalizeFr(r.name))), []);
+  // Point 2 (20 Sep client audit): typing "France" in the general search's
+  // location field was still classified as a city (it matches none of the
+  // region/department checks below), so it got geocoded and searched with
+  // a decorative km radius around whatever point that resolved to -
+  // instead of meaning "no location filter, the whole country" the way
+  // OpportunityJourneyPage's dedicated "France entière" option already
+  // does. Treat it as an empty location instead of a city name.
+  const isWholeFranceText = (text: string): boolean => {
+    const n = normalizeFr(text.trim());
+    return n === 'france' || n === 'france entiere' || n === 'toute la france';
+  };
   const resolveLocationField = (text: string): 'region' | 'department' | 'city' => {
     const parts = text.split(',').map((p) => p.trim()).filter(Boolean);
-    if (parts.length === 0) return 'city';
+    if (parts.length === 0 || isWholeFranceText(text)) return 'city';
     if (parts.every((p) => regionNamesFolded.has(normalizeFr(p)))) return 'region';
     if (departements && parts.every((p) => departements.some((d) => d.code === p || normalizeFr(d.nom) === normalizeFr(p)))) {
       return 'department';
@@ -81,6 +92,7 @@ export default function RecherchePage() {
     return 'city';
   };
   const resolveLocationValue = (text: string, field: 'region' | 'department' | 'city'): string => {
+    if (isWholeFranceText(text)) return '';
     if (field !== 'department' || !departements) return text;
     // Backend expects département codes, not names - map any typed names
     // ("Gironde") to their code ("33") the same way the map/autocomplete

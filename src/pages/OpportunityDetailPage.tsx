@@ -765,6 +765,16 @@ export default function OpportunityDetailPage() {
 
   useEffect(() => {
     if (!id || !isAuthenticated) return;
+    // Point 5 (20 Sep client audit): dceViewed/dceAnalysisViewed are plain
+    // useState, so navigating from one opportunity straight to another
+    // (same OpportunityDetailPage instance, just a new :id - React Router
+    // doesn't remount for that) left them at whatever the *previous*
+    // opportunity had set them to until this fetch resolved: opening Lyon
+    // (DCE consulted) then Romainville showed Romainville at 40% too, with
+    // no action taken there. Reset first, then let the fetch below set
+    // them from Romainville's own bid.
+    setDceViewed(false);
+    setDceAnalysisViewed(false);
     tendersApi.get(id)
       .then(async tData => {
         setTender(tData);
