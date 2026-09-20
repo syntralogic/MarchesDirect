@@ -66,10 +66,28 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
     statusLine = { text: t('searchIdentifyPrompt'), className: 'text-[#B9BBC8]' };
   }
 
+  const saveScrollForReturn = () => {
+    // Client (19 Sep): "les retours en arrière doivent conserver
+    // l'entreprise, les réponses et les critères de recherche" - the
+    // filters/search criteria already round-trip through the URL on every
+    // listing page, so browser back already restores those; what's
+    // missing is scroll position, which resets to the top on remount.
+    // Keyed to the exact URL (path+query) being left, one-time use (read
+    // once then cleared - see the listing pages' restore effect) so a
+    // fresh, unrelated visit to the same URL later doesn't jump.
+    try {
+      sessionStorage.setItem(`scrollPos:${window.location.pathname}${window.location.search}`, String(window.scrollY));
+    } catch {
+      // sessionStorage can throw in locked-down/private-browsing contexts -
+      // losing the scroll-restore convenience isn't worth failing the
+      // click over.
+    }
+  };
+
   return (
     <div
       className="relative bg-[#061D32] border border-[#17334D] rounded-2xl p-4 hover:border-orange/40 transition-colors duration-200 cursor-pointer"
-      onClick={() => navigate(destination)}
+      onClick={() => { saveScrollForReturn(); navigate(destination); }}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -108,6 +126,7 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
       <button
         onClick={e => {
           e.stopPropagation();
+          saveScrollForReturn();
           navigate(destination);
         }}
         className="w-full bg-orange text-white font-semibold text-sm py-3 rounded-xl hover:brightness-110 transition-all"

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, Loader2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -166,6 +167,8 @@ export default function RecherchePage() {
     max_value: applied.montantMax ? Number(applied.montantMax) : undefined,
     sort,
   });
+
+  useScrollRestore(!loading);
 
   useEffect(() => {
     if (!debouncedQuery && !debouncedLocation) return;

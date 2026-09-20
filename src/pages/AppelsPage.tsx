@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useTrades } from '@/hooks/use-trades';
 import { useMatchScores } from '@/hooks/use-match-scores';
 import { useLang } from '@/contexts/LangContext';
@@ -42,6 +43,7 @@ export default function AppelsPage() {
   });
 
   const resetFilters = () => { setLocation(''); setSector('Tous'); };
+  useScrollRestore(!loading);
   const hasFilters = location || sector !== 'Tous';
   const { scores: matchScores, canScore } = useMatchScores(results.map(o => o.id));
 

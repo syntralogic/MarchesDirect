@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, SlidersHorizontal, X, Filter } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -58,6 +59,7 @@ export default function SousTraitancePage() {
   });
 
   const resetFilters = () => { setLocation(''); setDept('Tous'); setProfession('Tous'); };
+  useScrollRestore(!loading);
   const hasFilters = location || dept !== 'Tous' || profession !== 'Tous';
 
   const FilterPanel = () => (
