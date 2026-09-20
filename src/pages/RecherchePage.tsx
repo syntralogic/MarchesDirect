@@ -330,9 +330,13 @@ export default function RecherchePage() {
           page) instead of 340, since LoadMoreButton already correctly
           uses `total` for the same data lower on this page. */}
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-[11px] font-bold text-white">
-          <span className="text-orange">{total}</span> {t(headerKeySuffix ? `searchResults${headerKeySuffix}` : 'searchResults')}
-        </h2>
+        {loading ? (
+          <div className="h-3.5 w-28 rounded bg-white/5 animate-pulse" />
+        ) : (
+          <h2 className="text-[11px] font-bold text-white">
+            <span className="text-orange">{total}</span> {t(headerKeySuffix ? `searchResults${headerKeySuffix}` : 'searchResults')}
+          </h2>
+        )}
         <div className="relative shrink-0">
           <select
             value={sort}

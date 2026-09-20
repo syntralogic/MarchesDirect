@@ -157,9 +157,13 @@ export default function SousTraitancePage() {
         {/* Results */}
         <div className="flex-1 min-w-0">
           <div className="mb-3">
-            {!error && <h2 className="text-xs font-bold text-white">
-              <span className="text-orange">{total}</span> {total !== 1 ? t('subResultsPlural') : t('subResults')}
-            </h2>}
+            {loading ? (
+              <div className="h-4 w-32 rounded bg-white/5 animate-pulse" />
+            ) : (
+              !error && <h2 className="text-xs font-bold text-white">
+                <span className="text-orange">{total}</span> {total !== 1 ? t('subResultsPlural') : t('subResults')}
+              </h2>
+            )}
           </div>
 
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
