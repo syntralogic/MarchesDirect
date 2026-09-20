@@ -126,9 +126,16 @@ export default function AppelsPage() {
         {/* Results */}
         <div className="flex-1 min-w-0">
           <div className="mb-3">
-            {!error && <h2 className="text-xs font-bold text-white">
-              <span className="text-orange">{total}</span> {total !== 1 ? t('appelsResultsPlural') : t('appelsResults')}
-            </h2>}
+            {/* Client (19 Sep): same "0 opportunités" + spinner shown
+                together during the initial load - see OpportunityJourneyPage
+                for the full writeup. */}
+            {loading ? (
+              <div className="h-4 w-32 rounded bg-white/5 animate-pulse" />
+            ) : (
+              !error && <h2 className="text-xs font-bold text-white">
+                <span className="text-orange">{total}</span> {total !== 1 ? t('appelsResultsPlural') : t('appelsResults')}
+              </h2>
+            )}
           </div>
 
           {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}

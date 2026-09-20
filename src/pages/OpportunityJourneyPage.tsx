@@ -812,9 +812,22 @@ export default function OpportunityJourneyPage() {
           </div>
 
           <div className="flex items-center justify-between mb-3 gap-2">
-            <h2 className="text-xs font-bold text-white shrink-0">
-              <span className="text-orange">{displayResultCount}</span> {displayResultCount !== 1 ? t('journeyResultsPlural') : t('journeyResults')}
-            </h2>
+            {/* Client (19 Sep), stated top priority: "pendant 10 à 15
+                secondes, les opportunités et les chiffres n'apparaissent
+                pas... impression d'un site vide." This header showed "0
+                opportunités" (total's initial state) at the exact same time
+                as the "Chargement..." block below it - both rendered
+                together, so the count read as a real, already-finished
+                zero-result search sitting right next to a spinner, not as
+                part of the same loading state. Skeleton placeholder instead
+                of a numeric claim while the first fetch is still in flight. */}
+            {loading ? (
+              <div className="h-4 w-32 rounded bg-white/5 animate-pulse shrink-0" />
+            ) : (
+              <h2 className="text-xs font-bold text-white shrink-0">
+                <span className="text-orange">{displayResultCount}</span> {displayResultCount !== 1 ? t('journeyResultsPlural') : t('journeyResults')}
+              </h2>
+            )}
             <div className="flex items-center gap-2 min-w-0">
               <div className="relative shrink-0">
                 <select
