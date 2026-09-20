@@ -1105,8 +1105,11 @@ export default function OpportunityJourneyPage() {
                   Removed from the layout entirely instead, the same way the
                   radius <select> is absent for "Whole department" elsewhere
                   in the app - a control with nothing to control shouldn't
-                  occupy space, disabled or not. */}
-              {!(selectedDepartments.length > 0 || WHOLE_AREA_PICKS.includes(pickedCity)) && (
+                  occupy space, disabled or not. 20 Sep audit: also hidden
+                  while nothing is picked yet (that state is "France
+                  entière" by default) - only shown once a real city is
+                  chosen. */}
+              {selectedDepartments.length === 0 && !!pickedCity && !WHOLE_AREA_PICKS.includes(pickedCity) && (
                 <>
                   <p className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-2">{t('journeySearchRadius')}</p>
                   <div className="grid grid-cols-4 gap-2 mb-4">
