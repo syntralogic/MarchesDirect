@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
@@ -65,6 +66,7 @@ const AVAILABLE_SLOTS = nextBusinessDaySlots(5);
 export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
   const { t } = useLang();
   const { brandId } = useBrand();
+  const { user, company } = useAuth();
   const [step, setStep] = useState(1);
   const [motif, setMotif] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -72,6 +74,27 @@ export function AppointmentModal({ open, onClose }: AppointmentModalProps) {
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Point 5 (20 Sep client audit): "Le rendez-vous demandé depuis le
+  // dossier réclame à nouveau entreprise, email et téléphone, alors que
+  // ces informations viennent d'être enregistrées." This form always
+  // started blank even for a visitor who already has an account (or just
+  // registered/logged a company profile) with that exact information on
+  // file. Prefill from it once, when the modal opens, without overwriting
+  // anything the visitor has already typed in this session.
+  useEffect(() => {
+    if (!open) return;
+    setForm(f => {
+      if (f.nom || f.entreprise || f.email || f.telephone) return f;
+      const nom = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : (company?.contact_name || '');
+      return {
+        nom: nom || f.nom,
+        entreprise: company?.name || f.entreprise,
+        email: user?.email || company?.email || f.email,
+        telephone: company?.phone || f.telephone,
+      };
+    });
+  }, [open, user, company]);
 
   // Client's 12 Sep report: opening this modal (now reachable from several
   // new "Générer mon dossier" buttons on the dossier hub) left the page
