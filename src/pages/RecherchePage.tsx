@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, Loader2 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { opportunitiesApi } from '@/lib/apiClient';
 import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
@@ -110,9 +111,39 @@ export default function RecherchePage() {
   // own neutral wording instead of silently reusing subcontracting's.
   const headerKeySuffix = journeyParam === 'public_procurement' ? 'Public' : journeyParam === 'tender' ? 'Tender' : journeyParam === 'subcontracting' ? '' : 'Neutral';
 
-  // Add state for radius (decorative for now - main list endpoint has no
-  // geo-radius filter, only /stats/near does; out of scope for this fix)
   const [radius, setRadius] = useState('50');
+  // Client audit (19 Sep): this radius was decorative - the main list
+  // endpoint had no geo-radius filter at all (only /stats/near did), so
+  // "Angoulême à 25 km" and "Angoulême à 200 km" returned identical
+  // results. Now that GET /opportunities accepts real lat/lng/radius_km
+  // (see backend's geocodingService.ts), a city search resolves to
+  // coordinates here and sends those instead of a plain city-name match.
+  // null = not resolved (yet, or couldn't be) - falls back to the
+  // existing city text-match, same as before this fix, rather than
+  // blocking the search on geocoding succeeding.
+  const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const cityGeocodeRequestId = useRef(0);
+  useEffect(() => {
+    if (locationField !== 'city' || !applied.location) {
+      setCityCoords(null);
+      return;
+    }
+    const thisRequest = ++cityGeocodeRequestId.current;
+    // Only the first comma-separated city is geocoded for radius purposes -
+    // "around several cities at once" isn't a single point/radius the
+    // Haversine filter can express; multi-city stays on the existing
+    // text-match path (cityCoords null keeps it there, see useOpportunities
+    // call below).
+    const firstCity = applied.location.split(',')[0]?.trim();
+    if (!firstCity) {
+      setCityCoords(null);
+      return;
+    }
+    opportunitiesApi.geocodeCity(firstCity).then((result) => {
+      if (cityGeocodeRequestId.current !== thisRequest) return; // stale
+      setCityCoords(result);
+    });
+  }, [locationField, applied.location]);
 
   // Client's audit: filters need a real status set (nouveau/en cours/
   // clôturé/attribué/annulé) and a montant range - neither existed here.
@@ -201,7 +232,12 @@ export default function RecherchePage() {
     q: applied.query || undefined,
     region: locationField === 'region' ? (applied.location || undefined) : undefined,
     department: locationField === 'department' ? (applied.location || undefined) : undefined,
-    city: locationField === 'city' ? (applied.location || undefined) : undefined,
+    // Real distance filter when we have coordinates + a chosen radius;
+    // otherwise the plain city text-match (unchanged fallback).
+    city: locationField === 'city' && !cityCoords ? (applied.location || undefined) : undefined,
+    lat: locationField === 'city' && cityCoords ? cityCoords.lat : undefined,
+    lng: locationField === 'city' && cityCoords ? cityCoords.lng : undefined,
+    radius_km: locationField === 'city' && cityCoords ? Number(radius) : undefined,
     trade_id: tradeId,
     journey: journeyParam,
     status: statutFilter || undefined,
@@ -275,14 +311,14 @@ export default function RecherchePage() {
           {/* Client (19 Sep): "une région sélectionnée doit couvrir toute
               cette région, sans +50 km. Même principe pour les
               départements. Le rayon kilométrique concerne uniquement une
-              recherche autour d'une ville." This radius control is also
-              purely decorative (see the comment on the `radius` state
-              above - the main list endpoint has no geo-radius param at
-              all), which made it actively misleading rather than just
-              unused: typing a region/department showed "+ 50 km" sitting
-              right next to it as if a radius were narrowing that already-
-              precise area, when nothing was applying it either way. Hidden
-              outside city mode instead of just sitting there unexplained. */}
+              recherche autour d'une ville." Region/department searches
+              cover the whole zone with no radius by design (city-only, per
+              the client's own rule above) - hidden outside city mode so it
+              never again sits there looking like it's narrowing an
+              already-precise region/department when it isn't applicable.
+              Now genuinely filters by distance in city mode (see
+              cityCoords above) instead of the click-through-only version
+              this comment used to describe. */}
           {locationField === 'city' && (
             <div className="flex-1">
               <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchRadius')}</label>
