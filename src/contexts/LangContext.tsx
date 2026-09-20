@@ -978,6 +978,7 @@ const frTranslations: Translations = {
   // experience/capacity/zone/calendar ones (client's 15 Sep audit).
   concordRefineTitle: 'Affinez votre concordance',
   concordRefineSub: '4 réponses facultatives · expérience, moyens, zone et calendrier',
+  refineEditAnswers: 'Modifier mes réponses',
   concordRefineQ1: 'Avez-vous déjà réalisé une prestation similaire ?',
   concordRefineQ2: 'Pouvez-vous mobiliser les moyens nécessaires pour cette prestation ?',
   concordRefineQ3: 'Pouvez-vous intervenir ou livrer dans la zone indiquée ?',
@@ -2547,6 +2548,7 @@ const enTranslations: Translations = {
   refineTitle: 'Refine your analysis',
   concordRefineTitle: 'Refine your match',
   concordRefineSub: '4 optional answers · experience, capacity, area and timeline',
+  refineEditAnswers: 'Edit my answers',
   concordRefineQ1: 'Have you already delivered a similar service?',
   concordRefineQ2: 'Can you mobilise the resources needed for this service?',
   concordRefineQ3: 'Can you operate or deliver in the indicated area?',

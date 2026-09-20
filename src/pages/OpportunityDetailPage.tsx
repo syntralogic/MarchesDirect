@@ -376,7 +376,6 @@ export default function OpportunityDetailPage() {
       // sessionStorage unavailable - answers just won't survive navigation this session
     }
   }, [refineAnswers, refineAnswersStorageKey]);
-  const [refineFinished, setRefineFinished] = useState(false);
   const [excerptOpen, setExcerptOpen] = useState(false);
   const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
@@ -598,6 +597,18 @@ export default function OpportunityDetailPage() {
   const REFINE_POINTS: Record<'oui' | 'non' | 'a_confirmer', number> = { oui: 2, non: -3, a_confirmer: 0 };
   const refineAdjustment = Object.values(refineAnswers).reduce((sum: number, v) => sum + (v ? REFINE_POINTS[v] : 0), 0);
   const displayScore = matchScore ? Math.max(0, Math.min(100, matchScore.score + refineAdjustment)) : 0;
+  // Client (20 Sep): "dès que les quatre questions sont renseignées, le bloc
+  // se ferme automatiquement... Lorsqu'on le rouvre pour corriger ses
+  // réponses, il doit rester ouvert pendant les modifications." So this only
+  // fires the auto-close on the transition into "all 4 answered" - not on
+  // every render while already complete, or reopening to edit an answer
+  // would immediately snap shut again.
+  const allRefineAnswered = ['experience', 'capacity', 'location', 'calendar'].every(k => !!refineAnswers[k]);
+  const wasAllRefineAnsweredRef = useRef(false);
+  useEffect(() => {
+    if (allRefineAnswered && !wasAllRefineAnsweredRef.current) setRefineOpen(false);
+    wasAllRefineAnsweredRef.current = allRefineAnswered;
+  }, [allRefineAnswered]);
   const [siretInput, setSiretInput] = useState('');
   const [siretSubmitting, setSiretSubmitting] = useState(false);
   const [siretError, setSiretError] = useState<string | null>(null);
@@ -1649,7 +1660,13 @@ export default function OpportunityDetailPage() {
                 <span className="text-sm font-extrabold text-white">{t('concordRefineTitle') || 'Affinez votre concordance'}</span>
                 <ChevronDown size={16} className={`text-orange shrink-0 transition-transform ${refineOpen ? 'rotate-180' : ''}`} />
               </button>
-              {!refineOpen && <p className="text-xs text-[#B9BBC8] mt-1">{t('concordRefineSub') || '4 réponses facultatives · expérience, moyens, zone et calendrier'}</p>}
+              {!refineOpen && (
+                <p className="text-xs mt-1">
+                  {allRefineAnswered
+                    ? <span className="text-orange font-semibold">{t('refineEditAnswers') || 'Modifier mes réponses'}</span>
+                    : <span className="text-[#B9BBC8]">{t('concordRefineSub') || '4 réponses facultatives · expérience, moyens, zone et calendrier'}</span>}
+                </p>
+              )}
               {refineOpen && (
                 <div className="mt-4 space-y-4">
                   <p className="text-xs text-[#B9BBC8]">{t('refineHelp') || 'Vos réponses seront jointes à votre demande de dossier. Vous pouvez aussi le demander sans répondre.'}</p>
@@ -1687,16 +1704,6 @@ export default function OpportunityDetailPage() {
                       )}
                     </div>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => setRefineFinished(true)}
-                    className="w-full border border-[#5b6d7d] text-white text-sm font-semibold py-2.5 rounded-xl hover:border-orange/50 transition-colors"
-                  >
-                    {t('refineFinish') || 'Terminé'}
-                  </button>
-                  {refineFinished && (
-                    <p className="text-xs text-green-400">{t('refineFinishedLabel') || 'Réponses enregistrées pour cette demande.'}</p>
-                  )}
                   <p className="text-[11px] text-[#B9BBC8]">
                     {t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}
                   </p>
