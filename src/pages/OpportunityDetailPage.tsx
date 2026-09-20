@@ -1814,46 +1814,83 @@ export default function OpportunityDetailPage() {
             {/* "Les points forts de cette opportunité pour vous" (client's
                 12 Sep reference): derived straight from real opportunity/
                 matchScore fields already on this page - never a separate
-                fabricated data source. Each item is true/false on whether
-                that piece of information is actually present in the
-                fiche - not an assessment of whether it's favorable.
+                fabricated data source.
+                Client's 20 Sep audit, point 3: even with a neutral label
+                and only the icon colour/desc signalling absence (the C05
+                fix below), a missing fact sitting inside a "points forts"
+                list still reads as a strength - client's own wording this
+                time: "Une information inconnue doit apparaître comme un
+                point à vérifier, pas comme un point fort." Split into two
+                actual sections instead of one list with mixed ok/not-ok
+                rows: only present facts stay under "points forts"; missing
+                ones move to their own "à vérifier" block below it.
                 Contre-audit 15 Sep, C05: the payment row's label used to
                 stay "Paiement public" even on a private-market opportunity
                 (only its desc switched to the private-market explanation),
                 so a private fiche showed a public-sounding title next to a
-                private-sounding sentence. Every other row here keeps a
-                neutral category label regardless of ok/not-ok ("Budget
-                défini" stays put whether or not a budget exists) - renamed
-                to match that same convention instead of a state-specific
-                title. */}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <button type="button" onClick={() => setStrengthsOpen(o => !o)} className="w-full flex items-center justify-between text-left">
-                <span className="text-sm font-extrabold text-white">{t('strengthsTitle') || 'Les points forts de cette opportunité pour vous'}</span>
-                <ChevronDown size={16} className={`text-orange shrink-0 transition-transform ${strengthsOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {strengthsOpen && (
-              <div className="divide-y divide-[#17334D] mt-4">
-                {[
-                  { icon: Briefcase, ok: !!opportunity.trade_name, label: t('strengthLot') || 'Lot / métier identifié', desc: opportunity.trade_name || (t('strengthLotMissing') || "Le métier n'est pas précisé sur cette fiche.") },
-                  { icon: Euro, ok: !!opportunity.estimated_value, label: t('strengthBudget') || 'Budget défini', desc: opportunity.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value)} € HT` : (t('strengthBudgetMissing') || "Le montant n'est pas communiqué.") },
-                  { icon: MapPin, ok: !!opportunity.location_city, label: t('strengthLocation') || 'Localisation précisée', desc: [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ') || (t('strengthLocationMissing') || "La localisation n'est pas précisée.") },
-                  { icon: Calendar, ok: !!opportunity.deadline, label: t('strengthCalendar') || 'Calendrier identifié', desc: opportunity.deadline ? formatDate(opportunity.deadline) : (t('strengthCalendarMissing') || "La date limite n'est pas communiquée.") },
-                  { icon: Landmark, ok: opportunity.journey === 'public_procurement', label: t('strengthPayment') || 'Conditions de paiement', desc: opportunity.journey === 'public_procurement' ? (t('strengthPaymentDesc') || 'Les conditions de règlement du contrat vous permettent d\'évaluer vos besoins de trésorerie.') : (t('strengthPaymentMissing') || "Marché privé : les conditions de paiement dépendent du contrat.") },
-                  { icon: Award, ok: matchScore.criteria.length > 0, label: t('strengthCriteria') || 'Critères de notation identifiés', desc: matchScore.criteria.length > 0 ? matchScore.criteria.map(c => c.label).join(', ') : (t('strengthCriteriaMissing') || "Les critères de notation ne sont pas détaillés sur cette fiche.") },
-                ].map((row, i) => (
-                  <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${row.ok ? 'bg-green-400/10' : 'bg-[#17334D]'}`}>
-                      <row.icon size={15} className={row.ok ? 'text-green-400' : 'text-[#5B6B80]'} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white">{row.label}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{row.desc}</p>
-                    </div>
+                private-sounding sentence. Every row here keeps a neutral
+                category label regardless of ok/not-ok ("Budget défini"
+                stays put whether or not a budget exists) - that part of
+                the fix still holds, it just no longer decides which
+                section a row lands in. */}
+            {(() => {
+              const rows = [
+                { icon: Briefcase, ok: !!opportunity.trade_name, label: t('strengthLot') || 'Lot / métier identifié', desc: opportunity.trade_name || (t('strengthLotMissing') || "Le métier n'est pas précisé sur cette fiche."), verifyLabel: t('verifyLot') || 'Métier à confirmer' },
+                { icon: Euro, ok: !!opportunity.estimated_value, label: t('strengthBudget') || 'Budget défini', desc: opportunity.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value)} € HT` : (t('strengthBudgetMissing') || "Le montant n'est pas communiqué."), verifyLabel: t('verifyBudget') || 'Budget à vérifier' },
+                { icon: MapPin, ok: !!opportunity.location_city, label: t('strengthLocation') || 'Localisation précisée', desc: [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ') || (t('strengthLocationMissing') || "La localisation n'est pas précisée."), verifyLabel: t('verifyLocation') || 'Localisation à vérifier' },
+                { icon: Calendar, ok: !!opportunity.deadline, label: t('strengthCalendar') || 'Calendrier identifié', desc: opportunity.deadline ? formatDate(opportunity.deadline) : (t('strengthCalendarMissing') || "La date limite n'est pas communiquée."), verifyLabel: t('verifyCalendar') || 'Échéance à vérifier' },
+                { icon: Landmark, ok: opportunity.journey === 'public_procurement', label: t('strengthPayment') || 'Conditions de paiement', desc: opportunity.journey === 'public_procurement' ? (t('strengthPaymentDesc') || 'Les conditions de règlement du contrat vous permettent d\'évaluer vos besoins de trésorerie.') : (t('strengthPaymentMissing') || "Marché privé : les conditions de paiement dépendent du contrat."), verifyLabel: t('verifyPayment') || 'Conditions de paiement à préciser' },
+                { icon: Award, ok: matchScore.criteria.length > 0, label: t('strengthCriteria') || 'Critères de notation identifiés', desc: matchScore.criteria.length > 0 ? matchScore.criteria.map(c => c.label).join(', ') : (t('strengthCriteriaMissing') || "Les critères de notation ne sont pas détaillés sur cette fiche."), verifyLabel: t('verifyCriteria') || 'Critères de notation à vérifier' },
+              ];
+              const present = rows.filter(r => r.ok);
+              const missing = rows.filter(r => !r.ok);
+              return (
+                <>
+                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                    <button type="button" onClick={() => setStrengthsOpen(o => !o)} className="w-full flex items-center justify-between text-left">
+                      <span className="text-sm font-extrabold text-white">{t('strengthsTitle') || 'Les points forts de cette opportunité pour vous'}</span>
+                      <ChevronDown size={16} className={`text-orange shrink-0 transition-transform ${strengthsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {strengthsOpen && (
+                      <div className="divide-y divide-[#17334D] mt-4">
+                        {present.length === 0 && (
+                          <p className="text-xs text-[#B9BBC8] py-2">{t('strengthsNoneYet') || "Cette fiche ne contient pas encore assez d'informations confirmées pour dégager des points forts."}</p>
+                        )}
+                        {present.map((row, i) => (
+                          <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                            <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-green-400/10">
+                              <row.icon size={15} className="text-green-400" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white">{row.label}</p>
+                              <p className="text-xs text-[#B9BBC8] mt-0.5">{row.desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-              )}
-            </div>
+                  {strengthsOpen && missing.length > 0 && (
+                    <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mt-3">
+                      <span className="text-sm font-extrabold text-white">{t('toVerifyTitle') || 'À vérifier avant de candidater'}</span>
+                      <div className="divide-y divide-[#17334D] mt-4">
+                        {missing.map((row, i) => (
+                          <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                            <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[#17334D]">
+                              <row.icon size={15} className="text-[#5B6B80]" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white">{row.verifyLabel}</p>
+                              <p className="text-xs text-[#B9BBC8] mt-0.5">{row.desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             </div>
           ) : null}
 
