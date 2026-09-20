@@ -171,66 +171,93 @@ export default function SousTraitancePage() {
 
         {/* Results */}
         <div className="flex-1 min-w-0">
-          <div className="mb-3">
-            {loading ? (
-              <div className="h-4 w-32 rounded bg-white/5 animate-pulse" />
-            ) : (
-              !error && <h2 className="text-xs font-bold text-white">
-                <span className="text-orange">{total}</span> {total !== 1 ? t('subResultsPlural') : t('subResults')}
-              </h2>
-            )}
-          </div>
-
-          {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
-          {!loading && error && <OpportunitiesPendingState />}
-          {!loading && !error && results.length === 0 && (
-            <div className="text-center py-10 px-4">
-              {hasFilters ? (
-                <>
-                  <p className="text-[11px] text-[#B9BBC8] mb-2">{t('appelsEmptyFiltered') || 'Aucune opportunité ne correspond à ces critères.'}</p>
-                  <button onClick={resetFilters} className="text-xs font-semibold text-orange hover:underline">{t('appelsReset') || 'Réinitialiser les filtres'}</button>
-                </>
-              ) : (
-                // Client report (sous-traitance quasi vide): unlike Batiweb/
-                // tender, there is genuinely no ingestion source at all for
-                // the subcontracting opportunity_type - nothing in
-                // dataCollectionService or the classification pipeline ever
-                // sets it, so this pool is structurally empty by
-                // construction, not just thin. Said honestly, and pointed
-                // at the one real path that can populate this journey:
-                // companies posting their own needs (subcontract_needs /
-                // "Je cherche un sous-traitant").
-                <>
-                  <p className="text-[11px] text-[#B9BBC8] max-w-[42ch] mx-auto mb-3">
-                    {t('subEmptyNoFilters') || "Peu de missions de sous-traitance sont publiées pour le moment - ce sont les entreprises elles-mêmes qui les déposent."}
-                  </p>
-                  <a href="/parcours?type=sous-traitance" className="text-xs font-semibold text-orange hover:underline">
-                    {t('subEmptyCta') || 'Publier un besoin de sous-traitance →'}
-                  </a>
-                </>
-              )}
+          {mode === 'partenaire' ? (
+            // BUG (20 Sep client audit, point 7): "Je cherche un partenaire"
+            // used to render the exact same chantier/mission list as "Je
+            // cherche un chantier" (just with a different destination link),
+            // even though there's no partner-company directory behind it at
+            // all - a subcontractor picked this mode expecting to find
+            // another COMPANY to team up with, and instead saw the same
+            // missions the other mode already shows, with "Voir la mission"
+            // still leading to the same protected mission page. Rather than
+            // keep faking a feature that doesn't exist, this mirrors the
+            // honest, coherent pattern the client asked for: same as "Je
+            // cherche un sous-traitant" (which publishes a need instead of
+            // pretending to browse one), finding a partner here means
+            // publishing what you're looking for so other companies can
+            // respond - not browsing a mislabeled chantier list.
+            <div className="text-center py-10 px-4 border border-[#17334D] rounded-2xl bg-[#061D32]">
+              <p className="text-[11px] text-[#B9BBC8] max-w-[46ch] mx-auto mb-3">
+                {t('subPartnerExplain') || "Il n'existe pas encore d'annuaire de partenaires à parcourir. Publiez ce que vous recherchez (métier, secteur, disponibilité) : les entreprises intéressées vous contacteront directement."}
+              </p>
+              <a href="/parcours?type=sous-traitance" className="inline-block text-xs font-semibold text-white bg-orange px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors">
+                {t('subPartnerCta') || 'Publier ma recherche de partenaire →'}
+              </a>
             </div>
-          )}
+          ) : (
+            <>
+              <div className="mb-3">
+                {loading ? (
+                  <div className="h-4 w-32 rounded bg-white/5 animate-pulse" />
+                ) : (
+                  !error && <h2 className="text-xs font-bold text-white">
+                    <span className="text-orange">{total}</span> {total !== 1 ? t('subResultsPlural') : t('subResults')}
+                  </h2>
+                )}
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {results.map((o) => (
-              <OpportunityListCard
-                key={o.id}
-                opportunity={o}
-                compatible={companyKnown}
-                to={mode === 'chantier' ? `/sous-traitance/mission/${o.id}` : `/sous-traitance/mise-en-relation?oid=${o.id}`}
-                ctaLabel={t('searchView')}
+              {loading && <div className="text-center text-[11px] text-[#B9BBC8] py-8">Chargement des opportunités...</div>}
+              {!loading && error && <OpportunitiesPendingState />}
+              {!loading && !error && results.length === 0 && (
+                <div className="text-center py-10 px-4">
+                  {hasFilters ? (
+                    <>
+                      <p className="text-[11px] text-[#B9BBC8] mb-2">{t('appelsEmptyFiltered') || 'Aucune opportunité ne correspond à ces critères.'}</p>
+                      <button onClick={resetFilters} className="text-xs font-semibold text-orange hover:underline">{t('appelsReset') || 'Réinitialiser les filtres'}</button>
+                    </>
+                  ) : (
+                    // Client report (sous-traitance quasi vide): unlike Batiweb/
+                    // tender, there is genuinely no ingestion source at all for
+                    // the subcontracting opportunity_type - nothing in
+                    // dataCollectionService or the classification pipeline ever
+                    // sets it, so this pool is structurally empty by
+                    // construction, not just thin. Said honestly, and pointed
+                    // at the one real path that can populate this journey:
+                    // companies posting their own needs (subcontract_needs /
+                    // "Je cherche un sous-traitant").
+                    <>
+                      <p className="text-[11px] text-[#B9BBC8] max-w-[42ch] mx-auto mb-3">
+                        {t('subEmptyNoFilters') || "Peu de missions de sous-traitance sont publiées pour le moment - ce sont les entreprises elles-mêmes qui les déposent."}
+                      </p>
+                      <a href="/parcours?type=sous-traitance" className="text-xs font-semibold text-orange hover:underline">
+                        {t('subEmptyCta') || 'Publier un besoin de sous-traitance →'}
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {results.map((o) => (
+                  <OpportunityListCard
+                    key={o.id}
+                    opportunity={o}
+                    compatible={companyKnown}
+                    to={`/sous-traitance/mission/${o.id}`}
+                    ctaLabel={t('searchView')}
+                  />
+                ))}
+              </div>
+
+              <LoadMoreButton
+                hasMore={hasMore}
+                loadingMore={loadingMore}
+                onLoadMore={loadMore}
+                total={total}
+                shown={results.length}
               />
-            ))}
-          </div>
-
-          <LoadMoreButton
-            hasMore={hasMore}
-            loadingMore={loadingMore}
-            onLoadMore={loadMore}
-            total={total}
-            shown={results.length}
-          />
+            </>
+          )}
         </div>
       </div>
     </div>
