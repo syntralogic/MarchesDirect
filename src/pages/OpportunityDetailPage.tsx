@@ -1485,7 +1485,7 @@ export default function OpportunityDetailPage() {
                     value={siretCompany.googleRating ? `${siretCompany.googleRating}/5${siretCompany.googleReviewCount ? ` (${siretCompany.googleReviewCount} avis)` : ''}` : null}
                     empty="Non disponible"
                   />
-                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.join(', ') : null} empty="Aucune certification détectée" />
+                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.join(', ') : null} empty="Aucune certification détectée dans notre recherche" />
                 </div>
               </div>
             )}
@@ -1500,7 +1500,8 @@ export default function OpportunityDetailPage() {
                 not a duplicated checkmark-plus-text pill. */}
             {siretCompany && (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
-                <h2 className="text-base font-extrabold text-white mb-3">{t('presenceDetectedTitle')}</h2>
+                <h2 className="text-base font-extrabold text-white mb-1">{t('presenceDetectedTitle')}</h2>
+                <p className="text-[11px] text-[#5B6B80] mb-3">{t('presenceDetectedSub')}</p>
                 <div className="divide-y divide-[#17334D]">
                   <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                     <div>
@@ -1646,6 +1647,105 @@ export default function OpportunityDetailPage() {
               </button>
               <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
             </div>
+
+            {/* Client (19/20 Sep): "expliquer sur quels critères repose le
+                pourcentage" + the 6-criterion table (Métier/Localisation/
+                Moyens/Expérience/Calendrier/Qualifications), each row
+                distinguishing correspondance identifiée / déclaration de
+                l'entreprise / information à vérifier / difficulté détectée.
+                Built entirely from data already real and present on this
+                page (opportunity fields, siretCompany from the SIRET
+                lookup, the visitor's own refineAnswers just below, and
+                matchScore.eligibility for Qualifications) - no new backend
+                call, and never a status stronger than what the underlying
+                field actually supports (a self-reported refineAnswers
+                'oui' is 'declared', never 'identified' - that tier is
+                reserved for data this page can independently confirm). */}
+            {(() => {
+              const STATUS_META: Record<string, { label: string; className: string }> = {
+                identified: { label: t('concordStatusIdentified') || 'Correspondance identifiée', className: 'bg-green-400/10 text-green-400' },
+                declared: { label: t('concordStatusDeclared') || "Déclaration de l'entreprise", className: 'bg-orange/10 text-orange' },
+                to_verify: { label: t('concordStatusToVerify') || 'Information à vérifier', className: 'bg-[#17334D] text-[#B9BBC8]' },
+                issue: { label: t('concordStatusIssue') || 'Difficulté détectée', className: 'bg-red-500/10 text-red-400' },
+              };
+              const answerNote = (key: string, base: string, ifYes: string, ifNo: string): { status: keyof typeof STATUS_META; text: string } => {
+                const a = refineAnswers[key];
+                if (a === 'oui') return { status: 'declared', text: `${base} ${ifYes}` };
+                if (a === 'non') return { status: 'issue', text: `${base} ${ifNo}` };
+                return { status: 'to_verify', text: `${base} ${t('concordUnconfirmed') || "Capacité non confirmée par l'entreprise."}` };
+              };
+              const location = [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ');
+              const metierRow = opportunity.trade_name
+                ? { status: siretCompany?.activity ? 'identified' as const : 'to_verify' as const,
+                    text: siretCompany?.activity
+                      ? `${t('concordMetierDemande') || 'Prestation demandée'} : ${opportunity.trade_name} · ${t('concordMetierDeclare') || 'activité déclarée'} : ${siretCompany.activity}`
+                      : `${t('concordMetierDemande') || 'Prestation demandée'} : ${opportunity.trade_name} · ${t('concordMetierManquant') || "activité de l'entreprise non renseignée"}` }
+                : { status: 'to_verify' as const, text: t('concordMetierAbsent') || "Le métier n'est pas précisé sur cette fiche." };
+              const localisationRow = answerNote(
+                'location',
+                location ? `${t('concordLieu') || "Lieu d'intervention"} : ${location}.` : (t('concordLieuAbsent') || "Lieu d'intervention non précisé."),
+                t('concordCapaciteOui') || "Vous avez indiqué pouvoir vous y déplacer.",
+                t('concordCapaciteNon') || "Vous avez indiqué ne pas pouvoir vous y déplacer."
+              );
+              const moyensRow = answerNote(
+                'capacity',
+                t('concordMoyensBase') || 'Moyens requis non détaillés sur cette fiche.',
+                t('concordMoyensOui') || 'Vous avez indiqué pouvoir les mobiliser.',
+                t('concordMoyensNon') || 'Vous avez indiqué ne pas pouvoir les mobiliser actuellement.'
+              );
+              const experienceRow = answerNote(
+                'experience',
+                t('concordExpBase') || 'Expérience similaire non vérifiable automatiquement.',
+                t('concordExpOui') || 'Prestation similaire déclarée - référence à préciser dans votre dossier.',
+                t('concordExpNon') || 'Aucune prestation similaire déclarée.'
+              );
+              const calendarAnswer = answerNote(
+                'calendar',
+                opportunity.deadline ? `${t('concordEcheance') || 'Échéance'} : ${formatDate(opportunity.deadline)}.` : (t('concordEcheanceAbsente') || 'Échéance non communiquée.'),
+                t('concordDispoOui') || 'Vous avez confirmé pouvoir la respecter.',
+                t('concordDispoNon') || 'Vous avez indiqué ne pas pouvoir la respecter.'
+              );
+              const eligibilityRequired = matchScore.eligibility.filter(e => e.required);
+              const eligibilityMet = eligibilityRequired.filter(e => e.met === true).length;
+              const eligibilityUnmet = eligibilityRequired.filter(e => e.met === false).length;
+              const eligibilityUnknown = eligibilityRequired.filter(e => e.met == null).length;
+              const qualifRow = matchScore.eligibility.length === 0
+                ? { status: 'to_verify' as const, text: t('concordQualifAbsent') || "Aucune exigence de qualification détectée dans les documents disponibles." }
+                : eligibilityUnmet > 0
+                  ? { status: 'issue' as const, text: `${eligibilityUnmet} ${t('concordQualifUnmetSuffix') || 'exigence(s) non satisfaite(s) parmi celles mentionnées dans les documents du marché.'}` }
+                  : eligibilityUnknown > 0
+                    ? { status: 'to_verify' as const, text: `${eligibilityMet}/${eligibilityRequired.length} ${t('concordQualifPartialSuffix') || 'exigences confirmées ; le reste ne peut pas être vérifié avec les informations disponibles.'}` }
+                    : { status: 'identified' as const, text: `${eligibilityRequired.length} ${t('concordQualifMetSuffix') || 'exigence(s) mentionnée(s) dans les documents, toutes satisfaites par votre profil.'}` };
+
+              const rows: { key: string; label: string; status: keyof typeof STATUS_META; text: string }[] = [
+                { key: 'metier', label: t('concordCritMetier') || 'Métier', ...metierRow },
+                { key: 'localisation', label: t('concordCritLocalisation') || 'Localisation', ...localisationRow },
+                { key: 'moyens', label: t('concordCritMoyens') || 'Moyens', ...moyensRow },
+                { key: 'experience', label: t('concordCritExperience') || 'Expérience', ...experienceRow },
+                { key: 'calendrier', label: t('concordCritCalendrier') || 'Calendrier', ...calendarAnswer },
+                { key: 'qualifications', label: t('concordCritQualifications') || 'Qualifications', ...qualifRow },
+              ];
+
+              return (
+                <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                  <h2 className="text-sm font-extrabold text-white mb-1">{t('concordBreakdownTitle') || 'Sur quoi repose ce pourcentage'}</h2>
+                  <p className="text-xs text-[#B9BBC8] mb-4">{t('concordBreakdownSub') || 'Les six critères réellement comparés pour ce marché.'}</p>
+                  <div className="divide-y divide-[#17334D]">
+                    {rows.map(row => (
+                      <div key={row.key} className="py-3 first:pt-0 last:pb-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-xs font-bold text-white">{row.label}</p>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${STATUS_META[row.status].className}`}>
+                            {STATUS_META[row.status].label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#B9BBC8] leading-relaxed">{row.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* "Affinez votre concordance" self-assessment accordion
                 (client's 12 Sep reference): purely a reflection prompt for
