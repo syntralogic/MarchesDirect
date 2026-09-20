@@ -111,40 +111,6 @@ export default function RecherchePage() {
   // own neutral wording instead of silently reusing subcontracting's.
   const headerKeySuffix = journeyParam === 'public_procurement' ? 'Public' : journeyParam === 'tender' ? 'Tender' : journeyParam === 'subcontracting' ? '' : 'Neutral';
 
-  const [radius, setRadius] = useState('50');
-  // Client audit (19 Sep): this radius was decorative - the main list
-  // endpoint had no geo-radius filter at all (only /stats/near did), so
-  // "Angoulême à 25 km" and "Angoulême à 200 km" returned identical
-  // results. Now that GET /opportunities accepts real lat/lng/radius_km
-  // (see backend's geocodingService.ts), a city search resolves to
-  // coordinates here and sends those instead of a plain city-name match.
-  // null = not resolved (yet, or couldn't be) - falls back to the
-  // existing city text-match, same as before this fix, rather than
-  // blocking the search on geocoding succeeding.
-  const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const cityGeocodeRequestId = useRef(0);
-  useEffect(() => {
-    if (locationField !== 'city' || !applied.location) {
-      setCityCoords(null);
-      return;
-    }
-    const thisRequest = ++cityGeocodeRequestId.current;
-    // Only the first comma-separated city is geocoded for radius purposes -
-    // "around several cities at once" isn't a single point/radius the
-    // Haversine filter can express; multi-city stays on the existing
-    // text-match path (cityCoords null keeps it there, see useOpportunities
-    // call below).
-    const firstCity = applied.location.split(',')[0]?.trim();
-    if (!firstCity) {
-      setCityCoords(null);
-      return;
-    }
-    opportunitiesApi.geocodeCity(firstCity).then((result) => {
-      if (cityGeocodeRequestId.current !== thisRequest) return; // stale
-      setCityCoords(result);
-    });
-  }, [locationField, applied.location]);
-
   // Client's audit: filters need a real status set (nouveau/en cours/
   // clôturé/attribué/annulé) and a montant range - neither existed here.
   // 'nouveau' isn't its own backend status (it's a temporary badge on
@@ -196,6 +162,50 @@ export default function RecherchePage() {
   // unfiltered/national results before narrowing a moment later. Seeds
   // from the same value `location` itself was just initialized from.
   const [applied, setApplied] = useState({ query: initialQuery, location: initialRegion || initialDepartment || initialCity, montantMin: searchParams.get('min_value') || '', montantMax: searchParams.get('max_value') || '' });
+
+  // MOVED here (was above, right after headerKeySuffix): this block reads
+  // `applied.location` in a useEffect dependency array, which is evaluated
+  // synchronously during render - `applied` didn't exist yet at that point
+  // in the file (declared several dozen lines further down, just above),
+  // so this was a genuine "Cannot access 'applied' before initialization"
+  // TDZ crash on every single render of this page, not just a tsc lint
+  // complaint (tsc did flag it: TS2448/TS2454). This is very likely the
+  // actual cause behind "search shows nothing" reports for /recherche -
+  // the page would throw before ever reaching a fetch call.
+  const [radius, setRadius] = useState('50');
+  // Client audit (19 Sep): this radius was decorative - the main list
+  // endpoint had no geo-radius filter at all (only /stats/near did), so
+  // "Angoulême à 25 km" and "Angoulême à 200 km" returned identical
+  // results. Now that GET /opportunities accepts real lat/lng/radius_km
+  // (see backend's geocodingService.ts), a city search resolves to
+  // coordinates here and sends those instead of a plain city-name match.
+  // null = not resolved (yet, or couldn't be) - falls back to the
+  // existing city text-match, same as before this fix, rather than
+  // blocking the search on geocoding succeeding.
+  const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const cityGeocodeRequestId = useRef(0);
+  useEffect(() => {
+    if (locationField !== 'city' || !applied.location) {
+      setCityCoords(null);
+      return;
+    }
+    const thisRequest = ++cityGeocodeRequestId.current;
+    // Only the first comma-separated city is geocoded for radius purposes -
+    // "around several cities at once" isn't a single point/radius the
+    // Haversine filter can express; multi-city stays on the existing
+    // text-match path (cityCoords null keeps it there, see useOpportunities
+    // call below).
+    const firstCity = applied.location.split(',')[0]?.trim();
+    if (!firstCity) {
+      setCityCoords(null);
+      return;
+    }
+    opportunitiesApi.geocodeCity(firstCity).then((result) => {
+      if (cityGeocodeRequestId.current !== thisRequest) return; // stale
+      setCityCoords(result);
+    });
+  }, [locationField, applied.location]);
+
   useEffect(() => {
     const field = resolveLocationField(debouncedLocation);
     setLocationField(field);

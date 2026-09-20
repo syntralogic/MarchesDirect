@@ -483,19 +483,34 @@ export const allSectors = [
   { id: 's16', name: 'Autre / Activité non listée', icon: 'PlusCircle', count: 98, color: '#FF6500' },
 ];
 
+// Real region names only (13 metropolitan regions, Corse included) - no
+// baked-in `count`/`coords` fields. This used to carry hardcoded opportunity
+// counts (Nouvelle-Aquitaine: 1432, Grand Est: 987, etc.) that ZonesPage
+// displayed directly - stale placeholder numbers from whenever this file
+// was written, never wired to real data. Client's 20 Sep audit caught this
+// exactly: "Nouvelle-Aquitaine : 1 432 sur « Zones géographiques », contre
+// 3 938 sur la carte et dans les résultats" - those are this file's old
+// 1432 vs the real live count. Corse was also missing from this list
+// entirely (client noted that too), because whoever wrote this 12-region
+// list by hand just didn't include it. Names now sourced from the same
+// data/geo/regions.json the homepage's real map already draws from (13
+// features, Corse among them), so it can't drift from what the map shows
+// again. ZonesPage/RecherchePage now fetch live counts from
+// /stats/regions themselves rather than reading a `count` field here.
 export const frenchRegions = [
-  { name: 'Île-de-France', count: 3421, coords: { x: 52, y: 35 } },
-  { name: 'Auvergne-Rhône-Alpes', count: 2187, coords: { x: 56, y: 58 } },
-  { name: 'Hauts-de-France', count: 1654, coords: { x: 50, y: 18 } },
-  { name: 'Nouvelle-Aquitaine', count: 1432, coords: { x: 35, y: 62 } },
-  { name: 'Occitanie', count: 1298, coords: { x: 50, y: 72 } },
-  { name: 'Pays de la Loire', count: 1124, coords: { x: 28, y: 48 } },
-  { name: 'Grand Est', count: 987, coords: { x: 65, y: 32 } },
-  { name: 'Provence-Alpes-Côte d\'Azur', count: 923, coords: { x: 65, y: 72 } },
-  { name: 'Bretagne', count: 812, coords: { x: 16, y: 42 } },
-  { name: 'Normandie', count: 765, coords: { x: 35, y: 28 } },
-  { name: 'Centre-Val de Loire', count: 654, coords: { x: 44, y: 44 } },
-  { name: 'Bourgogne-Franche-Comté', count: 543, coords: { x: 59, y: 44 } },
+  { name: 'Île-de-France' },
+  { name: 'Centre-Val de Loire' },
+  { name: 'Bourgogne-Franche-Comté' },
+  { name: 'Normandie' },
+  { name: 'Hauts-de-France' },
+  { name: 'Grand Est' },
+  { name: 'Pays de la Loire' },
+  { name: 'Bretagne' },
+  { name: 'Nouvelle-Aquitaine' },
+  { name: 'Occitanie' },
+  { name: 'Auvergne-Rhône-Alpes' },
+  { name: 'Provence-Alpes-Côte d\'Azur' },
+  { name: 'Corse' },
 ];
 
 export const departments = [
