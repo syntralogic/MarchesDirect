@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy, Send, X,
+  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy, Send,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -388,13 +387,6 @@ export default function OpportunityDetailPage() {
   const [quickPasswordDone, setQuickPasswordDone] = useState(false);
   const [quickPasswordDismissed, setQuickPasswordDismissed] = useState(false);
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
-  // D08 (contre-audit 15 Sep): each "Générer" button in the candidature
-  // docs list opened the rendez-vous booking modal directly, with no
-  // explanation of what happens - client's ask was an explanatory step
-  // first, not a full auto-generation feature. Holds the clicked doc's
-  // title/desc so a small explainer can show before handing off to
-  // AppointmentModal.
-  const [explainDoc, setExplainDoc] = useState<{ title: string; desc: string } | null>(null);
   // "Votre dossier" 5-section aperçu (client's 12 Sep dossier-demo
   // reference, Écran "3. Dossier") - replaces the old locked
   // "Préparer ma candidature" card below. Backed by dossier_requests
@@ -2443,12 +2435,25 @@ export default function OpportunityDetailPage() {
             // via tendersApi.getBid - just wasn't being read here.
             const dossierGenerated = !!bid?.technical_memo_text;
             const dossierFiled = bid?.status === 'submitted' || !!bid?.submitted_at;
+            // 20 Sep client audit (round 2): opening "Voir l'analyse" used to
+            // bump the bar 20% -> 40% although nothing had been prepared.
+            // Consulting the DCE / its analysis is just reading, not work on
+            // the dossier, so those two lines stay visible below as
+            // informational "consultations" but no longer count. Only real
+            // states drive the percentage.
+            const documentsPrepared = !!(
+              bid?.dc1_text || bid?.dc2_text || bid?.dume_text || bid?.engagement_act_text
+              || (bid?.pricing_schedule_json && bid.pricing_schedule_json.length > 0)
+            );
             const steps = [
               { done: true, label: t('dossierStepPreview') || 'Aperçu disponible' },
-              { done: dceViewed, label: t('dossierStepDce') || 'DCE consulté' },
-              { done: dceAnalysisViewed, label: t('dossierStepAnalysis') || 'Analyse du DCE consultée' },
+              { done: documentsPrepared, label: t('dossierStepDocsPrepared') || 'Documents préparés' },
               { done: dossierGenerated, label: t('dossierStepGenerated') || 'Dossier généré' },
               { done: dossierFiled, label: t('dossierStepFiled') || 'Dépôt effectué' },
+            ];
+            const consultations = [
+              { done: dceViewed, label: t('dossierStepDce') || 'DCE consulté' },
+              { done: dceAnalysisViewed, label: t('dossierStepAnalysis') || 'Analyse du DCE consultée' },
             ];
             const doneCount = steps.filter(s => s.done).length;
             const pct = Math.round((doneCount / steps.length) * 100);
@@ -2480,6 +2485,14 @@ export default function OpportunityDetailPage() {
                         <span className={s.done ? 'text-white' : 'text-[#B9BBC8]'}>{s.label}</span>
                       </div>
                     ))}
+                    <div className="pt-2 mt-1 border-t border-[#17334D] space-y-2">
+                      {consultations.map((s, i) => (
+                        <div key={i} className="flex items-center gap-2 text-[11px] text-[#5B6B80]">
+                          {s.done ? <CheckCircle2 size={12} className="shrink-0" /> : <span className="w-3 h-3 rounded-full border border-[#17334D] shrink-0" />}
+                          <span>{s.label}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2637,7 +2650,7 @@ export default function OpportunityDetailPage() {
               // second, different document they still needed to unlock via
               // login. The per-document "Générer" buttons further down
               // already route to the appointment flow instead of login for
-              // exactly this reason (see explainDoc/AppointmentModal below);
+              // exactly this reason (see AppointmentModal below);
               // this main CTA now matches that same pattern rather than
               // being the one holdout that still pointed at login.
               <button
@@ -2820,6 +2833,9 @@ export default function OpportunityDetailPage() {
               <h2 className="text-lg font-bold text-white">{t('dossierCandidatureTitle') || 'Dossier de candidature'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3 -mt-2">{t('dossierCandidatureSub') || "Les documents que votre chargé d'affaires prépare avec vous."}</p>
+            <p className="text-xs text-[#B9BBC8] bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 mb-3">
+              {t('dossierCandidatureExplain') || "Ces documents ne sont pas générés automatiquement : votre chargé d'affaires les prépare avec vous, sur rendez-vous, en fonction des informations de ce marché et de votre entreprise."}
+            </p>
             <div className="divide-y divide-[#17334D]">
               {[
                 { title: t('dossierCandidatureMemo') || 'Mémoire technique', desc: t('dossierCandidatureMemoDesc') || 'Organisation, moyens et méthode pour ce marché.' },
@@ -2837,7 +2853,7 @@ export default function OpportunityDetailPage() {
                       "Générer mon dossier" - repeating the long label down
                       the list even though the row above already names the
                       document. Own short key. */}
-                  <button type="button" onClick={() => setExplainDoc({ title: item.title, desc: item.desc })} className="w-full flex items-center justify-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold py-2.5 rounded-lg hover:border-orange/50 transition-colors">
+                  <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold py-2.5 rounded-lg hover:border-orange/50 transition-colors">
                     <Lock size={12} /> {t('dossierGenerateCtaShort') || 'Générer'}
                   </button>
                 </div>
@@ -2937,32 +2953,13 @@ export default function OpportunityDetailPage() {
         </div>
       )}
 
-      <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} />
+      <AppointmentModal
+        open={showAccountManagerModal}
+        onClose={() => setShowAccountManagerModal(false)}
+        defaultMotif="Répondre à un appel d'offres"
+        marketLabel={opportunity ? [opportunity.title, opportunity.source_reference].filter(Boolean).join(' · ') : undefined}
+      />
 
-      {explainDoc && createPortal(
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setExplainDoc(null)} />
-          <div className="relative bg-[#061D32] border border-[#17334D] rounded-t-2xl md:rounded-2xl p-5 w-full md:max-w-sm">
-            <button type="button" onClick={() => setExplainDoc(null)} className="absolute top-4 right-4 text-[#B9BBC8] hover:text-white">
-              <X size={18} />
-            </button>
-            <span className="w-10 h-10 rounded-lg bg-orange/15 border border-orange/30 flex items-center justify-center mb-3"><FileText size={17} className="text-orange" /></span>
-            <h3 className="text-sm font-bold text-white mb-1">{explainDoc.title}</h3>
-            <p className="text-xs text-[#B9BBC8] mb-4">{explainDoc.desc}</p>
-            <p className="text-xs text-[#B9BBC8] mb-5">
-              {t('dossierExplainAccompagnement') || "Ce document n'est pas généré automatiquement : votre chargé d'affaires le prépare avec vous, sur rendez-vous, en fonction des informations de ce marché et de votre entreprise."}
-            </p>
-            <button
-              type="button"
-              onClick={() => { setExplainDoc(null); setShowAccountManagerModal(true); }}
-              className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
-            >
-              <Calendar size={14} /> {t('dossierExplainCta') || 'Prendre rendez-vous avec mon chargé d\'affaires'}
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }
