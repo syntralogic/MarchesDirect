@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MapPin, Calendar, Euro, AlertCircle, Sparkles, ArrowRight, ArrowLeft,
-  Search, UserRound, ChevronRight, ClipboardCheck, FolderCheck, PhoneCall, Bookmark,
+  Search, UserRound, ChevronRight, ClipboardCheck, FolderCheck, PhoneCall, Bookmark, Trash2, Loader2, CheckSquare, Square,
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { stripMarkdownArtifacts } from '@/lib/utils';
@@ -68,6 +68,28 @@ export default function TableauDeBordPage() {
   const [savedList, setSavedList] = useState<Opportunity[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
   const [savedLoaded, setSavedLoaded] = useState(false);
+  // Client (19 Sep): "l'utilisateur doit pouvoir supprimer les opportunités
+  // enregistrées qui ne l'intéressent plus, individuellement ou en
+  // sélectionnant plusieurs à la fois. C'est une fonctionnalité de base qui
+  // manque actuellement." favoritesApi.remove already existed
+  // (used by the heart-icon toggle on listing cards) - nothing on this
+  // page called it at all, so a saved opportunity could never be removed
+  // once it landed here.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+  const toggleSelected = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const removeSaved = async (ids: string[]) => {
+    setRemovingIds(prev => new Set([...prev, ...ids]));
+    await Promise.allSettled(ids.map(id => favoritesApi.remove(id)));
+    setSavedList(prev => prev.filter(o => !ids.includes(o.id)));
+    setSelectedIds(prev => { const next = new Set(prev); ids.forEach(id => next.delete(id)); return next; });
+    setRemovingIds(prev => { const next = new Set(prev); ids.forEach(id => next.delete(id)); return next; });
+  };
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
 
   useEffect(() => {
@@ -403,34 +425,74 @@ export default function TableauDeBordPage() {
           emptyText={t('dashSavedEmpty') || 'Aucune annonce enregistrée. Utilisez le cœur sur une fiche pour la retrouver ici.'}
           emptyIcon={Bookmark}
         >
+          {savedList.length > 0 && (
+            <div className="flex items-center justify-between mb-1">
+              <button
+                type="button"
+                onClick={() => { setSelectMode(m => !m); setSelectedIds(new Set()); }}
+                className="text-xs font-semibold text-orange hover:underline"
+              >
+                {selectMode ? (t('dashSelectCancel') || 'Annuler') : (t('dashSelectMultiple') || 'Sélectionner plusieurs')}
+              </button>
+              {selectMode && selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => removeSaved([...selectedIds])}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-400 hover:text-red-300"
+                >
+                  <Trash2 size={13} /> {(t('dashDeleteSelected') || 'Supprimer ({n})').replace('{n}', String(selectedIds.size))}
+                </button>
+              )}
+            </div>
+          )}
           {savedList.map(o => {
             const isPrivate = o.type && o.type !== 'public';
             const locked = isPrivate && !o.identityUnlocked;
+            const isRemoving = removingIds.has(o.id);
             return (
-              <div key={o.id} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
-                <Link to={`/opportunites/${o.id}`} className="block mb-3">
-                  <p className="text-sm font-bold text-white truncate">{o.title}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-0.5">{[o.location, o.amount, o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}</p>
-                </Link>
-                <div className="flex flex-wrap items-center gap-2">
-                  {locked ? (
-                    <Link
-                      to={`/opportunites/${o.id}`}
-                      className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
-                    >
-                      <PhoneCall size={12} /> {t('dashIdentityMaskedCta') || "Identité du donneur d'ordre masquée · Prendre rendez-vous pour déverrouiller"}
+              <div key={o.id} className={`bg-[#061D32] border border-[#17334D] rounded-2xl p-4 flex gap-3 items-start transition-opacity ${isRemoving ? 'opacity-40 pointer-events-none' : ''}`}>
+                {selectMode && (
+                  <button type="button" onClick={() => toggleSelected(o.id)} className="mt-0.5 shrink-0 text-orange" aria-label={t('dashSelectItem') || 'Sélectionner cette annonce'}>
+                    {selectedIds.has(o.id) ? <CheckSquare size={18} /> : <Square size={18} className="text-[#5b6d7d]" />}
+                  </button>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <Link to={`/opportunites/${o.id}`} className="block min-w-0 flex-1">
+                      <p className="text-sm font-bold text-white truncate">{o.title}</p>
+                      <p className="text-xs text-[#B9BBC8] mt-0.5">{[o.location, o.amount, o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}</p>
                     </Link>
-                  ) : (
-                    <Link
-                      to={o.type === 'public' ? `/opportunites/${o.id}` : `/opportunites/${o.id}/candidature`}
-                      className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
-                    >
-                      <FolderCheck size={12} /> {o.type === 'public' ? (t('dashPrepareFile') || 'Préparer mon dossier') : (t('dashViewPrivateFile') || 'Voir le dossier privé')}
+                    {!selectMode && (
+                      <button
+                        type="button"
+                        onClick={() => removeSaved([o.id])}
+                        aria-label={t('dashRemoveSaved') || 'Retirer des annonces enregistrées'}
+                        className="shrink-0 text-[#5b6d7d] hover:text-red-400 transition-colors p-1"
+                      >
+                        {isRemoving ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {locked ? (
+                      <Link
+                        to={`/opportunites/${o.id}`}
+                        className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+                      >
+                        <PhoneCall size={12} /> {t('dashIdentityMaskedCta') || "Identité du donneur d'ordre masquée · Prendre rendez-vous pour déverrouiller"}
+                      </Link>
+                    ) : (
+                      <Link
+                        to={o.type === 'public' ? `/opportunites/${o.id}` : `/opportunites/${o.id}/candidature`}
+                        className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+                      >
+                        <FolderCheck size={12} /> {o.type === 'public' ? (t('dashPrepareFile') || 'Préparer mon dossier') : (t('dashViewPrivateFile') || 'Voir le dossier privé')}
+                      </Link>
+                    )}
+                    <Link to={`/opportunites/${o.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
+                      <Sparkles size={12} /> {t('dashReviewAnalysis') || "Revoir l'analyse"}
                     </Link>
-                  )}
-                  <Link to={`/opportunites/${o.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
-                    <Sparkles size={12} /> {t('dashReviewAnalysis') || "Revoir l'analyse"}
-                  </Link>
+                  </div>
                 </div>
               </div>
             );

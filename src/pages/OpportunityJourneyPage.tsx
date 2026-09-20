@@ -7,6 +7,7 @@ import {
   Paintbrush, Zap, Filter, Loader2, PartyPopper,
 } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
+import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cities } from '@/data/mockData';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -228,6 +229,8 @@ export default function OpportunityJourneyPage() {
     recent_days: recentDaysForApi(),
     sort,
   });
+
+  useScrollRestore(!loading);
 
   // Deadline has no backend range filter (unlike budget/date-published
   // above), so this stays a client-side pass over whatever page is already
