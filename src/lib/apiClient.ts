@@ -526,7 +526,7 @@ export const siretApi = {
   // already seen the score/why-it-matches, gating the fuller breakdown.
   // opportunityId links the CRM lead to the specific opportunity being
   // viewed so the account manager knows why to call.
-  captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string): Promise<{ leadCaptured: boolean }> => {
+  captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
     const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId });
     return data;
   },

@@ -448,6 +448,17 @@ export default function OpportunityDetailPage() {
       .then(r => setOtpRequired(r.required))
       .catch(() => setOtpRequired(false));
   }, []);
+  // 20 Sep fix: when otpRequired is true, POST /siret/lead 403s on an
+  // unverified phone (see backend), so captureLead can't run until the
+  // code is confirmed - this flag hides the lead form and shows the code
+  // step for that in-progress window, without depending on leadCaptured
+  // (which only flips true once captureLead itself succeeds).
+  const [pendingOtpVerification, setPendingOtpVerification] = useState(false);
+  // Whether the free "dossier pré-rempli" PDF was actually emailed on this
+  // validation, straight from POST /siret/lead's response - drives the
+  // confirmation message on screen 3 (vs. a generic "you're set up" state
+  // if the email dispatch itself failed server-side, still non-fatal there).
+  const [dossierJustEmailed, setDossierJustEmailed] = useState(false);
 
   // D06 (contre-audit 15 Sep): "Le formulaire de modification prévu
   // n'apparaissait pas. Le clic fait apparaître une proposition « Être
@@ -510,18 +521,32 @@ export default function OpportunityDetailPage() {
     }
     setLeadSubmitting(true);
     setLeadError(null);
-    const { error } = await captureLead(leadPhone, leadEmail, id);
+    // 20 Sep fix: POST /siret/lead rejects an unverified phone whenever
+    // otpRequired is true (see backend's isVerificationRequired guard), so
+    // calling captureLead before the code is confirmed just 403s with no
+    // way back to the code-entry step (the exact gap the 15 Sep audit
+    // flagged). Send the code first instead and defer captureLead to
+    // handleOtpSubmit, once the phone is actually proven.
+    if (otpRequired) {
+      setPendingOtpVerification(true);
+      await sendOtp(leadPhone);
+      setLeadSubmitting(false);
+      return;
+    }
+    const { error, dossierEmailed } = await captureLead(leadPhone, leadEmail, id);
     setLeadSubmitting(false);
     if (error) {
       setLeadError(error);
       return;
     }
-    // C08: coordinates saved, but the visitor doesn't reach Dossier
-    // (screen 3) yet - a code is sent to the phone just captured and must
-    // be confirmed first. sendOtp() below both fires the request and flips
-    // otpSent, shared with the auto-send effect for a returning,
-    // not-yet-verified visitor.
-    await sendOtp(leadPhone);
+    // Contact details are already fully validated here (no OTP required in
+    // this environment) - go straight to the Dossier screen instead of
+    // leaving the visitor on a blank Concordance screen (the bug: the lead
+    // form disappears once leadCaptured flips true, but nothing used to
+    // take its place or advance `screen`).
+    setDossierJustEmailed(!!dossierEmailed);
+    setJustUnlockedAnalysis(true);
+    setScreen(3);
   };
 
   // Fires POST /siret/phone/verification/request for the given phone. Shared by the
@@ -549,6 +574,7 @@ export default function OpportunityDetailPage() {
   const phoneForOtp = leadPhone || contextLeadPhone || '';
   useEffect(() => {
     if (otpRequired && !isAuthenticated && leadCaptured && !phoneVerified && !otpSent && !otpSending && phoneForOtp) {
+      setPendingOtpVerification(true);
       sendOtp(phoneForOtp);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -565,6 +591,24 @@ export default function OpportunityDetailPage() {
     try {
       await siretApi.confirmPhoneOtp(phoneForOtp, otpCode, getSessionId());
       confirmPhoneVerified();
+      let dossierEmailed = false;
+      if (!leadCaptured) {
+        // 20 Sep fix: for a brand-new visitor this is the first point the
+        // phone is actually proven, so this is where captureLead (POST
+        // /siret/lead) finally runs - it would have 403'd (phone_not_verified)
+        // any earlier. A returning visitor who already had leadCaptured=true
+        // from an earlier session doesn't need this repeated.
+        const email = leadEmail || contextLeadEmail || '';
+        const result = await captureLead(phoneForOtp, email, id);
+        if (result.error) {
+          setOtpError(result.error);
+          setOtpSubmitting(false);
+          return;
+        }
+        dossierEmailed = !!result.dossierEmailed;
+      }
+      setPendingOtpVerification(false);
+      setDossierJustEmailed(dossierEmailed);
       // Client's exact button label is "Enregistrer et continuer" - one
       // action, not submit-then-a-second-tap. Was previously just setting
       // leadCaptured and leaving the visitor on the same screen with a
@@ -2122,7 +2166,7 @@ export default function OpportunityDetailPage() {
                       );
                     })()}
 
-                  {!(isAuthenticated || leadCaptured) && (
+                  {!(isAuthenticated || leadCaptured || pendingOtpVerification) && (
                     <form onSubmit={handleLeadSubmit} className="space-y-3">
                       <div>
                         <label className="block text-sm font-semibold text-white mb-1.5">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
@@ -2242,7 +2286,7 @@ export default function OpportunityDetailPage() {
                       403 handled as its own case, not just an error
                       string). Left as a comment rather than silently
                       patched over. */}
-                  {otpRequired && !isAuthenticated && leadCaptured && !phoneVerified && (
+                  {otpRequired && !isAuthenticated && !phoneVerified && (pendingOtpVerification || leadCaptured) && (
                     <form onSubmit={handleOtpSubmit} className="space-y-3">
                       <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-1">
                         <Copy size={17} className="text-orange shrink-0" /> {t('otpTitle') || 'Vérifiez votre téléphone'}
@@ -2295,7 +2339,11 @@ export default function OpportunityDetailPage() {
         <div className="space-y-4 mt-4">
           {justUnlockedAnalysis && (
             <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-              <CheckCircle2 size={14} className="shrink-0" /> {t('leadUnlockedBanner') || 'Informations supplémentaires débloquées'}
+              <CheckCircle2 size={14} className="shrink-0" />
+              {!isAuthenticated && dossierJustEmailed
+                ? (t('leadUnlockedBannerEmailed', { email: leadEmail || contextLeadEmail || '' })
+                    || `Vos coordonnées sont validées. Votre dossier pré-rempli vient d'être envoyé à ${leadEmail || contextLeadEmail || 'votre adresse e-mail'}.`)
+                : (t('leadUnlockedBanner') || 'Informations supplémentaires débloquées')}
             </div>
           )}
 
@@ -2441,23 +2489,22 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-bold text-white">{t('dossierPrefilledTitle') || 'Votre dossier pré-rempli'}</h2>
-              {/* Badge and CTAs used to say "Offert · disponible" and link
-                  straight to a RequireAuth route for every visitor, subscriber
-                  or not - an anonymous visitor got no explanation for why
-                  "available" meant a blank login screen (client's D02/D04:
-                  "présenté comme offert et disponible, mène à une connexion").
-                  The document genuinely does require an account (bid_responses
-                  is company-scoped server-side, not session-scoped like
-                  favorites), so the honest fix is telling the visitor that
-                  up front rather than promising zero-friction access.
-                  D03 follow-up: "disponible" was still shown to an
-                  authenticated visitor whose document was a draft awaiting
-                  the chargé d'affaires's approval (is_technical_memo_approved -
-                  BidWorkspacePage's own download button already gates on this
-                  same field) - same overpromise, one step later in the funnel. */}
-              <span className={`text-[11px] font-semibold ${dossierReady ? 'text-green-400' : 'text-orange'}`}>
+              {/* 20 Sep fix: an anonymous visitor who just validated their
+                  email/phone on Concordance has, in fact, already received
+                  this document by email (see POST /siret/lead's
+                  dossierEmailed - sendPrefilledDossierEmail on the backend).
+                  The old copy here ("compte gratuit requis") told them the
+                  opposite and pushed them to /inscription regardless -
+                  exactly the "still asking for account creation" gap in the
+                  client's latest audit. Authenticated visitors keep the
+                  existing candidature-workspace document untouched below;
+                  this only changes what an anonymous, already-leadCaptured
+                  visitor sees. */}
+              <span className={`text-[11px] font-semibold ${dossierReady || (!isAuthenticated && leadCaptured) ? 'text-green-400' : 'text-orange'}`}>
                 {!isAuthenticated
-                  ? (t('dossierPrefilledBadgeLocked') || 'Offert · compte gratuit requis')
+                  ? (leadCaptured
+                      ? (t('dossierPrefilledBadgeSent') || 'Offert · envoyé par e-mail')
+                      : (t('dossierPrefilledBadgeLocked') || 'Offert · compte gratuit requis'))
                   : dossierReady
                     ? (t('dossierPrefilledBadge') || 'Offert · disponible')
                     : (t('dossierPrefilledBadgePending') || 'Offert · en préparation')}
@@ -2469,7 +2516,10 @@ export default function OpportunityDetailPage() {
                 <p className="text-sm font-semibold text-white">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')} × {opportunity.title}</p>
                 <p className="text-xs text-[#B9BBC8] mt-0.5">
                   {!isAuthenticated
-                    ? (t('dossierPrefilledDescLocked') || "Créez un compte gratuit (30 secondes) pour consulter et télécharger ce document - vous revenez directement ici après.")
+                    ? (leadCaptured
+                        ? (t('dossierPrefilledDescSent', { email: leadEmail || contextLeadEmail || '' })
+                            || `Votre dossier pré-rempli a été envoyé à ${leadEmail || contextLeadEmail || 'votre adresse e-mail'}. Pensez à vérifier vos courriers indésirables si vous ne le voyez pas d'ici quelques minutes.`)
+                        : (t('dossierPrefilledDescLocked') || "Créez un compte gratuit (30 secondes) pour consulter et télécharger ce document - vous revenez directement ici après."))
                     : dossierReady
                       ? (t('dossierPrefilledDesc') || 'Votre entreprise, le lot retenu et une première trame de réponse rassemblés dans un document.')
                       : (t('dossierPrefilledDescPending') || "Votre chargé d'affaires prépare la version finale de ce document - vous serez prévenu dès qu'il est prêt à télécharger.")}
@@ -2527,6 +2577,10 @@ export default function OpportunityDetailPage() {
                   {dossierDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {t('dossierPrefilledDownload') || 'Télécharger'}
                 </button>
               </div>
+            ) : leadCaptured ? (
+              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                <CheckCircle2 size={14} className="shrink-0" /> {t('dossierPrefilledSentConfirm') || 'Document envoyé - vérifiez votre boîte e-mail.'}
+              </div>
             ) : (
               <Link
                 to="/inscription"
@@ -2575,21 +2629,30 @@ export default function OpportunityDetailPage() {
               <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-2.5 rounded-xl justify-center">
                 <CheckCircle2 size={13} /> {t('dossierRequestSent') || "Demande envoyée à votre chargé d'affaires"}
               </div>
+            ) : !isAuthenticated ? (
+              // 20 Sep fix: this used to fire the authed /generate call (or,
+              // in an earlier pass, redirect straight to /connexion) for an
+              // anonymous visitor who has, in fact, already received their
+              // free dossier by email - "Générer mon dossier" implied a
+              // second, different document they still needed to unlock via
+              // login. The per-document "Générer" buttons further down
+              // already route to the appointment flow instead of login for
+              // exactly this reason (see explainDoc/AppointmentModal below);
+              // this main CTA now matches that same pattern rather than
+              // being the one holdout that still pointed at login.
+              <button
+                type="button"
+                onClick={() => setShowAccountManagerModal(true)}
+                className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
+              >
+                <Calendar size={14} /> {t('dossierGenerateCtaAnon') || 'Prendre rendez-vous avec mon chargé d\'affaires'}
+              </button>
             ) : (
               <button
                 type="button"
                 disabled={dossierGenerating}
                 onClick={async () => {
                   if (!id) return;
-                  // Was firing the authed /generate call unconditionally -
-                  // a logged-out visitor got a raw 401 ("No token
-                  // provided") which the response interceptor then turns
-                  // into a "session expired" toast, even though they were
-                  // never logged in. Send them to log in first instead.
-                  if (!isAuthenticated) {
-                    navigate('/connexion', { state: { from: `/opportunites/${id}` } });
-                    return;
-                  }
                   setDossierGenerating(true);
                   try {
                     const saved = await dossiersApi.generate(id, {
