@@ -1602,6 +1602,21 @@ export default function OpportunityDetailPage() {
                 </div>
               )}
 
+              {/* Client (20 Sep, concordance point 4): the "Cessée" status on
+                  VERIFRANCE HABITAT matches the live data.gouv.fr record
+                  (siret.ts), so it is not a display bug - but its effect on
+                  this score was only ever explained deep in the "Aperçu du
+                  dossier" (scorePreviewStatusNotice below), where a visitor
+                  may never scroll. Same condition, same wording, surfaced
+                  right next to the score it actually affects. */}
+              {siretCompany?.statut && siretCompany.statut !== 'Active' && (
+                <div className="border-l-2 border-[#bd7027] bg-[#bd7027]/10 rounded-r-lg pl-3 pr-3 py-2.5 mt-4">
+                  <p className="text-xs text-[#EAF0F6] leading-relaxed">
+                    {t('scoreStatusNotice', { status: siretCompany.statut }) || `Statut « ${siretCompany.statut} » d'après la fiche officielle : l'indice ci-dessus ne tient pas compte de ce statut et doit être interprété avec prudence tant que la situation de l'entreprise n'est pas clarifiée.`}
+                  </p>
+                </div>
+              )}
+
               {/* The "N entreprises avec un indice comparable ont remporté un
                   marché similaire" card was removed (20 Sep audit): its number
                   was derived from the opportunity id, not from any award
