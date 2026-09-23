@@ -2,6 +2,9 @@ import { teamMembers } from '@/data/mockData';
 import { Linkedin, Mail } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 
+// Shared company address: individual team emails are not published.
+const CONTACT_EMAIL = 'contact@marchesdirect.fr';
+
 export default function EquipePage() {
   const { t } = useLang();
 
@@ -45,18 +48,24 @@ export default function EquipePage() {
                 member rather than generically, since the card repeats for
                 every team member. */}
             <div className="flex justify-center gap-3 pt-4 border-t border-[#17334D]">
-              <button
-                aria-label={`${t('teamLinkedinLabel') || 'Profil LinkedIn de'} ${member.name}`}
-                className="p-2 rounded-lg border border-[#17334D] text-[#B9BBC8] hover:border-orange/40 hover:text-orange transition-colors"
-              >
-                <Linkedin size={14} />
-              </button>
-              <button
+              {member.linkedin && (
+                <a
+                  href={member.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${t('teamLinkedinLabel') || 'Profil LinkedIn de'} ${member.name}`}
+                  className="p-2 rounded-lg border border-[#17334D] text-[#B9BBC8] hover:border-orange/40 hover:text-orange transition-colors"
+                >
+                  <Linkedin size={14} />
+                </a>
+              )}
+              <a
+                href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(member.name)}`}
                 aria-label={`${t('teamEmailLabel') || 'Contacter'} ${member.name} ${t('teamEmailLabelSuffix') || 'par e-mail'}`}
                 className="p-2 rounded-lg border border-[#17334D] text-[#B9BBC8] hover:border-orange/40 hover:text-orange transition-colors"
               >
                 <Mail size={14} />
-              </button>
+              </a>
             </div>
           </div>
         ))}
