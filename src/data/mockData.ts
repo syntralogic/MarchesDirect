@@ -558,7 +558,18 @@ export const internationalMarkets = [
   { name: 'Autres marchés', icon: 'Globe2', count: 5621, description: 'Europe, Afrique, Asie, Amériques', color: '#7C3AED' },
 ];
 
-export const teamMembers = [
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  initials: string;
+  color: string;
+  /** Optional public LinkedIn profile URL. The LinkedIn button is only shown when set. */
+  linkedin?: string;
+}
+
+export const teamMembers: TeamMember[] = [
   {
     id: 't1',
     name: 'Sébastien Marchand',
