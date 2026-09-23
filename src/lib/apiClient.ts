@@ -616,8 +616,11 @@ export const chatbotApi = {
     const { data } = await apiClient.get('/chatbot/conversations', { params: sessionId ? { sessionId } : {} });
     return data;
   },
-  getMessages: async (conversationId: string): Promise<ApiChatbotMessage[]> => {
-    const { data } = await apiClient.get(`/chatbot/conversations/${conversationId}/messages`);
+  getMessages: async (conversationId: string, sessionId?: string): Promise<ApiChatbotMessage[]> => {
+    // Anonymous visitors are identified by sessionId only (see identity() in
+    // backend routes/chatbot.ts); without it the ownership check returns 404
+    // and the widget could never load its history or enable the input.
+    const { data } = await apiClient.get(`/chatbot/conversations/${conversationId}/messages`, { params: sessionId ? { sessionId } : {} });
     return data;
   },
   // sessionId is only actually used by the backend for an anonymous visitor
