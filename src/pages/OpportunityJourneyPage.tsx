@@ -402,7 +402,14 @@ export default function OpportunityJourneyPage() {
     return () => { cancelled = true; };
   }, [debouncedCitySearch, locationModalOpen]);
 
-  const citySuggestions = useMemo(() => {
+  const citySuggestions = useMemo((): { name: string; lat?: number; lng?: number }[] => {
+    // The mockData.ts fallback list has no coordinates (see cityApiResults'
+    // own comment above) - normalized to the same shape here (lat/lng just
+    // absent) so every caller of citySuggestions can read c.lat/c.lng
+    // without a type error or an unsafe cast, and so picking a fallback
+    // city correctly leaves pickedCityCoords null (city text-match, not a
+    // radius search) rather than a stale value from whatever was picked
+    // before.
     const trimmed = citySearch.trim();
     if (!trimmed) return cities.slice(0, 5);
     if (trimmed.length < 2) return cities.filter(c => c.name.toLowerCase().includes(trimmed.toLowerCase())).slice(0, 5);
