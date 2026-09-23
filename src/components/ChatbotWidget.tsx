@@ -44,7 +44,7 @@ export function ChatbotWidget() {
           conv = await chatbotApi.createConversation({ topic: 'general', sessionId });
         }
         setConversationId(conv.id);
-        const history = await chatbotApi.getMessages(conv.id);
+        const history = await chatbotApi.getMessages(conv.id, sessionId);
         setMessages(history);
         // Only lock the guard on success - marking it done before the
         // request even ran meant a failed init (network blip, 500) left
