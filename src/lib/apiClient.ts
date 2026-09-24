@@ -266,7 +266,8 @@ export type ApiMatchScore = {
     formula: string;
   };
   warning: string | null;
-  criteria: { label: string; weight: number }[];
+  criteria: { label: string; weight: number | null }[];
+  criteriaSource?: 'notice' | 'unknown';
   eligibility: { label: string; note: string; required: boolean; met: boolean | null }[];
   whyRespond: string;
 };

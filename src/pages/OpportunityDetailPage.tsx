@@ -2670,22 +2670,28 @@ export default function OpportunityDetailPage() {
             </p>
           </div>
 
-          {matchScore && matchScore.criteria.length > 0 && (
+          {matchScore && (
             <div id="eligibility-analysis-block" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
               <h2 className="text-lg font-bold text-white mb-3">{t('scoreCriteriaWeight') || "Pondération des critères de l'acheteur"}</h2>
-              <div className="space-y-2.5">
-                {matchScore.criteria.map((c, i) => (
-                  <div key={i}>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-[#B9BBC8]">{c.label}</span>
-                      <span className="text-white font-semibold">{c.weight}%</span>
+              {matchScore.criteria.length > 0 ? (
+                <div className="space-y-2.5">
+                  {matchScore.criteria.map((c, i) => (
+                    <div key={i}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-[#B9BBC8]">{c.label}</span>
+                        <span className="text-white font-semibold">{c.weight != null ? `${c.weight}%` : (t('scoreCriteriaNoWeight') || 'pondération non précisée')}</span>
+                      </div>
+                      {c.weight != null && (
+                        <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
+                          <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
+                        </div>
+                      )}
                     </div>
-                    <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
-                      <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[#B9BBC8]">{t('scoreCriteriaUnknown') || 'Critères à vérifier dans le règlement de consultation.'}</p>
+              )}
               
               {matchScore.eligibility.length > 0 && (
                 <>
@@ -2694,6 +2700,7 @@ export default function OpportunityDetailPage() {
                   </button>
                   {eligibilityOpen && (
                     <div className="mt-3 pt-3 border-t border-[#17334D] space-y-2.5">
+                      <p className="text-[11px] text-[#5B6B80]">{t('scoreEligibilityNote') || "Liste indicative de préparation, pas l'exigence de l'acheteur : à confirmer dans le règlement de consultation."}</p>
                       {matchScore.eligibility.map((el, i) => (
                         <div key={i} className="flex items-start gap-2.5 text-xs">
                           {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
