@@ -5,8 +5,16 @@ interface LoadMoreButtonProps {
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
-  /** Total matching the current filters, as reported by the backend. */
-  total: number;
+  /**
+   * Total matching the current filters, as reported by the backend.
+   * 25 Sep audit ("31 opportunités" title vs "100 / 327" footer): pass
+   * `undefined` when a page also applies a client-side-only filter (one
+   * the backend total doesn't account for, e.g. OpportunityJourneyPage's
+   * status/deadline filters) - showing a backend total next to a `shown`
+   * count that filter has already narrowed is exactly the contradiction
+   * that was reported. Omitting it falls back to just "{shown} affichées".
+   */
+  total?: number;
   /** How many are currently rendered on screen. */
   shown: number;
 }
@@ -38,7 +46,7 @@ export function LoadMoreButton({ hasMore, loadingMore, onLoadMore, total, shown 
           t('loadMore')
         )}
       </button>
-      <span className="text-[10px] text-[#B9BBC8]">{shown} / {total}</span>
+      <span className="text-[10px] text-[#B9BBC8]">{total !== undefined ? `${shown} / ${total}` : `${shown} affichées`}</span>
     </div>
   );
 }
