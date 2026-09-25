@@ -1141,6 +1141,7 @@ function GeographicSection() {
                         : `/recherche?city=${encodeURIComponent(cityResult.name)}`
                     }
                     className="text-[11px] text-orange font-semibold hover:underline"
+                  >
                     Voir toutes les opportunités {cityRadiusKm ? `dans ces ${cityRadiusKm} km` : 'de cette ville'}
                   </Link>
                 </div>
