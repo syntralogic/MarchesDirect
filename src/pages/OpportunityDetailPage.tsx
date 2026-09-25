@@ -346,6 +346,12 @@ export default function OpportunityDetailPage() {
   const [dossierPartners, setDossierPartners] = useState<{ name: string; role: string }[]>([]);
   const [dossierGenerating, setDossierGenerating] = useState(false);
   const [dossierDownloading, setDossierDownloading] = useState(false);
+  // 25 Sep audit, point 5: standalone "Télécharger mon exemplaire" / "Me le
+  // renvoyer" for the anonymous pré-dossier flow (previously only present
+  // in AppointmentModal's recap).
+  const [prefilledDownloading, setPrefilledDownloading] = useState(false);
+  const [prefilledResending, setPrefilledResending] = useState(false);
+  const [prefilledResent, setPrefilledResent] = useState(false);
   // Inline Confidentialité/Préférences de contact disclosures on the lead
   // form (client's 12 Sep concordance-apercu reference, exact HTML source
   // this time - md8-preferences/md8-privacy) - replaces the plain links to
@@ -2652,8 +2658,60 @@ export default function OpportunityDetailPage() {
                 </button>
               </div>
             ) : leadCaptured ? (
-              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                <CheckCircle2 size={14} className="shrink-0" /> {t('dossierPrefilledSentConfirm') || 'Document envoyé - vérifiez votre boîte e-mail.'}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                  <CheckCircle2 size={14} className="shrink-0" /> {t('dossierPrefilledSentConfirm') || 'Document envoyé - vérifiez votre boîte e-mail.'}
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    disabled={prefilledDownloading}
+                    onClick={async () => {
+                      if (!id) return;
+                      setPrefilledDownloading(true);
+                      try {
+                        const blob = await siretApi.downloadPrefilledDossier(getSessionId(), id);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'dossier-pre-rempli.pdf';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
+                      } finally {
+                        setPrefilledDownloading(false);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline disabled:opacity-50"
+                  >
+                    {prefilledDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {t('dossierPrefilledDownloadOwn') || 'Télécharger mon exemplaire'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={prefilledResending || prefilledResent}
+                    onClick={async () => {
+                      if (!id) return;
+                      setPrefilledResending(true);
+                      try {
+                        const result = await siretApi.resendPrefilledDossier(getSessionId(), id);
+                        if (result.sent) {
+                          setPrefilledResent(true);
+                        } else {
+                          toast.error("Échec de l'envoi. Réessayez dans un instant.");
+                        }
+                      } catch (err) {
+                        toast.error(getApiErrorMessage(err, "Échec de l'envoi."));
+                      } finally {
+                        setPrefilledResending(false);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-[#B9BBC8] font-semibold hover:text-orange hover:underline disabled:opacity-50"
+                  >
+                    {prefilledResending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                    {prefilledResent ? (t('dossierPrefilledResent') || 'Envoyé à nouveau') : (t('dossierPrefilledResend') || 'Me le renvoyer')}
+                  </button>
+                </div>
               </div>
             ) : (
               <Link
