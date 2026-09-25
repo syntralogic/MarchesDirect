@@ -123,6 +123,12 @@ export type ApiOpportunity = {
   title: string;
   description?: string;
   deadline: string | null;
+  // 25 Sep client audit: submission time stated in the notice text (e.g.
+  // "11h00"), derived server-side (utils/officialFields.ts) from the same
+  // fact the "Détails du dossier" row already shows, so the header can
+  // display the identical time instead of silently dropping it. Null when
+  // the notice states no time - never guessed.
+  deadline_time?: string | null;
   publication_date: string | null;
   estimated_value: number | null;
   currency: string | null;
