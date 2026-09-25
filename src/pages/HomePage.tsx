@@ -815,10 +815,17 @@ function GeographicSection() {
     const allDeptsSelected = !!departementsGeoJson && selectedDepts.length > 0
       && selectedDepts.length >= (departementsGeoJson.features as unknown[]).length;
 
+    // Edge case: if the region/department GeoJSON hasn't finished loading
+    // yet, allRegionsSelected/allDeptsSelected stay false no matter how many
+    // regions/departments are selected (there's nothing to compare the count
+    // against), so a "select all" click made before the GeoJSON loads would
+    // still send a strict region=/department= filter instead of the bare,
+    // unfiltered /recherche it should. Treat "GeoJSON not loaded" the same
+    // as "everything selected".
     if (tab === 'regions' && selectedRegions.length > 0)
-      return allRegionsSelected ? '/recherche' : `/recherche?${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
+      return (allRegionsSelected || !regionsGeoJson) ? '/recherche' : `/recherche?${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
     if (tab === 'departments' && selectedDepts.length > 0)
-      return allDeptsSelected ? '/recherche' : `/recherche?${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
+      return (allDeptsSelected || !departementsGeoJson) ? '/recherche' : `/recherche?${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
     if (tab === 'cities' && selectedCities.length > 0) {
       const cityParams = selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&');
       // 25 Sep audit: hand off the exact coordinates + radius selectionCount
