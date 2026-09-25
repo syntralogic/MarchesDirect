@@ -55,18 +55,67 @@ function getIcon(title: string) {
   return <Building size={16} className="text-orange" />;
 }
 
+// Dossier reload / back-navigation (25 Sep audit, point 4): "Dossier reload
+// pe step reset, 'Résultats' breadcrumb filters khona." Clicking a result at
+// step 4 navigates to /opportunites/:id (OpportunityDetailPage) - a full
+// route change that unmounts this page. Coming back ("Retour" or the
+// browser back button) remounts it fresh, and every piece of state below
+// was plain useState with no persistence (only subRole, further down,
+// already survived this via sessionStorage) - so the visitor landed back on
+// step 1 with the search query, location, and all four "Résultats" filters
+// gone, forcing them to redo the whole search. Same sessionStorage pattern
+// as subRole, scoped to this tab and to the type the visitor is currently
+// searching (see the typeParam check below) so a header type-menu click -
+// which intentionally starts a fresh search per Point 6 above - still
+// resets everything instead of resurrecting a stale search for a different
+// opportunity type.
+const JOURNEY_STATE_KEY = 'md_journey_state';
+type PersistedJourneyState = {
+  typeParam: string | null;
+  step: 1 | 2 | 3 | 4;
+  types: OppType[];
+  buyerNeed: ApiSubcontractNeed | null;
+  query: string;
+  locationLabel: string;
+  pickedCity: string;
+  pickedCityCoords: { lat: number; lng: number } | null;
+  radius: number;
+  pickedDepartment: string;
+  pickedDepartmentName: string;
+  pickedRegion: string;
+  selectedDepartments: { code: string; nom: string }[];
+  status: string;
+  dateFilter: string;
+  deadlineFilter: string;
+  amountFilter: string;
+  sort: 'deadline' | 'recent' | 'match';
+};
+function loadPersistedJourneyState(currentTypeParam: string | null): PersistedJourneyState | null {
+  try {
+    const raw = sessionStorage.getItem(JOURNEY_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedJourneyState;
+    if (parsed.typeParam !== currentTypeParam) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default function OpportunityJourneyPage() {
   const { t } = useLang();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialType = TYPE_SLUGS[searchParams.get('type') || ''] || 'Marchés publics';
   const hasTypeParam = searchParams.get('type');
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(hasTypeParam ? 2 : 1);
-  const [buyerNeed, setBuyerNeed] = useState<ApiSubcontractNeed | null>(null);
+  const rawTypeParam = searchParams.get('type') || null;
+  const restored = loadPersistedJourneyState(rawTypeParam);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(restored?.step ?? (hasTypeParam ? 2 : 1));
+  const [buyerNeed, setBuyerNeed] = useState<ApiSubcontractNeed | null>(restored?.buyerNeed ?? null);
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
 
-  const [types, setTypes] = useState<OppType[]>([initialType]);
+  const [types, setTypes] = useState<OppType[]>(restored?.types ?? [initialType]);
   // Point 6 (20 Sep client audit): "Je cherche un sous-traitant" mène à
   // l'inscription; revenir en arrière fait toujours perdre le rôle
   // choisi." Clicking through to /inscription is a full route change -
@@ -113,32 +162,32 @@ export default function OpportunityJourneyPage() {
     setBuyerNeed(null);
   }, [typeParam]);
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(restored?.query ?? '');
   const [querySuggestOpen, setQuerySuggestOpen] = useState(false);
 
-  const [locationLabel, setLocationLabel] = useState('');
+  const [locationLabel, setLocationLabel] = useState(restored?.locationLabel ?? '');
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [citySearch, setCitySearch] = useState('');
-  const [pickedCity, setPickedCity] = useState('');
+  const [pickedCity, setPickedCity] = useState(restored?.pickedCity ?? '');
   // Coordinates for the currently picked real city (not a whole-area pick,
   // and not one of the static mockData.ts fallback cities, which have no
   // coordinates - see the cities import above). null falls back to the
   // existing city-name text match, same as before this fix.
-  const [pickedCityCoords, setPickedCityCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [radius, setRadius] = useState(50);
+  const [pickedCityCoords, setPickedCityCoords] = useState<{ lat: number; lng: number } | null>(restored?.pickedCityCoords ?? null);
+  const [radius, setRadius] = useState(restored?.radius ?? 50);
   // "Département entier" / "Région entière" need an actual department code
   // / region name to filter by - resolved on demand (see pickWholeDept /
   // pickWholeRegion below) from whatever city the visitor searched or
   // picked, via the same municipality lookup used for city search.
-  const [pickedDepartment, setPickedDepartment] = useState('');
+  const [pickedDepartment, setPickedDepartment] = useState(restored?.pickedDepartment ?? '');
   // G07 (contre-audit 15 Sep): picking "Département entier" from Bordeaux
   // showed "(33)" with no department name at all - resolveAreaFromCity only
   // ever returns a code (from the municipality lookup's context string), and
   // nothing turned that code into "Gironde". departementsGeoJson (loaded
   // just below for the département search box) already has the full
   // code->nom list, so this just looks the code up in it once resolved.
-  const [pickedDepartmentName, setPickedDepartmentName] = useState('');
-  const [pickedRegion, setPickedRegion] = useState('');
+  const [pickedDepartmentName, setPickedDepartmentName] = useState(restored?.pickedDepartmentName ?? '');
+  const [pickedRegion, setPickedRegion] = useState(restored?.pickedRegion ?? '');
   // Client's audit (15 Sep): typing "Gironde"/"Dordogne" only ever matched
   // communes containing that word, never the département itself; typing
   // "33"/"24" (the code) matched nothing at all. And there was no way to
@@ -146,7 +195,7 @@ export default function OpportunityJourneyPage() {
   // by name OR code - with multi-select, independent of the city search
   // box above.
   const [departementsGeoJson, setDepartementsGeoJson] = useState<{ code: string; nom: string }[] | null>(null);
-  const [selectedDepartments, setSelectedDepartments] = useState<{ code: string; nom: string }[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = useState<{ code: string; nom: string }[]>(restored?.selectedDepartments ?? []);
   useEffect(() => {
     import('@/data/geo/departements.json').then(m => {
       const features = ((m.default as { features: { properties: { code: string; nom: string } }[] }).features) || [];
@@ -220,10 +269,10 @@ export default function OpportunityJourneyPage() {
   const [cityApiLoading, setCityApiLoading] = useState(false);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [status, setStatus] = useState('Tous');
-  const [dateFilter, setDateFilter] = useState('Toutes');
-  const [deadlineFilter, setDeadlineFilter] = useState('Toutes');
-  const [amountFilter, setAmountFilter] = useState('Tous');
+  const [status, setStatus] = useState(restored?.status ?? 'Tous');
+  const [dateFilter, setDateFilter] = useState(restored?.dateFilter ?? 'Toutes');
+  const [deadlineFilter, setDeadlineFilter] = useState(restored?.deadlineFilter ?? 'Toutes');
+  const [amountFilter, setAmountFilter] = useState(restored?.amountFilter ?? 'Tous');
 
   const debouncedQuery = useDebounce(query, 350);
   const WHOLE_AREA_PICKS = ['Département entier', 'Région entière', 'France entière'];
@@ -269,7 +318,28 @@ export default function OpportunityJourneyPage() {
   // flow, where most of the audit's filter testing happened) never had
   // the equivalent control at all, despite the hook already accepting the
   // param. Same three options and keys as RecherchePage's, for consistency.
-  const [sort, setSort] = useState<'deadline' | 'recent' | 'match'>('deadline');
+  const [sort, setSort] = useState<'deadline' | 'recent' | 'match'>(restored?.sort ?? 'deadline');
+
+  // Write every field above back to sessionStorage on change, so navigating
+  // to a dossier (or refreshing it) and coming back restores this exact
+  // search/filter state instead of the fresh-visit defaults. Keyed to
+  // typeParam so a genuine new search (header type-menu click, Point 6's
+  // reset effect above) isn't shadowed by a stale persisted search.
+  useEffect(() => {
+    try {
+      const toStore: PersistedJourneyState = {
+        typeParam: rawTypeParam,
+        step, types, buyerNeed, query, locationLabel, pickedCity, pickedCityCoords,
+        radius, pickedDepartment, pickedDepartmentName, pickedRegion, selectedDepartments,
+        status, dateFilter, deadlineFilter, amountFilter, sort,
+      };
+      sessionStorage.setItem(JOURNEY_STATE_KEY, JSON.stringify(toStore));
+    } catch { /* private-browsing/storage-disabled: state just won't survive a remount */ }
+  }, [
+    rawTypeParam, step, types, buyerNeed, query, locationLabel, pickedCity, pickedCityCoords,
+    radius, pickedDepartment, pickedDepartmentName, pickedRegion, selectedDepartments,
+    status, dateFilter, deadlineFilter, amountFilter, sort,
+  ]);
 
   const { opportunities, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     journey: journeyForApi,
