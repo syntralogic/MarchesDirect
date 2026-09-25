@@ -793,10 +793,32 @@ function GeographicSection() {
   const selectedCount = selected.length;
 
   const buildSearchUrl = () => {
+    // BUG (client report, 25 Sep - "pura map select karo to total bohot kam
+    // ata hai"): the backend's region/department filters are a strict
+    // `location_region ILIKE ANY(...)` / `location_department = ANY(...)`
+    // match (see opportunities.ts) with no "OR IS NULL" fallback the way the
+    // nature filter has - a row whose location wasn't resolved during
+    // ingestion (geocodingService.ts's coverage gap) is silently dropped by
+    // *any* region/department filter, selected-all included. Selecting every
+    // region individually therefore undercounted the true nationwide total
+    // by however many rows have no location_region at all - the ~2 500 the
+    // client saw instead of the real, much larger, count. Selecting literally
+    // every region/department on the map is semantically "no location filter
+    // at all" (the visitor isn't narrowing anything), so send no region/
+    // department params in that case and let /recherche's default
+    // (unfiltered) view carry every opportunity, no-location rows included.
+    // A genuine partial selection (1..n-1 regions) is left exactly as before -
+    // widening that case to include no-location rows would reintroduce the
+    // G13 map-vs-list count mismatch this filter was already fixed for.
+    const allRegionsSelected = !!regionsGeoJson && selectedRegions.length > 0
+      && selectedRegions.length >= (regionsGeoJson.features as unknown[]).length;
+    const allDeptsSelected = !!departementsGeoJson && selectedDepts.length > 0
+      && selectedDepts.length >= (departementsGeoJson.features as unknown[]).length;
+
     if (tab === 'regions' && selectedRegions.length > 0)
-      return `/recherche?${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
+      return allRegionsSelected ? '/recherche' : `/recherche?${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
     if (tab === 'departments' && selectedDepts.length > 0)
-      return `/recherche?${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
+      return allDeptsSelected ? '/recherche' : `/recherche?${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
     if (tab === 'cities' && selectedCities.length > 0) {
       const cityParams = selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&');
       // 25 Sep audit: hand off the exact coordinates + radius selectionCount
