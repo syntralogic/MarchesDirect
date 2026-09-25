@@ -1054,12 +1054,20 @@ export default function OpportunityJourneyPage() {
             ))}
           </div>
 
+          {/* 25 Sep audit: title above reads {displayResultCount} (correctly
+              narrowed to filteredResults.length once the client-only
+              status/deadline filter is active), but this always passed the
+              raw, unfiltered `total`/`opportunities.length` regardless -
+              "31 opportunités" next to a footer reading "100 / 327" is the
+              exact contradiction reported. Now describes the same filtered
+              set as the title and the cards above it whenever that filter
+              is active, and the real backend total otherwise. */}
           <LoadMoreButton
             hasMore={hasMore}
             loadingMore={loadingMore}
             onLoadMore={loadMore}
-            total={total}
-            shown={opportunities.length}
+            total={(status === 'Tous' && deadlineFilter === 'Toutes') ? total : undefined}
+            shown={(status === 'Tous' && deadlineFilter === 'Toutes') ? opportunities.length : filteredResults.length}
           />
 
           <button onClick={() => setStep(3)} className="mt-4 flex items-center justify-center gap-1.5 border border-[#17334D] text-[#B9BBC8] font-semibold py-2.5 px-4 rounded-lg text-xs hover:border-orange/40 transition-colors w-full">
@@ -1286,6 +1294,12 @@ export default function OpportunityJourneyPage() {
                 <select value={status} onChange={e => setStatus(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
                   {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                {/* 25 Sep audit: distinct from /recherche's "Statut du
+                    marché" - this tracks where YOUR dossier stands on an
+                    opportunity (always open to candidature; closed/awarded
+                    markets are already excluded server-side by default),
+                    not whether the market itself is still open. */}
+                <p className="text-[9px] text-[#B9BBC8] mt-1">Où en est votre dossier sur cette opportunité (le marché lui-même reste ouvert).</p>
               </div>
               <div>
                 <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block flex items-center gap-1.5"><Calendar size={11} /> {t('journeyDatePublished')}</label>
