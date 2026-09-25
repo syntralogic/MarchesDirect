@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, MapPin, Calendar, ChevronDown, Loader2 } from 'lucide-react';
+import { Search, MapPin, Calendar, ChevronDown, Loader2, X } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { opportunitiesApi } from '@/lib/apiClient';
 import { useScrollRestore } from '@/hooks/use-scroll-restore';
@@ -95,6 +95,33 @@ export default function RecherchePage() {
     }).catch(() => setDepartements([]));
   }, []);
   const regionNamesFolded = useMemo(() => new Set(frenchRegions.map((r) => normalizeFr(r.name))), []);
+  // Client audit (25 Sep, recap point 2): "Proposer France entière lorsqu'on
+  // commence à saisir Fran" + "permettre d'ajouter plusieurs départements,
+  // chacun visible et supprimable séparément" - the location field below
+  // was a single free-text input with no suggestion dropdown at all (only
+  // the parcours guidé had one, for métiers, not for location) and no
+  // chip UI, just raw "Gironde, Dordogne" comma-typing. resolveLocationField/
+  // resolveLocationValue below already accept and correctly resolve
+  // comma-separated department names into codes - that part of the fix
+  // already shipped (25 Sep). This adds the missing UI on top of that
+  // same data model: once the field resolves to 'department', already-
+  // picked departments render as removable chips and a separate draft
+  // string collects the next one being typed; suggestions (France entière
+  // + matching départements) appear in a dropdown, same pattern as the
+  // keyword field's querySuggestOpen/filteredQuerySuggestions above.
+  const [locationDraft, setLocationDraft] = useState('');
+  const [locationSuggestOpen, setLocationSuggestOpen] = useState(false);
+  const locationFieldWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!locationSuggestOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (locationFieldWrapRef.current && !locationFieldWrapRef.current.contains(e.target as Node)) {
+        setLocationSuggestOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [locationSuggestOpen]);
   // Point 2 (20 Sep client audit): typing "France" in the general search's
   // location field was still classified as a city (it matches none of the
   // region/department checks below), so it got geocoded and searched with
@@ -131,6 +158,59 @@ export default function RecherchePage() {
   const [locationField, setLocationField] = useState<'region' | 'department' | 'city'>(
     initialDepartment && !initialRegion ? 'department' : (initialCity && !initialRegion ? 'city' : (initialRegion ? 'region' : resolveLocationField(location)))
   );
+  // Computed synchronously off the live `location` string (not the
+  // debounced `locationField` state above) so chips appear the instant a
+  // department is picked, rather than lagging behind the 400ms debounce.
+  const isDeptMode = resolveLocationField(location) === 'department';
+  const deptChips = isDeptMode ? location.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const locationInputValue = deptChips.length > 0 ? locationDraft : location;
+  const locationSuggestions = useMemo(() => {
+    const raw = (deptChips.length > 0 ? locationDraft : location).trim();
+    const q = normalizeFr(raw);
+    const items: { type: 'france' | 'department'; code?: string; nom: string }[] = [];
+    // Client's exact repro: typing "Fran" should surface "France entière"
+    // as a pickable suggestion instead of it only working as a magic
+    // string nobody would guess to type in full.
+    if (!q || 'france'.startsWith(q) || normalizeFr('France entière').includes(q)) {
+      items.push({ type: 'france', nom: 'France entière' });
+    }
+    if (departements) {
+      const alreadyPicked = new Set(deptChips.map((c) => normalizeFr(c)));
+      departements
+        .filter((d) => !alreadyPicked.has(normalizeFr(d.nom)) && !alreadyPicked.has(d.code))
+        .filter((d) => !q || normalizeFr(d.nom).includes(q) || d.code === raw || d.code.startsWith(q))
+        .slice(0, 7)
+        .forEach((d) => items.push({ type: 'department', code: d.code, nom: d.nom }));
+    }
+    return items.slice(0, 8);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, locationDraft, departements, deptChips.join('|')]);
+  const selectLocationSuggestion = (item: { type: 'france' | 'department'; code?: string; nom: string }) => {
+    if (item.type === 'france') {
+      setLocation('France entière');
+      setLocationDraft('');
+      setLocationSuggestOpen(false);
+      return;
+    }
+    setLocation(deptChips.length > 0 ? [...deptChips, item.nom].join(', ') : item.nom);
+    setLocationDraft('');
+    setLocationSuggestOpen(false);
+  };
+  const removeDeptChip = (nomToRemove: string) => {
+    const next = deptChips.filter((c) => normalizeFr(c) !== normalizeFr(nomToRemove));
+    setLocation(next.join(', '));
+  };
+  // Committing a manually-typed (not clicked-from-suggestion) fragment
+  // once a first chip already exists - without this, typing a second
+  // département's full name and pressing "Rechercher" without ever
+  // clicking its suggestion would silently drop it, since the input's
+  // value in chip mode is locationDraft, not location.
+  const commitLocationDraft = () => {
+    if (deptChips.length > 0 && locationDraft.trim()) {
+      setLocation([...deptChips, locationDraft.trim()].join(', '));
+      setLocationDraft('');
+    }
+  };
   const tradeId = searchParams.get('trade_id') || undefined;
   const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
   // G14 (contre-audit 15 Sep): header tag/title/sub and the results-count
@@ -321,9 +401,20 @@ export default function RecherchePage() {
   // both the "Rechercher" button and submitting the form (Enter key).
   const handleSearch = () => {
     (document.activeElement as HTMLElement | null)?.blur();
-    const field = resolveLocationField(location);
+    // If a département chip is already picked and the visitor typed a
+    // second one without clicking its suggestion first, fold it in before
+    // resolving/applying - otherwise it's silently dropped (see comment
+    // on commitLocationDraft above).
+    const effectiveLocation = deptChips.length > 0 && locationDraft.trim()
+      ? [...deptChips, locationDraft.trim()].join(', ')
+      : location;
+    if (effectiveLocation !== location) {
+      setLocation(effectiveLocation);
+      setLocationDraft('');
+    }
+    const field = resolveLocationField(effectiveLocation);
     setLocationField(field);
-    setApplied({ query, location: resolveLocationValue(location, field), montantMin, montantMax });
+    setApplied({ query, location: resolveLocationValue(effectiveLocation, field), montantMin, montantMax });
   };
 
   return (
@@ -379,15 +470,71 @@ export default function RecherchePage() {
         <div className="flex gap-2 mb-2">
           <div className={showRadius ? 'flex-1' : 'flex-[2]'}>
             <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchLocation')}</label>
-            <div className="relative">
-              <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-              <input
-                type="text"
-                placeholder={t('searchLocationPlaceholder')}
-                value={location}
-                onChange={e => setLocation(e.target.value)}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
-              />
+            <div className="relative" ref={locationFieldWrapRef}>
+              {/* Client audit (25 Sep, recap point 2): already-picked
+                  départements shown as removable chips ("Gironde · 33",
+                  supprimable) instead of raw comma-separated text. Chips
+                  only appear once the field has actually resolved to
+                  'department' mode - région/ville/France entière stay a
+                  plain single-value input, unchanged. */}
+              {deptChips.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-1.5">
+                  {deptChips.map((chip) => {
+                    const match = departements?.find((d) => normalizeFr(d.nom) === normalizeFr(chip) || d.code === chip);
+                    return (
+                      <span
+                        key={chip}
+                        className="inline-flex items-center gap-1 bg-orange/15 border border-orange/40 text-orange text-[10px] font-medium rounded-full pl-2.5 pr-1.5 py-1"
+                      >
+                        {match ? `${match.nom} · ${match.code}` : chip}
+                        <button
+                          type="button"
+                          onClick={() => removeDeptChip(chip)}
+                          aria-label={`${t('searchLocationRemove') || 'Retirer'} ${match?.nom || chip}`}
+                          className="hover:bg-orange/25 rounded-full p-0.5"
+                        >
+                          <X size={10} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="relative">
+                <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
+                <input
+                  type="text"
+                  placeholder={deptChips.length > 0 ? (t('searchLocationAddAnother') || 'Ajouter un département…') : t('searchLocationPlaceholder')}
+                  value={locationInputValue}
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (deptChips.length > 0) setLocationDraft(v);
+                    else setLocation(v);
+                    setLocationSuggestOpen(true);
+                  }}
+                  onFocus={() => setLocationSuggestOpen(true)}
+                  onBlur={commitLocationDraft}
+                  className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
+                />
+              </div>
+              {locationSuggestOpen && locationSuggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-[#031B30] border border-[#17334D] rounded-md overflow-hidden shadow-xl">
+                  {locationSuggestions.map((s) => (
+                    <button
+                      key={s.type === 'france' ? 'france' : s.code}
+                      type="button"
+                      // onMouseDown (not onClick) fires before the input's
+                      // onBlur, so a click here lands before commitLocationDraft
+                      // would otherwise fold the still-typed fragment in as
+                      // a free-text chip ahead of the picked one.
+                      onMouseDown={e => { e.preventDefault(); selectLocationSuggestion(s); }}
+                      className="w-full text-left px-2.5 py-2 text-[11px] text-white hover:bg-orange/10 border-b border-[#17334D] last:border-b-0"
+                    >
+                      {s.type === 'france' ? (t('searchLocationWholeFrance') || 'France entière') : `${s.nom} · ${s.code}`}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           {/* Client (19 Sep): "une région sélectionnée doit couvrir toute

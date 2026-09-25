@@ -25,6 +25,13 @@ export interface Opportunity {
   description?: string;
   profileRequired?: string[];
   identityUnlocked?: boolean;
+  // Client audit (25 Sep, point 2): "les annonces de démonstration
+  // doivent être clairement distinguées des opportunités réelles" -
+  // demo/seed rows (source_reference starting with "DEMO-", see backend
+  // scripts/seed.js) rendered identically to real BOAMP/PLACE/TED
+  // listings everywhere they appeared. True only for those seed rows;
+  // real data never sets it.
+  isDemo?: boolean;
 }
 
 export const mockPublicOpportunities: Opportunity[] = [

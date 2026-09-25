@@ -102,6 +102,13 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
               {LIFECYCLE_BADGE[o.lifecycleStatus].text}
             </span>
           )}
+          {/* Client audit (25 Sep, point 2): demo/seed listing, clearly
+              marked so it's never mistaken for a real opportunity. */}
+          {o.isDemo && (
+            <span className="inline-block text-[11px] font-semibold border rounded-full px-3 py-1 text-purple-300 border-purple-400/40 bg-purple-400/10">
+              {t('listingDemoBadge') || 'Exemple de démonstration'}
+            </span>
+          )}
         </div>
         <div onClick={e => e.stopPropagation()} className="shrink-0">
           <SaveButton opportunityId={o.id} />

@@ -1002,6 +1002,16 @@ export default function OpportunityDetailPage() {
           <span className={`text-[11px] font-semibold rounded-full px-3 py-1 ${isPublic ? 'text-green-400 bg-green-400/10 border border-green-400/30' : 'text-[#B9BBC8] bg-white/5 border border-white/15'}`}>
             {isPublic ? (t('detailInfoPublic') || 'Informations publiques') : (t('detailInfoPartial') || 'Coordonnées protégées')}
           </span>
+          {/* Client audit (25 Sep, point 2): "les annonces de démonstration
+              doivent être clairement distinguées des opportunités réelles."
+              Demo/seed rows are the only ones whose source_reference starts
+              with "DEMO-" (see backend scripts/seed.js) - real BOAMP/PLACE/
+              TED ingestion never produces that prefix. */}
+          {!!opportunity.source_reference && opportunity.source_reference.startsWith('DEMO-') && (
+            <span className="text-[11px] font-semibold rounded-full px-3 py-1 text-purple-300 bg-purple-400/10 border border-purple-400/40">
+              {t('detailDemoBadge') || 'Exemple de démonstration'}
+            </span>
+          )}
         </div>
         <div className="flex items-start justify-between gap-3 mb-3">
           <h1 className="text-lg md:text-xl font-extrabold text-white leading-snug">{opportunity.title}</h1>
@@ -1276,44 +1286,81 @@ export default function OpportunityDetailPage() {
               every fiche, public or private, even before the buyer's
               identity is unlocked (only buyer_name/contact_email are ever
               redacted, both excluded from this list on purpose since the
-              "Donneur d'ordre" card above already owns those). */}
-          {opportunity.ai_extracted_facts && (() => {
+              "Donneur d'ordre" card above already owns those).
+              Client audit (25 Sep, point 2): "toutes les opportunités
+              doivent conserver la même organisation... objet, prestations
+              et lots, lieu, montant, échéance, conditions, points de
+              vigilance, source officielle. Si l'analyse automatique
+              échoue, afficher les informations brutes disponibles dans ces
+              blocs." Two bugs fixed here: (1) this whole block used to be
+              gated on `opportunity.ai_extracted_facts` - a failed/never-run
+              AI classification (ai_classification_status === 'failed', or
+              simply not yet reached) meant `ai_extracted_facts` is null,
+              so the entire structured block vanished instead of falling
+              back to the raw notice fields (lieu, montant, échéance,
+              référence) that are known at ingest time regardless of any AI
+              step ever running - now built from those raw `opportunity.*`
+              fields first, independent of `facts`. (2) row order below now
+              follows the client's fixed sequence (lots → lieu → montant →
+              échéance → conditions → attribution/contact → référence)
+              instead of an arbitrary one that put "référence" first and
+              never showed "lieu" (location) at all. */}
+          {(() => {
             const facts = opportunity.ai_extracted_facts;
             const rows: { label: string; value: string }[] = [];
-            // Client's audit: no "référence officielle" shown anywhere on
-            // the fiche. source_reference is the raw BOAMP idweb / TED
-            // publication-number etc. (see officialUrl.ts) - always known
-            // at ingest time, unlike the AI-extracted fields below.
-            if (opportunity.source_reference) rows.push({ label: t('dossierFactReference'), value: opportunity.source_reference });
-            // contract_object is already shown prominently above as "Travaux
-            // à réaliser" ("Le marché en 30 secondes" block) - repeating the
-            // exact same string here under "Objet du marché" is precisely
-            // the "je lis deux ou trois fois la même description" complaint,
-            // so it's intentionally left out of this second list.
-            if (facts.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: humanizeRawLabel(facts.procedure_type.value) || facts.procedure_type.value });
-            if (facts.submission_deadline?.available) rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
-            if (facts.estimated_value?.available) rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
-            if (facts.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
-            if (facts.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
-            if (facts.contract_duration?.available) rows.push({ label: t('dossierFactDuration'), value: facts.contract_duration.value });
-            if (facts.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: humanizeRawLabel(facts.submission_method.value) || facts.submission_method.value });
-            if (facts.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
-            if (facts.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
+            // contract_object is already shown prominently above as
+            // "Travaux à réaliser" ("Le marché en 30 secondes" block) -
+            // repeating the exact same string here under "Objet du marché"
+            // is precisely the "je lis deux ou trois fois la même
+            // description" complaint, so it's intentionally left out.
+
+            // Prestations et lots
+            if (facts?.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
+
+            // Lieu — raw, never depended on AI extraction; previously
+            // absent from this list entirely.
+            const lieu = [opportunity.location_city, opportunity.location_department, opportunity.location_region].filter(Boolean).join(', ');
+            if (lieu) rows.push({ label: t('dossierFactLocation') || 'Lieu', value: lieu });
+
+            // Montant — raw estimated_value/currency fallback so a failed
+            // AI pass still shows the budget the source notice itself gave.
+            if (facts?.estimated_value?.available) {
+              rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
+            } else if (opportunity.estimated_value != null) {
+              rows.push({ label: t('dossierFactValue'), value: formatAmount(opportunity.estimated_value, opportunity.currency) });
+            }
+
+            // Échéance — raw deadline/deadline_time fallback, same logic.
+            if (facts?.submission_deadline?.available) {
+              rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
+            } else if (opportunity.deadline) {
+              rows.push({ label: t('dossierFactDeadline'), value: formatDeadlineWithTime(opportunity.deadline, opportunity.deadline_time) });
+            }
+
+            // Conditions (procédure, modalités, qualifications, visite,
+            // durée, équipe) - AI-only, no raw equivalent on the notice.
+            if (facts?.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: humanizeRawLabel(facts.procedure_type.value) || facts.procedure_type.value });
+            if (facts?.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: humanizeRawLabel(facts.submission_method.value) || facts.submission_method.value });
+            if (facts?.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
+            if (facts?.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
+            if (facts?.contract_duration?.available) rows.push({ label: t('dossierFactDuration'), value: facts.contract_duration.value });
+            if (facts?.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
+
             // Attribution info only ever shows up once BOAMP/DECP actually
             // publishes an award notice - not available on an open call for
             // tenders is the expected, common case, not a gap.
-            if (facts.attribution_winner?.available) rows.push({ label: t('dossierFactAttributionWinner'), value: facts.attribution_winner.value });
-            if (facts.attribution_amount?.available) rows.push({ label: t('dossierFactAttributionAmount'), value: facts.attribution_amount.value });
-            if (facts.attribution_date?.available) rows.push({ label: t('dossierFactAttributionDate'), value: facts.attribution_date.value });
-            if (facts.buyer_phone?.available) rows.push({ label: t('dossierFactBuyerPhone'), value: facts.buyer_phone.value });
-            if (facts.buyer_website?.available) rows.push({ label: t('dossierFactBuyerWebsite'), value: facts.buyer_website.value });
+            if (facts?.attribution_winner?.available) rows.push({ label: t('dossierFactAttributionWinner'), value: facts.attribution_winner.value });
+            if (facts?.attribution_amount?.available) rows.push({ label: t('dossierFactAttributionAmount'), value: facts.attribution_amount.value });
+            if (facts?.attribution_date?.available) rows.push({ label: t('dossierFactAttributionDate'), value: facts.attribution_date.value });
+            if (facts?.buyer_phone?.available) rows.push({ label: t('dossierFactBuyerPhone'), value: facts.buyer_phone.value });
+            if (facts?.buyer_website?.available) rows.push({ label: t('dossierFactBuyerWebsite'), value: facts.buyer_website.value });
             if (opportunity.buyer_history_count != null) rows.push({
               label: t('dossierFactBuyerHistory'),
               value: opportunity.buyer_history_count === 0
                 ? (t('dossierBuyerHistoryNone') || 'Aucun marché similaire publié')
                 : t('dossierBuyerHistoryValue').replace('{n}', String(opportunity.buyer_history_count)),
             });
-            if (Array.isArray(facts.selection_criteria?.value) && facts.selection_criteria.available && facts.selection_criteria.value.length > 0) {
+            if (Array.isArray(facts?.selection_criteria?.value) && facts.selection_criteria.available && facts.selection_criteria.value.length > 0) {
               rows.push({
                 label: t('dossierFactCriteria') || 'Critères de notation',
                 value: facts.selection_criteria.value
@@ -1321,7 +1368,28 @@ export default function OpportunityDetailPage() {
                   .join(' · '),
               });
             }
-            if (rows.length === 0) return null;
+
+            // Source officielle (référence) — last, raw, always known at
+            // ingest time. Kept last to match the client's canonical order
+            // ("...points de vigilance, source officielle"); the official
+            // link itself is already shown further up this same screen.
+            if (opportunity.source_reference) rows.push({ label: t('dossierFactReference'), value: opportunity.source_reference });
+
+            // Client's raw-fallback ask: when analysis genuinely failed and
+            // none of the raw fields above produced anything either, say so
+            // explicitly instead of silently dropping the whole card (the
+            // old `opportunity.ai_extracted_facts &&` guard's effect).
+            if (rows.length === 0) {
+              if (opportunity.ai_classification_status === 'failed') {
+                return (
+                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                    <h2 className="text-sm font-bold text-white mb-2">{t('dossierFactsTitle')}</h2>
+                    <p className="text-xs text-[#B9BBC8]">{t('dossierFactsFailed') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant. Consultez l'annonce officielle ci-dessus."}</p>
+                  </div>
+                );
+              }
+              return null;
+            }
             return (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                 <h2 className="text-sm font-bold text-white mb-3">{t('dossierFactsTitle')}</h2>
