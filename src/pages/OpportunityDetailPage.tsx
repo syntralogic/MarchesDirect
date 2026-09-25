@@ -40,6 +40,14 @@ function formatAmount(value: number | null, currency: string | null) {
 function formatDate(d: string | null) {
   return d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 }
+// 25 Sep client audit: the header showed just the date while the dossier
+// detail row's free text stated a submission time ("11h00"), reading as a
+// mismatch. deadline_time is the same time, derived server-side from that
+// same fact (utils/officialFields.ts) - appended here so both blocks agree.
+function formatDeadlineWithTime(deadline: string | null, deadlineTime?: string | null) {
+  const date = formatDate(deadline);
+  return deadlineTime ? `${date} à ${deadlineTime}` : date;
+}
 // Client's report: the AI-extracted "submission_deadline" fact sometimes
 // comes back as a raw JS/ISO timestamp (e.g. "Thu Dec 12 2025 00:00:00
 // GMT+0000 (Coordinated Universal Time)" or "2025-12-12T00:00:00.000Z")
@@ -1003,7 +1011,7 @@ export default function OpportunityDetailPage() {
           {(opportunity.location_city || opportunity.location_region) && (
             <span className="flex items-center gap-1.5"><MapPin size={13} /> {[opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ')}</span>
           )}
-          <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('detailDeadline')} : {formatDate(opportunity.deadline)}</span>
+          <span className="flex items-center gap-1.5"><Calendar size={13} /> {t('detailDeadline')} : {formatDeadlineWithTime(opportunity.deadline, opportunity.deadline_time)}</span>
           <span className="flex items-center gap-1.5"><Euro size={13} /> {formatAmount(opportunity.estimated_value, opportunity.currency)}</span>
         </div>
         {/* 20 Sep client audit: "les statistiques illustratives restent
