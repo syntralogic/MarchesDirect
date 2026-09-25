@@ -158,7 +158,12 @@ const frTranslations: Translations = {
   searchAvailabilityNow: 'Dès maintenant',
   searchAvailability1: 'Sous 1 mois',
   searchAvailability3: 'Sous 3 mois',
-  searchStatut: 'Statut',
+  // 25 Sep audit: labelled just "Statut" on both this page (market
+  // lifecycle: ouvert/attribué/clôturé/annulé) and the guided journey
+  // (dossier progress: non analysé/en cours/déposé) - two different
+  // things behind the same generic word, on two different screens.
+  // "du marché" makes clear this one filters the market itself.
+  searchStatut: 'Statut du marché',
   searchStatutAll: 'Tous (en cours et nouveaux)',
   searchStatutActive: 'En cours',
   searchStatutExpired: 'Clôturé',
@@ -226,7 +231,11 @@ const frTranslations: Translations = {
   publicTag: 'BOAMP · PLACE · JOUE',
   publicTitle: 'Marchés publics',
   publicSub: 'Mairies, État, collectivités. Conformité, pièces du DCE et mémoire technique générés pour vous.',
-  publicStatus: 'Statut',
+  // 25 Sep audit: this is the dossier's own progress (Non analysé/En
+  // cours/Déposé, from ai_classification_status) - a different thing from
+  // /recherche's "Statut du marché" (the opportunity's own lifecycle,
+  // ouvert/attribué/clôturé/annulé). Both were labelled plain "Statut".
+  publicStatus: 'Statut du dossier',
   publicResults: 'opportunité trouvée',
   publicResultsPlural: 'opportunités trouvées',
   loadMore: 'Voir plus d\u2019opportunités',
@@ -1766,7 +1775,7 @@ const enTranslations: Translations = {
   searchAvailabilityNow: 'Immediately',
   searchAvailability1: 'Within 1 month',
   searchAvailability3: 'Within 3 months',
-  searchStatut: 'Status',
+  searchStatut: 'Market status',
   searchStatutAll: 'All (open and new)',
   searchStatutActive: 'Open',
   searchStatutExpired: 'Closed',
@@ -1835,7 +1844,7 @@ const enTranslations: Translations = {
   publicTag: 'BOAMP · PLACE · JOUE',
   publicTitle: 'Public Markets',
   publicSub: 'Town halls, State, local authorities. Compliance, DCE documents and technical memo generated for you.',
-  publicStatus: 'Status',
+  publicStatus: 'Case status',
   publicResults: 'opportunity found',
   publicResultsPlural: 'opportunities found',
   loadMore: 'Show more opportunities',
