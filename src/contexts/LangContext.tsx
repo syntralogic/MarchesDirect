@@ -1493,8 +1493,8 @@ const frTranslations: Translations = {
   dossierGenerateTitle: 'Préparer ma candidature',
   dossierGenerateDesc: "Votre chargé d'affaires prépare et dépose votre candidature.",
   dossierGenerateSub: "Votre chargé d'affaires prépare et dépose votre candidature.",
-  dossierGenerateCta: 'Générer mon dossier',
-  dossierGenerateCtaShort: 'Générer',
+  dossierGenerateCta: 'Être accompagné',
+  dossierGenerateCtaShort: 'Être accompagné',
   // D08 (contre-audit 15 Sep): "Générer" on a candidature doc opened the
   // rendez-vous modal with no explanation - this pair backs the small
   // explainer step shown first.
@@ -3087,8 +3087,8 @@ const enTranslations: Translations = {
   dossierGenerateTitle: 'Prepare my application',
   dossierGenerateDesc: 'Your account manager prepares and submits your application.',
   dossierGenerateSub: 'Your account manager prepares and submits your application.',
-  dossierGenerateCta: 'Generate my application',
-  dossierGenerateCtaShort: 'Generate',
+  dossierGenerateCta: 'Get support',
+  dossierGenerateCtaShort: 'Get support',
   dossierExplainAccompagnement: "This document isn't generated automatically: your account manager prepares it with you, by appointment, based on this tender and your company.",
   dossierExplainCta: 'Book an appointment with my account manager',
   dossierGenerateNote: 'Full preparation included in the support plan.',

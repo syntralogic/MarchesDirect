@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2 } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2, AlertTriangle, Download } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -17,6 +17,12 @@ interface AppointmentModalProps {
   // the lead so the visitor isn't asked to re-state what the page implies.
   defaultMotif?: string;
   marketLabel?: string;
+  // Tender's submission deadline (opportunity.deadline), when the modal is
+  // opened from a specific opportunity's dossier page. Used to warn the
+  // visitor when they're booking a rendez-vous after that deadline has
+  // already passed - the account manager can no longer help submit a
+  // candidature for *this* market, only discuss next steps.
+  deadline?: string | null;
 }
 
 const MOTIFS = [
@@ -70,7 +76,7 @@ function nextBusinessDaySlots(count: number): { date: string; slots: string[] }[
 
 const AVAILABLE_SLOTS = nextBusinessDaySlots(5);
 
-export function AppointmentModal({ open, onClose, defaultMotif, marketLabel }: AppointmentModalProps) {
+export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, deadline }: AppointmentModalProps) {
   const { t } = useLang();
   const { brandId } = useBrand();
   const { user, company } = useAuth();
@@ -146,6 +152,35 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel }: A
 
   if (!open) return null;
 
+  const deadlinePassed = !!deadline && new Date(deadline).getTime() < Date.now();
+
+  const downloadRecap = () => {
+    const lines = [
+      'Marchés Direct — Récapitulatif de rendez-vous',
+      '',
+      `Motif : ${motif}`,
+      marketLabel ? `Marché : ${marketLabel}` : null,
+      `Date souhaitée : ${selectedDate}`,
+      `Créneau : ${selectedSlot}`,
+      '',
+      `Contact : ${form.nom}`,
+      form.entreprise ? `Entreprise : ${form.entreprise}` : null,
+      `Email : ${form.email}`,
+      form.telephone ? `Téléphone : ${form.telephone}` : null,
+      '',
+      'Un conseiller Marchés Direct vous recontactera sur ce créneau pour confirmer.',
+    ].filter((l): l is string => l !== null);
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rendez-vous-marches-direct-${selectedDate.replace(/\s+/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); };
   const handleClose = () => { onClose(); setTimeout(reset, 300); };
 
@@ -210,6 +245,14 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel }: A
         </div>
 
         <div className="p-5">
+          {deadlinePassed && step < 5 && (
+            <div className="flex items-start gap-2 mb-4 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <span>
+                La date limite de dépôt de ce marché est déjà passée. Votre conseiller pourra toujours échanger avec vous, mais ne pourra plus vous accompagner pour déposer une candidature sur cette offre.
+              </span>
+            </div>
+          )}
           {marketLabel && step < 5 && (
             <p className="text-xs text-brand-muted mb-4 -mt-1">
               Marché : <span className="text-brand-primary font-medium">{marketLabel}</span>
@@ -368,9 +411,14 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel }: A
                   <div><span className="text-brand-muted">Email :</span> <span className="text-brand-primary">{form.email}</span></div>
                 </div>
               </div>
-              <button onClick={handleClose} className="w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors">
-                Fermer
-              </button>
+              <div className="flex gap-3">
+                <button onClick={downloadRecap} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 hover:text-brand-primary transition-colors text-sm flex items-center justify-center gap-1.5">
+                  <Download size={14} /> Télécharger mon exemplaire
+                </button>
+                <button onClick={handleClose} className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors">
+                  Fermer
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -18,7 +18,7 @@
     --popover-foreground: 210 60% 8%;
 
     /* Brand orange as primary */
-    --primary: 24 100% 50%;           /* #FF6500 */
+    --primary: 24 100% 38%;           /* #C24E00 — darkened from #FF6500 for AA contrast with white text (WCAG: 4.8:1 vs 2.95:1) */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 30% 90%;
@@ -27,7 +27,7 @@
     --muted: 210 25% 92%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 24 100% 50%;
+    --accent: 24 100% 38%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -47,7 +47,7 @@
     /* Sidebar */
     --sidebar-background: 210 40% 94%;
     --sidebar-foreground: 210 60% 15%;
-    --sidebar-primary: 24 100% 50%;
+    --sidebar-primary: 24 100% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 30% 88%;
     --sidebar-accent-foreground: 210 60% 15%;
@@ -91,7 +91,7 @@
     --popover: 210 93% 10%;           /* #031B30 */
     --popover-foreground: 0 0% 96%;
 
-    --primary: 24 100% 50%;           /* #FF6500 */
+    --primary: 24 100% 38%;           /* #C24E00 — darkened from #FF6500 for AA contrast with white text (WCAG: 4.8:1 vs 2.95:1) */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 93% 10%;         /* #031B30 */
@@ -100,7 +100,7 @@
     --muted: 210 87% 11%;
     --muted-foreground: 228 9% 76%;   /* #B9BBC8 */
 
-    --accent: 24 100% 50%;
+    --accent: 24 100% 38%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62% 50%;
@@ -118,7 +118,7 @@
 
     --sidebar-background: 210 93% 10%;
     --sidebar-foreground: 0 0% 96%;
-    --sidebar-primary: 24 100% 50%;
+    --sidebar-primary: 24 100% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 87% 11%;
     --sidebar-accent-foreground: 0 0% 96%;
