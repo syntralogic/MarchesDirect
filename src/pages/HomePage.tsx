@@ -439,12 +439,18 @@ function GeographicSection() {
   // when the city resolved to coordinates (real distance filter, same as
   // /recherche), null when it fell back to a plain city-name match.
   const [cityRadiusKm, setCityRadiusKm] = useState<number | null>(null);
+  // Exact coordinates cityTotal above was computed with (25 Sep audit) -
+  // handed off to /recherche via the URL so it reuses this point instead
+  // of re-geocoding the city name a second time and risking a different
+  // (or failed) result. Null whenever coords couldn't be resolved, same
+  // as cityRadiusKm.
+  const [cityApiCoords, setCityApiCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [cityLoading, setCityLoading] = useState(false);
   // Counter shown on the "Voir les opportunités autour de …" button - always
   // computed for the whole selection with the same rule /recherche applies
   // (one city -> real radius; several cities -> plain name match), so the
   // announced perimeter and the number can never disagree.
-  const [selectionCount, setSelectionCount] = useState<{ total: number; radiusKm: number | null } | null>(null);
+  const [selectionCount, setSelectionCount] = useState<{ total: number; radiusKm: number | null; coords: { lat: number; lng: number } | null } | null>(null);
   const selectionRequestId = useRef(0);
   const [position, setPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
   const [citiesPosition, setCitiesPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
@@ -538,7 +544,21 @@ function GeographicSection() {
     const data = coords
       ? await opportunitiesApi.search({ journey: undefined, lat: coords.lat, lng: coords.lng, radius_km: DEFAULT_CITY_RADIUS_KM, limit })
       : await opportunitiesApi.search({ journey: undefined, city: name, limit });
-    return { results: data.results, total: data.pagination.total, radiusKm: coords ? DEFAULT_CITY_RADIUS_KM : null };
+    // 25 Sep audit: the "Voir toutes les opportunités..." link below only
+    // ever sent `city=<name>`, never the lat/lng this count was actually
+    // computed with - so /recherche re-geocoded the same city name from
+    // scratch. Usually landed on the same point, but not guaranteed to
+    // (a second, independent call to the same external geocoder), and if
+    // that second call ever failed, silently fell back to a plain
+    // city-name text match with no radius applied at all - a card here
+    // could say "123 dans un rayon de 50 km" while the link it sits next
+    // to showed 90 (fewer, since the destination text-match won't return
+    // registered communes near Bordeaux, only ones literally named
+    // "Bordeaux"), including at a wider radius since a null cityCoords
+    // downstream never sends radius_km at all no matter what's selected.
+    // Returning the exact coordinates this total was computed with (see
+    // callers below) lets the link hand them off directly instead.
+    return { results: data.results, total: data.pagination.total, radiusKm: coords ? DEFAULT_CITY_RADIUS_KM : null, coords };
   };
 
   const handleCitySearch = async (override?: string) => {
@@ -557,6 +577,7 @@ function GeographicSection() {
       setCityOpportunities(around.results);
       setCityTotal(around.total);
       setCityRadiusKm(around.radiusKm);
+      setCityApiCoords(around.coords);
       const feature = geo?.features?.[0];
       const coords: [number, number] | null = feature ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : null;
       const resolvedName = feature?.properties?.city || query;
@@ -586,6 +607,7 @@ function GeographicSection() {
       setCityOpportunities([]);
       setCityTotal(0);
       setCityRadiusKm(null);
+      setCityApiCoords(null);
       if (override === undefined) setSelectedCities([]);
     } finally {
       setCityLoading(false);
@@ -603,11 +625,11 @@ function GeographicSection() {
     (async () => {
       try {
         if (names.length === 1) {
-          const { total, radiusKm } = await searchAroundCity(names[0], 1);
-          if (selectionRequestId.current === requestId) setSelectionCount({ total, radiusKm });
+          const { total, radiusKm, coords } = await searchAroundCity(names[0], 1);
+          if (selectionRequestId.current === requestId) setSelectionCount({ total, radiusKm, coords });
         } else {
           const data = await opportunitiesApi.search({ journey: undefined, city: names.join(','), limit: 1 });
-          if (selectionRequestId.current === requestId) setSelectionCount({ total: data.pagination.total, radiusKm: null });
+          if (selectionRequestId.current === requestId) setSelectionCount({ total: data.pagination.total, radiusKm: null, coords: null });
         }
       } catch {
         if (selectionRequestId.current === requestId) setSelectionCount(null);
@@ -775,8 +797,18 @@ function GeographicSection() {
       return `/recherche?${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
     if (tab === 'departments' && selectedDepts.length > 0)
       return `/recherche?${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
-    if (tab === 'cities' && selectedCities.length > 0)
-      return `/recherche?${selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&')}`;
+    if (tab === 'cities' && selectedCities.length > 0) {
+      const cityParams = selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&');
+      // 25 Sep audit: hand off the exact coordinates + radius selectionCount
+      // was just computed with (single-city case only - see searchAroundCity)
+      // so /recherche shows the same total this button just promised instead
+      // of silently re-geocoding and possibly landing on a plain city-name
+      // text match with no radius applied.
+      if (selectedCities.length === 1 && selectionCount?.coords) {
+        return `/recherche?${cityParams}&lat=${selectionCount.coords.lat}&lng=${selectionCount.coords.lng}&radius_km=${selectionCount.radiusKm ?? DEFAULT_CITY_RADIUS_KM}`;
+      }
+      return `/recherche?${cityParams}`;
+    }
     return '/recherche';
   };
 
@@ -1102,7 +1134,13 @@ function GeographicSection() {
                     <span className="text-orange font-semibold">{cityTotal}</span> opportunité{cityTotal !== 1 ? 's' : ''}{' '}
                     {cityRadiusKm ? `dans un rayon de ${cityRadiusKm} km autour de ${cityResult.name}` : `à ${cityResult.name}`}
                   </p>
-                  <Link to={`/recherche?city=${encodeURIComponent(cityResult.name)}`} className="text-[11px] text-orange font-semibold hover:underline">
+                  <Link
+                    to={
+                      cityApiCoords
+                        ? `/recherche?city=${encodeURIComponent(cityResult.name)}&lat=${cityApiCoords.lat}&lng=${cityApiCoords.lng}&radius_km=${cityRadiusKm ?? DEFAULT_CITY_RADIUS_KM}`
+                        : `/recherche?city=${encodeURIComponent(cityResult.name)}`
+                    }
+                    className="text-[11px] text-orange font-semibold hover:underline"
                     Voir toutes les opportunités {cityRadiusKm ? `dans ces ${cityRadiusKm} km` : 'de cette ville'}
                   </Link>
                 </div>

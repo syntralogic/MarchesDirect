@@ -75,6 +75,23 @@ export default function RecherchePage() {
   const initialRegion = initialRegions.join(', ');
   const initialDepartment = initialDepartments.join(',');
   const [location, setLocation] = useState(initialRegion || initialDepartment || initialCity);
+  // 25 Sep audit (Bordeaux 123 vs 90 mismatch): HomePage's map counter now
+  // hands off the exact lat/lng/radius_km it computed its total with (see
+  // HomePage's searchAroundCity/buildSearchUrl) instead of leaving this
+  // page to re-geocode the same city name a second time - a second,
+  // independent call to the external geocoder that wasn't guaranteed to
+  // land on the same point, and silently fell back to a plain city-name
+  // text match (fewer/different results, and the radius selector below
+  // having zero effect no matter what's picked) whenever it failed.
+  const initialLat = searchParams.get('lat');
+  const initialLng = searchParams.get('lng');
+  const urlSeededCoords = initialLat && initialLng && !isNaN(Number(initialLat)) && !isNaN(Number(initialLng))
+    ? { lat: Number(initialLat), lng: Number(initialLng) }
+    : null;
+  // The city these coordinates belong to - only reused for a re-geocode-free
+  // seed while `location` still refers to this exact same city; typing a
+  // different city afterward must geocode fresh, not keep reusing this point.
+  const urlSeededCoordsCity = useRef(urlSeededCoords ? initialCity.trim() : null);
   // G05 (contre-audit 15 Sep): "Ville ou département" typed as free text
   // (e.g. "Gironde", no map/URL involved) returned zero results. Root
   // cause: locationField used to be a single value FROZEN at mount from
@@ -298,7 +315,7 @@ export default function RecherchePage() {
   // null = not resolved (yet, or couldn't be) - falls back to the
   // existing city text-match, same as before this fix, rather than
   // blocking the search on geocoding succeeding.
-  const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [cityCoords, setCityCoords] = useState<{ lat: number; lng: number } | null>(urlSeededCoords);
   const cityGeocodeRequestId = useRef(0);
   // 20 Sep audit: the km selector must only exist where a radius means
   // something - around exactly one named city. Empty / "France" (whole
@@ -326,10 +343,19 @@ export default function RecherchePage() {
       setCityCoords(null);
       return;
     }
+    // Still the exact city the URL handed us coordinates for - trust them
+    // rather than firing a second, independent geocode call that could
+    // land on a different point (or fail) and disagree with the total the
+    // link we arrived from just promised.
+    if (urlSeededCoords && urlSeededCoordsCity.current === firstCity) {
+      setCityCoords(urlSeededCoords);
+      return;
+    }
     opportunitiesApi.geocodeCity(firstCity).then((result) => {
       if (cityGeocodeRequestId.current !== thisRequest) return; // stale
       setCityCoords(result);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationField, applied.location]);
 
   useEffect(() => {
@@ -564,6 +590,17 @@ export default function RecherchePage() {
                 </select>
                 <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#B9BBC8] pointer-events-none" />
               </div>
+              {/* 25 Sep audit: when the geocoder can't resolve this city, the
+                  filter silently falls back to a plain city-name text match
+                  and radius_km is never actually sent - so changing the
+                  select above kept doing nothing with no explanation. Now
+                  says so, rather than leaving a seemingly-live control that
+                  quietly ignores every change. */}
+              {!loading && !cityCoords && (
+                <p className="text-[9px] text-[#B9BBC8] mt-1">
+                  {t('searchRadiusUnavailable') || 'Localisation précise indisponible : résultats limités au nom de la ville, le rayon ne s\'applique pas.'}
+                </p>
+              )}
             </div>
           )}
         </div>
