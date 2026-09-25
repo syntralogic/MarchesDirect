@@ -175,7 +175,7 @@ export default function AppelsPage() {
               <OpportunityListCard
                 key={o.id}
                 opportunity={o}
-                matchScore={matchScores[o.id]?.score}
+                matchScore={matchScores[o.id] ? matchScores[o.id].score : undefined}
                 canScore={canScore}
               />
             ))}

@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export function useMatchScores(ids: string[]) {
   const { companyKnown } = useCompanyKnown();
   const { isAuthenticated } = useAuth();
-  const [scores, setScores] = useState<Record<string, { score: number; scoreTitle: string }>>({});
+  const [scores, setScores] = useState<Record<string, { score: number | null; scoreTitle: string }>>({});
 
   const canScore = companyKnown || isAuthenticated;
   // Stable key so the effect only re-fires when the actual id set changes,

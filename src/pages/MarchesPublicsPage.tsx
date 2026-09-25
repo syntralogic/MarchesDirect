@@ -159,7 +159,7 @@ export default function MarchesPublicsPage() {
               <OpportunityListCard
                 key={o.id}
                 opportunity={o}
-                matchScore={matchScores[o.id]?.score}
+                matchScore={matchScores[o.id] ? matchScores[o.id].score : undefined}
                 canScore={canScore}
               />
             ))}
