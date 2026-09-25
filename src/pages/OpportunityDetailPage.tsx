@@ -2950,6 +2950,7 @@ export default function OpportunityDetailPage() {
         onClose={() => setShowAccountManagerModal(false)}
         defaultMotif="Répondre à un appel d'offres"
         marketLabel={opportunity ? [opportunity.title, opportunity.source_reference].filter(Boolean).join(' · ') : undefined}
+        deadline={opportunity?.deadline as string | null | undefined}
       />
 
     </div>
