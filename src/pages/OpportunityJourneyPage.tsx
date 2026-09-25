@@ -372,16 +372,18 @@ export default function OpportunityJourneyPage() {
   // client's report: "un délai supérieur à 30 jours conservait une échéance
   // du jour" (an opportunity due *today* was staying visible under "more
   // than 30 days left").
-  // R10 (contre-audit 15 Sep, correction partielle): the "aujourd'hui
-  // shown under +30 jours" bug above was fixed, but a listing with no
-  // deadline at all (displayed as "–") still matched every specific
-  // range because of the `!deadlineIso` passthrough - an unknown date
-  // isn't provably "dans plus de 30 jours". Only the unfiltered "Toutes"
-  // view should include undated listings now; every named range excludes
-  // them until we have a real date to test.
-  const deadlineMatches = (deadlineIso: string): boolean => {
-    if (deadlineFilter === 'Toutes') return true;
-    if (!deadlineIso) return false;
+  // 25 Sep audit (correction): the R10 fix above made a specific deadline
+  // range (e.g. "Cette semaine") exclude every listing with no deadline at
+  // all - correct on the "does this match the range" question, but with a
+  // real catalogue this meant a huge share of results vanished the moment
+  // any deadline filter was touched (client: "bohot sari opportunities" -
+  // too many opportunities disappearing). An unknown deadline still isn't
+  // provably inside the range, but it isn't provably outside it either -
+  // so instead of hiding these rows, they're kept and pushed to the end of
+  // the list (see filteredResults below) rather than dropped, so nothing
+  // with real, matching data ever gets buried behind them.
+  const deadlineInRange = (deadlineIso: string): boolean => {
+    if (deadlineFilter === 'Toutes' || !deadlineIso) return true;
     const days = (new Date(deadlineIso).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     if (deadlineFilter === 'Cette semaine') return days >= 0 && days <= 7;
     if (deadlineFilter === 'Ce mois-ci') return days >= 0 && days <= 31;
@@ -389,10 +391,17 @@ export default function OpportunityJourneyPage() {
     return true;
   };
 
-  const filteredResults = useMemo(
-    () => opportunities.filter(o => (status === 'Tous' || o.status === status) && deadlineMatches(o.deadline)),
-    [opportunities, status, deadlineFilter]
-  );
+  const filteredResults = useMemo(() => {
+    const matched = opportunities.filter(o => (status === 'Tous' || o.status === status) && deadlineInRange(o.deadline));
+    if (deadlineFilter === 'Toutes') return matched;
+    // A named range is active: listings with a real deadline that matches
+    // it lead the list; listings with no deadline at all (kept above
+    // instead of excluded) trail behind them instead of being mixed in or
+    // dropped.
+    const withDeadline = matched.filter(o => o.deadline);
+    const withoutDeadline = matched.filter(o => !o.deadline);
+    return [...withDeadline, ...withoutDeadline];
+  }, [opportunities, status, deadlineFilter]);
 
   // Header count: the page fetches PAGE_SIZE (100) at a time and appends
   // more via "load more", so opportunities.length/filteredResults.length
