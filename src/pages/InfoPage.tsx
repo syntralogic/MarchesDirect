@@ -224,36 +224,6 @@ export default function InfoPage() {
         </p>
       </div>
 
-      {/* SECTION 3 — LES PERSONNES À VOS CÔTÉS */}
-      <div className="mb-10">
-        <span className="text-xs font-bold text-orange uppercase tracking-widest">Les personnes à vos côtés</span>
-        <h2 className="text-2xl md:text-4xl font-extrabold text-white leading-tight mt-2 mb-3">
-          Vous savez à qui vous parlez.
-        </h2>
-        <p className="text-[#B9BBC8] text-sm md:text-base leading-relaxed mb-6">
-          Elena accueille votre demande. Un chargé d'affaires prend ensuite le relais et suit votre candidature avec vous.
-        </p>
-
-        <div className="grid grid-cols-2 gap-3 md:gap-4" id="mdq-team">
-          {TEAM.map((member) => (
-            <Link
-              key={member.name}
-              to={`/team-profile?member=${encodeURIComponent(member.name)}`}
-              className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 flex flex-col items-center text-center hover:border-orange/50 transition-all group cursor-pointer"
-            >
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-[#17334D] group-hover:border-orange/50 mb-3 overflow-hidden">
-                <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
-              </div>
-              <p className="text-[11px] md:text-sm font-semibold text-orange mb-0.5">{member.role}</p>
-              <h3 className="text-sm md:text-lg font-bold text-white mb-1">{member.name}</h3>
-              <p className="text-[11px] md:text-xs text-[#B9BBC8] mb-3 leading-snug">{member.tagline}</p>
-              <span className="text-[11px] md:text-xs text-orange font-medium flex items-center gap-1 mt-auto group-hover:underline">
-                Découvrir son rôle <ArrowRight size={12} className="-rotate-45" />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
 
       {/* SECTION 4 — COMMENT NOUS TRAVAILLONS ENSEMBLE */}
       <div className="mb-10" id="mdq-workflow">
@@ -333,6 +303,36 @@ export default function InfoPage() {
         </div>
       </div>
 
+      {/* SECTION 3 — LES PERSONNES À VOS CÔTÉS */}
+      <div className="mb-10">
+        <span className="text-xs font-bold text-orange uppercase tracking-widest">Les personnes à vos côtés</span>
+        <h2 className="text-2xl md:text-4xl font-extrabold text-white leading-tight mt-2 mb-3">
+          Vous savez à qui vous parlez.
+        </h2>
+        <p className="text-[#B9BBC8] text-sm md:text-base leading-relaxed mb-6">
+          Elena accueille votre demande. Un chargé d'affaires prend ensuite le relais et suit votre candidature avec vous.
+        </p>
+
+        <div className="grid grid-cols-2 gap-3 md:gap-4" id="mdq-team">
+          {TEAM.map((member) => (
+            <Link
+              key={member.name}
+              to={`/team-profile?member=${encodeURIComponent(member.name)}`}
+              className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 flex flex-col items-center text-center hover:border-orange/50 transition-all group cursor-pointer"
+            >
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-[#17334D] group-hover:border-orange/50 mb-3 overflow-hidden">
+                <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
+              </div>
+              <p className="text-[11px] md:text-sm font-semibold text-orange mb-0.5">{member.role}</p>
+              <h3 className="text-sm md:text-lg font-bold text-white mb-1">{member.name}</h3>
+              <p className="text-[11px] md:text-xs text-[#B9BBC8] mb-3 leading-snug">{member.tagline}</p>
+              <span className="text-[11px] md:text-xs text-orange font-medium flex items-center gap-1 mt-auto group-hover:underline">
+                Découvrir son rôle <ArrowRight size={12} className="-rotate-45" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
       {/* SECTION 5 — Vous gardez la décision */}
       <div className="mb-10 flex items-start gap-3 bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
         <div className="w-10 h-10 rounded-lg bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">

@@ -559,6 +559,21 @@ export const siretApi = {
     const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId });
     return data;
   },
+  // 25 Sep audit, point 5: "Télécharger mon exemplaire" / "Me le renvoyer"
+  // on the Dossier screen (previously only present in AppointmentModal's
+  // recap, not on the pré-dossier flow itself). Re-derives and re-serves
+  // the exact same PDF already emailed by captureLead above.
+  downloadPrefilledDossier: async (sessionId: string, opportunityId: string): Promise<Blob> => {
+    const { data } = await apiClient.get('/siret/lead/dossier-pdf', {
+      params: { sessionId, opportunityId },
+      responseType: 'blob',
+    });
+    return data;
+  },
+  resendPrefilledDossier: async (sessionId: string, opportunityId: string): Promise<{ sent: boolean }> => {
+    const { data } = await apiClient.post('/siret/lead/resend', { sessionId, opportunityId });
+    return data;
+  },
   // C08 (contre-audit 15 Sep): real SMS possession check on top of the
   // phone format validation above. requestPhoneOtp sends the code (or, in
   // an environment with no SMS provider configured, logs it server-side -
