@@ -208,7 +208,7 @@ export default function RecherchePage() {
   // complaint (tsc did flag it: TS2448/TS2454). This is very likely the
   // actual cause behind "search shows nothing" reports for /recherche -
   // the page would throw before ever reaching a fetch call.
-  const [radius, setRadius] = useState(String(DEFAULT_CITY_RADIUS_KM));
+  const [radius, setRadius] = useState(searchParams.get('radius_km') || String(DEFAULT_CITY_RADIUS_KM));
   // Client audit (19 Sep): this radius was decorative - the main list
   // endpoint had no geo-radius filter at all (only /stats/near did), so
   // "Angoulême à 25 km" and "Angoulême à 200 km" returned identical
@@ -280,9 +280,15 @@ export default function RecherchePage() {
     if (applied.montantMin) next.set('min_value', applied.montantMin);
     if (applied.montantMax) next.set('max_value', applied.montantMax);
     if (sort !== 'deadline') next.set('sort', sort);
+    // Client audit (25 Sep): the radius selector was decorative for the URL -
+    // changing it never round-tripped through searchParams, so a reload or
+    // a shared link always fell back to DEFAULT_CITY_RADIUS_KM (50 km) no
+    // matter what was actually selected. Only meaningful (and only shown)
+    // for a single resolved city - see showRadius above.
+    if (showRadius && radius !== String(DEFAULT_CITY_RADIUS_KM)) next.set('radius_km', radius);
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied, locationField, tradeId, journeyParam, statutFilter, natureFilter, sort]);
+  }, [applied, locationField, tradeId, journeyParam, statutFilter, natureFilter, sort, radius, showRadius]);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
