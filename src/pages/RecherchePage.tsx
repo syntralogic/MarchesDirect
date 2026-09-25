@@ -590,7 +590,10 @@ export default function RecherchePage() {
         <div className="mb-2.5">
           <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchNature')}</label>
           <div className="flex flex-wrap gap-1.5">
-            {(['travaux', 'fournitures', 'etudes', 'mixte'] as const).map(n => (
+            {/* 25 Sep client audit, point 7: "Ajouter Services aux natures de
+                prestations : nettoyage et maintenance ne se résument pas aux
+                travaux ou fournitures." - see backend/utils/naturePrestation.ts. */}
+            {(['travaux', 'fournitures', 'etudes', 'services', 'mixte'] as const).map(n => (
               <button
                 key={n}
                 type="button"
@@ -604,6 +607,7 @@ export default function RecherchePage() {
                 {n === 'travaux' ? t('natureTravaux') || 'Travaux'
                   : n === 'fournitures' ? t('natureFournitures') || 'Fournitures'
                   : n === 'etudes' ? t('natureEtudes') || 'Études'
+                  : n === 'services' ? t('natureServices') || 'Services'
                   : t('natureMixte') || 'Mixte'}
               </button>
             ))}
