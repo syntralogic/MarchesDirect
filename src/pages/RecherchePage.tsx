@@ -12,6 +12,7 @@ import { LoadMoreButton } from '@/components/LoadMoreButton';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { frenchRegions } from '@/data/mockData';
 import { DEFAULT_CITY_RADIUS_KM, CITY_RADIUS_OPTIONS_KM } from '@/lib/searchRadius';
+import { matchTradeSuggestions } from '@/data/tradeSuggestions';
 
 // Same accent/case fold HomePage.tsx uses for its (working) department
 // autocomplete - not exported from there, small enough to duplicate here
@@ -31,6 +32,28 @@ export default function RecherchePage() {
   // of bug as the department/region params above.
   const initialQuery = searchParams.get('q') || '';
   const [query, setQuery] = useState(initialQuery);
+  // Client audit (25 Sep): the direct search page had no suggestion/
+  // autocomplete on the keyword field at all - the guided journey
+  // (/parcours) already had one (see tradeSuggestions.ts, now shared by
+  // both pages). Same open-until-picked pattern that page uses, plus a
+  // click-outside close since this page's form has more fields below the
+  // input for a stray click to land on.
+  const [querySuggestOpen, setQuerySuggestOpen] = useState(false);
+  const queryFieldRef = useRef<HTMLDivElement>(null);
+  const filteredQuerySuggestions = useMemo(() => {
+    if (!query.trim()) return [];
+    return matchTradeSuggestions(query, 6);
+  }, [query]);
+  useEffect(() => {
+    if (!querySuggestOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (queryFieldRef.current && !queryFieldRef.current.contains(e.target as Node)) {
+        setQuerySuggestOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [querySuggestOpen]);
   // Client's map lets 2+ regions/departments/cities be selected at once
   // ("Nouvelle-Aquitaine, Bretagne") - HomePage's buildSearchUrl() already
   // sent every selection as its own repeated `region=` param, but this only
@@ -315,15 +338,35 @@ export default function RecherchePage() {
       <form onSubmit={e => { e.preventDefault(); handleSearch(); }} className="bg-[#061D32] border border-[#17334D] rounded-xl p-2.5 mb-3">
         <div className="mb-2">
           <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchKeywords')}</label>
-          <div className="relative">
+          <div className="relative" ref={queryFieldRef}>
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
             <input
               type="text"
               placeholder={t('searchKeywordsPlaceholder')}
               value={query}
-              onChange={e => setQuery(e.target.value)}
+              onChange={e => { setQuery(e.target.value); setQuerySuggestOpen(true); }}
+              onFocus={() => setQuerySuggestOpen(true)}
               className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
             />
+            {querySuggestOpen && filteredQuerySuggestions.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-[#031B30] border border-[#17334D] rounded-md overflow-hidden shadow-xl">
+                {filteredQuerySuggestions.map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setQuery(s);
+                      setQuerySuggestOpen(false);
+                      setLocationField(resolveLocationField(location));
+                      setApplied({ query: s, location: resolveLocationValue(location, resolveLocationField(location)), montantMin, montantMax });
+                    }}
+                    className="w-full text-left px-2.5 py-2 text-[11px] text-white hover:bg-orange/10 border-b border-[#17334D] last:border-b-0"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
