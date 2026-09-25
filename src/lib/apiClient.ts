@@ -186,6 +186,12 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     submission_method?: { value: string; available: boolean };
     allotment?: { value: string; available: boolean };
     technical_visit?: { value: string; available: boolean };
+    // Client audit (25 Sep, point 10): périmètre/quantités, calendrier
+    // d'intervention et contraintes/attentes pour les marchés privés et
+    // sous-traitance - visibles même donneur d'ordre verrouillé.
+    scope_details?: { value: string; available: boolean };
+    intervention_calendar?: { value: string; available: boolean };
+    constraints_expectations?: { value: string; available: boolean };
     // Client's audit: attribution info + fuller buyer contact details were
     // entirely missing (backend aiService.extractOpportunityFacts).
     attribution_winner?: { value: string; available: boolean };

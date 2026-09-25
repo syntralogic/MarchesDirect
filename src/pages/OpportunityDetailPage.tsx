@@ -1317,6 +1317,12 @@ export default function OpportunityDetailPage() {
             // Prestations et lots
             if (facts?.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
 
+            // Périmètre et quantités — client audit (25 Sep, point 10):
+            // private tender / sous-traitance listings without a
+            // BOAMP-style "allotissement" still need to show what's
+            // actually known about the scope of the work.
+            if (facts?.scope_details?.available) rows.push({ label: t('dossierFactScope') || 'Périmètre et quantités', value: facts.scope_details.value });
+
             // Lieu — raw, never depended on AI extraction; previously
             // absent from this list entirely.
             const lieu = [opportunity.location_city, opportunity.location_department, opportunity.location_region].filter(Boolean).join(', ');
@@ -1344,7 +1350,9 @@ export default function OpportunityDetailPage() {
             if (facts?.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
             if (facts?.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
             if (facts?.contract_duration?.available) rows.push({ label: t('dossierFactDuration'), value: facts.contract_duration.value });
+            if (facts?.intervention_calendar?.available) rows.push({ label: t('dossierFactCalendar') || "Calendrier d'intervention", value: facts.intervention_calendar.value });
             if (facts?.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
+            if (facts?.constraints_expectations?.available) rows.push({ label: t('dossierFactConstraints') || 'Contraintes et attentes', value: facts.constraints_expectations.value });
 
             // Attribution info only ever shows up once BOAMP/DECP actually
             // publishes an award notice - not available on an open call for
