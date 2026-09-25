@@ -97,21 +97,21 @@ function HeroCounters() {
       <Link to="/marches-publics" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
         <div>
           <div className="text-xs text-white font-semibold">Marchés publics</div>
-          <div className="text-xs text-[#B9BBC8]">{loading ? '…' : `${fmt(counts.public_procurement)} opportunités`}</div>
+          {loading ? <div className="h-3 w-20 mt-1 rounded bg-[#17334D] animate-pulse" aria-hidden="true" /> : <div className="text-xs text-[#B9BBC8]">{`${fmt(counts.public_procurement)} opportunités`}</div>}
         </div>
         <ChevronRight size={16} className="text-[#B9BBC8]" />
       </Link>
       <Link to="/appels-doffres" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
         <div>
           <div className="text-xs text-white font-semibold">Appels d'offres privés</div>
-          <div className="text-xs text-[#B9BBC8]">{loading ? '…' : `${fmt(counts.tender)} opportunités`}</div>
+          {loading ? <div className="h-3 w-20 mt-1 rounded bg-[#17334D] animate-pulse" aria-hidden="true" /> : <div className="text-xs text-[#B9BBC8]">{`${fmt(counts.tender)} opportunités`}</div>}
         </div>
         <ChevronRight size={16} className="text-[#B9BBC8]" />
       </Link>
       <Link to="/sous-traitance" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
         <div>
           <div className="text-xs text-white font-semibold">Sous-traitance</div>
-          <div className="text-xs text-[#B9BBC8]">{loading ? '…' : `${fmt(counts.subcontracting)} opportunités`}</div>
+          {loading ? <div className="h-3 w-20 mt-1 rounded bg-[#17334D] animate-pulse" aria-hidden="true" /> : <div className="text-xs text-[#B9BBC8]">{`${fmt(counts.subcontracting)} opportunités`}</div>}
         </div>
         <ChevronRight size={16} className="text-[#B9BBC8]" />
       </Link>
@@ -142,7 +142,9 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
               <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0.5 leading-tight md:leading-snug">{p.sub}</div>
             </div>
             <div className="text-[11px] text-orange font-semibold whitespace-nowrap shrink-0">
-              {loading ? '…' : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
+              {loading
+                ? <div className="h-3 w-16 rounded bg-orange/20 animate-pulse" aria-hidden="true" />
+                : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
             </div>
             <ChevronRight size={16} className="text-orange shrink-0 md:hidden" />
             <ChevronRight size={16} className="text-orange shrink-0 hidden md:block" />
