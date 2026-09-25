@@ -10,6 +10,7 @@ import { useOpportunities } from '@/hooks/use-opportunities';
 import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cities } from '@/data/mockData';
+import { TRADE_SUGGESTIONS, matchTradeSuggestions } from '@/data/tradeSuggestions';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { SaveButton } from '@/components/SaveButton';
@@ -26,15 +27,7 @@ const TYPE_OPTIONS: { id: OppType; sub: string; icon: typeof Building }[] = [
   { id: 'Sous-traitance', sub: 'Entre entreprises du bâtiment', icon: Handshake },
 ];
 
-const TRADE_SUGGESTIONS = [
-  'Climatisation', 'Chauffage / CVC', 'Installation et maintenance de climatisation',
-  'Peinture', 'Électricité', 'Plomberie', 'Plomberie sanitaire', 'Chauffage / plomberie',
-  'Menuiserie', 'Maçonnerie', 'Couverture / Toiture',
-  'Étanchéité', 'Serrurerie / Métallerie', 'Isolation thermique', 'Cloisons / Doublages',
-  'Revêtement de sols', 'Nettoyage de chantier', 'Espaces verts',
-  'Rénovation énergétique', 'Rénovation intérieure', 'Réhabilitation de bâtiments',
-  'Construction neuve', 'Aménagement extérieur',
-];
+
 
 const RADIUS_OPTIONS = [25, 50, 100, 200];
 
@@ -345,7 +338,7 @@ export default function OpportunityJourneyPage() {
 
   const filteredSuggestions = useMemo(() => {
     if (!query.trim()) return TRADE_SUGGESTIONS.slice(0, 3);
-    return TRADE_SUGGESTIONS.filter(s => s.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
+    return matchTradeSuggestions(query, 6);
   }, [query]);
 
   // R08 (contre-audit 15 Sep): "Filtrer n'est toujours pas trier." The
@@ -1273,8 +1266,19 @@ function BuyerNeedForm({ onPublished }: { onPublished: (need: ApiSubcontractNeed
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [key]: e.target.value }));
 
+  // Client audit (25 Sep): no check anywhere stopped a min budget greater
+  // than the max (e.g. min 50 000 € / max 10 000 €) from being published -
+  // every downstream range display/filter reads that as backwards. Mirrors
+  // the same rule now enforced server-side (subcontractNeeds.ts).
+  const budgetRangeInvalid =
+    form.budgetMin !== '' && form.budgetMax !== '' && Number(form.budgetMin) > Number(form.budgetMax);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (budgetRangeInvalid) {
+      setError(t('journeyBudgetRangeError') || 'Le budget minimum doit être inférieur ou égal au budget maximum.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -1335,13 +1339,16 @@ function BuyerNeedForm({ onPublished }: { onPublished: (need: ApiSubcontractNeed
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyBudgetMin')}</label>
-          <input type="number" min="0" value={form.budgetMin} onChange={update('budgetMin')} placeholder="15000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+          <input type="number" min="0" value={form.budgetMin} onChange={update('budgetMin')} placeholder="15000" className={`w-full bg-[#031B30] border rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none ${budgetRangeInvalid ? 'border-red-400' : 'border-[#17334D] focus:border-orange'}`} />
         </div>
         <div>
           <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyBudgetMax')}</label>
-          <input type="number" min="0" value={form.budgetMax} onChange={update('budgetMax')} placeholder="25000" className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange" />
+          <input type="number" min="0" value={form.budgetMax} onChange={update('budgetMax')} placeholder="25000" className={`w-full bg-[#031B30] border rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#6B7280] focus:outline-none ${budgetRangeInvalid ? 'border-red-400' : 'border-[#17334D] focus:border-orange'}`} />
         </div>
       </div>
+      {budgetRangeInvalid && (
+        <p className="text-xs text-red-400 -mt-2">{t('journeyBudgetRangeError') || 'Le budget minimum doit être inférieur ou égal au budget maximum.'}</p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1 block">{t('journeyTeamSize')}</label>
@@ -1373,7 +1380,7 @@ function BuyerNeedForm({ onPublished }: { onPublished: (need: ApiSubcontractNeed
 
       {error && <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">{error}</p>}
 
-      <button type="submit" disabled={submitting || !form.trade.trim()} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-lg text-sm hover:bg-orange/90 transition-colors disabled:opacity-40">
+      <button type="submit" disabled={submitting || !form.trade.trim() || budgetRangeInvalid} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-lg text-sm hover:bg-orange/90 transition-colors disabled:opacity-40">
         {submitting && <Loader2 size={16} className="animate-spin" />} {t('journeyPublishNeed')}
       </button>
     </form>

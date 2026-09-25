@@ -1182,6 +1182,7 @@ const frTranslations: Translations = {
   journeyCityPlaceholder: 'Ex : Bordeaux',
   journeyBudgetMin: 'Budget min (€)',
   journeyBudgetMax: 'Budget max (€)',
+  journeyBudgetRangeError: 'Le budget minimum doit être inférieur ou égal au budget maximum.',
   journeyTeamSize: 'Effectif recherché',
   journeyStartDate: 'Démarrage souhaité',
   journeyDuration: 'Durée estimée',
