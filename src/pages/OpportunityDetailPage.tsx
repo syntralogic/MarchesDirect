@@ -1516,9 +1516,18 @@ export default function OpportunityDetailPage() {
           client's reference screenshot for this screen). */}
       {screen === 2 && (
           <>
+            {/* 25 Sep audit, point 3: the company-identity card and the
+                "Présence détectée" checklist used to be two separate
+                p-5/p-6 cards (each with its own header) stacked before the
+                match score ever appeared - a lot of administrative scrolling
+                before the one thing this screen is actually for. Merged
+                into one card, tighter spacing (p-4, gap-y-2.5 instead of
+                p-5/p-6, gap-y-3.5), and "Présence détectée" compacted from
+                4 stacked rows into one row of small status chips - same
+                underlying signals (never fabricated), just denser. */}
             {siretCompany && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
-                <div className="flex items-center justify-between mb-3">
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5 mb-4">
+                <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-2.5">
                     <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
                       <Building2 size={16} className="text-orange" />
@@ -1542,9 +1551,9 @@ export default function OpportunityDetailPage() {
                     </span>
                   )}
                 </div>
-                {siretCompany.siret && <p className="text-xs text-[#5B6B80] mb-4">SIRET {siretCompany.siret}</p>}
+                {siretCompany.siret && <p className="text-xs text-[#5B6B80] mb-2.5">SIRET {siretCompany.siret}</p>}
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs pt-1 border-t border-[#17334D] mt-1">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs pt-2.5 border-t border-[#17334D] mt-0.5">
                   <CompanyInfoRow icon={MapPin} label="Localisation" value={[siretCompany.city, siretCompany.postal].filter(Boolean).join(' ') || siretCompany.address || null} />
                   <CompanyInfoRow
                     icon={User}
@@ -1569,52 +1578,28 @@ export default function OpportunityDetailPage() {
                   />
                   <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.join(', ') : null} empty="Aucune certification détectée dans notre recherche" />
                 </div>
-              </div>
-            )}
-            {/* "Présence détectée" (client reference screens 5-6): digital
-                footprint checklist shown right after SIRET recognition,
-                before the compatibility score. Backend already resolves
-                these fields (routes/siret.ts) - only ever real signals from
-                Pappers/INSEE/demo data, never fabricated, so a missing
-                signal renders as "Non détecté" rather than being hidden or
-                guessed. Layout matches the reference exactly: label + value
-                stacked on the left, a single checkmark/cross on the right -
-                not a duplicated checkmark-plus-text pill. */}
-            {siretCompany && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 mb-4">
-                <h2 className="text-base font-extrabold text-white mb-1">{t('presenceDetectedTitle')}</h2>
-                <p className="text-[11px] text-[#5B6B80] mb-3">{t('presenceDetectedSub')}</p>
-                <div className="divide-y divide-[#17334D]">
-                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="text-sm font-semibold text-white flex items-center gap-2"><Globe size={14} className="text-[#5B6B80]" /> {t('presenceWebsite')}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.website || t('presenceNotDetected')}</p>
+
+                {/* "Présence détectée" (client reference screens 5-6),
+                    compacted into a single row of chips: icon + label,
+                    green check or dim cross, real signal in white when
+                    found vs. dimmed italic "Non détecté" when not - matching
+                    the same known/unknown distinction as CompanyInfoRow
+                    above (25 Sep audit, point 4). Title kept as a tooltip on
+                    the row rather than a repeated H2+sub. */}
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs pt-2.5 mt-2.5 border-t border-[#17334D]">
+                  <span className="text-[10px] text-[#5B6B80] w-full -mb-0.5">{t('presenceDetectedTitle')}</span>
+                  {([
+                    { icon: Globe, label: t('presenceWebsite'), detected: Boolean(siretCompany.website), value: siretCompany.website },
+                    { icon: Facebook, label: t('presenceFacebook'), detected: Boolean(siretCompany.facebook), value: siretCompany.facebook },
+                    { icon: Star, label: t('presenceGoogleReviews'), detected: Boolean(siretCompany.googleRating), value: siretCompany.googleRating ? `${siretCompany.googleRating}/5 · ${siretCompany.googleReviewCount ?? 0} avis` : null },
+                    { icon: BadgeCheck, label: t('presenceRge'), detected: Boolean(siretCompany.rgeOrganisme), value: siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : null },
+                  ] as const).map((sig, i) => (
+                    <div key={i} className="flex items-center gap-1.5" title={sig.value || t('presenceNotDetected')}>
+                      {sig.detected ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <XCircle size={13} className="text-[#5B6B80] shrink-0" />}
+                      <sig.icon size={12} className="text-[#5B6B80] shrink-0" />
+                      <span className={sig.detected ? 'text-white font-medium' : 'text-[#5B6B80] italic'}>{sig.label}</span>
                     </div>
-                    {siretCompany.website ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
-                  </div>
-                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="text-sm font-semibold text-white flex items-center gap-2"><Facebook size={14} className="text-[#5B6B80]" /> {t('presenceFacebook')}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.facebook || t('presenceNotDetected')}</p>
-                    </div>
-                    {siretCompany.facebook ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
-                  </div>
-                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="text-sm font-semibold text-white flex items-center gap-2"><Star size={14} className="text-[#5B6B80]" /> {t('presenceGoogleReviews')}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">{siretCompany.googleRating ? `${siretCompany.googleRating}/5 · ${siretCompany.googleReviewCount ?? 0} avis` : t('presenceNotDetected')}</p>
-                    </div>
-                    {siretCompany.googleRating ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
-                  </div>
-                  <div className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                    <div>
-                      <p className="text-sm font-semibold text-white flex items-center gap-2"><BadgeCheck size={14} className="text-[#5B6B80]" /> {t('presenceRge')}</p>
-                      <p className="text-xs text-[#B9BBC8] mt-0.5">
-                        {siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : t('presenceNotDetected')}
-                      </p>
-                    </div>
-                    {siretCompany.rgeOrganisme ? <CheckCircle2 size={18} className="text-green-400 shrink-0" /> : <XCircle size={18} className="text-[#5B6B80] shrink-0" />}
-                  </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -3100,12 +3085,18 @@ type DossierPrepItem = { label: string; ready: boolean; readyText: string; pendi
 // disponible", "Effectif non communiqué", etc.) so the grid never looks
 // broken or incomplete.
 function CompanyInfoRow({ icon: Icon, label, value, empty }: { icon: typeof MapPin; label: string; value: string | null | undefined; empty?: string }) {
+  // 25 Sep audit, point 4: an estimated/unknown field ("Chiffre d'affaires
+  // non disponible", "Effectif non communiqué"...) rendered identically to
+  // real data (same white/bold text) reads as a fact rather than as "we
+  // don't know this". Only the `empty` fallback gets the dimmer, italic
+  // treatment - a real value keeps its normal weight.
+  const isKnown = Boolean(value);
   return (
     <div className="flex items-start gap-2">
       <Icon size={14} className="text-[#5B6B80] shrink-0 mt-0.5" />
       <div className="min-w-0">
         <p className="text-[10px] text-[#5B6B80]">{label}</p>
-        <p className="text-white font-medium">{value || empty || '—'}</p>
+        <p className={isKnown ? 'text-white font-medium' : 'text-[#5B6B80] italic'}>{value || empty || '—'}</p>
       </div>
     </div>
   );
