@@ -6,7 +6,8 @@ import type { Opportunity } from '@/data/mockData';
 interface OpportunityListCardProps {
   opportunity: Opportunity;
   /** Percentage match score once the company is identified. */
-  matchScore?: number;
+  // undefined = still loading, null = not enough information to compare yet.
+  matchScore?: number | null;
   /** Whether a numeric match score can be shown at all (company identified). */
   canScore?: boolean;
   /**
@@ -59,9 +60,11 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
       ? { text: t('searchCompatible'), className: 'text-[#3FA96E]' }
       : { text: t('searchIdentifyPrompt'), className: 'text-[#B9BBC8]' };
   } else if (canScore) {
-    statusLine = matchScore !== undefined
-      ? { text: `${matchScore}\u00A0% \u2014 ${t('searchCompatible')}`, className: 'text-[#3FA96E]' }
-      : { text: '\u2026', className: 'text-[#B9BBC8]' };
+    if (matchScore === undefined) statusLine = { text: '\u2026', className: 'text-[#B9BBC8]' };
+    else if (matchScore === null) statusLine = { text: t('searchMatchToConfirm') || 'Concordance à confirmer', className: 'text-[#B9BBC8]' };
+    else if (matchScore >= 60) statusLine = { text: `${matchScore}\u00A0% \u2014 ${t('searchCompatible')}`, className: 'text-[#3FA96E]' };
+    else if (matchScore >= 40) statusLine = { text: `${matchScore}\u00A0% \u2014 ${t('searchMatchPartial') || 'À examiner'}`, className: 'text-orange' };
+    else statusLine = { text: `${matchScore}\u00A0% \u2014 ${t('searchMatchLow') || 'Peu compatible'}`, className: 'text-[#B9BBC8]' };
   } else {
     statusLine = { text: t('searchIdentifyPrompt'), className: 'text-[#B9BBC8]' };
   }

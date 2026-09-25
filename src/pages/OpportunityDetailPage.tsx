@@ -571,9 +571,14 @@ export default function OpportunityDetailPage() {
   // refineAnswers (not its own state), so changing any answer recomputes
   // it automatically on the next render - no separate "recalculate" step
   // needed to satisfy "modifier une réponse doit également recalculer".
-  const REFINE_POINTS: Record<'oui' | 'non' | 'a_confirmer', number> = { oui: 2, non: -3, a_confirmer: 0 };
-  const refineAdjustment = Object.values(refineAnswers).reduce((sum: number, v) => sum + (v ? REFINE_POINTS[v] : 0), 0);
-  const displayScore = matchScore ? Math.max(0, Math.min(100, matchScore.score + refineAdjustment)) : 0;
+  // 25 Sep client audit: the answers used to add a flat +2 / -3 to a score that
+  // measured how complete the notice was. They now go to the backend, which
+  // applies each answer to the criterion it concerns (expérience, moyens,
+  // zone, calendrier) and recomputes the comparison, so the number, the
+  // criteria and their explanations can never disagree.
+  const displayScore: number | null = matchScore ? matchScore.score : null;
+  const refineAnswersParam = Object.entries(refineAnswers).filter(([, v]) => !!v).map(([k, v]) => `${k}:${v}`).join(',');
+  const CRITERION_FOR_ANSWER: Record<string, string> = { experience: 'experience', capacity: 'moyens', location: 'zone', calendar: 'disponibilite' };
   // 20 Sep audit (Marssac): Concordance said "Le métier n'est pas précisé"
   // while the notice is plainly about isolation thermique extérieure. The
   // backend now links/infers the trade itself; if it still has none, the AI's
@@ -675,11 +680,26 @@ export default function OpportunityDetailPage() {
     if (!isOpportunityConfirmed(id) && !isAuthenticated) return;
     setScoreLoading(true);
     setScoreError(null);
-    opportunitiesApi.getMatchScore(id, getSessionId())
+    opportunitiesApi.getMatchScore(id, getSessionId(), refineAnswersParam)
       .then(setMatchScore)
       .catch(err => setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité.")))
       .finally(() => setScoreLoading(false));
   }, [id, screen, matchScore, scoreLoading, t, isAuthenticated]);
+
+  // Recompute (quietly, without swapping the card for a spinner) whenever an
+  // answer to the four questions is added or changed. The counter drops
+  // responses that arrive out of order after quick successive clicks.
+  const scoreRequestRef = useRef(0);
+  const lastAnswersParamRef = useRef(refineAnswersParam);
+  useEffect(() => {
+    if (lastAnswersParamRef.current === refineAnswersParam) return;
+    lastAnswersParamRef.current = refineAnswersParam;
+    if (!id || !matchScore) return;
+    const ticket = ++scoreRequestRef.current;
+    opportunitiesApi.getMatchScore(id, getSessionId(), refineAnswersParam)
+      .then(result => { if (ticket === scoreRequestRef.current) setMatchScore(result); })
+      .catch(() => { /* keep the previous comparison on screen */ });
+  }, [refineAnswersParam, id, matchScore]);
 
   const handleSiretSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1531,76 +1551,52 @@ export default function OpportunityDetailPage() {
                     <circle
                       cx="50" cy="50" r="42" fill="none" stroke="#FF7A00" strokeWidth="10" strokeLinecap="round"
                       strokeDasharray={2 * Math.PI * 42}
-                      strokeDashoffset={2 * Math.PI * 42 * (1 - displayScore / 100)}
+                      strokeDashoffset={2 * Math.PI * 42 * (1 - (displayScore ?? 0) / 100)}
                       className="transition-[stroke-dashoffset] duration-500 ease-out"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-extrabold text-white">{displayScore}%</span>
-                    {refineAdjustment !== 0 && (
-                      <span className={`text-[10px] font-bold ${refineAdjustment > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {refineAdjustment > 0 ? '+' : ''}{refineAdjustment} pts
-                      </span>
-                    )}
+                    {displayScore === null
+                      ? <span className="text-sm font-extrabold text-white text-center leading-tight px-2">{t('matchScoreToConfirm') || 'À confirmer'}</span>
+                      : <span className="text-2xl font-extrabold text-white">{displayScore}%</span>}
                   </div>
                 </div>
                 <div className="flex-1 w-full min-w-0">
                   <p className="text-base font-bold text-white">{t('scoreIndexTitle') || 'Indice de concordance'}</p>
                   <p className="text-sm text-[#B9BBC8] mt-1.5 leading-relaxed">{t('scoreIndexDesc') || 'Ce score compare le profil de votre entreprise aux exigences du marché, à partir des informations disponibles. Vos réponses permettent de préciser cette évaluation.'}</p>
-                  {/* Client (19 Sep): "expliquer sur quels critères repose le
-                      pourcentage." Barème stated once, next to the number it
-                      affects, rather than left implicit. */}
                   <p className="text-[11px] text-[#B9BBC8] mt-2">
-                    {t('scoreBaremeExplain') || 'Le score de base évalue le marché ; chaque réponse "Affinez votre concordance" ci-dessous l\'ajuste : Oui = +2, À confirmer = 0, Non = −3 points.'}
+                    {matchScore.scoreNote}
                   </p>
                 </div>
               </div>
 
-              {/* Numerical justification of the base score (20 Sep audit:
-                  "la justification chiffrée du score initial reste
-                  insuffisante"). Every criterion is listed with the points it
-                  earned out of its maximum and the reason, followed by the
-                  formula that leads to the percentage above - so the number
-                  can be reconciled line by line instead of being taken on
-                  trust. The user's own "Affinez" adjustment is shown as its
-                  own last line. */}
-              {matchScore.scoreBreakdown && (
-                <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
-                  <p className="text-sm font-bold text-white mb-1">{t('scoreBreakdownTitle') || 'Comment ce score est calculé'}</p>
-                  <p className="text-[11px] text-[#B9BBC8] mb-3">
-                    {matchScore.scoreBreakdown.kind === 'listing'
-                      ? (t('scoreBreakdownListingIntro') || "Ce score de base évalue la complétude de l'annonce, pas votre entreprise. Chaque critère rapporte des points :")
-                      : (t('scoreBreakdownProfileIntro') || "Ce score compare votre profil à l'annonce. Chaque critère rapporte des points :")}
-                  </p>
-                  <ul className="divide-y divide-[#17334D]">
-                    {matchScore.scoreBreakdown.items.map(item => (
-                      <li key={item.label} className="py-2 flex items-start gap-2.5">
-                        {item.earned
-                          ? <CheckCircle2 size={14} className="text-green-400 shrink-0 mt-0.5" />
-                          : <span className="w-[14px] h-[14px] rounded-full border border-[#5B6B80] shrink-0 mt-0.5" />}
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-xs font-semibold ${item.earned ? 'text-white' : 'text-[#B9BBC8]'}`}>{item.label}</p>
-                          <p className="text-[11px] text-[#5B6B80] mt-0.5">{item.detail}</p>
-                        </div>
-                        <span className={`text-xs font-bold shrink-0 ${item.earned ? 'text-green-400' : 'text-[#5B6B80]'}`}>
-                          {item.points} / {item.maxPoints}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-3 pt-3 border-t border-[#17334D] space-y-1.5">
-                    <p className="text-[11px] text-[#B9BBC8] leading-relaxed">{matchScore.scoreBreakdown.formula}</p>
-                    {refineAdjustment !== 0 && (
-                      <p className="text-[11px] text-[#B9BBC8] leading-relaxed">
-                        {(t('scoreBreakdownAdjust') || 'Vos réponses « Affinez votre concordance » : {pts} pts.').replace('{pts}', `${refineAdjustment > 0 ? '+' : ''}${refineAdjustment}`)}
-                        {' '}{(t('scoreBreakdownFinal') || 'Score affiché : {base} % {sign} {abs} = {final} %.')
-                          .replace('{base}', String(matchScore.score)).replace('{sign}', refineAdjustment > 0 ? '+' : '−')
-                          .replace('{abs}', String(Math.abs(refineAdjustment))).replace('{final}', String(displayScore))}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* One line per criterion: what the market asks, what the company
+                  does, and one of three states. Unknown data stays "à
+                  confirmer" and is not counted in the percentage. */}
+              <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
+                <p className="text-sm font-bold text-white mb-1">{t('matchCriteriaTitle') || 'Comment votre entreprise correspond à ce marché'}</p>
+                <p className="text-[11px] text-[#B9BBC8] mb-3">
+                  {t('matchCriteriaIntro') || 'Chaque critère compare votre entreprise à ce que le marché demande. Une information inconnue reste « à confirmer » et n\'est pas comptée.'}
+                </p>
+                <ul className="divide-y divide-[#17334D]">
+                  {matchScore.matchCriteria.map(c => (
+                    <li key={c.key} className="py-2.5 flex items-start gap-2.5">
+                      {c.status === 'match'
+                        ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
+                        : c.status === 'mismatch'
+                          ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
+                          : <span className="w-[15px] h-[15px] rounded-full border border-[#5B6B80] shrink-0 mt-0.5" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-white">{c.label}</p>
+                        <p className="text-[11px] text-[#B9BBC8] mt-0.5 leading-relaxed">{c.detail}</p>
+                      </div>
+                      <span className={`text-[11px] font-bold shrink-0 ${c.status === 'match' ? 'text-green-400' : c.status === 'mismatch' ? 'text-red-400' : 'text-[#B9BBC8]'}`}>
+                        {c.status === 'match' ? (t('matchStatusMatch') || 'Correspond') : c.status === 'mismatch' ? (t('matchStatusMismatch') || 'Ne correspond pas') : (t('matchStatusConfirm') || 'À confirmer')}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
               {/* Client (20 Sep, concordance point 4): the "Cessée" status on
                   VERIFRANCE HABITAT matches the live data.gouv.fr record
@@ -1822,13 +1818,15 @@ export default function OpportunityDetailPage() {
                           </button>
                         ))}
                       </div>
-                      {refineAnswers[row.key] && (
-                        <p className={`text-[11px] mt-2 font-semibold ${
-                          REFINE_POINTS[refineAnswers[row.key]!] > 0 ? 'text-green-400' : REFINE_POINTS[refineAnswers[row.key]!] < 0 ? 'text-red-400' : 'text-[#B9BBC8]'
-                        }`}>
-                          {REFINE_POINTS[refineAnswers[row.key]!] > 0 ? '+' : ''}{REFINE_POINTS[refineAnswers[row.key]!]} {t('refinePointsLabel') || 'points'}
-                        </p>
-                      )}
+                      {refineAnswers[row.key] && (() => {
+                        const crit = matchScore.matchCriteria.find(c => c.key === CRITERION_FOR_ANSWER[row.key]);
+                        if (!crit) return null;
+                        return (
+                          <p className={`text-[11px] mt-2 font-semibold ${crit.status === 'match' ? 'text-green-400' : crit.status === 'mismatch' ? 'text-red-400' : 'text-[#B9BBC8]'}`}>
+                            {crit.label} : {crit.status === 'match' ? (t('matchStatusMatch') || 'Correspond') : crit.status === 'mismatch' ? (t('matchStatusMismatch') || 'Ne correspond pas') : (t('matchStatusConfirm') || 'À confirmer')}
+                          </p>
+                        );
+                      })()}
                     </div>
                   ))}
                   <p className="text-[11px] text-[#B9BBC8]">

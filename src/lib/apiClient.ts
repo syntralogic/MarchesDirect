@@ -248,23 +248,26 @@ export type ApiOpportunityAccess = {
   identityUnlocked: boolean;
 };
 
+export type ApiMatchCriterion = {
+  key: 'metier' | 'zone' | 'experience' | 'moyens' | 'disponibilite' | 'qualifications';
+  label: string;
+  status: 'match' | 'confirm' | 'mismatch';
+  detail: string;
+  weight: number;
+  factor: number;
+  answered: boolean;
+};
+
 export type ApiMatchScore = {
-  score: number;
+  // null when the company and the market could not really be compared yet
+  // (métier or zone still to confirm): show "à confirmer", never a made-up %.
+  score: number | null;
   scoreTitle: string;
   scoreNote: string;
   scoreDisclaimer: string;
   matchLabel: string | null;
-  positiveFactors: { label: string; points: number }[];
-  // Line-by-line numerical justification of `score` (every criterion, earned
-  // or not, with points) plus the formula that turns the points into the
-  // displayed percentage. Optional: older backends don't send it.
-  scoreBreakdown?: {
-    kind: 'listing' | 'profile';
-    items: { label: string; points: number; maxPoints: number; earned: boolean; detail: string }[];
-    earnedPoints: number;
-    cappedPoints: number;
-    formula: string;
-  };
+  // Company-vs-market comparison, one entry per criterion.
+  matchCriteria: ApiMatchCriterion[];
   warning: string | null;
   criteria: { label: string; weight: number | null }[];
   criteriaSource?: 'notice' | 'unknown';
@@ -329,13 +332,16 @@ export const opportunitiesApi = {
     const { data } = await apiClient.post(`/opportunities/${id}/request-access`, payload);
     return data;
   },
-  getMatchScore: async (id: string, sessionId?: string): Promise<ApiMatchScore> => {
-    const { data } = await apiClient.get(`/opportunities/${id}/match-score`, { params: sessionId ? { sessionId } : undefined });
+  getMatchScore: async (id: string, sessionId?: string, answers?: string): Promise<ApiMatchScore> => {
+    const params: Record<string, string> = {};
+    if (sessionId) params.sessionId = sessionId;
+    if (answers) params.answers = answers;
+    const { data } = await apiClient.get(`/opportunities/${id}/match-score`, { params });
     return data;
   },
   // Bulk scores for a results list (prototype V17 section 3.1) - 403s if
   // the caller isn't identified yet, same gate as the single-fiche version.
-  matchScores: async (ids: string[], sessionId: string): Promise<Record<string, { score: number; scoreTitle: string }>> => {
+  matchScores: async (ids: string[], sessionId: string): Promise<Record<string, { score: number | null; scoreTitle: string }>> => {
     const { data } = await apiClient.post('/opportunities/match-scores', { ids, sessionId });
     return data.scores;
   },
