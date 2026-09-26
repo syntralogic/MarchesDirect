@@ -207,6 +207,14 @@ export default function RecherchePage() {
       setLocation('France entière');
       setLocationDraft('');
       setLocationSuggestOpen(false);
+      // A prior city search can leave cityCoords (and the radius that goes
+      // with it) set - resolveLocationField treats 'France entière' as
+      // the 'city' field too (see below), so without this a stale
+      // lat/lng/radius_km from that earlier city would silently keep
+      // being sent, restricting "France entière" to a radius around
+      // whatever city was last picked instead of truly nationwide.
+      setCityCoords(null);
+      urlSeededCoordsCity.current = null;
       return;
     }
     setLocation(deptChips.length > 0 ? [...deptChips, item.nom].join(', ') : item.nom);
@@ -323,7 +331,14 @@ export default function RecherchePage() {
   const typedCities = location.split(',').map(c => c.trim()).filter(Boolean);
   const showRadius = resolveLocationField(location) === 'city' && typedCities.length === 1 && !isWholeFranceText(location);
   useEffect(() => {
-    if (locationField !== 'city' || !applied.location) {
+    if (locationField !== 'city' || !applied.location || isWholeFranceText(applied.location)) {
+      // isWholeFranceText added here too (not just selectLocationSuggestion's
+      // click handler above): typing "France entière" directly and having
+      // `applied` pick it up via the debounce path never went through that
+      // handler, so cityCoords could otherwise survive unchanged, or this
+      // effect could try geocoding the literal text "France entière" as if
+      // it were a city name - either way risking a radius search around a
+      // stale or bogus point for what should be a nationwide search.
       setCityCoords(null);
       return;
     }
