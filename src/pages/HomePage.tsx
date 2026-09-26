@@ -495,6 +495,8 @@ function GeographicSection() {
 
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({});
   const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
+  const [unlocatedRegionCount, setUnlocatedRegionCount] = useState(0);
+  const [unlocatedDeptCount, setUnlocatedDeptCount] = useState(0);
   const [regionsGeoJson, setRegionsGeoJson] = useState<GeoJsonData | null>(null);
   const [departementsGeoJson, setDepartementsGeoJson] = useState<GeoJsonData | null>(null);
   const [geoLoadError, setGeoLoadError] = useState(false);
@@ -510,7 +512,7 @@ function GeographicSection() {
 
   useEffect(() => {
     opportunitiesApi.statsByRegion()
-      .then(({ regions }) => {
+      .then(({ regions, unlocatedCount }) => {
         const map: Record<string, number> = {};
         // G13: was `map[key] = r.count`, which silently overwrote an
         // earlier variant's count instead of adding to it if two rows ever
@@ -520,19 +522,26 @@ function GeographicSection() {
         // slip degrades to double-counting rather than losing counts again).
         regions.forEach(r => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
         setRegionCounts(map);
+        setUnlocatedRegionCount(unlocatedCount || 0);
       })
-      .catch(() => setRegionCounts({}));
+      .catch(() => { setRegionCounts({}); setUnlocatedRegionCount(0); });
     opportunitiesApi.statsByDepartment()
-      .then(({ departments }) => {
+      .then(({ departments, unlocatedCount }) => {
         const map: Record<string, number> = {};
         departments.forEach(d => { map[d.department] = (map[d.department] || 0) + d.count; });
         setDeptCounts(map);
+        setUnlocatedDeptCount(unlocatedCount || 0);
       })
-      .catch(() => setDeptCounts({}));
+      .catch(() => { setDeptCounts({}); setUnlocatedDeptCount(0); });
   }, []);
 
-  const getRegionCount = (name: string) => regionCounts[normalizeFr(name)] ?? 0;
-  const getDeptCount = (code: string, name: string) => deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0;
+  // A region/department filter now deliberately keeps opportunities whose
+  // corresponding location field is NULL (see backend fix), so the map's
+  // displayed count for any single region/department needs to include that
+  // same unknown-location pool to match what clicking through to /recherche
+  // will actually show.
+  const getRegionCount = (name: string) => (regionCounts[normalizeFr(name)] ?? 0) + unlocatedRegionCount;
+  const getDeptCount = (code: string, name: string) => (deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0) + unlocatedDeptCount;
 
   // Same rule as /recherche (RecherchePage): a single city is resolved to
   // coordinates through the backend geocoder and searched with a real
@@ -810,10 +819,20 @@ function GeographicSection() {
     // A genuine partial selection (1..n-1 regions) is left exactly as before -
     // widening that case to include no-location rows would reintroduce the
     // G13 map-vs-list count mismatch this filter was already fixed for.
-    const allRegionsSelected = !!regionsGeoJson && selectedRegions.length > 0
-      && selectedRegions.length >= (regionsGeoJson.features as unknown[]).length;
-    const allDeptsSelected = !!departementsGeoJson && selectedDepts.length > 0
-      && selectedDepts.length >= (departementsGeoJson.features as unknown[]).length;
+    // Compares feature codes rather than raw feature/selection counts: some
+    // GeoJSON sources represent one region/department as more than one
+    // feature (multi-part geometries), which a plain length check can get
+    // wrong in either direction. Checking that every feature's code is in
+    // the selected set is correct regardless of how many features share a
+    // code.
+    const regionFeatures = (regionsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
+    const departmentFeatures = (departementsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
+    const selectedRegionCodes = new Set(selectedRegions.map(r => r.code));
+    const selectedDepartmentCodes = new Set(selectedDepts.map(d => d.code));
+    const allRegionsSelected = regionFeatures.length > 0 && selectedRegions.length > 0
+      && regionFeatures.every(feature => feature.properties?.code && selectedRegionCodes.has(feature.properties.code));
+    const allDeptsSelected = departmentFeatures.length > 0 && selectedDepts.length > 0
+      && departmentFeatures.every(feature => feature.properties?.code && selectedDepartmentCodes.has(feature.properties.code));
 
     // Edge case: if the region/department GeoJSON hasn't finished loading
     // yet, allRegionsSelected/allDeptsSelected stay false no matter how many
