@@ -893,6 +893,21 @@ export default function OpportunityJourneyPage() {
             </div>
           )}
 
+          {/* 26 Sep client audit, point 10 ("en modifiant une recherche
+              existante et en changeant ce choix, je suis retombé sur la
+              liste des missions"): step 2 already branches to
+              BuyerNeedForm the moment subRole === 'cherche' (see above),
+              but this step never did - so a visitor who reaches step 3
+              first (a search already in progress) and only then switches
+              to "Je cherche un sous-traitant" via the toggle just above
+              kept seeing this query/location form, and continuing from
+              here landed back on step 4's missions list instead of the
+              publish form. Same branch as step 2, so the form shows
+              regardless of which step the role was actually changed on. */}
+          {types.includes('Sous-traitance') && subRole === 'cherche' ? (
+            <BuyerNeedForm onPublished={need => { setBuyerNeed(need); setStep(4); }} />
+          ) : (
+          <>
           <div className="mb-5">
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">
               {t('journeyWhatLookingFor')}
@@ -935,6 +950,7 @@ export default function OpportunityJourneyPage() {
               {t('journeyChooseLocation')} <ArrowRight size={14} />
             </button>
           </div>
+          </>)}
         </div>
       )}
 
