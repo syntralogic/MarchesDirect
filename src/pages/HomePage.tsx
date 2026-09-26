@@ -120,7 +120,14 @@ function HeroCounters() {
 }
 
 function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
-  const { counts, loading } = useOpportunityCounts();
+  // 26 Sep client audit (point 3 remainder): these tiles link to /parcours,
+  // whose guided journey only ever shows active (open-to-candidature)
+  // opportunities by design - unlike HeroCounters just above, which links
+  // to ?status=TousStatuts and correctly uses the all-statuses total. Using
+  // that same all-statuses total here promised a bigger number than
+  // /parcours would ever show. 'active' matches what the destination
+  // actually displays.
+  const { counts, loading } = useOpportunityCounts('active');
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   const paths = [
     { icon: Building, title: 'Marchés publics', sub: 'Travaux et prestations pour les organismes publics', href: '/parcours?type=marches-publics', key: 'public_procurement' as const },

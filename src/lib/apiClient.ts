@@ -312,9 +312,15 @@ export const opportunitiesApi = {
       return null;
     }
   },
-  getCounts: async () => {
+  // 26 Sep client audit (point 3 remainder): optional `status` lets a
+  // caller ask for a status-scoped cut of the same counts (e.g. 'active'
+  // for the OpportunityPaths tile, whose /parcours destination is
+  // active-only by design) instead of the default all-statuses total -
+  // see backend stats/counts's own comment for the full story.
+  getCounts: async (status?: string) => {
     const { data } = await apiClient.get<{ total: number; public_procurement: number; tender: number; subcontracting: number }>(
-      '/opportunities/stats/counts'
+      '/opportunities/stats/counts',
+      { params: status ? { status } : undefined }
     );
     return data;
   },
