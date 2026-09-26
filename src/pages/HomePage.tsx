@@ -801,6 +801,25 @@ function GeographicSection() {
   const selected = getSelectedItems();
   const selectedCount = selected.length;
 
+  // 26 Sep fix ("map select karne pe results mein sara data nahi aata"):
+  // each badge above (getRegionCount/getDeptCount) correctly adds the full
+  // un-located pool to that ONE item's own count, because a single-item
+  // search really does include every un-located row alongside that item's
+  // matches (see the backend's region/department filter comments). But
+  // when 2+ zones are selected, the actual combined search still adds that
+  // same un-located pool only ONCE (it's a single OR clause, not one per
+  // selected code) - summing each badge's count for a mental "expected
+  // total" therefore double/triple/etc.-counts the un-located pool once
+  // per extra selection, always overstating what /recherche will actually
+  // show for that same selection. This computes the true combined total
+  // (raw per-item counts summed, un-located pool added once) the same way
+  // the backend does, so it always agrees with the results page.
+  const combinedSelectedTotal = selectedCount === 0 ? 0 : tab === 'regions'
+    ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0), 0) + unlocatedRegionCount
+    : tab === 'departments'
+      ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0), 0) + unlocatedDeptCount
+      : 0;
+
   const buildSearchUrl = () => {
     // BUG (client report, 25 Sep - "pura map select karo to total bohot kam
     // ata hai"): the backend's region/department filters are a strict
@@ -1029,6 +1048,14 @@ function GeographicSection() {
                       </div>
                     );
                   })}
+                  {selectedCount > 1 && (tab === 'regions' || tab === 'departments') && (
+                    <div className="flex items-center justify-between gap-2 pt-1.5 mt-0.5 border-t border-[#17334D]">
+                      <p className="text-[10px] font-bold text-white">Total combiné</p>
+                      <p className="text-[10px] font-bold text-orange">
+                        {combinedSelectedTotal.toLocaleString('fr-FR')} {combinedSelectedTotal > 1 ? 'opportunités' : 'opportunité'}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
