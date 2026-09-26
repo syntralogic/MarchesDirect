@@ -288,6 +288,7 @@ export default function RecherchePage() {
   );
   const [montantMin, setMontantMin] = useState(searchParams.get('min_value') || '');
   const [montantMax, setMontantMax] = useState(searchParams.get('max_value') || '');
+  const budgetRangeInvalid = montantMin !== '' && montantMax !== '' && Number(montantMin) > Number(montantMax);
   // R08 (client audit): "filtering isn't sorting" - filters existed but no
   // explicit sort control did. Defaults to the same active-first/soonest-
   // deadline order the results used before this control existed, so
@@ -442,8 +443,14 @@ export default function RecherchePage() {
     // status values, so expand it to the literal list here.
     status: statutFilter === 'all' ? 'active,expired,awarded,cancelled' : (statutFilter || undefined),
     nature: natureFilter.length > 0 ? natureFilter.join(',') : undefined,
-    min_value: applied.montantMin ? Number(applied.montantMin) : undefined,
-    max_value: applied.montantMax ? Number(applied.montantMax) : undefined,
+    // Client (26 Sep audit, point 10): an inverted min>max range showed a
+    // silent zero-result list before (now the backend rejects it outright -
+    // see opportunities.ts) - simplest is to just not send a range that's
+    // already known to be invalid; budgetRangeInvalid's own inline message
+    // explains why nothing changed, rather than trading a silent empty
+    // list for a silent unfiltered one.
+    min_value: (!budgetRangeInvalid && applied.montantMin) ? Number(applied.montantMin) : undefined,
+    max_value: (!budgetRangeInvalid && applied.montantMax) ? Number(applied.montantMax) : undefined,
     sort,
   });
 
@@ -733,10 +740,23 @@ export default function RecherchePage() {
               placeholder={t('searchMontantMaxPlaceholder')}
               value={montantMax}
               onChange={e => setMontantMax(e.target.value)}
-              className="w-full bg-[#031B30] border border-[#17334D] rounded-md px-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
+              className={`w-full bg-[#031B30] border rounded-md px-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none transition-colors ${
+                budgetRangeInvalid ? 'border-red-500/60 focus:border-red-500' : 'border-[#17334D] focus:border-orange'
+              }`}
             />
           </div>
         </div>
+        {/* Client (26 Sep audit, point 10): "le site accepte 100 000 €
+            minimum et 10 000 € maximum, puis affiche zéro résultat sans
+            expliquer l'erreur." Caught before the request even goes out -
+            the backend also rejects this range with a clear message
+            (opportunities.ts), this is just the same check surfaced the
+            moment it's true rather than after a round trip. */}
+        {budgetRangeInvalid && (
+          <p className="text-[10px] text-red-400 -mt-2">
+            Le montant minimum doit être inférieur ou égal au montant maximum.
+          </p>
+        )}
 
         <button
           type="submit"
