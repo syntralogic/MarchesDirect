@@ -251,7 +251,19 @@ export default function RecherchePage() {
     next.delete('trade_id');
     setSearchParams(next, { replace: true });
   };
-  const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
+  // 26 Sep client audit (point 2): "la recherche générale ne propose pas
+  // le même choix visible entre public, privé et sous-traitance." This was
+  // read-only from the URL - whichever `journey` a visitor arrived with
+  // (or none) was silently fixed for the whole visit, with no control
+  // anywhere on this page to see or change it. Now a real, visible filter
+  // (state initialized from the URL, same pattern as statutFilter just
+  // below): a visitor arrives with their entry point's choice already
+  // shown and selected, and can change it without leaving the page -
+  // "les choix du visiteur déjà renseignés, quelle que soit son entrée."
+  const [journeyFilter, setJourneyFilter] = useState<'' | 'tender' | 'public_procurement' | 'subcontracting'>(
+    (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || ''
+  );
+  const journeyParam = journeyFilter || undefined;
   // G14 (contre-audit 15 Sep): header tag/title/sub and the results-count
   // label were hardcoded to the "sous-traitant" wording no matter which
   // journey brought the visitor here - a marchés-publics search still
@@ -424,7 +436,7 @@ export default function RecherchePage() {
     if (showRadius && radius !== String(DEFAULT_CITY_RADIUS_KM)) next.set('radius_km', radius);
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied, locationField, tradeId, journeyParam, statutFilter, natureFilter, sort, radius, showRadius]);
+  }, [applied, locationField, tradeId, journeyFilter, statutFilter, natureFilter, sort, radius, showRadius]);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
@@ -460,7 +472,7 @@ export default function RecherchePage() {
     if (!debouncedQuery && !debouncedLocation) return;
     const parts = [debouncedQuery, debouncedLocation].filter(Boolean);
     trackVisitorEvent('search', `Recherche : ${parts.join(' · ')}`, undefined, { q: debouncedQuery, location: debouncedLocation, journey: journeyParam });
-  }, [debouncedQuery, debouncedLocation, journeyParam]);
+  }, [debouncedQuery, debouncedLocation, journeyFilter]);
 
   // Applies the current (un-debounced) field values immediately - used by
   // both the "Rechercher" button and submitting the form (Enter key).
@@ -669,6 +681,31 @@ export default function RecherchePage() {
               )}
             </div>
           )}
+        </div>
+
+        <div className="mb-2.5">
+          <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchType') || "Type d'opportunité"}</label>
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ['', t('searchTypeAll') || 'Tous'],
+              ['public_procurement', t('searchTypePublic') || 'Marchés publics'],
+              ['tender', t('searchTypeTender') || "Appels d'offres privés"],
+              ['subcontracting', t('searchTypeSubcontracting') || 'Sous-traitance'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value || 'all'}
+                type="button"
+                onClick={() => setJourneyFilter(value)}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${
+                  journeyFilter === value
+                    ? 'bg-orange/15 border-orange text-orange'
+                    : 'bg-[#031B30] border-[#17334D] text-[#B9BBC8] hover:border-[#2A4A6B]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mb-2.5">
