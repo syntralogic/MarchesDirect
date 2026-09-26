@@ -495,8 +495,6 @@ function GeographicSection() {
 
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({});
   const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
-  const [unlocatedRegionCount, setUnlocatedRegionCount] = useState(0);
-  const [unlocatedDeptCount, setUnlocatedDeptCount] = useState(0);
   const [regionsGeoJson, setRegionsGeoJson] = useState<GeoJsonData | null>(null);
   const [departementsGeoJson, setDepartementsGeoJson] = useState<GeoJsonData | null>(null);
   const [geoLoadError, setGeoLoadError] = useState(false);
@@ -511,8 +509,11 @@ function GeographicSection() {
   }, []);
 
   useEffect(() => {
+    // unlocatedCount (nationwide un-geocoded rows) is intentionally ignored
+    // here - see the 26 Sep fix on getRegionCount/getDeptCount above for why
+    // it must not be folded into any single region/department's count.
     opportunitiesApi.statsByRegion()
-      .then(({ regions, unlocatedCount }) => {
+      .then(({ regions }) => {
         const map: Record<string, number> = {};
         // G13: was `map[key] = r.count`, which silently overwrote an
         // earlier variant's count instead of adding to it if two rows ever
@@ -522,17 +523,15 @@ function GeographicSection() {
         // slip degrades to double-counting rather than losing counts again).
         regions.forEach(r => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
         setRegionCounts(map);
-        setUnlocatedRegionCount(unlocatedCount || 0);
       })
-      .catch(() => { setRegionCounts({}); setUnlocatedRegionCount(0); });
+      .catch(() => setRegionCounts({}));
     opportunitiesApi.statsByDepartment()
-      .then(({ departments, unlocatedCount }) => {
+      .then(({ departments }) => {
         const map: Record<string, number> = {};
         departments.forEach(d => { map[d.department] = (map[d.department] || 0) + d.count; });
         setDeptCounts(map);
-        setUnlocatedDeptCount(unlocatedCount || 0);
       })
-      .catch(() => { setDeptCounts({}); setUnlocatedDeptCount(0); });
+      .catch(() => setDeptCounts({}));
   }, []);
 
   // A region/department filter now deliberately keeps opportunities whose
@@ -540,8 +539,17 @@ function GeographicSection() {
   // displayed count for any single region/department needs to include that
   // same unknown-location pool to match what clicking through to /recherche
   // will actually show.
-  const getRegionCount = (name: string) => (regionCounts[normalizeFr(name)] ?? 0) + unlocatedRegionCount;
-  const getDeptCount = (code: string, name: string) => (deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0) + unlocatedDeptCount;
+  // 26 Sep fix ("ek element select karne pe 9200+, pura map select karne pe
+  // sirf 11k+"): these used to add unlocatedRegionCount/unlocatedDeptCount
+  // (the entire nationwide un-located pool) to EVERY single region/
+  // department's badge, so one region could show more opportunities than
+  // the whole, unfiltered country - mostly unrelated data with no real
+  // connection to that region. The backend's region/department filter no
+  // longer folds that pool into a single zone's results (see
+  // routes/opportunities.ts), so this must match: a zone's badge is just
+  // its own real, resolved matches.
+  const getRegionCount = (name: string) => regionCounts[normalizeFr(name)] ?? 0;
+  const getDeptCount = (code: string, name: string) => deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0;
 
   // Same rule as /recherche (RecherchePage): a single city is resolved to
   // coordinates through the backend geocoder and searched with a real
@@ -801,23 +809,19 @@ function GeographicSection() {
   const selected = getSelectedItems();
   const selectedCount = selected.length;
 
-  // 26 Sep fix ("map select karne pe results mein sara data nahi aata"):
-  // each badge above (getRegionCount/getDeptCount) correctly adds the full
-  // un-located pool to that ONE item's own count, because a single-item
-  // search really does include every un-located row alongside that item's
-  // matches (see the backend's region/department filter comments). But
-  // when 2+ zones are selected, the actual combined search still adds that
-  // same un-located pool only ONCE (it's a single OR clause, not one per
-  // selected code) - summing each badge's count for a mental "expected
-  // total" therefore double/triple/etc.-counts the un-located pool once
-  // per extra selection, always overstating what /recherche will actually
-  // show for that same selection. This computes the true combined total
-  // (raw per-item counts summed, un-located pool added once) the same way
-  // the backend does, so it always agrees with the results page.
+  // 26 Sep fix (superseding the previous "add the un-located pool once"
+  // version of this comment): that version was built on top of the
+  // now-removed backend behavior where every region/department filter
+  // folded in the entire nationwide un-located pool. The backend no
+  // longer does that (see routes/opportunities.ts), so a combined
+  // multi-zone search is just the union of each zone's own real matches -
+  // this sums the raw per-item counts with no un-located pool added at
+  // all, which is what the backend's OR'd region/department filter
+  // actually returns now.
   const combinedSelectedTotal = selectedCount === 0 ? 0 : tab === 'regions'
-    ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0), 0) + unlocatedRegionCount
+    ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0), 0)
     : tab === 'departments'
-      ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0), 0) + unlocatedDeptCount
+      ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0), 0)
       : 0;
 
   const buildSearchUrl = () => {
