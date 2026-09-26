@@ -39,7 +39,13 @@ export default function MarchesPublicsPage() {
   // dropdown shows names) - see use-trades.ts for why filtering by name
   // client-side never worked past the first loaded page.
   const selectedTradeId = sector === 'Tous' ? undefined : trades.find(tr => tr.name === sector)?.id;
-  const STATUS_TO_API: Record<string, string> = { 'En cours': 'active', 'Clôturé': 'expired', 'Attribué': 'awarded', 'Annulé': 'cancelled' };
+  // Client (25 Sep): homepage tiles / region map count every status
+  // (70 695 marchés publics) but a bare status=undefined here defaults to
+  // active-only on the backend - "Tous" read as "every status" while
+  // actually meaning "open and new" only. Kept the same sentinel value so
+  // existing links/bookmarks using status=Tous keep working, just relabeled
+  // it honestly and added a real "every status" option next to it.
+  const STATUS_TO_API: Record<string, string> = { 'En cours': 'active', 'Clôturé': 'expired', 'Attribué': 'awarded', 'Annulé': 'cancelled', 'TousStatuts': 'active,expired,awarded,cancelled' };
 
   const { opportunities: results, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     journey: 'public_procurement',
@@ -71,7 +77,8 @@ export default function MarchesPublicsPage() {
       <div>
         <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">Statut</label>
         <select value={status} onChange={e => setStatus(e.target.value)} className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none appearance-none">
-          <option value="Tous">Tous</option>
+          <option value="Tous">Tous (en cours et nouveaux)</option>
+          <option value="TousStatuts">Tous les statuts (y compris clôturés)</option>
           <option value="En cours">En cours</option>
           <option value="Clôturé">Clôturé</option>
           <option value="Attribué">Attribué</option>

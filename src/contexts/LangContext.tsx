@@ -165,6 +165,13 @@ const frTranslations: Translations = {
   // "du marché" makes clear this one filters the market itself.
   searchStatut: 'Statut du marché',
   searchStatutAll: 'Tous (en cours et nouveaux)',
+  // Client (25 Sep): homepage tiles and the region map count every status
+  // (70 695 marchés publics total) but the search results default to
+  // active-only (~11k) - clicking through from a big total landed on a much
+  // smaller list with no visible reason why. This is a REAL "every status"
+  // choice (unlike the default above, which only covers open/new) so those
+  // big totals have somewhere honest to link to.
+  searchStatutEverything: 'Tous les statuts (y compris clôturés)',
   searchStatutActive: 'En cours',
   searchStatutExpired: 'Clôturé',
   searchStatutAwarded: 'Attribué',
@@ -1777,6 +1784,7 @@ const enTranslations: Translations = {
   searchAvailability3: 'Within 3 months',
   searchStatut: 'Market status',
   searchStatutAll: 'All (open and new)',
+  searchStatutEverything: 'All statuses (including closed)',
   searchStatutActive: 'Open',
   searchStatutExpired: 'Closed',
   searchStatutAwarded: 'Awarded',
