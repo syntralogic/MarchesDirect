@@ -430,13 +430,25 @@ function TeamSection() {
 // ---------------------------------------------------------------------------
 // GEOGRAPHIC ("Des opportunités partout en France.")
 // ---------------------------------------------------------------------------
-function GeographicSection() {
+interface GeographicSectionProps {
+  tab: 'regions' | 'departments' | 'cities';
+  setTab: (t: 'regions' | 'departments' | 'cities') => void;
+  selectedRegions: GeoFeatureProps[];
+  setSelectedRegions: React.Dispatch<React.SetStateAction<GeoFeatureProps[]>>;
+  selectedDepts: GeoFeatureProps[];
+  setSelectedDepts: React.Dispatch<React.SetStateAction<GeoFeatureProps[]>>;
+}
+
+// 26 Sep client audit, point 7: tab/selectedRegions/selectedDepts now come
+// from HomePage (shared with SectorsSection - see HomePage's own comment)
+// instead of being this component's own useState. Everything else below
+// (map rendering, zoom, cities/city-radius search, counts) stays local -
+// only the three pieces SectorsSection actually needs to agree with are
+// lifted, to keep this change as small as the bug it fixes.
+function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, selectedDepts, setSelectedDepts }: GeographicSectionProps) {
   const { t } = useLang();
   const { counts: siteWideCounts } = useOpportunityCounts();
-  const [tab, setTab] = useState<'regions' | 'departments' | 'cities'>('regions');
   const [search, setSearch] = useState('');
-  const [selectedRegions, setSelectedRegions] = useState<GeoFeatureProps[]>([]);
-  const [selectedDepts, setSelectedDepts] = useState<GeoFeatureProps[]>([]);
   const [selectedCities, setSelectedCities] = useState<{name: string; coords: [number, number]}[]>([]);
   const [, setHovered] = useState<string | null>(null);
   const [cityQuery, setCityQuery] = useState('');
@@ -1341,7 +1353,13 @@ function GeographicSection() {
 // ---------------------------------------------------------------------------
 // SECTORS ("Quel est votre métier ?")
 // ---------------------------------------------------------------------------
-function SectorsSection() {
+interface SectorsSectionProps {
+  tab: 'regions' | 'departments' | 'cities';
+  selectedRegions: GeoFeatureProps[];
+  selectedDepts: GeoFeatureProps[];
+}
+
+function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionProps) {
   const { t } = useLang();
   // A04/Q04 (contre-audit 15 Sep): this rendered 6 of the 16 hand-written
   // marketing "sector families" from mockData.ts (Travaux & construction,
@@ -1357,6 +1375,36 @@ function SectorsSection() {
     tradesApi.list().then(setTrades).catch(() => setTrades([]));
   }, []);
 
+  // 26 Sep client audit, point 7: this used to hardcode "Zone : Grand Est"
+  // regardless of anything picked on the map above - the two sections had
+  // no shared state at all (see HomePage's comment). Now derived from the
+  // same selectedRegions/selectedDepts the map itself shows selected, so
+  // the label can never say something the visitor didn't actually pick.
+  const activeSelection = tab === 'departments' ? selectedDepts : tab === 'regions' ? selectedRegions : [];
+  const zoneLabel = activeSelection.length === 0
+    ? 'Toute la France'
+    : activeSelection.length === 1
+      ? activeSelection[0].nom
+      : activeSelection.length === 2
+        ? activeSelection.map(z => z.nom).join(', ')
+        : `${activeSelection.length} ${tab === 'departments' ? 'départements' : 'régions'}`;
+
+  // Same repeated-param pattern GeographicSection's own buildSearchUrl uses
+  // (?region=A&region=B), so a trade card click carries the exact
+  // region/department selection the map shows into /recherche instead of
+  // silently resetting to a national search (client repro: Gironde selected
+  // on the map, then clicking CVC landed on unrelated Nîmes/Saint-Quentin
+  // results with no Gironde filter at all).
+  const tradeHref = (tradeId: string) => {
+    const params = [`trade_id=${tradeId}`];
+    if (tab === 'departments') {
+      selectedDepts.forEach(d => params.push(`department=${encodeURIComponent(d.code)}`));
+    } else if (tab === 'regions') {
+      selectedRegions.forEach(r => params.push(`region=${encodeURIComponent(r.nom)}`));
+    }
+    return `/recherche?${params.join('&')}`;
+  };
+
   return (
     <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('sectors') || "Secteurs d'activité"}</span>
@@ -1366,7 +1414,7 @@ function SectorsSection() {
         {(trades || []).slice(0, 6).map((trade) => {
           const Icon = tradeIcon(trade.slug);
           return (
-            <Link key={trade.id} to={`/recherche?trade_id=${trade.id}`} className="flex flex-col items-start gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-3.5 hover:border-orange/50 group transition-all">
+            <Link key={trade.id} to={tradeHref(trade.id)} className="flex flex-col items-start gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-3.5 hover:border-orange/50 group transition-all">
               <div className="w-11 h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0 group-hover:bg-orange/20 transition-colors">
                 <Icon size={22} className="text-orange" />
               </div>
@@ -1384,7 +1432,7 @@ function SectorsSection() {
       </Link>
 
       <div className="flex items-center justify-between mt-4 text-xs">
-        <span className="text-[#B9BBC8]">Zone : Grand Est</span>
+        <span className="text-[#B9BBC8]">Zone : {zoneLabel}</span>
         <Link to="/recherche" className="text-orange font-semibold">Toute la France</Link>
       </div>
     </section>
@@ -1609,6 +1657,20 @@ function FinalCTA({ onAppt, onCallback }: { onAppt: () => void; onCallback: () =
 export default function HomePage() {
   const [appointmentOpen, setAppointmentOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
+  // 26 Sep client audit, point 7 ("le bloc métiers affiche toujours 'Zone :
+  // Grand Est'... cliquer sur CVC ouvre une recherche sans la Gironde"):
+  // GeographicSection (the map) and SectorsSection (the métiers cards) used
+  // to be two fully independent sibling components, each with zero
+  // knowledge of the other - the map's selectedRegions/selectedDepts were
+  // local state that never left GeographicSection, so SectorsSection had
+  // nothing real to show and hardcoded a placeholder zone instead. Lifted
+  // here, to the one common ancestor, so a region/department picked on the
+  // map is the same selection SectorsSection reads for its own zone label
+  // and its trade links - not two components independently guessing at the
+  // same thing.
+  const [geoTab, setGeoTab] = useState<'regions' | 'departments' | 'cities'>('regions');
+  const [selectedRegions, setSelectedRegions] = useState<GeoFeatureProps[]>([]);
+  const [selectedDepts, setSelectedDepts] = useState<GeoFeatureProps[]>([]);
 
   return (
     <div className="page-fade-in">
@@ -1620,8 +1682,12 @@ export default function HomePage() {
       <DemoWalkthroughSection />
       <TestimonialsSection />
       <TeamSection />
-      <GeographicSection />
-      <SectorsSection />
+      <GeographicSection
+        tab={geoTab} setTab={setGeoTab}
+        selectedRegions={selectedRegions} setSelectedRegions={setSelectedRegions}
+        selectedDepts={selectedDepts} setSelectedDepts={setSelectedDepts}
+      />
+      <SectorsSection tab={geoTab} selectedRegions={selectedRegions} selectedDepts={selectedDepts} />
       <BlogSection />
       <HomeFaqSection />
       <FinalCTA onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
