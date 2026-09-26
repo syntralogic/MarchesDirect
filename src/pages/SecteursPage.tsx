@@ -60,7 +60,14 @@ export default function SecteursPage() {
             return (
               <Link
                 key={trade.id}
-                to={`/recherche?trade_id=${trade.id}`}
+                // 26 Sep client audit (point 3): the badge below counts every
+                // status ("Carrelage: 9 opportunités"), same as /api/trades'
+                // opportunity_count, but the plain trade_id link defaulted to
+                // active-only and landed on just 1 result - the announced
+                // figure and the list it links to must describe the same
+                // set. status=all is the sentinel RecherchePage expands into
+                // the real active,expired,awarded,cancelled list.
+                to={`/recherche?trade_id=${trade.id}&status=all`}
                 className="group bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 transition-all flex flex-col"
               >
                 <div className="flex items-start gap-4 mb-4">
