@@ -13,6 +13,7 @@ import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { frenchRegions } from '@/data/mockData';
 import { DEFAULT_CITY_RADIUS_KM, CITY_RADIUS_OPTIONS_KM } from '@/lib/searchRadius';
 import { matchTradeSuggestions } from '@/data/tradeSuggestions';
+import { useTrades } from '@/hooks/use-trades';
 
 // Same accent/case fold HomePage.tsx uses for its (working) department
 // autocomplete - not exported from there, small enough to duplicate here
@@ -237,6 +238,19 @@ export default function RecherchePage() {
     }
   };
   const tradeId = searchParams.get('trade_id') || undefined;
+  // Client audit (26 Sep, point 5): entering via a métier category (e.g.
+  // Carrelage) then typing an unrelated keyword ("nettoyage") silently
+  // returned zero results - trade_id stayed applied in the background with
+  // no visible indication anywhere on the page, so the zero was
+  // unexplainable. This resolves the id to a real name so it can be shown
+  // as a removable chip next to the keyword field (see the input row below).
+  const trades = useTrades();
+  const selectedTrade = tradeId ? trades.find(t => t.id === tradeId) : undefined;
+  const removeTradeFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('trade_id');
+    setSearchParams(next, { replace: true });
+  };
   const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
   // G14 (contre-audit 15 Sep): header tag/title/sub and the results-count
   // label were hardcoded to the "sous-traitant" wording no matter which
@@ -477,6 +491,28 @@ export default function RecherchePage() {
 
       {/* Search Form */}
       <form onSubmit={e => { e.preventDefault(); handleSearch(); }} className="bg-[#061D32] border border-[#17334D] rounded-xl p-2.5 mb-3">
+        {/* Client audit (26 Sep, point 5): the selected métier (trade_id)
+            used to have no visible presence anywhere on this page - typing
+            an unrelated keyword while it stayed applied in the background
+            produced an unexplainable zero-result search. Now shown as a
+            removable chip right above the keyword field it silently
+            constrains. */}
+        {selectedTrade && (
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="text-[9px] font-medium text-[#B9BBC8]">{t('searchTradeFilterLabel') || 'Métier'}</span>
+            <span className="inline-flex items-center gap-1 bg-orange/15 border border-orange/40 text-orange text-[10px] font-medium rounded-full pl-2.5 pr-1.5 py-1">
+              {selectedTrade.name}
+              <button
+                type="button"
+                onClick={removeTradeFilter}
+                aria-label={`${t('searchLocationRemove') || 'Retirer'} ${selectedTrade.name}`}
+                className="hover:bg-orange/25 rounded-full p-0.5"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          </div>
+        )}
         <div className="mb-2">
           <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchKeywords')}</label>
           <div className="relative" ref={queryFieldRef}>
