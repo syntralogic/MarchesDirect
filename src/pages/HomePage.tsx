@@ -496,6 +496,12 @@ function GeographicSection() {
 
   const [regionCounts, setRegionCounts] = useState<Record<string, number>>({});
   const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
+  // Nationwide rows with no resolved region/department at all (26 Sep fix -
+  // see the fetch effect below for why these get a proportional per-region/
+  // department display share instead of staying invisible or being folded
+  // identically into every single one).
+  const [unlocatedRegionCount, setUnlocatedRegionCount] = useState(0);
+  const [unlocatedDeptCount, setUnlocatedDeptCount] = useState(0);
   const [regionsGeoJson, setRegionsGeoJson] = useState<GeoJsonData | null>(null);
   const [departementsGeoJson, setDepartementsGeoJson] = useState<GeoJsonData | null>(null);
   const [geoLoadError, setGeoLoadError] = useState(false);
@@ -510,11 +516,22 @@ function GeographicSection() {
   }, []);
 
   useEffect(() => {
-    // unlocatedCount (nationwide un-geocoded rows) is intentionally ignored
-    // here - see the 26 Sep fix on getRegionCount/getDeptCount above for why
-    // it must not be folded into any single region/department's count.
+    // 26 Sep fix (client: "wo divide kr do khe konse region mein display
+    // honge, phir original data ke baad display krwana") - unlocatedCount
+    // still must never be folded INTO any single region/department's own
+    // count (see getRegionCount/getDeptCount below - that's the exact
+    // duplication bug this fixed a few hours ago). But leaving it
+    // completely invisible per-region meant selecting just 2 of 13 regions
+    // showed 253 while selecting all 13 jumped to 70 330 with nothing in
+    // between explaining the gap. Each region/department badge now also
+    // shows its own proportional share of that nationwide pool - "228
+    // opportunités disponibles" (real, resolved) followed by "+ ~1 780
+    // estimées (non localisées, réparties au prorata)" (a display-only
+    // estimate, weighted by that region's share of all resolved rows) -
+    // appended after, visually distinct, never merged into the first
+    // number so it can't be mistaken for a verified count.
     opportunitiesApi.statsByRegion()
-      .then(({ regions }) => {
+      .then(({ regions, unlocatedCount }) => {
         const map: Record<string, number> = {};
         // G13: was `map[key] = r.count`, which silently overwrote an
         // earlier variant's count instead of adding to it if two rows ever
@@ -524,13 +541,15 @@ function GeographicSection() {
         // slip degrades to double-counting rather than losing counts again).
         regions.forEach(r => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
         setRegionCounts(map);
+        setUnlocatedRegionCount(unlocatedCount || 0);
       })
       .catch(() => setRegionCounts({}));
     opportunitiesApi.statsByDepartment()
-      .then(({ departments }) => {
+      .then(({ departments, unlocatedCount }) => {
         const map: Record<string, number> = {};
         departments.forEach(d => { map[d.department] = (map[d.department] || 0) + d.count; });
         setDeptCounts(map);
+        setUnlocatedDeptCount(unlocatedCount || 0);
       })
       .catch(() => setDeptCounts({}));
   }, []);
@@ -551,6 +570,20 @@ function GeographicSection() {
   // its own real, resolved matches.
   const getRegionCount = (name: string) => regionCounts[normalizeFr(name)] ?? 0;
   const getDeptCount = (code: string, name: string) => deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0;
+  // Proportional (display-only, never merged into getRegionCount/getDeptCount
+  // above) share of the nationwide un-located pool: weighted by this one
+  // region/department's share of every resolved row, so the 13 shares add
+  // up to unlocatedRegionCount exactly once in total, not once per region.
+  const resolvedRegionTotal = Object.values(regionCounts).reduce((sum, n) => sum + n, 0);
+  const resolvedDeptTotal = Object.values(deptCounts).reduce((sum, n) => sum + n, 0);
+  const getRegionUnlocatedShare = (name: string) => {
+    if (unlocatedRegionCount <= 0 || resolvedRegionTotal <= 0) return 0;
+    return Math.round(unlocatedRegionCount * (getRegionCount(name) / resolvedRegionTotal));
+  };
+  const getDeptUnlocatedShare = (code: string, name: string) => {
+    if (unlocatedDeptCount <= 0 || resolvedDeptTotal <= 0) return 0;
+    return Math.round(unlocatedDeptCount * (getDeptCount(code, name) / resolvedDeptTotal));
+  };
 
   // Same rule as /recherche (RecherchePage): a single city is resolved to
   // coordinates through the backend geocoder and searched with a real
@@ -842,9 +875,15 @@ function GeographicSection() {
     : (tab === 'regions' && allRegionsSelected) || (tab === 'departments' && allDeptsSelected)
       ? siteWideCounts.total
       : tab === 'regions'
-        ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0), 0)
+        // 26 Sep fix: was a bare sum of regionCounts (resolved rows only),
+        // which is exactly the "253 for 2 regions, 70 330 once all 13 are
+        // selected, nothing in between" jump the client flagged - the
+        // un-located pool's proportional share (see getRegionUnlocatedShare
+        // above) is now folded in here too, so this line always matches
+        // what the per-region badges above it add up to.
+        ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0) + getRegionUnlocatedShare(r.nom), 0)
         : tab === 'departments'
-          ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0), 0)
+          ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0) + getDeptUnlocatedShare(d.code, d.nom), 0)
           : 0;
 
   const buildSearchUrl = () => {
@@ -1055,6 +1094,9 @@ function GeographicSection() {
                     const count = isRegion
                       ? (tab === 'regions' ? getRegionCount(item.nom) : getDeptCount(item.code, item.nom))
                       : undefined;
+                    const unlocatedShare = isRegion
+                      ? (tab === 'regions' ? getRegionUnlocatedShare(item.nom) : getDeptUnlocatedShare(item.code, item.nom))
+                      : 0;
                     return (
                       <div key={code || name || index} className="flex items-center justify-between gap-2 py-1 border-b border-[#17334D]/50 last:border-0">
                         <div className="min-w-0">
@@ -1062,6 +1104,17 @@ function GeographicSection() {
                           {count !== undefined && (
                             <p className="text-[10px] text-orange font-medium">
                               {count.toLocaleString('fr-FR')} {count > 1 ? 'opportunités disponibles' : 'opportunité disponible'}
+                            </p>
+                          )}
+                          {/* 26 Sep fix: appended AFTER the real, resolved
+                              count above, never merged into it - a
+                              proportional, clearly-labelled estimate of
+                              this region/département's share of the
+                              nationwide un-located pool, not a verified
+                              number. */}
+                          {unlocatedShare > 0 && (
+                            <p className="text-[9px] text-[#B9BBC8]">
+                              + {unlocatedShare.toLocaleString('fr-FR')} estimées (non localisées)
                             </p>
                           )}
                         </div>
