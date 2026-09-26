@@ -12,7 +12,7 @@ import { LoadMoreButton } from '@/components/LoadMoreButton';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { frenchRegions } from '@/data/mockData';
 import { DEFAULT_CITY_RADIUS_KM, CITY_RADIUS_OPTIONS_KM } from '@/lib/searchRadius';
-import { matchTradeSuggestions } from '@/data/tradeSuggestions';
+import { matchTradeSuggestions, searchTermForSuggestion } from '@/data/tradeSuggestions';
 import { useTrades } from '@/hooks/use-trades';
 
 // Same accent/case fold HomePage.tsx uses for its (working) department
@@ -532,10 +532,15 @@ export default function RecherchePage() {
                     key={s}
                     type="button"
                     onClick={() => {
-                      setQuery(s);
+                      // Client audit (26 Sep, point 9): search on the
+                      // actual query the suggestion resolves to, not
+                      // necessarily its full displayed text - see
+                      // searchTermForSuggestion's own comment.
+                      const searchTerm = searchTermForSuggestion(s);
+                      setQuery(searchTerm);
                       setQuerySuggestOpen(false);
                       setLocationField(resolveLocationField(location));
-                      setApplied({ query: s, location: resolveLocationValue(location, resolveLocationField(location)), montantMin, montantMax });
+                      setApplied({ query: searchTerm, location: resolveLocationValue(location, resolveLocationField(location)), montantMin, montantMax });
                     }}
                     className="w-full text-left px-2.5 py-2 text-[11px] text-white hover:bg-orange/10 border-b border-[#17334D] last:border-b-0"
                   >

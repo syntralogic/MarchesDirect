@@ -10,7 +10,7 @@ import { useOpportunities } from '@/hooks/use-opportunities';
 import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cities } from '@/data/mockData';
-import { TRADE_SUGGESTIONS, matchTradeSuggestions } from '@/data/tradeSuggestions';
+import { TRADE_SUGGESTIONS, matchTradeSuggestions, searchTermForSuggestion } from '@/data/tradeSuggestions';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { SaveButton } from '@/components/SaveButton';
@@ -793,7 +793,15 @@ export default function OpportunityJourneyPage() {
                 {filteredSuggestions.map(s => (
                   <button
                     key={s}
-                    onClick={() => { setQuery(s); setQuerySuggestOpen(false); }}
+                    onClick={() => {
+                      // Client audit (26 Sep, point 9): see
+                      // searchTermForSuggestion's own comment - a few
+                      // suggestions are descriptive phrases, not search
+                      // terms, and searching their full text literally
+                      // can return zero results.
+                      setQuery(searchTermForSuggestion(s));
+                      setQuerySuggestOpen(false);
+                    }}
                     className="w-full text-left px-3 py-2.5 text-xs text-white hover:bg-orange/10 border-b border-[#17334D] last:border-b-0"
                   >
                     {s}

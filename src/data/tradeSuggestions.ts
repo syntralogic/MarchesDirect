@@ -72,3 +72,22 @@ export function matchTradeSuggestions(query: string, limit: number): string[] {
     })
     .slice(0, limit);
 }
+
+// Client audit (26 Sep, point 9): "climatisation" (typed) finds 67 results,
+// but clicking the suggestion offered for it, "Installation et maintenance
+// de climatisation", finds 0. Cause: the search backend AND-matches a
+// multi-word query (every word must independently appear in a notice - see
+// utils/searchQuery.ts on the backend), which is right for something a
+// visitor actually typed, but this suggestion is a natural-language
+// descriptive phrase, not a search term - almost no real notice literally
+// contains "installation" AND "maintenance" AND "climatisation" all at
+// once. Maps a suggestion whose display text is such a phrase to a short
+// term that actually finds the trade's notices; anything not listed here
+// is already a single searchable term/pairing and is used as-is, unchanged.
+const TRADE_SUGGESTION_SEARCH_TERM: Record<string, string> = {
+  'Installation et maintenance de climatisation': 'Climatisation',
+};
+
+export function searchTermForSuggestion(display: string): string {
+  return TRADE_SUGGESTION_SEARCH_TERM[display] || display;
+}
