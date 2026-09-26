@@ -94,7 +94,7 @@ function HeroCounters() {
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   return (
     <>
-      <Link to="/marches-publics" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
+      <Link to="/marches-publics?status=TousStatuts" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
         <div>
           <div className="text-xs text-white font-semibold">Marchés publics</div>
           {loading ? <div className="h-3 w-20 mt-1 rounded bg-[#17334D] animate-pulse" aria-hidden="true" /> : <div className="text-xs text-[#B9BBC8]">{`${fmt(counts.public_procurement)} opportunités`}</div>}
@@ -865,9 +865,9 @@ function GeographicSection() {
     // unfiltered /recherche it should. Treat "GeoJSON not loaded" the same
     // as "everything selected".
     if (tab === 'regions' && selectedRegions.length > 0)
-      return (allRegionsSelected || !regionsGeoJson) ? '/recherche' : `/recherche?${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
+      return (allRegionsSelected || !regionsGeoJson) ? '/recherche?status=all' : `/recherche?status=all&${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
     if (tab === 'departments' && selectedDepts.length > 0)
-      return (allDeptsSelected || !departementsGeoJson) ? '/recherche' : `/recherche?${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
+      return (allDeptsSelected || !departementsGeoJson) ? '/recherche?status=all' : `/recherche?status=all&${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
     if (tab === 'cities' && selectedCities.length > 0) {
       const cityParams = selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&');
       // 25 Sep audit: hand off the exact coordinates + radius selectionCount

@@ -408,7 +408,10 @@ export default function RecherchePage() {
     radius_km: locationField === 'city' && cityCoords ? Number(radius) : undefined,
     trade_id: tradeId,
     journey: journeyParam,
-    status: statutFilter || undefined,
+    // 'all' is the frontend-only sentinel for the "Tous les statuts (y
+    // compris clôturés)" option above - the backend only understands real
+    // status values, so expand it to the literal list here.
+    status: statutFilter === 'all' ? 'active,expired,awarded,cancelled' : (statutFilter || undefined),
     nature: natureFilter.length > 0 ? natureFilter.join(',') : undefined,
     min_value: applied.montantMin ? Number(applied.montantMin) : undefined,
     max_value: applied.montantMax ? Number(applied.montantMax) : undefined,
@@ -615,6 +618,7 @@ export default function RecherchePage() {
               className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
             >
               <option value="">{t('searchStatutAll')}</option>
+              <option value="all">{t('searchStatutEverything')}</option>
               <option value="active">{t('searchStatutActive')}</option>
               <option value="expired">{t('searchStatutExpired')}</option>
               <option value="awarded">{t('searchStatutAwarded')}</option>
