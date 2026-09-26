@@ -357,11 +357,11 @@ export const opportunitiesApi = {
     const { data } = await apiClient.post('/opportunities/match-scores', { ids, sessionId });
     return data.scores;
   },
-  statsByRegion: async (): Promise<{ regions: { region: string; count: number }[] }> => {
+  statsByRegion: async (): Promise<{ regions: { region: string; count: number }[]; unlocatedCount: number }> => {
     const { data } = await axios.get(`${API_URL}/api/opportunities/stats/regions`);
     return data;
   },
-  statsByDepartment: async (): Promise<{ departments: { department: string; count: number }[] }> => {
+  statsByDepartment: async (): Promise<{ departments: { department: string; count: number }[]; unlocatedCount: number }> => {
     const { data } = await axios.get(`${API_URL}/api/opportunities/stats/departments`);
     return data;
   },

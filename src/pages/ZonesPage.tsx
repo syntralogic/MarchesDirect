@@ -37,15 +37,17 @@ export default function ZonesPage() {
   // HomePage's map uses, so this page can't drift from what clicking
   // through to /recherche actually returns again.
   const [regionCounts, setRegionCounts] = useState<Record<string, number> | null>(null);
+  const [unlocatedRegionCount, setUnlocatedRegionCount] = useState(0);
 
   useEffect(() => {
     opportunitiesApi.statsByRegion()
-      .then(({ regions }) => {
+      .then(({ regions, unlocatedCount }) => {
         const map: Record<string, number> = {};
         regions.forEach((r) => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
         setRegionCounts(map);
+        setUnlocatedRegionCount(unlocatedCount || 0);
       })
-      .catch(() => setRegionCounts({}));
+      .catch(() => { setRegionCounts({}); setUnlocatedRegionCount(0); });
   }, []);
 
   useEffect(() => {
@@ -142,7 +144,7 @@ export default function ZonesPage() {
               <p className="text-xs text-[#B9BBC8]">
                 {regionCounts === null
                   ? '…'
-                  : `${regionCounts[normalizeFr(region.name)] ?? 0} ${t('zoneOpportunitiesCount') || 'opportunités'}`}
+                  : `${(regionCounts[normalizeFr(region.name)] ?? 0) + unlocatedRegionCount} ${t('zoneOpportunitiesCount') || 'opportunités'}`}
               </p>
             </div>
             <ChevronRight size={18} className="text-orange shrink-0 ml-auto group-hover:translate-x-1 transition-transform" />
