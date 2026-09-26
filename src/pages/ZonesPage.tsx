@@ -37,17 +37,22 @@ export default function ZonesPage() {
   // HomePage's map uses, so this page can't drift from what clicking
   // through to /recherche actually returns again.
   const [regionCounts, setRegionCounts] = useState<Record<string, number> | null>(null);
-  const [unlocatedRegionCount, setUnlocatedRegionCount] = useState(0);
 
   useEffect(() => {
+    // 26 Sep fix ("ek element select karne pe 9200+, pura map select karne
+    // pe sirf 11k+"): this used to add unlocatedCount (the entire
+    // nationwide un-geocoded pool) to every single region's count, so one
+    // region could show more opportunities than the whole country - mostly
+    // unrelated data with no real connection to that region. The backend's
+    // region filter no longer folds that pool into a single region's
+    // results (see routes/opportunities.ts), so this page must not either.
     opportunitiesApi.statsByRegion()
-      .then(({ regions, unlocatedCount }) => {
+      .then(({ regions }) => {
         const map: Record<string, number> = {};
         regions.forEach((r) => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
         setRegionCounts(map);
-        setUnlocatedRegionCount(unlocatedCount || 0);
       })
-      .catch(() => { setRegionCounts({}); setUnlocatedRegionCount(0); });
+      .catch(() => setRegionCounts({}));
   }, []);
 
   useEffect(() => {
@@ -144,7 +149,7 @@ export default function ZonesPage() {
               <p className="text-xs text-[#B9BBC8]">
                 {regionCounts === null
                   ? '…'
-                  : `${(regionCounts[normalizeFr(region.name)] ?? 0) + unlocatedRegionCount} ${t('zoneOpportunitiesCount') || 'opportunités'}`}
+                  : `${regionCounts[normalizeFr(region.name)] ?? 0} ${t('zoneOpportunitiesCount') || 'opportunités'}`}
               </p>
             </div>
             <ChevronRight size={18} className="text-orange shrink-0 ml-auto group-hover:translate-x-1 transition-transform" />
