@@ -425,6 +425,7 @@ function TeamSection() {
 // ---------------------------------------------------------------------------
 function GeographicSection() {
   const { t } = useLang();
+  const { counts: siteWideCounts } = useOpportunityCounts();
   const [tab, setTab] = useState<'regions' | 'departments' | 'cities'>('regions');
   const [search, setSearch] = useState('');
   const [selectedRegions, setSelectedRegions] = useState<GeoFeatureProps[]>([]);
@@ -809,20 +810,42 @@ function GeographicSection() {
   const selected = getSelectedItems();
   const selectedCount = selected.length;
 
-  // 26 Sep fix (superseding the previous "add the un-located pool once"
-  // version of this comment): that version was built on top of the
-  // now-removed backend behavior where every region/department filter
-  // folded in the entire nationwide un-located pool. The backend no
-  // longer does that (see routes/opportunities.ts), so a combined
-  // multi-zone search is just the union of each zone's own real matches -
-  // this sums the raw per-item counts with no un-located pool added at
-  // all, which is what the backend's OR'd region/department filter
-  // actually returns now.
-  const combinedSelectedTotal = selectedCount === 0 ? 0 : tab === 'regions'
-    ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0), 0)
-    : tab === 'departments'
-      ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0), 0)
-      : 0;
+  // Lifted out of buildSearchUrl (below) so combinedSelectedTotal can use
+  // the exact same "is this literally everything" check the click-through
+  // URL already uses - see that function's own comment for why "all
+  // selected" must be treated as "no location filter at all".
+  const regionFeaturesAll = (regionsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
+  const departmentFeaturesAll = (departementsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
+  const selectedRegionCodesAll = new Set(selectedRegions.map(r => r.code));
+  const selectedDepartmentCodesAll = new Set(selectedDepts.map(d => d.code));
+  const allRegionsSelected = regionFeaturesAll.length > 0 && selectedRegions.length > 0
+    && regionFeaturesAll.every(feature => feature.properties?.code && selectedRegionCodesAll.has(feature.properties.code));
+  const allDeptsSelected = departmentFeaturesAll.length > 0 && selectedDepts.length > 0
+    && departmentFeaturesAll.every(feature => feature.properties?.code && selectedDepartmentCodesAll.has(feature.properties.code));
+
+  // Client report (26 Sep, WhatsApp screenshots): "Marchés publics" tile
+  // says 70 695 opportunités, but selecting the whole map (every region
+  // circled) shows "Total combiné 2 319". Cause: /stats/regions (and
+  // /stats/departments) only ever counts status='active' rows that DO have
+  // a resolved location_region/department (see that route's own 25/26 Sep
+  // comments) - summing every single region therefore always undercounts
+  // by (a) every non-active-status row and (b) the entire un-geocoded
+  // pool, neither of which any region/department count can ever include.
+  // Selecting literally every region/department is semantically "no
+  // location filter at all" - buildSearchUrl already treats it that way
+  // and sends a bare, unfiltered /recherche?status=all - so the number
+  // shown here must match that same unfiltered universe instead of a sum
+  // of necessarily-partial per-region counts. siteWideCounts.total (from
+  // /stats/counts, the same source the homepage tiles above already use)
+  // is exactly that: every status, every location, every journey.
+  const combinedSelectedTotal = selectedCount === 0 ? 0
+    : (tab === 'regions' && allRegionsSelected) || (tab === 'departments' && allDeptsSelected)
+      ? siteWideCounts.total
+      : tab === 'regions'
+        ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0), 0)
+        : tab === 'departments'
+          ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0), 0)
+          : 0;
 
   const buildSearchUrl = () => {
     // BUG (client report, 25 Sep - "pura map select karo to total bohot kam
@@ -848,14 +871,10 @@ function GeographicSection() {
     // wrong in either direction. Checking that every feature's code is in
     // the selected set is correct regardless of how many features share a
     // code.
-    const regionFeatures = (regionsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
-    const departmentFeatures = (departementsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
-    const selectedRegionCodes = new Set(selectedRegions.map(r => r.code));
-    const selectedDepartmentCodes = new Set(selectedDepts.map(d => d.code));
-    const allRegionsSelected = regionFeatures.length > 0 && selectedRegions.length > 0
-      && regionFeatures.every(feature => feature.properties?.code && selectedRegionCodes.has(feature.properties.code));
-    const allDeptsSelected = departmentFeatures.length > 0 && selectedDepts.length > 0
-      && departmentFeatures.every(feature => feature.properties?.code && selectedDepartmentCodes.has(feature.properties.code));
+    //
+    // allRegionsSelected/allDeptsSelected are computed once, above (next to
+    // combinedSelectedTotal), and reused here so the displayed total and
+    // this link can never disagree about what "everything" means.
 
     // Edge case: if the region/department GeoJSON hasn't finished loading
     // yet, allRegionsSelected/allDeptsSelected stay false no matter how many
