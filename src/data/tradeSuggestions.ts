@@ -51,7 +51,19 @@ const normalizedTradeSuggestions = TRADE_SUGGESTIONS.map((s) => normalizeFr(s));
 export function matchTradeSuggestions(query: string, limit: number): string[] {
   const q = normalizeFr(query);
   if (!q) return TRADE_SUGGESTIONS.slice(0, limit);
-  const synonymTerms = TRADE_SUGGESTION_SYNONYMS[q] || [];
+  // Client audit (25 Sep): typing "fen" (a genuine prefix of "fenetre"/
+  // "fenetres") returned nothing - only the full word matched, because
+  // this only ever did an exact lookup. Same fix as the backend's
+  // searchQuery.ts synonymsOf: a short (>=3 char) fragment that's a
+  // prefix of one or more référentiel keys resolves to the union of
+  // those keys' synonyms too, same as typing the full word would.
+  const exactSynonymTerms = TRADE_SUGGESTION_SYNONYMS[q] || [];
+  const prefixSynonymTerms = q.length >= 3
+    ? Object.keys(TRADE_SUGGESTION_SYNONYMS)
+        .filter((k) => k.startsWith(q))
+        .flatMap((k) => TRADE_SUGGESTION_SYNONYMS[k])
+    : [];
+  const synonymTerms = Array.from(new Set([...exactSynonymTerms, ...prefixSynonymTerms]));
   return TRADE_SUGGESTIONS
     .filter((_, i) => {
       const normalized = normalizedTradeSuggestions[i];
