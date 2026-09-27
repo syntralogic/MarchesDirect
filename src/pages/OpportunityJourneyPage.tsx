@@ -520,6 +520,47 @@ export default function OpportunityJourneyPage() {
     if (id === 'Sous-traitance') setSubRole(null);
   };
 
+  // Client audit (26 Sep, msg 1, point 2 / msg 5): "les boutons du haut
+  // ouvrent le parcours guidé; la carte et les métiers ouvrent la recherche
+  // générale... les mêmes réglages ne sont pas disponibles partout." This
+  // page's own step 4 used to render its own separate results list -
+  // different filters/layout from /recherche, so the guided-wizard entry
+  // point and the map/métier entry point never landed visitors on the same
+  // page. The wizard (steps 1-3) still collects type/location/métier with
+  // its own guided UI - that part isn't what the client asked to remove -
+  // but once those choices are made, it now hands off to the one common
+  // results page (/recherche) with everything already filled in, instead
+  // of rendering its own separate copy of that page. sessionStorage restore
+  // (JOURNEY_STATE_KEY above) can also land a visitor back on step 4
+  // directly on remount, so this is a step===4 effect rather than only a
+  // one-off call inside applyZone - it covers both paths the same way.
+  useEffect(() => {
+    if (step !== 4 || buyerNeed) return;
+    const params = new URLSearchParams();
+    if (journeyForApi) params.set('journey', journeyForApi);
+    if (debouncedQuery.trim()) params.set('q', debouncedQuery.trim());
+    if (selectedDepartments.length > 0) {
+      selectedDepartments.forEach(d => params.append('department', d.code));
+    } else if (pickedCity === 'Département entier' && pickedDepartment) {
+      params.append('department', pickedDepartment);
+    } else if (pickedCity === 'Région entière' && pickedRegion) {
+      params.append('region', pickedRegion);
+    } else if (cityForApi && pickedCityCoords) {
+      params.append('city', cityForApi);
+      params.set('lat', String(pickedCityCoords.lat));
+      params.set('lng', String(pickedCityCoords.lng));
+      params.set('radius_km', String(radius));
+    } else if (cityForApi) {
+      params.append('city', cityForApi);
+    }
+    const { min, max } = amountRangeForApi();
+    if (min !== undefined) params.set('min_value', String(min));
+    if (max !== undefined) params.set('max_value', String(max));
+    if (sort && sort !== 'deadline') params.set('sort', sort);
+    navigate(`/recherche?${params.toString()}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, buyerNeed]);
+
   // Client's audit (15 Sep): "France entière + 50 km" / "Département
   // entier + 50 km" labels stayed visible even though kilometres only ever
   // mean anything around a specific city - a whole-area pick has no radius
