@@ -120,14 +120,20 @@ function HeroCounters() {
 }
 
 function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
-  // 26 Sep client audit (point 3 remainder): these tiles link to /parcours,
-  // whose guided journey only ever shows active (open-to-candidature)
-  // opportunities by design - unlike HeroCounters just above, which links
-  // to ?status=TousStatuts and correctly uses the all-statuses total. Using
-  // that same all-statuses total here promised a bigger number than
-  // /parcours would ever show. 'active' matches what the destination
-  // actually displays.
-  const { counts, loading } = useOpportunityCounts('active');
+  // 27 Sep client decision (reverses the 26 Sep change below): these tiles
+  // were switched to the active-only count so the number would never
+  // promise more than /parcours (active-only by design) actually lists.
+  // But the client's real complaint was the opposite direction - the
+  // catalogue has 70k+ opportunities (most of it DECP's historical/awarded
+  // contracts, only ~10k of which are currently active/open-to-candidature)
+  // and the homepage tile showing only the ~10k active slice read as "the
+  // count is way too low, where's the rest of the data". Client explicitly
+  // chose to show the full all-statuses total here (matching HeroCounters
+  // just above) even though /parcours itself still only lists the
+  // active-only subset once you click through - the bigger catalogue-size
+  // number is what this tile is meant to communicate now, not a promise
+  // that /parcours will list exactly that many.
+  const { counts, loading } = useOpportunityCounts();
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   const paths = [
     { icon: Building, title: 'Marchés publics', sub: 'Travaux et prestations pour les organismes publics', href: '/parcours?type=marches-publics', key: 'public_procurement' as const },
