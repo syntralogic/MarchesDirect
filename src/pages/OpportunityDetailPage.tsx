@@ -417,6 +417,10 @@ export default function OpportunityDetailPage() {
   // suggestion the audit saw. Reuses captureLead itself as the "update":
   // it's the same upsert the initial form calls.
   const [editingContact, setEditingContact] = useState(false);
+  // 27 Sep audit, point 5: this field never got the +33/0033 -> domestic-0X
+  // normalization that leadPhone already has (see normalizeFrPhoneDigits) -
+  // typing "+33 6 ..." here got truncated to a 9-digit string that then
+  // failed the /^0[1-9]\d{8}$/ check below. Fixed on the onChange itself.
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editContactError, setEditContactError] = useState<string | null>(null);
@@ -2398,7 +2402,7 @@ export default function OpportunityDetailPage() {
                   <p className="text-sm font-bold text-white">{t('dossierVerifyContactTitle') || 'Vérifier mes coordonnées'}</p>
                   <div>
                     <label className="block text-[11px] font-semibold text-[#B9BBC8] mb-1">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
-                    <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
+                    <input value={editPhone} onChange={e => setEditPhone(normalizeFrPhoneDigits(e.target.value))} placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-[#B9BBC8] mb-1">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
