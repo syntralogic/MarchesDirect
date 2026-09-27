@@ -614,6 +614,23 @@ export default function RecherchePage() {
                         {match ? `${match.nom} · ${match.code}` : chip}
                         <button
                           type="button"
+                          // 26 Sep client audit, point 3: clicking this button
+                          // blurs the text input first (its onBlur is
+                          // commitLocationDraft, folding in whatever's still
+                          // typed in the "add another" field) *before* this
+                          // onClick runs - so removing Gironde while
+                          // "Bretagne" was mid-typed committed the stale,
+                          // pre-removal chip list plus that draft text first,
+                          // then the removal itself raced against it,
+                          // corrupting `location` into one mixed string that
+                          // downstream code then treated as a city name
+                          // rather than a department list. Same
+                          // onMouseDown+preventDefault fix already used for
+                          // the suggestion-dropdown buttons above (see their
+                          // comment) - it keeps the input focused, so the
+                          // blur (and the stale commit it would trigger)
+                          // never fires at all.
+                          onMouseDown={e => e.preventDefault()}
                           onClick={() => removeDeptChip(chip)}
                           aria-label={`${t('searchLocationRemove') || 'Retirer'} ${match?.nom || chip}`}
                           className="hover:bg-orange/25 rounded-full p-0.5"
