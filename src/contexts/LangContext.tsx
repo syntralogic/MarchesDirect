@@ -1028,7 +1028,7 @@ const frTranslations: Translations = {
   leadPhoneFieldLabel: 'Votre téléphone',
   leadEmailPlaceholder: 'vous@exemple.fr',
   leadPhonePlaceholder: '06 12 34 56 78',
-  leadSubmit: 'Recevoir mon dossier pré-rempli',
+  leadSubmit: 'Valider et accéder à mon dossier',
   // Client's 13 Sep concordance-apercu reference, exact wording.
   leadConsentText: 'Marchés Direct utilise vos coordonnées pour envoyer le dossier, préciser votre candidature par téléphone et présenter son accompagnement. Vous pouvez refuser la prospection dans vos préférences de contact.',
   leadContactPreferences: 'Préférences de contact',
@@ -2629,7 +2629,7 @@ const enTranslations: Translations = {
   leadPhoneFieldLabel: 'Your phone number',
   leadEmailPlaceholder: 'you@example.com',
   leadPhonePlaceholder: '06 12 34 56 78',
-  leadSubmit: 'Receive my pre-filled file',
+  leadSubmit: 'Confirm and access my file',
   leadConsentText: 'Marchés Direct uses your contact details to send you the file, follow up on your application by phone and present its support services. You can opt out of prospecting in your contact preferences.',
   leadContactPreferences: 'Contact preferences',
   compatibilityBack: 'Back',

@@ -984,28 +984,35 @@ export default function OpportunityDetailPage() {
           // company/answers already gathered there stay intact (state/
           // sessionStorage). Never jumps forward past a step whose own
           // gating (identification, lead capture...) hasn't been cleared.
-          const reachable = screen > s.n;
+          // Passage concordance -> dossier, point 4 (27 Sep audit): once
+          // the dossier is unlocked (isAuthenticated || leadCaptured), step
+          // 3 becomes reachable from step 2 too, in both directions -
+          // nothing here re-submits the form or re-triggers the dossier
+          // email (that only ever happens from handleLeadSubmit's own
+          // button, a separate, explicit action).
+          const reachable = screen > s.n || (s.n === 3 && (isAuthenticated || leadCaptured));
           return (
           <div key={s.n} className="flex items-center gap-2 flex-1 min-w-0">
             <button
               type="button"
               disabled={!reachable}
               onClick={() => reachable && setScreen(s.n)}
-              className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n ? '' : 'opacity-60'} ${reachable ? 'cursor-pointer hover:opacity-100' : 'cursor-default'}`}
+              className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n || reachable ? '' : 'opacity-60'} ${reachable ? 'cursor-pointer hover:opacity-100' : 'cursor-default'}`}
             >
               <span className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
+                : reachable ? 'border border-orange/40 text-orange'
                 : 'border border-[#17334D] text-[#5B6B80]'
               }`}>
                 {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
               {/* Short label always visible (mobile-first); the full
                   sentence-length label only from sm+ where there's room. */}
-              <span className={`sm:hidden text-[9px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              <span className={`sm:hidden text-[9px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#5B6B80]'}`}>
                 {s.short}
               </span>
-              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
             </button>
@@ -1775,6 +1782,28 @@ export default function OpportunityDetailPage() {
                 );
               })()}
 
+              {/* Passage concordance -> dossier, point 1 (27 Sep audit): the
+                  commercial action sits right here, under the score and its
+                  tier message, so the visitor can act without scrolling to
+                  the bottom of the page. Always visible at every score tier
+                  (see the tier copy above - a low score still invites the
+                  exchange, just framed as "étudier les possibilités"
+                  instead of "préparer la candidature"). Opens the existing
+                  AppointmentModal, which already pulls the identified
+                  company, this opportunity (via marketLabel) and any
+                  coordinates already on file (leadEmail/leadPhone) from
+                  CompanyKnownContext - nothing new to wire for that part.
+                  Reading on and reaching the dossier excerpt/form further
+                  down stays entirely the visitor's own choice; no button is
+                  needed to "continue" there. */}
+              <button
+                type="button"
+                onClick={() => setShowAccountManagerModal(true)}
+                className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-4"
+              >
+                <Calendar size={16} /> {t('scoreTalkToManagerCta') || 'Échanger avec un chargé d\u2019affaires'}
+              </button>
+
               {/* One line per criterion: what the market asks, what the company
                   does, and one of three states. Unknown data stays "à
                   confirmer" and is not counted in the percentage. */}
@@ -1855,25 +1884,6 @@ export default function OpportunityDetailPage() {
               {/* Fixed disclaimer (client's exact wording): this is never
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
-
-              {/* Client's 13 Sep concordance-apercu screenshots: this CTA is
-                  always visible here, right under the score card - not
-                  gated behind isAuthenticated/leadCaptured. An already-
-                  qualified visitor jumps straight to screen 3; everyone
-                  else scrolls down to the existing lead-capture card
-                  ("Ceci n'est qu'un aperçu") instead of duplicating its
-                  form logic. */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (isAuthenticated || leadCaptured) setScreen(3);
-                  else leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-                className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-5"
-              >
-                {t('scorePrefilledCta') || 'Recevoir mon dossier pré-rempli'}
-              </button>
-              <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
             </div>
 
             {/* 27 Sep audit, point 2: this table used to recompute its own
@@ -2404,8 +2414,18 @@ export default function OpportunityDetailPage() {
                           back arrow at the very top already covers
                           navigation for every screen, and the reference
                           only shows the single full-width submit CTA. */}
+                      {/* Passage concordance -> dossier, point 3 (27 Sep
+                          audit): this button's one job is "consulter le
+                          dossier et le recevoir par e-mail" - distinct from
+                          the "Échanger avec un chargé d'affaires" button up
+                          near the score, which books a rendez-vous instead.
+                          Loading/error/retained-input handling is already
+                          in handleLeadSubmit above (leadSubmitting spinner,
+                          leadError message, inputs never cleared on
+                          failure); this only changes the copy. */}
+                      <p className="text-center text-[11px] text-[#B9BBC8]">{t('leadSubmitEmailNote') || 'Votre dossier pré-rempli sera également envoyé à votre adresse e-mail.'}</p>
                       <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit') || 'Valider et accéder à mon dossier'}
                       </button>
                       <p className="text-center text-[11px] text-[#B9BBC8]">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
                     </form>
