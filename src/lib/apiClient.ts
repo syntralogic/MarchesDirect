@@ -162,6 +162,9 @@ export type ApiOpportunity = {
   // doesn't select it yet (see opportunityAdapter.ts's isDemo comment) - see
   // note in this session's report about that gap.
   source_reference?: string | null;
+  // Same gap as source_reference just above: only ever populated on detail
+  // responses today, opportunityAdapter.ts reads it for list cards too.
+  official_url?: string | null;
   deadline: string | null;
   // 25 Sep client audit: submission time stated in the notice text (e.g.
   // "11h00"), derived server-side (utils/officialFields.ts) from the same
@@ -201,7 +204,6 @@ export type ApiOpportunityDetail = ApiOpportunity & {
   identity_unlocked?: boolean;
   // Link back to the official notice (BOAMP/TED/PLACE) - null when the
   // source has no confirmed stable per-notice public URL (e.g. DECP).
-  official_url?: string | null;
   // Aggregated buyer stat, computed server-side from the real (unredacted)
   // buyer_name - safe to show even on a locked private tender/sous-
   // traitance fiche per spec (name-free), so it's a plain top-level field,
