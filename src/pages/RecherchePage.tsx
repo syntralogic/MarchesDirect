@@ -912,7 +912,7 @@ export default function RecherchePage() {
           just wasn't using it. */}
       <div className="space-y-2">
         {filtered.map((o) => (
-          <OpportunityListCard key={o.id} opportunity={o} compatible={companyKnown} />
+          <OpportunityListCard key={o.id} opportunity={o} compatible={companyKnown} loadedCount={filtered.length} />
         ))}
       </div>
 

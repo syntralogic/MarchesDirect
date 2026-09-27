@@ -177,6 +177,7 @@ export default function AppelsPage() {
                 opportunity={o}
                 matchScore={matchScores[o.id] ? matchScores[o.id].score : undefined}
                 canScore={canScore}
+                loadedCount={results.length}
               />
             ))}
           </div>
