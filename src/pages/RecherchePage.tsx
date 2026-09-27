@@ -300,10 +300,28 @@ export default function RecherchePage() {
   // below): a visitor arrives with their entry point's choice already
   // shown and selected, and can change it without leaving the page -
   // "les choix du visiteur déjà renseignés, quelle que soit son entrée."
-  const [journeyFilter, setJourneyFilter] = useState<'' | 'tender' | 'public_procurement' | 'subcontracting'>(
-    (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || ''
-  );
-  const journeyParam = journeyFilter || undefined;
+  //
+  // 27 Sep audit, point 4: "le parcours guidé autorise plusieurs
+  // catégories simultanément, mais la recherche semble fonctionner en
+  // sélection unique : cliquer sur Public remplace Privé... deux
+  // catégories sélectionnées dans le parcours guidé ne sont pas affichées
+  // comme actives dans les résultats." Cause: this was a single string,
+  // so a guided-journey handoff with journey=public_procurement,tender
+  // (the guided journey's `types` was already a real multi-select, joined
+  // with a comma - the backend's own filter at journey.split(',') already
+  // expected exactly that) got read here as one literal, unmatched string
+  // - neither button ever showed active, and picking one silently
+  // discarded the other. Now an array, matching the same
+  // add/remove-individually pattern used for départements and métiers.
+  const [journeyFilters, setJourneyFilters] = useState<string[]>(() => {
+    const raw = searchParams.get('journey');
+    return raw ? raw.split(',').map(j => j.trim()).filter(Boolean) : [];
+  });
+  const journeyParam = journeyFilters.length > 0 ? journeyFilters.join(',') : undefined;
+  const toggleJourneyFilter = (value: string) => {
+    if (!value) { setJourneyFilters([]); return; }
+    setJourneyFilters(prev => prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]);
+  };
   // G14 (contre-audit 15 Sep): header tag/title/sub and the results-count
   // label were hardcoded to the "sous-traitant" wording no matter which
   // journey brought the visitor here - a marchés-publics search still
@@ -476,7 +494,7 @@ export default function RecherchePage() {
     if (showRadius && radius !== String(DEFAULT_CITY_RADIUS_KM)) next.set('radius_km', radius);
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied, locationField, tradeId, journeyFilter, statutFilter, natureFilter, sort, radius, showRadius]);
+  }, [applied, locationField, tradeId, journeyFilters, statutFilter, natureFilter, sort, radius, showRadius]);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
@@ -512,7 +530,7 @@ export default function RecherchePage() {
     if (!debouncedQuery && !debouncedLocation) return;
     const parts = [debouncedQuery, debouncedLocation].filter(Boolean);
     trackVisitorEvent('search', `Recherche : ${parts.join(' · ')}`, undefined, { q: debouncedQuery, location: debouncedLocation, journey: journeyParam });
-  }, [debouncedQuery, debouncedLocation, journeyFilter]);
+  }, [debouncedQuery, debouncedLocation, journeyFilters]);
 
   // Applies the current (un-debounced) field values immediately - used by
   // both the "Rechercher" button and submitting the form (Enter key).
@@ -754,20 +772,28 @@ export default function RecherchePage() {
               ['public_procurement', t('searchTypePublic') || 'Marchés publics'],
               ['tender', t('searchTypeTender') || "Appels d'offres privés"],
               ['subcontracting', t('searchTypeSubcontracting') || 'Sous-traitance'],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value || 'all'}
-                type="button"
-                onClick={() => setJourneyFilter(value)}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${
-                  journeyFilter === value
-                    ? 'bg-orange/15 border-orange text-orange'
-                    : 'bg-[#031B30] border-[#17334D] text-[#B9BBC8] hover:border-[#2A4A6B]'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            ] as const).map(([value, label]) => {
+              // "Tous" reads as active whenever nothing specific is picked
+              // (an empty selection already means "no journey filter" to
+              // the backend - see journeyParam above); each real type
+              // toggles independently, so Public + Privé can both be
+              // active at once, same as the guided journey.
+              const isActive = value === '' ? journeyFilters.length === 0 : journeyFilters.includes(value);
+              return (
+                <button
+                  key={value || 'all'}
+                  type="button"
+                  onClick={() => toggleJourneyFilter(value)}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${
+                    isActive
+                      ? 'bg-orange/15 border-orange text-orange'
+                      : 'bg-[#031B30] border-[#17334D] text-[#B9BBC8] hover:border-[#2A4A6B]'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
