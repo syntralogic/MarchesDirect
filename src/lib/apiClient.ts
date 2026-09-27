@@ -1327,6 +1327,11 @@ export type ApiBidSummary = {
   title: string;
   deadline: string | null;
   location_city: string | null;
+  // 3rd client audit, point 10: same presence signals the fiche's own
+  // dossier-progress block uses, so the dashboard can compute the
+  // identical 4-step percentage instead of a second, divergent formula.
+  documents_prepared: boolean;
+  dossier_generated: boolean;
 };
 
 export type ApiTenderDocument = {
