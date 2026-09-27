@@ -423,7 +423,16 @@ function TeamSection() {
 // ---------------------------------------------------------------------------
 // GEOGRAPHIC ("Des opportunités partout en France.")
 // ---------------------------------------------------------------------------
-function GeographicSection() {
+// 26 Sep client audit (point 7): selecting Gironde on the map, then
+// clicking a métier card in SectorsSection just below, opened a nationwide
+// search and the métier block kept showing a literal, hardcoded
+// "Zone : Grand Est" regardless of what was actually selected here - the two
+// sections had no shared state at all. GeoSelection is the minimal summary
+// GeographicSection reports upward so SectorsSection can show the real zone
+// and carry it into each métier's search link.
+type GeoSelection = { label: string; params: string } | null;
+
+function GeographicSection({ onSelectionChange }: { onSelectionChange?: (sel: GeoSelection) => void }) {
   const { t } = useLang();
   const { counts: siteWideCounts } = useOpportunityCounts();
   const [tab, setTab] = useState<'regions' | 'departments' | 'cities'>('regions');
@@ -886,6 +895,31 @@ function GeographicSection() {
           ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0) + getDeptUnlocatedShare(d.code, d.nom), 0)
           : 0;
 
+  useEffect(() => {
+    if (!onSelectionChange) return;
+    if (tab === 'regions' && selectedRegions.length > 0) {
+      onSelectionChange({
+        label: selectedRegions.map(r => r.nom).join(', '),
+        params: selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&'),
+      });
+    } else if (tab === 'departments' && selectedDepts.length > 0) {
+      onSelectionChange({
+        label: selectedDepts.map(d => d.nom).join(', '),
+        params: selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&'),
+      });
+    } else if (tab === 'cities' && selectedCities.length > 0) {
+      const radiusSuffix = selectedCities.length === 1 && selectionCount?.radiusKm ? ` (${selectionCount.radiusKm} km)` : '';
+      const cityParams = selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&');
+      const coordsParams = selectedCities.length === 1 && selectionCount?.coords
+        ? `&lat=${selectionCount.coords.lat}&lng=${selectionCount.coords.lng}&radius_km=${selectionCount.radiusKm ?? DEFAULT_CITY_RADIUS_KM}`
+        : '';
+      onSelectionChange({ label: selectedCities.map(c => c.name).join(', ') + radiusSuffix, params: cityParams + coordsParams });
+    } else {
+      onSelectionChange(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, selectedRegions, selectedDepts, selectedCities, selectionCount]);
+
   const buildSearchUrl = () => {
     // BUG (client report, 25 Sep - "pura map select karo to total bohot kam
     // ata hai"): the backend's region/department filters are a strict
@@ -1334,7 +1368,7 @@ function GeographicSection() {
 // ---------------------------------------------------------------------------
 // SECTORS ("Quel est votre métier ?")
 // ---------------------------------------------------------------------------
-function SectorsSection() {
+function SectorsSection({ geoSelection }: { geoSelection: GeoSelection }) {
   const { t } = useLang();
   // A04/Q04 (contre-audit 15 Sep): this rendered 6 of the 16 hand-written
   // marketing "sector families" from mockData.ts (Travaux & construction,
@@ -1359,7 +1393,17 @@ function SectorsSection() {
         {(trades || []).slice(0, 6).map((trade) => {
           const Icon = tradeIcon(trade.slug);
           return (
-            <Link key={trade.id} to={`/recherche?trade_id=${trade.id}`} className="flex flex-col items-start gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-3.5 hover:border-orange/50 group transition-all">
+            <Link
+              key={trade.id}
+              // Carries whatever zone is selected above (GeographicSection,
+              // via geoSelection) so this card's search matches the "Zone : …"
+              // label right below instead of silently going nationwide.
+              // status=all matches trade.opportunity_count below, which (like
+              // /api/trades generally) counts every non-merged status - same
+              // fix as SecteursPage.tsx's trade cards.
+              to={`/recherche?trade_id=${trade.id}${geoSelection ? `&${geoSelection.params}` : ''}&status=all`}
+              className="flex flex-col items-start gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-3.5 hover:border-orange/50 group transition-all"
+            >
               <div className="w-11 h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0 group-hover:bg-orange/20 transition-colors">
                 <Icon size={22} className="text-orange" />
               </div>
@@ -1377,8 +1421,8 @@ function SectorsSection() {
       </Link>
 
       <div className="flex items-center justify-between mt-4 text-xs">
-        <span className="text-[#B9BBC8]">Zone : Grand Est</span>
-        <Link to="/recherche" className="text-orange font-semibold">Toute la France</Link>
+        <span className="text-[#B9BBC8]">Zone : {geoSelection ? geoSelection.label : 'Toute la France'}</span>
+        {geoSelection && <Link to="/recherche" className="text-orange font-semibold">Toute la France</Link>}
       </div>
     </section>
   );
@@ -1602,6 +1646,11 @@ function FinalCTA({ onAppt, onCallback }: { onAppt: () => void; onCallback: () =
 export default function HomePage() {
   const [appointmentOpen, setAppointmentOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
+  // 26 Sep audit (point 7): shared with GeographicSection (map) and
+  // SectorsSection (métier cards) below so a region/department/city picked
+  // on the map is reflected in the "Zone : …" label and carried into each
+  // métier's search link, instead of the two sections silently disagreeing.
+  const [geoSelection, setGeoSelection] = useState<GeoSelection>(null);
 
   return (
     <div className="page-fade-in">
@@ -1613,8 +1662,8 @@ export default function HomePage() {
       <DemoWalkthroughSection />
       <TestimonialsSection />
       <TeamSection />
-      <GeographicSection />
-      <SectorsSection />
+      <GeographicSection onSelectionChange={setGeoSelection} />
+      <SectorsSection geoSelection={geoSelection} />
       <BlogSection />
       <HomeFaqSection />
       <FinalCTA onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
