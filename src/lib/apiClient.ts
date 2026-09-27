@@ -107,6 +107,20 @@ export function getApiErrorMessage(err: unknown, fallback = 'Une erreur est surv
     // "active_subscription_required".
     if (data?.message) return data.message;
     if (data?.error) return data.error;
+    // Client's audit (this session): "L'envoi a échoué. Vérifiez votre
+    // email et réessayez." was shown for a request whose email had just
+    // been accepted earlier in the same flow - because this generic path
+    // is reached for ANY unclassified failure (a genuine validation error
+    // already returns data.message/data.error above and never gets here),
+    // including a network failure or timeout with no response at all
+    // (err.response is undefined) - most plausibly a Render free-tier
+    // cold start on this exact request. Blaming the email was simply
+    // wrong for that case. When there's truly no response, say so instead
+    // of falling through to whatever cause-specific fallback the caller
+    // guessed.
+    if (!err.response) {
+      return "Impossible de contacter le serveur. Vérifiez votre connexion et réessayez dans un instant.";
+    }
   }
   return fallback;
 }

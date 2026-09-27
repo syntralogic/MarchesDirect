@@ -836,7 +836,7 @@ export default function OpportunityDetailPage() {
       const result = await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'slot', slotLabel });
       setAccess({ identityUnlocked: result.identityUnlocked });
     } catch (err) {
-      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
+      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Merci de réessayer."));
       setSelectedSlot(null);
     } finally {
       setSlotSubmitting(null);
@@ -856,7 +856,7 @@ export default function OpportunityDetailPage() {
       await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'callback' });
       setCallbackConfirmed(true);
     } catch (err) {
-      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
+      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Merci de réessayer."));
     } finally {
       setSlotSubmitting(null);
     }
