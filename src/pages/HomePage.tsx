@@ -1423,6 +1423,16 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
   const resultsHref = () => {
     const params: string[] = [];
     if (selectedTrades.length > 0) params.push(`trade_id=${selectedTrades.map(t => t.tradeId).join(',')}`);
+    // 27 Sep audit, points 1 & 3: "un mot saisi sans sélectionner une
+    // suggestion, comme Informatique, peut être complètement perdu" +
+    // "permettre une recherche libre lorsqu'un terme n'est pas reconnu."
+    // resultsHref only ever carried selectedTrades (a clicked suggestion)
+    // forward - text still sitting in the field when "Voir les
+    // opportunités" is clicked (most likely because nothing matched it,
+    // e.g. a sector not yet in the BTP-only trade catalog - see
+    // tradeSuggestions.ts's own note on that gap) was silently dropped
+    // instead of at least searching as a keyword.
+    if (query.trim()) params.push(`q=${encodeURIComponent(query.trim())}`);
     if (tab === 'departments') {
       selectedDepts.forEach(d => params.push(`department=${encodeURIComponent(d.code)}`));
     } else if (tab === 'regions') {
