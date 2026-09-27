@@ -242,13 +242,30 @@ export default function RecherchePage() {
   // Carrelage) then typing an unrelated keyword ("nettoyage") silently
   // returned zero results - trade_id stayed applied in the background with
   // no visible indication anywhere on the page, so the zero was
-  // unexplainable. This resolves the id to a real name so it can be shown
-  // as a removable chip next to the keyword field (see the input row below).
+  // unexplainable. This resolves the id(s) to real names so they can be
+  // shown as removable chips next to the keyword field (see the input row
+  // below).
+  //
+  // Client spec (26 Sep, homepage métier multi-select): trade_id can now
+  // carry a comma-separated list (the OR filter opportunities.ts already
+  // accepts) from the new homepage search - "les métiers sélectionnés
+  // doivent déjà être renseignés, visibles et modifiables" once here, so
+  // each one needs its own chip, not just the first.
   const trades = useTrades();
-  const selectedTrade = tradeId ? trades.find(t => t.id === tradeId) : undefined;
-  const removeTradeFilter = () => {
+  const selectedTrades = tradeId
+    ? tradeId.split(',').map(id => id.trim()).filter(Boolean)
+      .map(id => trades.find(t => t.id === id))
+      .filter((t): t is NonNullable<typeof t> => !!t)
+    : [];
+  const removeTradeFilter = (idToRemove?: string) => {
     const next = new URLSearchParams(searchParams);
-    next.delete('trade_id');
+    if (!idToRemove) {
+      next.delete('trade_id');
+    } else {
+      const remaining = selectedTrades.map(t => t.id).filter(id => id !== idToRemove);
+      if (remaining.length > 0) next.set('trade_id', remaining.join(','));
+      else next.delete('trade_id');
+    }
     setSearchParams(next, { replace: true });
   };
   // 26 Sep client audit (point 2): "la recherche générale ne propose pas
@@ -510,26 +527,30 @@ export default function RecherchePage() {
 
       {/* Search Form */}
       <form onSubmit={e => { e.preventDefault(); handleSearch(); }} className="bg-[#061D32] border border-[#17334D] rounded-xl p-2.5 mb-3">
-        {/* Client audit (26 Sep, point 5): the selected métier (trade_id)
-            used to have no visible presence anywhere on this page - typing
-            an unrelated keyword while it stayed applied in the background
-            produced an unexplainable zero-result search. Now shown as a
-            removable chip right above the keyword field it silently
-            constrains. */}
-        {selectedTrade && (
-          <div className="mb-2 flex items-center gap-1.5">
+        {/* Client audit (26 Sep, point 5) + spec (homepage métier
+            multi-select): the selected métier(s) used to have no visible
+            presence anywhere on this page - typing an unrelated keyword
+            while one stayed applied in the background produced an
+            unexplainable zero-result search. Now shown as removable chips
+            (one per métier) right above the keyword field they constrain,
+            each removable independently - "cliquer sur la croix retire
+            uniquement le métier concerné". */}
+        {selectedTrades.length > 0 && (
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
             <span className="text-[9px] font-medium text-[#B9BBC8]">{t('searchTradeFilterLabel') || 'Métier'}</span>
-            <span className="inline-flex items-center gap-1 bg-orange/15 border border-orange/40 text-orange text-[10px] font-medium rounded-full pl-2.5 pr-1.5 py-1">
-              {selectedTrade.name}
-              <button
-                type="button"
-                onClick={removeTradeFilter}
-                aria-label={`${t('searchLocationRemove') || 'Retirer'} ${selectedTrade.name}`}
-                className="hover:bg-orange/25 rounded-full p-0.5"
-              >
-                <X size={10} />
-              </button>
-            </span>
+            {selectedTrades.map((trade) => (
+              <span key={trade.id} className="inline-flex items-center gap-1 bg-orange/15 border border-orange/40 text-orange text-[10px] font-medium rounded-full pl-2.5 pr-1.5 py-1">
+                {trade.name}
+                <button
+                  type="button"
+                  onClick={() => removeTradeFilter(trade.id)}
+                  aria-label={`${t('searchLocationRemove') || 'Retirer'} ${trade.name}`}
+                  className="hover:bg-orange/25 rounded-full p-0.5"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
           </div>
         )}
         <div className="mb-2">
