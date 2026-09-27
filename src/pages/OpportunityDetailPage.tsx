@@ -631,6 +631,13 @@ export default function OpportunityDetailPage() {
   // the fallback while this loads / if it fails).
   const [realConsultations, setRealConsultations] = useState<number | null>(null);
 
+  // 27 Sep audit, point 6: reloading the fiche could show "Failed to fetch
+  // opportunity" with no way forward but leaving the page - the only action
+  // offered was "navigate(-1)". retryTick just re-runs the same effect on
+  // demand so a transient failure (cold start, blip) can be retried without
+  // a full page reload, which would also have lost screen/refineAnswers/
+  // siret state kept in memory or sessionStorage.
+  const [retryTick, setRetryTick] = useState(0);
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -642,7 +649,7 @@ export default function OpportunityDetailPage() {
       })
       .catch(err => setError(getApiErrorMessage(err, t('detailLoadError'))))
       .finally(() => setLoading(false));
-  }, [id, t]);
+  }, [id, t, retryTick]);
 
   useEffect(() => {
     if (!id) return;
@@ -896,7 +903,17 @@ export default function OpportunityDetailPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-sm text-red-400 mb-4">{error || t('detailNotFound')}</p>
-        <button onClick={() => navigate(-1)} className="text-sm text-orange hover:underline">{t('detailBack')}</button>
+        <div className="flex items-center justify-center gap-4">
+          {error && (
+            <button
+              onClick={() => setRetryTick(x => x + 1)}
+              className="text-sm font-semibold text-white bg-orange px-4 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+            >
+              {t('detailRetry') || 'Réessayer'}
+            </button>
+          )}
+          <button onClick={() => navigate(-1)} className="text-sm text-orange hover:underline">{t('detailBack')}</button>
+        </div>
       </div>
     );
   }
