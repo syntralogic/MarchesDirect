@@ -1750,19 +1750,23 @@ export default function OpportunityDetailPage() {
               <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
             </div>
 
-            {/* Client (19/20 Sep): "expliquer sur quels critères repose le
-                pourcentage" + the 6-criterion table (Métier/Localisation/
-                Moyens/Expérience/Calendrier/Qualifications), each row
-                distinguishing correspondance identifiée / déclaration de
-                l'entreprise / information à vérifier / difficulté détectée.
-                Built entirely from data already real and present on this
-                page (opportunity fields, siretCompany from the SIRET
-                lookup, the visitor's own refineAnswers just below, and
-                matchScore.eligibility for Qualifications) - no new backend
-                call, and never a status stronger than what the underlying
-                field actually supports (a self-reported refineAnswers
-                'oui' is 'declared', never 'identified' - that tier is
-                reserved for data this page can independently confirm). */}
+            {/* 27 Sep audit, point 2: this table used to recompute its own
+                rows independently from the "Comment votre entreprise
+                correspond à ce marché" table above - same market, same
+                company, but two separate hand-rolled logics, and they could
+                (and did) disagree: CLIM+ read "ne correspond pas" up top
+                while this table said "Correspondance identifiée" for the
+                same métier, because its own metierRow only checked whether
+                siretCompany.activity was filled in at all, never whether it
+                actually matched. Also folded matchScore.eligibility (a
+                generic Kbis/assurance/référence checklist) into this row's
+                "Qualifications", which is why a notice's real requirement
+                (e.g. "qualification IRVE") could show as "aucune qualification
+                précisée" - eligibility never carried that text at all.
+                Fixed the only way that guarantees the two tables can never
+                contradict each other again: build every row straight from
+                matchScore.matchCriteria, the same array the table above
+                renders, instead of re-deriving anything here. */}
             {(() => {
               const STATUS_META: Record<string, { label: string; className: string }> = {
                 identified: { label: t('concordStatusIdentified') || 'Correspondance identifiée', className: 'bg-green-400/10 text-green-400' },
@@ -1770,63 +1774,30 @@ export default function OpportunityDetailPage() {
                 to_verify: { label: t('concordStatusToVerify') || 'Information à vérifier', className: 'bg-[#17334D] text-[#B9BBC8]' },
                 issue: { label: t('concordStatusIssue') || 'Difficulté détectée', className: 'bg-red-500/10 text-red-400' },
               };
-              const answerNote = (key: string, base: string, ifYes: string, ifNo: string): { status: keyof typeof STATUS_META; text: string } => {
-                const a = refineAnswers[key];
-                if (a === 'oui') return { status: 'declared', text: `${base} ${ifYes}` };
-                if (a === 'non') return { status: 'issue', text: `${base} ${ifNo}` };
-                return { status: 'to_verify', text: `${base} ${t('concordUnconfirmed') || "Capacité non confirmée par l'entreprise."}` };
+              const CRIT_LABELS: Record<string, string> = {
+                metier: t('concordCritMetier') || 'Métier',
+                zone: t('concordCritLocalisation') || 'Localisation',
+                experience: t('concordCritExperience') || 'Expérience',
+                moyens: t('concordCritMoyens') || 'Moyens',
+                disponibilite: t('concordCritCalendrier') || 'Calendrier',
+                qualifications: t('concordCritQualifications') || 'Qualifications',
               };
-              const location = [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ');
-              const metierRow = tradeLabel
-                ? { status: siretCompany?.activity ? 'identified' as const : 'to_verify' as const,
-                    text: siretCompany?.activity
-                      ? `${t('concordMetierDemande') || 'Prestation demandée'} : ${tradeLabel} · ${t('concordMetierDeclare') || 'activité déclarée'} : ${siretCompany.activity}`
-                      : `${t('concordMetierDemande') || 'Prestation demandée'} : ${tradeLabel} · ${t('concordMetierManquant') || "activité de l'entreprise non renseignée"}` }
-                : { status: 'to_verify' as const, text: t('concordMetierAbsent') || "Le métier n'est pas précisé sur cette fiche." };
-              const localisationRow = answerNote(
-                'location',
-                location ? `${t('concordLieu') || "Lieu d'intervention"} : ${location}.` : (t('concordLieuAbsent') || "Lieu d'intervention non précisé."),
-                t('concordCapaciteOui') || "Vous avez indiqué pouvoir vous y déplacer.",
-                t('concordCapaciteNon') || "Vous avez indiqué ne pas pouvoir vous y déplacer."
-              );
-              const moyensRow = answerNote(
-                'capacity',
-                t('concordMoyensBase') || 'Moyens requis non détaillés sur cette fiche.',
-                t('concordMoyensOui') || 'Vous avez indiqué pouvoir les mobiliser.',
-                t('concordMoyensNon') || 'Vous avez indiqué ne pas pouvoir les mobiliser actuellement.'
-              );
-              const experienceRow = answerNote(
-                'experience',
-                t('concordExpBase') || 'Expérience similaire non vérifiable automatiquement.',
-                t('concordExpOui') || 'Prestation similaire déclarée - référence à préciser dans votre dossier.',
-                t('concordExpNon') || 'Aucune prestation similaire déclarée.'
-              );
-              const calendarAnswer = answerNote(
-                'calendar',
-                opportunity.deadline ? `${t('concordEcheance') || 'Échéance'} : ${formatDate(opportunity.deadline)}.` : (t('concordEcheanceAbsente') || 'Échéance non communiquée.'),
-                t('concordDispoOui') || 'Vous avez confirmé pouvoir la respecter.',
-                t('concordDispoNon') || 'Vous avez indiqué ne pas pouvoir la respecter.'
-              );
-              const eligibilityRequired = matchScore.eligibility.filter(e => e.required);
-              const eligibilityMet = eligibilityRequired.filter(e => e.met === true).length;
-              const eligibilityUnmet = eligibilityRequired.filter(e => e.met === false).length;
-              const eligibilityUnknown = eligibilityRequired.filter(e => e.met == null).length;
-              const qualifRow = matchScore.eligibility.length === 0
-                ? { status: 'to_verify' as const, text: t('concordQualifAbsent') || "Aucune exigence de qualification détectée dans les documents disponibles." }
-                : eligibilityUnmet > 0
-                  ? { status: 'issue' as const, text: `${eligibilityUnmet} ${t('concordQualifUnmetSuffix') || 'exigence(s) non satisfaite(s) parmi celles mentionnées dans les documents du marché.'}` }
-                  : eligibilityUnknown > 0
-                    ? { status: 'to_verify' as const, text: `${eligibilityMet}/${eligibilityRequired.length} ${t('concordQualifPartialSuffix') || 'exigences confirmées ; le reste ne peut pas être vérifié avec les informations disponibles.'}` }
-                    : { status: 'identified' as const, text: `${eligibilityRequired.length} ${t('concordQualifMetSuffix') || 'exigence(s) mentionnée(s) dans les documents, toutes satisfaites par votre profil.'}` };
-
-              const rows: { key: string; label: string; status: keyof typeof STATUS_META; text: string }[] = [
-                { key: 'metier', label: t('concordCritMetier') || 'Métier', ...metierRow },
-                { key: 'localisation', label: t('concordCritLocalisation') || 'Localisation', ...localisationRow },
-                { key: 'moyens', label: t('concordCritMoyens') || 'Moyens', ...moyensRow },
-                { key: 'experience', label: t('concordCritExperience') || 'Expérience', ...experienceRow },
-                { key: 'calendrier', label: t('concordCritCalendrier') || 'Calendrier', ...calendarAnswer },
-                { key: 'qualifications', label: t('concordCritQualifications') || 'Qualifications', ...qualifRow },
-              ];
+              // match -> identified when the server itself established it
+              // (a real distance, a filed activity code...), declared when
+              // it only holds because the visitor answered 'oui' - never
+              // the stronger badge for a self-reported answer.
+              // mismatch -> issue either way (server-detected or the
+              // visitor's own 'non'): both are a real difficulty to flag.
+              // confirm -> to_verify, including partial (general
+              // contractor) cases: still open, not yet a difficulty.
+              const rows = matchScore.matchCriteria.map(c => ({
+                key: c.key,
+                label: CRIT_LABELS[c.key] || c.label,
+                status: (c.status === 'match' ? (c.answered ? 'declared' : 'identified')
+                  : c.status === 'mismatch' ? 'issue'
+                  : 'to_verify') as keyof typeof STATUS_META,
+                text: c.detail,
+              }));
 
               return (
                 <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
