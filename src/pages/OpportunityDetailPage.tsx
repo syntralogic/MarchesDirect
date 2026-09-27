@@ -49,6 +49,35 @@ function formatDeadlineWithTime(deadline: string | null, deadlineTime?: string |
   const date = formatDate(deadline);
   return deadlineTime ? `${date} à ${deadlineTime}` : date;
 }
+// 2nd 27 Sep client audit, point 6: Épernay's "modalités de dépôt" fact
+// stated the submission platform's own address as plain text ("Dépôt
+// exclusivement via https://..."), which rendered as inert text - the
+// visitor had to copy/paste it. This turns any http(s) URL inside an
+// AI-extracted or raw fact value into an actual clickable link, without
+// touching the surrounding wording (never invents a link when there isn't
+// a literal URL in the value).
+const URL_PATTERN = /(https?:\/\/[^\s)]+)/g;
+const URL_PATTERN_TEST = /^https?:\/\/[^\s)]+$/;
+function linkifyText(text: string): React.ReactNode {
+  const parts = text.split(URL_PATTERN);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    URL_PATTERN_TEST.test(part)
+      ? (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#4EA1FF] hover:underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      )
+      : part
+  );
+}
 // Client's report: the AI-extracted "submission_deadline" fact sometimes
 // comes back as a raw JS/ISO timestamp (e.g. "Thu Dec 12 2025 00:00:00
 // GMT+0000 (Coordinated Universal Time)" or "2025-12-12T00:00:00.000Z")
@@ -1135,10 +1164,21 @@ export default function OpportunityDetailPage() {
                         honest while a run is genuinely active
                         ('processing'); otherwise say what is true. */}
                     {opportunity.ai_classification_status === 'failed'
-                      ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
+                      // 2nd 27 Sep client audit, point 6: this text said
+                      // "Consultez l'annonce officielle ci-dessous" even on
+                      // notices with no official_url (the link right below
+                      // only renders when one exists) - "Remplacement de
+                      // climatisations obsolètes" pointed at a link that was
+                      // never actually there. Only promise "ci-dessous" when
+                      // that link will really render.
+                      ? (opportunity.official_url
+                          ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
+                          : (t('detailAnalysisFailedNoLink') || "L'analyse automatique a échoué pour ce marché."))
                       : opportunity.ai_classification_status === 'processing'
                         ? (t('detailAnalysisPending') || 'Analyse en cours de génération pour cette opportunité.')
-                        : (t('detailNoDescription') || "Aucune description détaillée n'est disponible pour cette annonce. Consultez l'annonce officielle ci-dessous.")}
+                        : (opportunity.official_url
+                            ? (t('detailNoDescription') || "Aucune description détaillée n'est disponible pour cette annonce. Consultez l'annonce officielle ci-dessous.")
+                            : (t('detailNoDescriptionNoLink') || "Aucune description détaillée n'est disponible pour cette annonce."))}
                   </p>
                 )}
               </>
@@ -1401,7 +1441,20 @@ export default function OpportunityDetailPage() {
             // ingest time. Kept last to match the client's canonical order
             // ("...points de vigilance, source officielle"); the official
             // link itself is already shown further up this same screen.
-            if (opportunity.source_reference) rows.push({ label: t('dossierFactReference'), value: opportunity.source_reference });
+            // 2nd 27 Sep client audit, point 6: this was always labeled
+            // "Référence officielle" even for sources with no confirmed
+            // public notice page (official_url null, e.g. DECP) - where
+            // source_reference is often just this connector's own internal
+            // uid, not a citable official notice number. Only call it
+            // "officielle" when there's an official_url to back that up;
+            // otherwise use a neutral label rather than imply an
+            // official-looking identifier that isn't one.
+            if (opportunity.source_reference) {
+              rows.push({
+                label: opportunity.official_url ? t('dossierFactReference') : (t('dossierFactReferenceInternal') || 'Référence'),
+                value: opportunity.source_reference,
+              });
+            }
 
             // Client's raw-fallback ask: when analysis genuinely failed and
             // none of the raw fields above produced anything either, say so
@@ -1412,7 +1465,15 @@ export default function OpportunityDetailPage() {
                 return (
                   <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                     <h2 className="text-sm font-bold text-white mb-2">{t('dossierFactsTitle')}</h2>
-                    <p className="text-xs text-[#B9BBC8]">{t('dossierFactsFailed') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant. Consultez l'annonce officielle ci-dessus."}</p>
+                    <p className="text-xs text-[#B9BBC8]">
+                      {/* 2nd 27 Sep client audit, point 6 - same fix as the
+                          other "ci-dessous"/"ci-dessus" mention above: only
+                          claim there's a link above when official_url (and
+                          therefore that link block) actually exists. */}
+                      {opportunity.official_url
+                        ? (t('dossierFactsFailed') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant. Consultez l'annonce officielle ci-dessus.")
+                        : (t('dossierFactsFailedNoLink') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant.")}
+                    </p>
                   </div>
                 );
               }
@@ -1425,7 +1486,7 @@ export default function OpportunityDetailPage() {
                   {rows.map((r, i) => (
                     <div key={i} className="flex justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
                       <span className="text-[#B9BBC8] shrink-0">{r.label}</span>
-                      <span className="text-white text-right">{r.value}</span>
+                      <span className="text-white text-right">{linkifyText(r.value)}</span>
                     </div>
                   ))}
                 </div>
