@@ -977,9 +977,22 @@ export default function OpportunityDetailPage() {
           { n: 1, label: t('stepperOpportunity') || 'Votre opportunité', short: t('stepperOpportunityShort') || 'Opportunité' },
           { n: 2, label: t('stepperConcordance') || 'Concordance', short: t('stepperConcordanceShort') || 'Concordance' },
           { n: 3, label: t('stepperDossier') || 'Votre dossier', short: t('stepperDossierShort') || 'Dossier' },
-        ] as const).map((s, i) => (
+        ] as const).map((s, i) => {
+          // 27 Sep audit, point 5: "Votre opportunité" et "Votre dossier" ne
+          // permettaient pas de changer d'étape au clic. An already-visited
+          // step (screen > s.n) is always safe to jump back to - the
+          // company/answers already gathered there stay intact (state/
+          // sessionStorage). Never jumps forward past a step whose own
+          // gating (identification, lead capture...) hasn't been cleared.
+          const reachable = screen > s.n;
+          return (
           <div key={s.n} className="flex items-center gap-2 flex-1 min-w-0">
-            <div className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n ? '' : 'opacity-60'}`}>
+            <button
+              type="button"
+              disabled={!reachable}
+              onClick={() => reachable && setScreen(s.n)}
+              className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n ? '' : 'opacity-60'} ${reachable ? 'cursor-pointer hover:opacity-100' : 'cursor-default'}`}
+            >
               <span className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
@@ -995,10 +1008,11 @@ export default function OpportunityDetailPage() {
               <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
-            </div>
+            </button>
             {i < 2 && <div className={`h-px flex-1 min-w-[16px] self-start mt-3 sm:mt-0 sm:self-auto ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Client's exact wording ("il faut clairement afficher: Étape 1 –
@@ -1591,6 +1605,20 @@ export default function OpportunityDetailPage() {
           client's reference screenshot for this screen). */}
       {screen === 2 && (
           <>
+            {/* 27 Sep audit, point 5: an explicit Précédent action, kept
+                separate from "Modifier" (which also resets the SIRET
+                search) and from "Recevoir mon dossier pré-rempli" further
+                down (a visitor should never have to request the dossier
+                just to move a step back). Company/answers stay intact -
+                setScreen alone, nothing is cleared. */}
+            <button
+              type="button"
+              onClick={() => setScreen(1)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#B9BBC8] hover:text-white mb-3 transition-colors"
+            >
+              <ArrowLeft size={12} /> {t('stepperPrevious') || 'Précédent'}
+            </button>
+
             {/* 25 Sep audit, point 3: the company-identity card and the
                 "Présence détectée" checklist used to be two separate
                 p-5/p-6 cards (each with its own header) stacked before the
@@ -2454,6 +2482,18 @@ export default function OpportunityDetailPage() {
           buttons. */}
       {screen === 3 && (
         <div className="space-y-4 mt-4">
+          {/* 27 Sep audit, point 5: same explicit Précédent as screen 2,
+              at the top too - the bottom-of-page button further down
+              stays for the "revoir la concordance" action, this one is
+              just quick, top-of-screen navigation. */}
+          <button
+            type="button"
+            onClick={() => setScreen(2)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#B9BBC8] hover:text-white -mt-1 transition-colors"
+          >
+            <ArrowLeft size={12} /> {t('stepperPrevious') || 'Précédent'}
+          </button>
+
           {justUnlockedAnalysis && (
             <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
               <CheckCircle2 size={14} className="shrink-0" />
