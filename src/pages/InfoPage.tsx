@@ -176,9 +176,15 @@ export default function InfoPage() {
     { n: '04', label: 'Le dépôt',      title: 'Vous validez, nous déposons.',     sub: 'Décision finale',             you: 'Vous gardez la décision finale à chaque étape.',                             team: 'Nous déposons la candidature et restons votre point de contact pour le suivi.',       done: 'Votre dossier est déposé et suivi.' },
   ];
 
-  return (
-    <div className="page-fade-in max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-12">
-
+  // Client (27 Sep audit, point 11): "le lien 'Comment ça marche' ouvre une
+  // page dont le premier contenu présente l'équipe; les explications du
+  // fonctionnement sont plus bas. L'arrivée doit correspondre plus
+  // directement à la promesse du lien." /about, /team and /a-propos are
+  // genuinely team-first pages; /how-it-works promises the workflow, so it
+  // alone leads with it instead.
+  const leadWithWorkflow = path === '/how-it-works';
+  const introSection = (
+    <>
       {/* SECTION 1 — QUI SOMMES-NOUS ? */}
       <div className="mb-10">
         <span className="text-xs font-bold text-orange uppercase tracking-widest">Qui sommes-nous ?</span>
@@ -225,6 +231,10 @@ export default function InfoPage() {
       </div>
 
 
+    </>
+  );
+  const workflowSection = (
+    <>
       {/* SECTION 4 — COMMENT NOUS TRAVAILLONS ENSEMBLE */}
       <div className="mb-10" id="mdq-workflow">
         <span className="text-xs font-bold text-orange uppercase tracking-widest">Comment nous travaillons ensemble</span>
@@ -302,6 +312,23 @@ export default function InfoPage() {
           </button>
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <div className="page-fade-in max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-12">
+
+      {leadWithWorkflow ? (
+        <>
+          {workflowSection}
+          {introSection}
+        </>
+      ) : (
+        <>
+          {introSection}
+          {workflowSection}
+        </>
+      )}
 
       {/* SECTION 3 — LES PERSONNES À VOS CÔTÉS */}
       <div className="mb-10">
