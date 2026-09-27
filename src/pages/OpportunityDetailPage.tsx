@@ -20,7 +20,7 @@ import {
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
   type ApiDossierRequest,
 } from '@/lib/apiClient';
-import { stripMarkdownArtifacts, humanizeRawLabel } from '@/lib/utils';
+import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
@@ -2226,7 +2226,7 @@ export default function OpportunityDetailPage() {
                         <label className="block text-sm font-semibold text-white mb-1.5">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
                         <input
                           value={leadPhone}
-                          onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          onChange={e => setLeadPhone(normalizeFrPhoneDigits(e.target.value))}
                           inputMode="numeric"
                           placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'}
                           className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
