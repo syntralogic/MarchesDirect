@@ -4,6 +4,8 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 import { useMission } from '@/hooks/use-mission';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { TopBar, StepIndicator, Eyebrow, PageTitle, PageSub, Badge, Button, InfoBox } from '@/components/sous-traitance/ui';
+import { OpportunityAnalysisAccordions, OpportunityAnalysisFallback, hasAnalysisContent, isRedundantWithTitle } from '@/components/OpportunityAnalysisAccordions';
+import { useLang } from '@/contexts/LangContext';
 
 const STEPS = [{ label: 'Missions' }, { label: 'Détail' }, { label: 'Mon profil' }, { label: 'Mise en relation' }];
 
@@ -13,6 +15,7 @@ export default function MissionDetailPage() {
   const { mission, loading } = useMission(id);
   const { companyKnown } = useCompanyKnown();
   const [message, setMessage] = useState('');
+  const { t } = useLang();
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 size={24} className="animate-spin text-orange" /></div>;
@@ -66,12 +69,37 @@ export default function MissionDetailPage() {
           </div>
         </div>
 
-        {mission.description && (
-          <div className="mb-4 rounded-2xl border border-[#17334D] bg-[#061D32] p-4">
-            <div className="mb-2 text-[15px] font-extrabold text-white">La mission</div>
-            <p className="text-[13px] leading-relaxed text-[#B9BBC8]">{mission.description}</p>
-          </div>
-        )}
+        {/* 2nd 27 Sep client audit, point 2: "l'organisation commune à
+            conserver" - same 3 fixed accordions (Présentation du marché /
+            Conditions et points à vérifier / Entreprises concernées), same
+            component, same order as public marchés and appels d'offres
+            privés (OpportunityDetailPage), instead of the flat "La mission"
+            paragraph this page used to show on its own. Falls back to the
+            same pending/failed/no-description wording when
+            ai_analysis_sections isn't ready yet for this mission, rather
+            than a bare description or nothing at all. */}
+        <div className="mb-4 rounded-2xl border border-[#17334D] bg-[#061D32] p-4">
+          {hasAnalysisContent(mission.aiAnalysisSections) ? (
+            <OpportunityAnalysisAccordions
+              sections={mission.aiAnalysisSections!}
+              sourceText={
+                mission.rawDescription && !isRedundantWithTitle(mission.rawDescription, mission.title)
+                  ? mission.rawDescription
+                  : null
+              }
+              t={t}
+            />
+          ) : (
+            <OpportunityAnalysisFallback
+              aiSummary={mission.aiSummary}
+              description={mission.rawDescription}
+              title={mission.title}
+              classificationStatus={mission.aiClassificationStatus}
+              officialUrl={mission.officialUrl}
+              t={t}
+            />
+          )}
+        </div>
 
         {mission.profileRequired && mission.profileRequired.length > 0 && (
           <div className="mb-4 rounded-2xl border border-[#17334D] bg-[#061D32] p-4">

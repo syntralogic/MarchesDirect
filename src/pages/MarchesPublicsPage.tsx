@@ -168,6 +168,7 @@ export default function MarchesPublicsPage() {
                 opportunity={o}
                 matchScore={matchScores[o.id] ? matchScores[o.id].score : undefined}
                 canScore={canScore}
+                loadedCount={results.length}
               />
             ))}
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useDebounce } from '@/hooks/use-debounce';
 import {
   Building2, Handshake, ChevronRight, Globe,
   Building, ArrowRight,
@@ -15,8 +16,7 @@ import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import DemoVideoModal from '@/components/DemoVideoModal';
 import { CallbackModal } from '@/components/CallbackModal';
-import { tradesApi, type ApiTrade } from '@/lib/apiClient';
-import { tradeIcon } from '@/lib/tradeIcons';
+import { tradesApi, type ApiTradeSuggestion } from '@/lib/apiClient';
 import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 import { useOpportunityCounts } from '@/hooks/use-opportunity-counts';
@@ -120,14 +120,20 @@ function HeroCounters() {
 }
 
 function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
-  // 26 Sep client audit (point 3 remainder): these tiles link to /parcours,
-  // whose guided journey only ever shows active (open-to-candidature)
-  // opportunities by design - unlike HeroCounters just above, which links
-  // to ?status=TousStatuts and correctly uses the all-statuses total. Using
-  // that same all-statuses total here promised a bigger number than
-  // /parcours would ever show. 'active' matches what the destination
-  // actually displays.
-  const { counts, loading } = useOpportunityCounts('active');
+  // 27 Sep client decision (reverses the 26 Sep change below): these tiles
+  // were switched to the active-only count so the number would never
+  // promise more than /parcours (active-only by design) actually lists.
+  // But the client's real complaint was the opposite direction - the
+  // catalogue has 70k+ opportunities (most of it DECP's historical/awarded
+  // contracts, only ~10k of which are currently active/open-to-candidature)
+  // and the homepage tile showing only the ~10k active slice read as "the
+  // count is way too low, where's the rest of the data". Client explicitly
+  // chose to show the full all-statuses total here (matching HeroCounters
+  // just above) even though /parcours itself still only lists the
+  // active-only subset once you click through - the bigger catalogue-size
+  // number is what this tile is meant to communicate now, not a promise
+  // that /parcours will list exactly that many.
+  const { counts, loading } = useOpportunityCounts();
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   const paths = [
     { icon: Building, title: 'Marchés publics', sub: 'Travaux et prestations pour les organismes publics', href: '/parcours?type=marches-publics', key: 'public_procurement' as const },
@@ -1361,25 +1367,70 @@ interface SectorsSectionProps {
 
 function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionProps) {
   const { t } = useLang();
-  // A04/Q04 (contre-audit 15 Sep): this rendered 6 of the 16 hand-written
-  // marketing "sector families" from mockData.ts (Travaux & construction,
-  // Services aux entreprises...) with hardcoded counts - generic labels
-  // standing in for the real métiers, exactly what the audit flagged.
-  // Fetches the real trades taxonomy (GET /api/trades) instead, the same
-  // one classification/search/match-score already use, with a live count
-  // per trade rather than a number typed into mockData.ts once and never
-  // updated. Cards link by trade_id (an exact filter) instead of the old
-  // free-text-search-on-a-marketing-label workaround.
-  const [trades, setTrades] = useState<ApiTrade[] | null>(null);
-  useEffect(() => {
-    tradesApi.list().then(setTrades).catch(() => setTrades([]));
-  }, []);
+  // 26 Sep client spec ("Voici le texte complet avec cette précision
+  // intégrée"): replace the sector cards entirely with a search+
+  // multi-select engine - title, a single text field with live
+  // suggestions from the first few letters, and a "Voir les
+  // opportunités" button. Reuses GET /api/trades/suggestions (already
+  // shipped server-side, accent/case-insensitive, resolves every
+  // suggestion to a real trade_id - see tradeSuggestions.ts's own note
+  // on why non-BTP sectors like informatique/transport/santé aren't in
+  // that catalog yet) and the trade_id=1,2,3 comma-list OR filter
+  // opportunities.ts already accepts.
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebounce(query, 250);
+  const [suggestions, setSuggestions] = useState<ApiTradeSuggestion[]>([]);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [selectedTrades, setSelectedTrades] = useState<{ tradeId: number; tradeName: string }[]>([]);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-  // 26 Sep client audit, point 7: this used to hardcode "Zone : Grand Est"
-  // regardless of anything picked on the map above - the two sections had
-  // no shared state at all (see HomePage's comment). Now derived from the
-  // same selectedRegions/selectedDepts the map itself shows selected, so
-  // the label can never say something the visitor didn't actually pick.
+  useEffect(() => {
+    if (!debouncedQuery.trim()) { setSuggestions([]); return; }
+    let cancelled = false;
+    tradesApi.suggestions(debouncedQuery).then((res) => {
+      if (!cancelled) setSuggestions(res);
+    }).catch(() => { if (!cancelled) setSuggestions([]); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery]);
+
+  useEffect(() => {
+    if (!suggestOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setSuggestOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [suggestOpen]);
+
+  const addTrade = (s: ApiTradeSuggestion) => {
+    // "Un même métier ne peut pas être ajouté deux fois" - two different
+    // suggestion phrases can resolve to the same trade (e.g. "Électricité"
+    // and "Électricien"), so this dedupes by tradeId, not by label.
+    setSelectedTrades((prev) => (prev.some((p) => p.tradeId === s.tradeId) ? prev : [...prev, { tradeId: s.tradeId, tradeName: s.tradeName }]));
+    setQuery('');
+    setSuggestions([]);
+    // "Sélectionner un métier ne doit pas faire quitter la page
+    // immédiatement" - dropdown stays closed but the field is left ready
+    // for the next métier, matching the département multi-select pattern
+    // already used in RecherchePage.
+    setSuggestOpen(false);
+  };
+  const removeTrade = (tradeId: number) => setSelectedTrades((prev) => prev.filter((p) => p.tradeId !== tradeId));
+
+  // Same repeated-param pattern GeographicSection's own buildSearchUrl uses
+  // (?region=A&region=B) - carries whatever zone is selected on the map
+  // above into the results, same as the old per-card tradeHref did.
+  const resultsHref = () => {
+    const params: string[] = [];
+    if (selectedTrades.length > 0) params.push(`trade_id=${selectedTrades.map(t => t.tradeId).join(',')}`);
+    if (tab === 'departments') {
+      selectedDepts.forEach(d => params.push(`department=${encodeURIComponent(d.code)}`));
+    } else if (tab === 'regions') {
+      selectedRegions.forEach(r => params.push(`region=${encodeURIComponent(r.nom)}`));
+    }
+    return params.length > 0 ? `/recherche?${params.join('&')}` : '/recherche';
+  };
+
   const activeSelection = tab === 'departments' ? selectedDepts : tab === 'regions' ? selectedRegions : [];
   const zoneLabel = activeSelection.length === 0
     ? 'Toute la France'
@@ -1389,47 +1440,96 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
         ? activeSelection.map(z => z.nom).join(', ')
         : `${activeSelection.length} ${tab === 'departments' ? 'départements' : 'régions'}`;
 
-  // Same repeated-param pattern GeographicSection's own buildSearchUrl uses
-  // (?region=A&region=B), so a trade card click carries the exact
-  // region/department selection the map shows into /recherche instead of
-  // silently resetting to a national search (client repro: Gironde selected
-  // on the map, then clicking CVC landed on unrelated Nîmes/Saint-Quentin
-  // results with no Gironde filter at all).
-  const tradeHref = (tradeId: string) => {
-    const params = [`trade_id=${tradeId}`];
-    if (tab === 'departments') {
-      selectedDepts.forEach(d => params.push(`department=${encodeURIComponent(d.code)}`));
-    } else if (tab === 'regions') {
-      selectedRegions.forEach(r => params.push(`region=${encodeURIComponent(r.nom)}`));
-    }
-    return `/recherche?${params.join('&')}`;
-  };
-
   return (
     <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('sectors') || "Secteurs d'activité"}</span>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-5">Quel est votre métier ?</h2>
+      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-1.5">Rechercher par métier <span className="text-orange">ou secteur d'activité</span></h2>
+      <p className="text-sm text-[#B9BBC8] mb-5">Trouvez des opportunités dans votre activité.</p>
 
-      <div className="grid grid-cols-2 gap-3">
-        {(trades || []).slice(0, 6).map((trade) => {
-          const Icon = tradeIcon(trade.slug);
-          return (
-            <Link key={trade.id} to={tradeHref(trade.id)} className="flex flex-col items-start gap-2 bg-[#061D32] border border-[#17334D] rounded-xl p-3.5 hover:border-orange/50 group transition-all">
-              <div className="w-11 h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0 group-hover:bg-orange/20 transition-colors">
-                <Icon size={22} className="text-orange" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-white group-hover:text-orange transition-colors leading-snug">{trade.name}</div>
-                <div className="text-[11px] text-[#B9BBC8] mt-0.5">{trade.opportunity_count.toLocaleString('fr-FR')} opportunités</div>
-              </div>
-            </Link>
-          );
-        })}
+      {selectedTrades.length > 0 && (
+        <div className="mb-4">
+          <div className="text-xs font-semibold text-white mb-2">Vos métiers sélectionnés</div>
+          <div className="flex flex-wrap gap-2">
+            {selectedTrades.map((st) => (
+              <span key={st.tradeId} className="inline-flex items-center gap-1.5 bg-orange/10 border border-orange/50 text-white text-sm font-medium rounded-full pl-3.5 pr-2 py-1.5">
+                {st.tradeName}
+                <button type="button" onClick={() => removeTrade(st.tradeId)} aria-label={`Retirer ${st.tradeName}`} className="hover:bg-orange/25 rounded-full p-1 touch-manipulation text-orange">
+                  <X size={13} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {selectedTrades.length === 0 && (
+        <label className="text-sm text-white mb-1.5 block">Métier, activité ou produit</label>
+      )}
+      <div className="relative" ref={wrapRef}>
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6B7280]" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setSuggestOpen(true); }}
+          onFocus={() => setSuggestOpen(true)}
+          placeholder={selectedTrades.length > 0 ? 'Ajouter un métier…' : 'Votre métier, activité ou produit…'}
+          className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); setSuggestions([]); }}
+            aria-label="Effacer"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-white rounded-full p-1 touch-manipulation"
+          >
+            <X size={14} />
+          </button>
+        )}
+        {suggestOpen && suggestions.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden shadow-xl max-h-72 overflow-y-auto">
+            <div className="px-3.5 py-2 text-[11px] font-semibold text-[#B9BBC8] uppercase tracking-wide border-b border-[#17334D]">Suggestions</div>
+            {suggestions
+              .filter((s) => !selectedTrades.some((st) => st.tradeId === s.tradeId))
+              .map((s) => {
+                // Mockup ("Électricité générale", "Électricité — courants
+                // faibles"...): the matched trade name is highlighted in
+                // orange, the rest of the phrase in white.
+                const highlightEnd = s.label.startsWith(s.tradeName) ? s.tradeName.length : 0;
+                return (
+                  <button
+                    key={`${s.tradeId}-${s.label}`}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); addTrade(s); }}
+                    className="w-full flex items-center justify-between gap-2 text-left px-3.5 py-3 text-sm hover:bg-orange/10 border-b border-[#17334D] last:border-b-0 touch-manipulation"
+                  >
+                    <span>
+                      <span className="text-orange font-semibold">{s.label.slice(0, highlightEnd)}</span>
+                      <span className="text-white">{s.label.slice(highlightEnd)}</span>
+                    </span>
+                    <Plus size={18} className="text-orange shrink-0" />
+                  </button>
+                );
+              })}
+          </div>
+        )}
       </div>
+      <p className="text-xs text-[#B9BBC8] mt-2">
+        {selectedTrades.length > 0 ? 'Vous pouvez ajouter ou retirer un métier.' : 'Ajoutez un ou plusieurs métiers.'}
+      </p>
 
-      <Link to="/secteurs" className="mt-4 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm rounded-xl py-3 px-4 hover:bg-orange/10 transition-colors">
-        Voir tous les métiers <ArrowRight size={14} />
+      <Link
+        to={resultsHref()}
+        className={`mt-3 w-full flex items-center justify-center gap-2 font-semibold text-sm rounded-xl py-3.5 px-4 transition-colors ${
+          selectedTrades.length > 0
+            ? 'bg-orange text-white hover:bg-orange/90'
+            : 'bg-[#17334D] text-[#B9BBC8] hover:bg-[#1d3d5c]'
+        }`}
+      >
+        Voir les opportunités <ArrowRight size={14} />
       </Link>
+      {selectedTrades.length > 0 && (
+        <p className="text-xs text-[#B9BBC8] mt-2">Précisez ensuite votre zone de recherche.</p>
+      )}
 
       <div className="flex items-center justify-between mt-4 text-xs">
         <span className="text-[#B9BBC8]">Zone : {zoneLabel}</span>

@@ -14,14 +14,15 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId, getConsultationsToday } from '@/lib/visitorTracking';
 import {
-  opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage,
+  opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getBlobApiErrorMessage,
   dossiersApi, siretApi,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
   type ApiDossierRequest,
 } from '@/lib/apiClient';
-import { stripMarkdownArtifacts, humanizeRawLabel } from '@/lib/utils';
+import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
+import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle } from '@/components/OpportunityAnalysisAccordions';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
 // once logged in, regardless of subscription (only the AI-assisted mémoire
@@ -47,6 +48,35 @@ function formatDate(d: string | null) {
 function formatDeadlineWithTime(deadline: string | null, deadlineTime?: string | null) {
   const date = formatDate(deadline);
   return deadlineTime ? `${date} à ${deadlineTime}` : date;
+}
+// 2nd 27 Sep client audit, point 6: Épernay's "modalités de dépôt" fact
+// stated the submission platform's own address as plain text ("Dépôt
+// exclusivement via https://..."), which rendered as inert text - the
+// visitor had to copy/paste it. This turns any http(s) URL inside an
+// AI-extracted or raw fact value into an actual clickable link, without
+// touching the surrounding wording (never invents a link when there isn't
+// a literal URL in the value).
+const URL_PATTERN = /(https?:\/\/[^\s)]+)/g;
+const URL_PATTERN_TEST = /^https?:\/\/[^\s)]+$/;
+function linkifyText(text: string): React.ReactNode {
+  const parts = text.split(URL_PATTERN);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    URL_PATTERN_TEST.test(part)
+      ? (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#4EA1FF] hover:underline break-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      )
+      : part
+  );
 }
 // Client's report: the AI-extracted "submission_deadline" fact sometimes
 // comes back as a raw JS/ISO timestamp (e.g. "Thu Dec 12 2025 00:00:00
@@ -111,24 +141,10 @@ function formatSeniority(created: string | null): string | null {
 // repeated the title verbatim under "Résumé" - detect and treat that as
 // "no real description" instead, so the block hides/shows the empty-state
 // message rather than reproducing the title.
-// Matches the backend's hasAnalysisContent() (routes/opportunities.ts) -
-// an ai_analysis_sections object can exist but have all 3 fields blank
-// (the coercion in generateOpportunityAnalysisSections falls back to '' per
-// key rather than throwing on a partial/edge-case response). Checking the
-// object is merely non-null treated that shape as "generated": it rendered
-// <OpportunityAnalysisAccordions>, whose own empty-items filter then
-// returned null - nothing shown where the ai_summary paragraph used to be,
-// instead of falling back to it.
-function hasAnalysisContent(sections: { presentation: string; conditions: string; entreprises: string } | null | undefined): boolean {
-  if (!sections) return false;
-  return Boolean(sections.presentation?.trim() || sections.conditions?.trim() || sections.entreprises?.trim());
-}
-
-function isRedundantWithTitle(text: string | null | undefined, title: string | null | undefined): boolean {
-  if (!text || !title) return false;
-  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
-  return normalize(text) === normalize(title);
-}
+// hasAnalysisContent/isRedundantWithTitle/OpportunityAnalysisAccordions now
+// live in components/OpportunityAnalysisAccordions.tsx (2nd 27 Sep audit,
+// point 2) so MissionDetailPage (sous-traitance) can reuse the exact same
+// component instead of never showing accordions at all.
 
 // DCE viewer (écran 8): document_label is the ingestion pipeline's own
 // best-effort tag (see schema.sql - 'RC', 'CCAP', 'CCTP', 'AAPC', 'Autre').
@@ -417,6 +433,10 @@ export default function OpportunityDetailPage() {
   // suggestion the audit saw. Reuses captureLead itself as the "update":
   // it's the same upsert the initial form calls.
   const [editingContact, setEditingContact] = useState(false);
+  // 27 Sep audit, point 5: this field never got the +33/0033 -> domestic-0X
+  // normalization that leadPhone already has (see normalizeFrPhoneDigits) -
+  // typing "+33 6 ..." here got truncated to a 9-digit string that then
+  // failed the /^0[1-9]\d{8}$/ check below. Fixed on the onChange itself.
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editContactError, setEditContactError] = useState<string | null>(null);
@@ -627,6 +647,13 @@ export default function OpportunityDetailPage() {
   // the fallback while this loads / if it fails).
   const [realConsultations, setRealConsultations] = useState<number | null>(null);
 
+  // 27 Sep audit, point 6: reloading the fiche could show "Failed to fetch
+  // opportunity" with no way forward but leaving the page - the only action
+  // offered was "navigate(-1)". retryTick just re-runs the same effect on
+  // demand so a transient failure (cold start, blip) can be retried without
+  // a full page reload, which would also have lost screen/refineAnswers/
+  // siret state kept in memory or sessionStorage.
+  const [retryTick, setRetryTick] = useState(0);
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -638,7 +665,7 @@ export default function OpportunityDetailPage() {
       })
       .catch(err => setError(getApiErrorMessage(err, t('detailLoadError'))))
       .finally(() => setLoading(false));
-  }, [id, t]);
+  }, [id, t, retryTick]);
 
   useEffect(() => {
     if (!id) return;
@@ -836,7 +863,7 @@ export default function OpportunityDetailPage() {
       const result = await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'slot', slotLabel });
       setAccess({ identityUnlocked: result.identityUnlocked });
     } catch (err) {
-      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
+      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Merci de réessayer."));
       setSelectedSlot(null);
     } finally {
       setSlotSubmitting(null);
@@ -856,7 +883,7 @@ export default function OpportunityDetailPage() {
       await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'callback' });
       setCallbackConfirmed(true);
     } catch (err) {
-      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Vérifiez votre email et réessayez."));
+      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Merci de réessayer."));
     } finally {
       setSlotSubmitting(null);
     }
@@ -892,7 +919,17 @@ export default function OpportunityDetailPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-sm text-red-400 mb-4">{error || t('detailNotFound')}</p>
-        <button onClick={() => navigate(-1)} className="text-sm text-orange hover:underline">{t('detailBack')}</button>
+        <div className="flex items-center justify-center gap-4">
+          {error && (
+            <button
+              onClick={() => setRetryTick(x => x + 1)}
+              className="text-sm font-semibold text-white bg-orange px-4 py-2 rounded-lg hover:bg-orange/90 transition-colors"
+            >
+              {t('detailRetry') || 'Réessayer'}
+            </button>
+          )}
+          <button onClick={() => navigate(-1)} className="text-sm text-orange hover:underline">{t('detailBack')}</button>
+        </div>
       </div>
     );
   }
@@ -940,28 +977,49 @@ export default function OpportunityDetailPage() {
           { n: 1, label: t('stepperOpportunity') || 'Votre opportunité', short: t('stepperOpportunityShort') || 'Opportunité' },
           { n: 2, label: t('stepperConcordance') || 'Concordance', short: t('stepperConcordanceShort') || 'Concordance' },
           { n: 3, label: t('stepperDossier') || 'Votre dossier', short: t('stepperDossierShort') || 'Dossier' },
-        ] as const).map((s, i) => (
+        ] as const).map((s, i) => {
+          // 27 Sep audit, point 5: "Votre opportunité" et "Votre dossier" ne
+          // permettaient pas de changer d'étape au clic. An already-visited
+          // step (screen > s.n) is always safe to jump back to - the
+          // company/answers already gathered there stay intact (state/
+          // sessionStorage). Never jumps forward past a step whose own
+          // gating (identification, lead capture...) hasn't been cleared.
+          // Passage concordance -> dossier, point 4 (27 Sep audit): once
+          // the dossier is unlocked (isAuthenticated || leadCaptured), step
+          // 3 becomes reachable from step 2 too, in both directions -
+          // nothing here re-submits the form or re-triggers the dossier
+          // email (that only ever happens from handleLeadSubmit's own
+          // button, a separate, explicit action).
+          const reachable = screen > s.n || (s.n === 3 && (isAuthenticated || leadCaptured));
+          return (
           <div key={s.n} className="flex items-center gap-2 flex-1 min-w-0">
-            <div className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n ? '' : 'opacity-60'}`}>
+            <button
+              type="button"
+              disabled={!reachable}
+              onClick={() => reachable && setScreen(s.n)}
+              className={`shrink-0 flex flex-col sm:flex-row items-center gap-1 sm:gap-2 ${screen === s.n || reachable ? '' : 'opacity-60'} ${reachable ? 'cursor-pointer hover:opacity-100' : 'cursor-default'}`}
+            >
               <span className={`shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold ${
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
+                : reachable ? 'border border-orange/40 text-orange'
                 : 'border border-[#17334D] text-[#5B6B80]'
               }`}>
                 {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
               {/* Short label always visible (mobile-first); the full
                   sentence-length label only from sm+ where there's room. */}
-              <span className={`sm:hidden text-[9px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              <span className={`sm:hidden text-[9px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#5B6B80]'}`}>
                 {s.short}
               </span>
-              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n ? 'text-orange' : screen > s.n ? 'text-green-400' : 'text-[#5B6B80]'}`}>
+              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#5B6B80]'}`}>
                 {s.label}
               </span>
-            </div>
+            </button>
             {i < 2 && <div className={`h-px flex-1 min-w-[16px] self-start mt-3 sm:mt-0 sm:self-auto ${screen > s.n ? 'bg-green-400/40' : 'bg-[#17334D]'}`} />}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Client's exact wording ("il faut clairement afficher: Étape 1 –
@@ -1127,10 +1185,21 @@ export default function OpportunityDetailPage() {
                         honest while a run is genuinely active
                         ('processing'); otherwise say what is true. */}
                     {opportunity.ai_classification_status === 'failed'
-                      ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
+                      // 2nd 27 Sep client audit, point 6: this text said
+                      // "Consultez l'annonce officielle ci-dessous" even on
+                      // notices with no official_url (the link right below
+                      // only renders when one exists) - "Remplacement de
+                      // climatisations obsolètes" pointed at a link that was
+                      // never actually there. Only promise "ci-dessous" when
+                      // that link will really render.
+                      ? (opportunity.official_url
+                          ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
+                          : (t('detailAnalysisFailedNoLink') || "L'analyse automatique a échoué pour ce marché."))
                       : opportunity.ai_classification_status === 'processing'
                         ? (t('detailAnalysisPending') || 'Analyse en cours de génération pour cette opportunité.')
-                        : (t('detailNoDescription') || "Aucune description détaillée n'est disponible pour cette annonce. Consultez l'annonce officielle ci-dessous.")}
+                        : (opportunity.official_url
+                            ? (t('detailNoDescription') || "Aucune description détaillée n'est disponible pour cette annonce. Consultez l'annonce officielle ci-dessous.")
+                            : (t('detailNoDescriptionNoLink') || "Aucune description détaillée n'est disponible pour cette annonce."))}
                   </p>
                 )}
               </>
@@ -1342,6 +1411,12 @@ export default function OpportunityDetailPage() {
               rows.push({ label: t('dossierFactValue'), value: formatAmount(opportunity.estimated_value, opportunity.currency) });
             }
 
+            // Plafond de commande — client audit (27 Sep, "maintenance CVC
+            // en Gironde"): a cap on an accord-cadre à bons de commande, kept
+            // as its own row with its own label rather than merged into
+            // "Montant" above, so it's never read as a guaranteed budget.
+            if (facts?.order_caps?.available) rows.push({ label: t('dossierFactOrderCaps') || 'Plafond de commande', value: facts.order_caps.value });
+
             // Échéance — raw deadline/deadline_time fallback, same logic.
             if (facts?.submission_deadline?.available) {
               rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
@@ -1387,7 +1462,20 @@ export default function OpportunityDetailPage() {
             // ingest time. Kept last to match the client's canonical order
             // ("...points de vigilance, source officielle"); the official
             // link itself is already shown further up this same screen.
-            if (opportunity.source_reference) rows.push({ label: t('dossierFactReference'), value: opportunity.source_reference });
+            // 2nd 27 Sep client audit, point 6: this was always labeled
+            // "Référence officielle" even for sources with no confirmed
+            // public notice page (official_url null, e.g. DECP) - where
+            // source_reference is often just this connector's own internal
+            // uid, not a citable official notice number. Only call it
+            // "officielle" when there's an official_url to back that up;
+            // otherwise use a neutral label rather than imply an
+            // official-looking identifier that isn't one.
+            if (opportunity.source_reference) {
+              rows.push({
+                label: opportunity.official_url ? t('dossierFactReference') : (t('dossierFactReferenceInternal') || 'Référence'),
+                value: opportunity.source_reference,
+              });
+            }
 
             // Client's raw-fallback ask: when analysis genuinely failed and
             // none of the raw fields above produced anything either, say so
@@ -1398,7 +1486,15 @@ export default function OpportunityDetailPage() {
                 return (
                   <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                     <h2 className="text-sm font-bold text-white mb-2">{t('dossierFactsTitle')}</h2>
-                    <p className="text-xs text-[#B9BBC8]">{t('dossierFactsFailed') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant. Consultez l'annonce officielle ci-dessus."}</p>
+                    <p className="text-xs text-[#B9BBC8]">
+                      {/* 2nd 27 Sep client audit, point 6 - same fix as the
+                          other "ci-dessous"/"ci-dessus" mention above: only
+                          claim there's a link above when official_url (and
+                          therefore that link block) actually exists. */}
+                      {opportunity.official_url
+                        ? (t('dossierFactsFailed') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant. Consultez l'annonce officielle ci-dessus.")
+                        : (t('dossierFactsFailedNoLink') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant.")}
+                    </p>
                   </div>
                 );
               }
@@ -1411,7 +1507,7 @@ export default function OpportunityDetailPage() {
                   {rows.map((r, i) => (
                     <div key={i} className="flex justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
                       <span className="text-[#B9BBC8] shrink-0">{r.label}</span>
-                      <span className="text-white text-right">{r.value}</span>
+                      <span className="text-white text-right">{linkifyText(r.value)}</span>
                     </div>
                   ))}
                 </div>
@@ -1516,6 +1612,20 @@ export default function OpportunityDetailPage() {
           client's reference screenshot for this screen). */}
       {screen === 2 && (
           <>
+            {/* 27 Sep audit, point 5: an explicit Précédent action, kept
+                separate from "Modifier" (which also resets the SIRET
+                search) and from "Recevoir mon dossier pré-rempli" further
+                down (a visitor should never have to request the dossier
+                just to move a step back). Company/answers stay intact -
+                setScreen alone, nothing is cleared. */}
+            <button
+              type="button"
+              onClick={() => setScreen(1)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#B9BBC8] hover:text-white mb-3 transition-colors"
+            >
+              <ArrowLeft size={12} /> {t('stepperPrevious') || 'Précédent'}
+            </button>
+
             {/* 25 Sep audit, point 3: the company-identity card and the
                 "Présence détectée" checklist used to be two separate
                 p-5/p-6 cards (each with its own header) stacked before the
@@ -1645,6 +1755,55 @@ export default function OpportunityDetailPage() {
                 </div>
               </div>
 
+              {/* 27 Sep audit, point 8: a short, colored, score-tier message
+                  right under the percentage, always inviting the visitor to
+                  continue regardless of how low the score is - a weak score
+                  is about this one opportunity, never a verdict on the
+                  company. Purely derived from displayScore (same value the
+                  ring above shows), so it can never disagree with it; no
+                  separate computation. */}
+              {displayScore !== null && (() => {
+                const TIERS: { min: number; emoji: string; title: string; body: string }[] = [
+                  { min: 100, emoji: '🟢', title: t('scoreTier100Title') || 'Concordance totale sur les critères évalués', body: t('scoreTier100Body') || 'Votre profil correspond à l\u2019ensemble des critères évalués. Préparez maintenant votre candidature !' },
+                  { min: 90, emoji: '🟢', title: t('scoreTier90Title') || 'Concordance quasi totale', body: t('scoreTier90Body') || 'Votre profil correspond à la grande majorité des critères évalués. Passez à la préparation de votre candidature !' },
+                  { min: 75, emoji: '🟢', title: t('scoreTier75Title') || 'Excellente concordance', body: t('scoreTier75Body') || 'Votre profil est particulièrement adapté à cette opportunité. Préparez votre candidature avec l\u2019accompagnement de Marchés Direct !' },
+                  { min: 50, emoji: '🟡', title: t('scoreTier50Title') || 'Très bonne concordance', body: t('scoreTier50Body') || 'Votre entreprise présente de solides atouts pour ce marché. Passez à la préparation de votre candidature avec un chargé d\u2019affaires !' },
+                  { min: 25, emoji: '🟠', title: t('scoreTier25Title') || 'Des atouts pour répondre', body: t('scoreTier25Body') || 'Votre entreprise possède déjà des atouts pour ce marché. Échangez avec un chargé d\u2019affaires pour étudier vos possibilités de candidature et les points à compléter.' },
+                  { min: 0, emoji: '🔴', title: t('scoreTier0Title') || 'Des possibilités à étudier', body: t('scoreTier0Body') || 'Ce score concerne uniquement cette opportunité. Un chargé d\u2019affaires peut faire le point avec vous et vous aider à identifier des marchés plus adaptés à votre entreprise.' },
+                ] as const;
+                const tier = TIERS.find(x => displayScore >= x.min)!;
+                return (
+                  <div className="bg-[#031B30] border-l-2 border-orange rounded-r-lg pl-4 pr-3 py-3 mt-4">
+                    <p className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <span aria-hidden="true">{tier.emoji}</span> {tier.title}
+                    </p>
+                    <p className="text-xs text-[#B9BBC8] mt-1 leading-relaxed">{tier.body}</p>
+                  </div>
+                );
+              })()}
+
+              {/* Passage concordance -> dossier, point 1 (27 Sep audit): the
+                  commercial action sits right here, under the score and its
+                  tier message, so the visitor can act without scrolling to
+                  the bottom of the page. Always visible at every score tier
+                  (see the tier copy above - a low score still invites the
+                  exchange, just framed as "étudier les possibilités"
+                  instead of "préparer la candidature"). Opens the existing
+                  AppointmentModal, which already pulls the identified
+                  company, this opportunity (via marketLabel) and any
+                  coordinates already on file (leadEmail/leadPhone) from
+                  CompanyKnownContext - nothing new to wire for that part.
+                  Reading on and reaching the dossier excerpt/form further
+                  down stays entirely the visitor's own choice; no button is
+                  needed to "continue" there. */}
+              <button
+                type="button"
+                onClick={() => setShowAccountManagerModal(true)}
+                className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-4"
+              >
+                <Calendar size={16} /> {t('scoreTalkToManagerCta') || 'Échanger avec un chargé d\u2019affaires'}
+              </button>
+
               {/* One line per criterion: what the market asks, what the company
                   does, and one of three states. Unknown data stays "à
                   confirmer" and is not counted in the percentage. */}
@@ -1725,40 +1884,25 @@ export default function OpportunityDetailPage() {
               {/* Fixed disclaimer (client's exact wording): this is never
                   an odds-of-winning estimate, only a fit measurement. */}
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
-
-              {/* Client's 13 Sep concordance-apercu screenshots: this CTA is
-                  always visible here, right under the score card - not
-                  gated behind isAuthenticated/leadCaptured. An already-
-                  qualified visitor jumps straight to screen 3; everyone
-                  else scrolls down to the existing lead-capture card
-                  ("Ceci n'est qu'un aperçu") instead of duplicating its
-                  form logic. */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (isAuthenticated || leadCaptured) setScreen(3);
-                  else leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-                className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-5"
-              >
-                {t('scorePrefilledCta') || 'Recevoir mon dossier pré-rempli'}
-              </button>
-              <p className="text-center text-[11px] text-[#B9BBC8] mt-2">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
             </div>
 
-            {/* Client (19/20 Sep): "expliquer sur quels critères repose le
-                pourcentage" + the 6-criterion table (Métier/Localisation/
-                Moyens/Expérience/Calendrier/Qualifications), each row
-                distinguishing correspondance identifiée / déclaration de
-                l'entreprise / information à vérifier / difficulté détectée.
-                Built entirely from data already real and present on this
-                page (opportunity fields, siretCompany from the SIRET
-                lookup, the visitor's own refineAnswers just below, and
-                matchScore.eligibility for Qualifications) - no new backend
-                call, and never a status stronger than what the underlying
-                field actually supports (a self-reported refineAnswers
-                'oui' is 'declared', never 'identified' - that tier is
-                reserved for data this page can independently confirm). */}
+            {/* 27 Sep audit, point 2: this table used to recompute its own
+                rows independently from the "Comment votre entreprise
+                correspond à ce marché" table above - same market, same
+                company, but two separate hand-rolled logics, and they could
+                (and did) disagree: CLIM+ read "ne correspond pas" up top
+                while this table said "Correspondance identifiée" for the
+                same métier, because its own metierRow only checked whether
+                siretCompany.activity was filled in at all, never whether it
+                actually matched. Also folded matchScore.eligibility (a
+                generic Kbis/assurance/référence checklist) into this row's
+                "Qualifications", which is why a notice's real requirement
+                (e.g. "qualification IRVE") could show as "aucune qualification
+                précisée" - eligibility never carried that text at all.
+                Fixed the only way that guarantees the two tables can never
+                contradict each other again: build every row straight from
+                matchScore.matchCriteria, the same array the table above
+                renders, instead of re-deriving anything here. */}
             {(() => {
               const STATUS_META: Record<string, { label: string; className: string }> = {
                 identified: { label: t('concordStatusIdentified') || 'Correspondance identifiée', className: 'bg-green-400/10 text-green-400' },
@@ -1766,63 +1910,30 @@ export default function OpportunityDetailPage() {
                 to_verify: { label: t('concordStatusToVerify') || 'Information à vérifier', className: 'bg-[#17334D] text-[#B9BBC8]' },
                 issue: { label: t('concordStatusIssue') || 'Difficulté détectée', className: 'bg-red-500/10 text-red-400' },
               };
-              const answerNote = (key: string, base: string, ifYes: string, ifNo: string): { status: keyof typeof STATUS_META; text: string } => {
-                const a = refineAnswers[key];
-                if (a === 'oui') return { status: 'declared', text: `${base} ${ifYes}` };
-                if (a === 'non') return { status: 'issue', text: `${base} ${ifNo}` };
-                return { status: 'to_verify', text: `${base} ${t('concordUnconfirmed') || "Capacité non confirmée par l'entreprise."}` };
+              const CRIT_LABELS: Record<string, string> = {
+                metier: t('concordCritMetier') || 'Métier',
+                zone: t('concordCritLocalisation') || 'Localisation',
+                experience: t('concordCritExperience') || 'Expérience',
+                moyens: t('concordCritMoyens') || 'Moyens',
+                disponibilite: t('concordCritCalendrier') || 'Calendrier',
+                qualifications: t('concordCritQualifications') || 'Qualifications',
               };
-              const location = [opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ');
-              const metierRow = tradeLabel
-                ? { status: siretCompany?.activity ? 'identified' as const : 'to_verify' as const,
-                    text: siretCompany?.activity
-                      ? `${t('concordMetierDemande') || 'Prestation demandée'} : ${tradeLabel} · ${t('concordMetierDeclare') || 'activité déclarée'} : ${siretCompany.activity}`
-                      : `${t('concordMetierDemande') || 'Prestation demandée'} : ${tradeLabel} · ${t('concordMetierManquant') || "activité de l'entreprise non renseignée"}` }
-                : { status: 'to_verify' as const, text: t('concordMetierAbsent') || "Le métier n'est pas précisé sur cette fiche." };
-              const localisationRow = answerNote(
-                'location',
-                location ? `${t('concordLieu') || "Lieu d'intervention"} : ${location}.` : (t('concordLieuAbsent') || "Lieu d'intervention non précisé."),
-                t('concordCapaciteOui') || "Vous avez indiqué pouvoir vous y déplacer.",
-                t('concordCapaciteNon') || "Vous avez indiqué ne pas pouvoir vous y déplacer."
-              );
-              const moyensRow = answerNote(
-                'capacity',
-                t('concordMoyensBase') || 'Moyens requis non détaillés sur cette fiche.',
-                t('concordMoyensOui') || 'Vous avez indiqué pouvoir les mobiliser.',
-                t('concordMoyensNon') || 'Vous avez indiqué ne pas pouvoir les mobiliser actuellement.'
-              );
-              const experienceRow = answerNote(
-                'experience',
-                t('concordExpBase') || 'Expérience similaire non vérifiable automatiquement.',
-                t('concordExpOui') || 'Prestation similaire déclarée - référence à préciser dans votre dossier.',
-                t('concordExpNon') || 'Aucune prestation similaire déclarée.'
-              );
-              const calendarAnswer = answerNote(
-                'calendar',
-                opportunity.deadline ? `${t('concordEcheance') || 'Échéance'} : ${formatDate(opportunity.deadline)}.` : (t('concordEcheanceAbsente') || 'Échéance non communiquée.'),
-                t('concordDispoOui') || 'Vous avez confirmé pouvoir la respecter.',
-                t('concordDispoNon') || 'Vous avez indiqué ne pas pouvoir la respecter.'
-              );
-              const eligibilityRequired = matchScore.eligibility.filter(e => e.required);
-              const eligibilityMet = eligibilityRequired.filter(e => e.met === true).length;
-              const eligibilityUnmet = eligibilityRequired.filter(e => e.met === false).length;
-              const eligibilityUnknown = eligibilityRequired.filter(e => e.met == null).length;
-              const qualifRow = matchScore.eligibility.length === 0
-                ? { status: 'to_verify' as const, text: t('concordQualifAbsent') || "Aucune exigence de qualification détectée dans les documents disponibles." }
-                : eligibilityUnmet > 0
-                  ? { status: 'issue' as const, text: `${eligibilityUnmet} ${t('concordQualifUnmetSuffix') || 'exigence(s) non satisfaite(s) parmi celles mentionnées dans les documents du marché.'}` }
-                  : eligibilityUnknown > 0
-                    ? { status: 'to_verify' as const, text: `${eligibilityMet}/${eligibilityRequired.length} ${t('concordQualifPartialSuffix') || 'exigences confirmées ; le reste ne peut pas être vérifié avec les informations disponibles.'}` }
-                    : { status: 'identified' as const, text: `${eligibilityRequired.length} ${t('concordQualifMetSuffix') || 'exigence(s) mentionnée(s) dans les documents, toutes satisfaites par votre profil.'}` };
-
-              const rows: { key: string; label: string; status: keyof typeof STATUS_META; text: string }[] = [
-                { key: 'metier', label: t('concordCritMetier') || 'Métier', ...metierRow },
-                { key: 'localisation', label: t('concordCritLocalisation') || 'Localisation', ...localisationRow },
-                { key: 'moyens', label: t('concordCritMoyens') || 'Moyens', ...moyensRow },
-                { key: 'experience', label: t('concordCritExperience') || 'Expérience', ...experienceRow },
-                { key: 'calendrier', label: t('concordCritCalendrier') || 'Calendrier', ...calendarAnswer },
-                { key: 'qualifications', label: t('concordCritQualifications') || 'Qualifications', ...qualifRow },
-              ];
+              // match -> identified when the server itself established it
+              // (a real distance, a filed activity code...), declared when
+              // it only holds because the visitor answered 'oui' - never
+              // the stronger badge for a self-reported answer.
+              // mismatch -> issue either way (server-detected or the
+              // visitor's own 'non'): both are a real difficulty to flag.
+              // confirm -> to_verify, including partial (general
+              // contractor) cases: still open, not yet a difficulty.
+              const rows = matchScore.matchCriteria.map(c => ({
+                key: c.key,
+                label: CRIT_LABELS[c.key] || c.label,
+                status: (c.status === 'match' ? (c.answered ? 'declared' : 'identified')
+                  : c.status === 'mismatch' ? 'issue'
+                  : 'to_verify') as keyof typeof STATUS_META,
+                text: c.detail,
+              }));
 
               return (
                 <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
@@ -2007,7 +2118,7 @@ export default function OpportunityDetailPage() {
                       <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-2">
                         <Copy size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
                       </p>
-                      <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || 'Recevez votre dossier de candidature pré-rempli pour votre entreprise et ce marché.'}</p>
+                      <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || "Recevez votre dossier pré-rempli par e-mail et échangez avec un chargé d'affaires pour étudier vos possibilités et préparer votre candidature."}</p>
                       <p className="text-sm text-[#B9BBC8] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
                     </>
                   ) : (
@@ -2226,7 +2337,7 @@ export default function OpportunityDetailPage() {
                         <label className="block text-sm font-semibold text-white mb-1.5">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
                         <input
                           value={leadPhone}
-                          onChange={e => setLeadPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          onChange={e => setLeadPhone(normalizeFrPhoneDigits(e.target.value))}
                           inputMode="numeric"
                           placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'}
                           className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
@@ -2303,8 +2414,18 @@ export default function OpportunityDetailPage() {
                           back arrow at the very top already covers
                           navigation for every screen, and the reference
                           only shows the single full-width submit CTA. */}
+                      {/* Passage concordance -> dossier, point 3 (27 Sep
+                          audit): this button's one job is "consulter le
+                          dossier et le recevoir par e-mail" - distinct from
+                          the "Échanger avec un chargé d'affaires" button up
+                          near the score, which books a rendez-vous instead.
+                          Loading/error/retained-input handling is already
+                          in handleLeadSubmit above (leadSubmitting spinner,
+                          leadError message, inputs never cleared on
+                          failure); this only changes the copy. */}
+                      <p className="text-center text-[11px] text-[#B9BBC8]">{t('leadSubmitEmailNote') || 'Votre dossier pré-rempli sera également envoyé à votre adresse e-mail.'}</p>
                       <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit')}
+                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit') || 'Valider et accéder à mon dossier'}
                       </button>
                       <p className="text-center text-[11px] text-[#B9BBC8]">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
                     </form>
@@ -2381,6 +2502,18 @@ export default function OpportunityDetailPage() {
           buttons. */}
       {screen === 3 && (
         <div className="space-y-4 mt-4">
+          {/* 27 Sep audit, point 5: same explicit Précédent as screen 2,
+              at the top too - the bottom-of-page button further down
+              stays for the "revoir la concordance" action, this one is
+              just quick, top-of-screen navigation. */}
+          <button
+            type="button"
+            onClick={() => setScreen(2)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#B9BBC8] hover:text-white -mt-1 transition-colors"
+          >
+            <ArrowLeft size={12} /> {t('stepperPrevious') || 'Précédent'}
+          </button>
+
           {justUnlockedAnalysis && (
             <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
               <CheckCircle2 size={14} className="shrink-0" />
@@ -2398,7 +2531,7 @@ export default function OpportunityDetailPage() {
                   <p className="text-sm font-bold text-white">{t('dossierVerifyContactTitle') || 'Vérifier mes coordonnées'}</p>
                   <div>
                     <label className="block text-[11px] font-semibold text-[#B9BBC8] mb-1">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
-                    <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
+                    <input value={editPhone} onChange={e => setEditPhone(normalizeFrPhoneDigits(e.target.value))} placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'} className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-[#B9BBC8] mb-1">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
@@ -2632,7 +2765,7 @@ export default function OpportunityDetailPage() {
                         URL.revokeObjectURL(url);
                       }
                     } catch (err) {
-                      toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
+                      toast.error(await getBlobApiErrorMessage(err, 'Échec du téléchargement.'));
                     } finally {
                       setDossierDownloading(false);
                     }
@@ -2663,7 +2796,11 @@ export default function OpportunityDetailPage() {
                         a.click();
                         URL.revokeObjectURL(url);
                       } catch (err) {
-                        toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
+                        // 27 Sep audit, point 3: this is a blob-typed request, so
+                        // the real backend reason (e.g. "confirmez d'abord vos
+                        // coordonnées") needs the blob-aware unwrapper, not the
+                        // regular getApiErrorMessage which can't read a Blob body.
+                        toast.error(await getBlobApiErrorMessage(err, 'Échec du téléchargement.'));
                       } finally {
                         setPrefilledDownloading(false);
                       }
@@ -3236,116 +3373,3 @@ function RefineAnalysisAccordion({ t }: { t: (key: string) => string }) {
   );
 }
 
-// Client's 10 Sep spec: the opportunity analysis (previously one dense
-// paragraph - see ai_summary above) is now split into 3 fixed accordions,
-// reused identically on every fiche: Présentation du marché / Conditions
-// et points à vérifier / Entreprises concernées. First one open by
-// default, the other two collapsed; each toggles independently on click.
-// Content comes from ai_analysis_sections (generateOpportunityAnalysisSections
-// in aiService.ts) - this component only lays it out, using the site's
-// existing card/accordion styling (RefineAnalysisAccordion above), not the
-// client's mockup's own literal colors.
-function OpportunityAnalysisAccordions({
-  sections,
-  sourceText,
-  t,
-}: {
-  sections: { presentation: string; conditions: string; entreprises: string };
-  // Full, un-summarized opportunity description (raw `description` field).
-  // The 3 sections above are an AI-condensed 2-5 sentence synthesis, which
-  // risks trimming details a candidate actually needs (a specific clause,
-  // an exact figure, a secondary requirement the summary rolled up into a
-  // generic sentence). Rather than changing the generation itself - the
-  // condensed sections are what the client's 10 Sep spec asked for, for
-  // readability - this keeps the full original text one click away so
-  // nothing from the source is ever actually lost, per the later "do not
-  // lose information" clarification. Null/omitted when there's no
-  // meaningful original text to fall back to (already covered by
-  // isRedundantWithTitle upstream).
-  sourceText?: string | null;
-  t: (key: string) => string;
-}) {
-  const items = [
-    { key: 'presentation', icon: FileText, title: t('detailAccordionPresentation') || 'Présentation du marché', text: sections.presentation },
-    { key: 'conditions', icon: Search, title: t('detailAccordionConditions') || 'Conditions et points à vérifier', text: sections.conditions },
-    { key: 'entreprises', icon: Users, title: t('detailAccordionEntreprises') || 'Entreprises concernées', text: sections.entreprises },
-  ].filter(item => item.text && item.text.trim().length > 0);
-
-  const [openKey, setOpenKey] = useState<string | null>(items[0]?.key ?? null);
-  const [sourceOpen, setSourceOpen] = useState(false);
-
-  // Client's audit (15 Sep): "gérer clairement les annonces dont le
-  // descriptif ou l'analyse sont encore incomplets, pour que la suite du
-  // parcours ne donne pas une impression de précision que les informations
-  // disponibles ne permettent pas." Returning null here rendered a silent
-  // gap - no accordions, no explanation - which reads as "nothing to say
-  // about this opportunity" rather than "still being analyzed", right
-  // before the rest of the journey (concordance, dossier) proceeds as if
-  // it had full information to work from.
-  if (items.length === 0) {
-    return (
-      <div className="border border-[#17334D] rounded-xl bg-[#031B30] px-4 py-4 flex items-center gap-2.5">
-        <Loader2 size={15} className="text-orange shrink-0" />
-        <p className="text-xs text-[#B9BBC8]">{t('detailAnalysisIncomplete') || "Analyse détaillée en cours de génération pour cette opportunité."}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {/* O04 (contre-audit 15 Sep): "« Analyse de l'opportunité » à remettre
-          au-dessus des accordéons selon l'audit esthétique - ce titre de
-          groupe n'a pas été retrouvé dans la fiche privée contrôlée." The
-          three accordions rendered as a bare stack with no group heading
-          tying them together, so nothing on the page said these three
-          sections are the analysis of the opportunity. */}
-      <h2 className="text-lg font-bold text-white mb-3">
-        {t('detailAnalysisGroupTitle') || "Analyse de l'opportunité"}
-      </h2>
-      {items.map(item => {
-        const isOpen = openKey === item.key;
-        const Icon = item.icon;
-        return (
-          <div key={item.key} className="border border-[#17334D] rounded-xl bg-[#031B30] overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setOpenKey(cur => (cur === item.key ? null : item.key))}
-              className="w-full flex items-center gap-2.5 px-3.5 py-[18px] text-left"
-              aria-expanded={isOpen}
-            >
-              <Icon size={16} className="text-orange shrink-0" />
-              <span className="flex-1 text-sm font-semibold text-white">{item.title}</span>
-              <ChevronDown size={14} className={`text-[#B9BBC8] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isOpen && (
-              <div className="px-3.5 pb-4 text-sm text-[#EAF0F6] leading-relaxed whitespace-pre-line">
-                {stripMarkdownArtifacts(item.text)}
-              </div>
-            )}
-          </div>
-        );
-      })}
-      {sourceText && (
-        <div className="border border-[#17334D] rounded-xl bg-[#031B30] overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setSourceOpen(o => !o)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
-            aria-expanded={sourceOpen}
-          >
-            <FileText size={14} className="text-[#5B6B80] shrink-0" />
-            <span className="flex-1 text-xs font-semibold text-[#B9BBC8]">
-              {t('detailSourceTextToggle') || 'Voir le texte source complet'}
-            </span>
-            <ChevronDown size={13} className={`text-[#5B6B80] shrink-0 transition-transform ${sourceOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {sourceOpen && (
-            <div className="px-3.5 pb-4 text-xs text-[#B9BBC8] leading-relaxed whitespace-pre-line">
-              {stripMarkdownArtifacts(sourceText)}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}

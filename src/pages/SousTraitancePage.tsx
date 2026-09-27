@@ -245,6 +245,7 @@ export default function SousTraitancePage() {
                     compatible={companyKnown}
                     to={`/sous-traitance/mission/${o.id}`}
                     ctaLabel={t('searchView')}
+                    loadedCount={results.length}
                   />
                 ))}
               </div>

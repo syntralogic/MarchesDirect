@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { opportunitiesApi, getApiErrorMessage, type OpportunitySearchParams } from '@/lib/apiClient';
 import { apiOpportunityToDisplay } from '@/lib/opportunityAdapter';
 import type { Opportunity } from '@/data/mockData';
@@ -30,6 +31,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const requestId = useRef(0);
+  const location = useLocation();
 
   useEffect(() => {
     let cancelled = false;
@@ -47,15 +49,59 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     setOpportunities([]);
     setTotal(0);
 
-    opportunitiesApi
-      .search({ journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature, page: 1, limit: PAGE_SIZE })
-      .then((data) => {
+    const baseParams = { journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature };
+
+    // Client audit (26 Sep, point 7): "J'ai affiché 200 annonces, ouvert une
+    // annonce située après les 100 premières, puis fait retour... la liste
+    // revient à 100 annonces. Il faut recliquer sur 'Voir plus'." Every
+    // extra page loadMore() fetches lives only in this hook's local state
+    // (opportunities/page below), which is reset by the `setPage(1)` /
+    // `setOpportunities([])` above on every fresh mount - so a normal
+    // browser back-navigation (a new mount, not the same component instance
+    // loadMore was called on) always restarted at page 1 regardless of how
+    // far the visitor had actually scrolled. OpportunityListCard now saves
+    // how many rows were loaded (see its loadedCount prop) under the same
+    // URL-keyed sessionStorage convention useScrollRestore already uses for
+    // the pixel position, so this can silently re-fetch exactly that many
+    // pages before handing control back to it - otherwise scroll-restore
+    // fires against a list shorter than where it's trying to scroll to.
+    let savedCount = 0;
+    try {
+      const raw = sessionStorage.getItem(`loadedCount:${location.pathname}${location.search}`);
+      savedCount = raw ? parseInt(raw, 10) || 0 : 0;
+    } catch {
+      savedCount = 0;
+    }
+
+    (async () => {
+      try {
+        const first = await opportunitiesApi.search({ ...baseParams, page: 1, limit: PAGE_SIZE });
         if (cancelled || thisRequest !== requestId.current) return;
-        setOpportunities(data.results.map(apiOpportunityToDisplay));
-        setTotal(data.pagination?.total ?? data.results.length);
-        setTotalPages(data.pagination?.totalPages ?? 1);
-      })
-      .catch((err) => {
+        let allResults = first.results;
+        let currentPage = 1;
+        let totalPagesResolved = first.pagination?.totalPages ?? 1;
+        const targetPages = Math.min(Math.ceil(savedCount / PAGE_SIZE), totalPagesResolved);
+
+        while (currentPage < targetPages) {
+          currentPage += 1;
+          const more = await opportunitiesApi.search({ ...baseParams, page: currentPage, limit: PAGE_SIZE });
+          if (cancelled || thisRequest !== requestId.current) return;
+          allResults = [...allResults, ...more.results];
+          totalPagesResolved = more.pagination?.totalPages ?? totalPagesResolved;
+        }
+
+        // One-time use, same rule as the scroll position itself - a later
+        // fresh visit to this exact URL shouldn't keep re-fetching extra
+        // pages nobody asked for this time.
+        if (savedCount > 0) {
+          try { sessionStorage.removeItem(`loadedCount:${location.pathname}${location.search}`); } catch { /* non-fatal */ }
+        }
+
+        setOpportunities(allResults.map(apiOpportunityToDisplay));
+        setPage(currentPage);
+        setTotal(first.pagination?.total ?? allResults.length);
+        setTotalPages(totalPagesResolved);
+      } catch (err) {
         if (cancelled) return;
         // Keeps the page rendering (empty list) rather than crashing - the
         // most common cause during setup is simply VITE_API_URL not pointing
@@ -64,14 +110,15 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
         setOpportunities([]);
         setTotal(0);
         setTotalPages(1);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature]);
 
   const loadMore = useCallback(() => {

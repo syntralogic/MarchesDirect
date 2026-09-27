@@ -20,6 +20,16 @@ interface OpportunityListCardProps {
   to?: string;
   /** Override the CTA label (sous-traitance keeps its own "Voir la mission" wording). */
   ctaLabel?: string;
+  /**
+   * How many opportunities are currently loaded in the parent list (client
+   * audit, point 7 - 26 Sep: "J'ai affiché 200 annonces, ouvert une annonce
+   * située après les 100 premières, puis fait retour... la liste revient à
+   * 100 annonces"). Saved alongside the scroll position on click so the
+   * listing page can reload however many pages were actually on screen
+   * before navigating away, instead of always restarting at PAGE_SIZE. See
+   * useOpportunities' savedCount restore logic.
+   */
+  loadedCount?: number;
 }
 
 // Client reference (listing screen mockup): plain outline pill, same style
@@ -48,7 +58,7 @@ function getDeadlineText(deadline: string | undefined, t: (key: string) => strin
   return `${days} ${days > 1 ? t('listingDaysPlural') : t('listingDaySingular')}`;
 }
 
-export function OpportunityListCard({ opportunity: o, matchScore, canScore, compatible, to, ctaLabel }: OpportunityListCardProps) {
+export function OpportunityListCard({ opportunity: o, matchScore, canScore, compatible, to, ctaLabel, loadedCount }: OpportunityListCardProps) {
   const { t } = useLang();
   const navigate = useNavigate();
   const destination = to ?? `/opportunites/${o.id}`;
@@ -79,7 +89,16 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
     // once then cleared - see the listing pages' restore effect) so a
     // fresh, unrelated visit to the same URL later doesn't jump.
     try {
-      sessionStorage.setItem(`scrollPos:${window.location.pathname}${window.location.search}`, String(window.scrollY));
+      const key = `${window.location.pathname}${window.location.search}`;
+      sessionStorage.setItem(`scrollPos:${key}`, String(window.scrollY));
+      // See loadedCount prop doc above - without this, useOpportunities'
+      // fresh mount on back-navigation always starts from page 1/PAGE_SIZE
+      // again, so a scroll position saved against a 200-row-tall page gets
+      // restored onto a 100-row-tall one (either clamped to the bottom or
+      // simply short of where the visitor actually was).
+      if (loadedCount) {
+        sessionStorage.setItem(`loadedCount:${key}`, String(loadedCount));
+      }
     } catch {
       // sessionStorage can throw in locked-down/private-browsing contexts -
       // losing the scroll-restore convenience isn't worth failing the

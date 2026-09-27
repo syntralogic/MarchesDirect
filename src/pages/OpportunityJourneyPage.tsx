@@ -45,7 +45,7 @@ const JOURNEY_CODE_MAP: Record<OppType, 'public_procurement' | 'tender' | 'subco
 
 const STATUS_OPTIONS = ['Tous', 'Non analysé', 'En cours', 'Déposé'];
 const DATE_OPTIONS = ['Toutes', '24 dernières heures', '7 derniers jours', '30 derniers jours'];
-const DEADLINE_OPTIONS = ['Toutes', 'Cette semaine', 'Ce mois-ci', 'Dans plus de 30 jours'];
+const DEADLINE_OPTIONS = ['Toutes', 'Dans les 7 prochains jours', 'Dans les 30 prochains jours', 'Dans plus de 30 jours'];
 const AMOUNT_OPTIONS = ['Tous', '< 50 000 €', '50 000 € – 200 000 €', '> 200 000 €'];
 
 function getIcon(title: string) {
@@ -362,6 +362,19 @@ export default function OpportunityJourneyPage() {
     max_value: amountRangeForApi().max,
     recent_days: recentDaysForApi(),
     sort,
+    // 27 Sep client decision (companion to OpportunityPaths' homepage tile
+    // fix, same session): with no status param the backend defaults to
+    // active-only (routes/opportunities.ts), so this guided search always
+    // undercounted the same way the homepage tile used to - the "Marchés
+    // publics" tile now promises the full all-statuses total, but clicking
+    // through still only ever listed the small active-only slice. Sending
+    // every real-world status explicitly (RecherchePage's existing 'all'
+    // expansion, same four values) keeps this results list consistent with
+    // that tile instead of contradicting it. The `status` local state above
+    // is a different, dossier-progress filter (Non analysé/En cours/Déposé)
+    // applied client-side further down - unrelated to this market-status
+    // param and left untouched.
+    status: 'active,expired,awarded,cancelled',
   });
 
   useScrollRestore(!loading);
@@ -382,11 +395,22 @@ export default function OpportunityJourneyPage() {
   // so instead of hiding these rows, they're kept and pushed to the end of
   // the list (see filteredResults below) rather than dropped, so nothing
   // with real, matching data ever gets buried behind them.
+  // New client audit, point 8: "« Ce mois-ci » laisse apparaître des
+  // échéances d'octobre. « Cette semaine » laisse apparaître des échéances
+  // allant jusqu'au 3 octobre" (tested 26 Sep) - these were always rolling
+  // N-day windows from today, not calendar week/month boundaries, so late
+  // in a week/month the window spills into the next one. Client offered
+  // two fixes: match the calendar boundary, or rename the filters to what
+  // they actually do ("Dans les 7 prochains jours" / "Dans les 30
+  // prochains jours"). Renamed rather than switched to calendar boundaries,
+  // to stay consistent with dateFilter just above (24h/7 jours/30 jours,
+  // the same rolling-window pattern, already renamed that way) rather than
+  // having two different date semantics on the same filter panel.
   const deadlineInRange = (deadlineIso: string): boolean => {
     if (deadlineFilter === 'Toutes' || !deadlineIso) return true;
     const days = (new Date(deadlineIso).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    if (deadlineFilter === 'Cette semaine') return days >= 0 && days <= 7;
-    if (deadlineFilter === 'Ce mois-ci') return days >= 0 && days <= 31;
+    if (deadlineFilter === 'Dans les 7 prochains jours') return days >= 0 && days <= 7;
+    if (deadlineFilter === 'Dans les 30 prochains jours') return days >= 0 && days <= 30;
     if (deadlineFilter === 'Dans plus de 30 jours') return days > 30;
     return true;
   };
