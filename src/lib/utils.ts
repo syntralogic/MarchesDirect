@@ -78,6 +78,19 @@ export function humanizeRawLabel(value: string | null | undefined): string | nul
   return words[0].charAt(0).toUpperCase() + words[0].slice(1) + (words.length > 1 ? ' ' + words.slice(1).join(' ') : '');
 }
 
+// 25 Sep audit, point 9: the phone field just stripped non-digits and cut
+// to 10 characters, so "+33 6 12 34 56 78" (11 digits once stripped:
+// 33612345678) got truncated to "3361234567" - the wrong number, one
+// digit short and still carrying the country code. Converts a leading
+// +33/0033 to a domestic leading 0 first, then caps at 10 digits, so
+// 06/07/+33 all normalize to the same 10-digit domestic form.
+export function normalizeFrPhoneDigits(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('0033')) digits = '0' + digits.slice(4);
+  else if (digits.startsWith('33') && digits.length === 11) digits = '0' + digits.slice(2);
+  return digits.slice(0, 10);
+}
+
 export function stripMarkdownArtifacts(text: string): string {
   return text
     .replace(/^#{1,6}\s*/gm, '')       // # / ## headers

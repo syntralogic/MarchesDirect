@@ -107,8 +107,44 @@ export function getApiErrorMessage(err: unknown, fallback = 'Une erreur est surv
     // "active_subscription_required".
     if (data?.message) return data.message;
     if (data?.error) return data.error;
+    // Client's audit (this session): "L'envoi a échoué. Vérifiez votre
+    // email et réessayez." was shown for a request whose email had just
+    // been accepted earlier in the same flow - because this generic path
+    // is reached for ANY unclassified failure (a genuine validation error
+    // already returns data.message/data.error above and never gets here),
+    // including a network failure or timeout with no response at all
+    // (err.response is undefined) - most plausibly a Render free-tier
+    // cold start on this exact request. Blaming the email was simply
+    // wrong for that case. When there's truly no response, say so instead
+    // of falling through to whatever cause-specific fallback the caller
+    // guessed.
+    if (!err.response) {
+      return "Impossible de contacter le serveur. Vérifiez votre connexion et réessayez dans un instant.";
+    }
   }
   return fallback;
+}
+
+// 27 Sep audit, point 3: a request made with responseType: 'blob' (file
+// downloads, e.g. downloadPrefilledDossier) still gets its error body
+// parsed as a Blob by axios even when the backend sent plain JSON (a 409
+// "confirmez d'abord vos coordonnées", a 500, etc.) - so getApiErrorMessage
+// above could never read data.message/data.error for these calls, and a
+// real, specific backend error silently fell through to the generic
+// fallback text. Async because reading a Blob's contents always is; call
+// this from a blob-download catch block instead of getApiErrorMessage.
+export async function getBlobApiErrorMessage(err: unknown, fallback = 'Une erreur est survenue.'): Promise<string> {
+  if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+    try {
+      const text = await err.response.data.text();
+      const data = JSON.parse(text) as ApiError;
+      if (data?.message) return data.message;
+      if (data?.error) return data.error;
+    } catch {
+      // Not JSON (e.g. an HTML gateway-timeout page) - fall through.
+    }
+  }
+  return getApiErrorMessage(err, fallback);
 }
 
 // ============================================================================
@@ -195,6 +231,11 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     scope_details?: { value: string; available: boolean };
     intervention_calendar?: { value: string; available: boolean };
     constraints_expectations?: { value: string; available: boolean };
+    // Client audit (27 Sep, "maintenance CVC en Gironde"): plafond de
+    // commande per lot/période on an accord-cadre - a ceiling, never a
+    // guaranteed amount, so it's kept separate from estimated_value both
+    // here and in how it's rendered.
+    order_caps?: { value: string; available: boolean };
     // Client's audit: attribution info + fuller buyer contact details were
     // entirely missing (backend aiService.extractOpportunityFacts).
     attribution_winner?: { value: string; available: boolean };
@@ -469,9 +510,24 @@ export type ApiTrade = {
   opportunity_count: number;
 };
 
+export interface ApiTradeSuggestion {
+  label: string;
+  tradeId: number;
+  tradeSlug: string;
+  tradeName: string;
+}
+
 export const tradesApi = {
   list: async (): Promise<ApiTrade[]> => {
     const { data } = await apiClient.get('/trades');
+    return data;
+  },
+  // 26 Sep client spec: "Rechercher par métier ou secteur d'activité"
+  // autocomplete replacing the homepage sector cards - suggestions must
+  // appear from the first few letters, accent/case-insensitive.
+  suggestions: async (q: string): Promise<ApiTradeSuggestion[]> => {
+    if (!q.trim()) return [];
+    const { data } = await apiClient.get('/trades/suggestions', { params: { q } });
     return data;
   },
 };
