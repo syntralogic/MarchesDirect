@@ -1649,6 +1649,33 @@ export default function OpportunityDetailPage() {
                 </div>
               </div>
 
+              {/* 27 Sep audit, point 8: a short, colored, score-tier message
+                  right under the percentage, always inviting the visitor to
+                  continue regardless of how low the score is - a weak score
+                  is about this one opportunity, never a verdict on the
+                  company. Purely derived from displayScore (same value the
+                  ring above shows), so it can never disagree with it; no
+                  separate computation. */}
+              {displayScore !== null && (() => {
+                const TIERS: { min: number; emoji: string; title: string; body: string }[] = [
+                  { min: 100, emoji: '🟢', title: t('scoreTier100Title') || 'Concordance totale sur les critères évalués', body: t('scoreTier100Body') || 'Votre profil correspond à l\u2019ensemble des critères évalués. Préparez maintenant votre candidature !' },
+                  { min: 90, emoji: '🟢', title: t('scoreTier90Title') || 'Concordance quasi totale', body: t('scoreTier90Body') || 'Votre profil correspond à la grande majorité des critères évalués. Passez à la préparation de votre candidature !' },
+                  { min: 75, emoji: '🟢', title: t('scoreTier75Title') || 'Excellente concordance', body: t('scoreTier75Body') || 'Votre profil est particulièrement adapté à cette opportunité. Préparez votre candidature avec l\u2019accompagnement de Marchés Direct !' },
+                  { min: 50, emoji: '🟡', title: t('scoreTier50Title') || 'Très bonne concordance', body: t('scoreTier50Body') || 'Votre entreprise présente de solides atouts pour ce marché. Passez à la préparation de votre candidature avec un chargé d\u2019affaires !' },
+                  { min: 25, emoji: '🟠', title: t('scoreTier25Title') || 'Des atouts pour répondre', body: t('scoreTier25Body') || 'Votre entreprise possède déjà des atouts pour ce marché. Échangez avec un chargé d\u2019affaires pour étudier vos possibilités de candidature et les points à compléter.' },
+                  { min: 0, emoji: '🔴', title: t('scoreTier0Title') || 'Des possibilités à étudier', body: t('scoreTier0Body') || 'Ce score concerne uniquement cette opportunité. Un chargé d\u2019affaires peut faire le point avec vous et vous aider à identifier des marchés plus adaptés à votre entreprise.' },
+                ] as const;
+                const tier = TIERS.find(x => displayScore >= x.min)!;
+                return (
+                  <div className="bg-[#031B30] border-l-2 border-orange rounded-r-lg pl-4 pr-3 py-3 mt-4">
+                    <p className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <span aria-hidden="true">{tier.emoji}</span> {tier.title}
+                    </p>
+                    <p className="text-xs text-[#B9BBC8] mt-1 leading-relaxed">{tier.body}</p>
+                  </div>
+                );
+              })()}
+
               {/* One line per criterion: what the market asks, what the company
                   does, and one of three states. Unknown data stays "à
                   confirmer" and is not counted in the percentage. */}
@@ -1982,7 +2009,7 @@ export default function OpportunityDetailPage() {
                       <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-2">
                         <Copy size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
                       </p>
-                      <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || 'Recevez votre dossier de candidature pré-rempli pour votre entreprise et ce marché.'}</p>
+                      <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || "Recevez votre dossier pré-rempli par e-mail et échangez avec un chargé d'affaires pour étudier vos possibilités et préparer votre candidature."}</p>
                       <p className="text-sm text-[#B9BBC8] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
                     </>
                   ) : (
