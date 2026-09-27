@@ -1437,21 +1437,28 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
   return (
     <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('sectors') || "Secteurs d'activité"}</span>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-5">Rechercher par métier ou secteur d'activité</h2>
+      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-1.5">Rechercher par métier <span className="text-orange">ou secteur d'activité</span></h2>
+      <p className="text-sm text-[#B9BBC8] mb-5">Trouvez des opportunités dans votre activité.</p>
 
       {selectedTrades.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {selectedTrades.map((st) => (
-            <span key={st.tradeId} className="inline-flex items-center gap-1 bg-orange/15 border border-orange/40 text-orange text-xs font-medium rounded-full pl-3 pr-1.5 py-1.5">
-              {st.tradeName}
-              <button type="button" onClick={() => removeTrade(st.tradeId)} aria-label={`Retirer ${st.tradeName}`} className="hover:bg-orange/25 rounded-full p-1 touch-manipulation">
-                <X size={12} />
-              </button>
-            </span>
-          ))}
+        <div className="mb-4">
+          <div className="text-xs font-semibold text-white mb-2">Vos métiers sélectionnés</div>
+          <div className="flex flex-wrap gap-2">
+            {selectedTrades.map((st) => (
+              <span key={st.tradeId} className="inline-flex items-center gap-1.5 bg-orange/10 border border-orange/50 text-white text-sm font-medium rounded-full pl-3.5 pr-2 py-1.5">
+                {st.tradeName}
+                <button type="button" onClick={() => removeTrade(st.tradeId)} aria-label={`Retirer ${st.tradeName}`} className="hover:bg-orange/25 rounded-full p-1 touch-manipulation text-orange">
+                  <X size={13} />
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
+      {selectedTrades.length === 0 && (
+        <label className="text-sm text-white mb-1.5 block">Métier, activité ou produit</label>
+      )}
       <div className="relative" ref={wrapRef}>
         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6B7280]" />
         <input
@@ -1459,30 +1466,64 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
           value={query}
           onChange={(e) => { setQuery(e.target.value); setSuggestOpen(true); }}
           onFocus={() => setSuggestOpen(true)}
-          placeholder="Votre métier, activité ou produit…"
-          className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-10 pr-3.5 py-3.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
+          placeholder={selectedTrades.length > 0 ? 'Ajouter un métier…' : 'Votre métier, activité ou produit…'}
+          className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
         />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); setSuggestions([]); }}
+            aria-label="Effacer"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-white rounded-full p-1 touch-manipulation"
+          >
+            <X size={14} />
+          </button>
+        )}
         {suggestOpen && suggestions.length > 0 && (
           <div className="absolute z-10 mt-1 w-full bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden shadow-xl max-h-72 overflow-y-auto">
+            <div className="px-3.5 py-2 text-[11px] font-semibold text-[#B9BBC8] uppercase tracking-wide border-b border-[#17334D]">Suggestions</div>
             {suggestions
               .filter((s) => !selectedTrades.some((st) => st.tradeId === s.tradeId))
-              .map((s) => (
-                <button
-                  key={`${s.tradeId}-${s.label}`}
-                  type="button"
-                  onMouseDown={(e) => { e.preventDefault(); addTrade(s); }}
-                  className="w-full text-left px-3.5 py-2.5 text-sm text-white hover:bg-orange/10 border-b border-[#17334D] last:border-b-0 touch-manipulation"
-                >
-                  {s.label}
-                </button>
-              ))}
+              .map((s) => {
+                // Mockup ("Électricité générale", "Électricité — courants
+                // faibles"...): the matched trade name is highlighted in
+                // orange, the rest of the phrase in white.
+                const highlightEnd = s.label.startsWith(s.tradeName) ? s.tradeName.length : 0;
+                return (
+                  <button
+                    key={`${s.tradeId}-${s.label}`}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); addTrade(s); }}
+                    className="w-full flex items-center justify-between gap-2 text-left px-3.5 py-3 text-sm hover:bg-orange/10 border-b border-[#17334D] last:border-b-0 touch-manipulation"
+                  >
+                    <span>
+                      <span className="text-orange font-semibold">{s.label.slice(0, highlightEnd)}</span>
+                      <span className="text-white">{s.label.slice(highlightEnd)}</span>
+                    </span>
+                    <Plus size={18} className="text-orange shrink-0" />
+                  </button>
+                );
+              })}
           </div>
         )}
       </div>
+      <p className="text-xs text-[#B9BBC8] mt-2">
+        {selectedTrades.length > 0 ? 'Vous pouvez ajouter ou retirer un métier.' : 'Ajoutez un ou plusieurs métiers.'}
+      </p>
 
-      <Link to={resultsHref()} className="mt-3 w-full flex items-center justify-center gap-2 bg-orange text-white font-semibold text-sm rounded-xl py-3.5 px-4 hover:bg-orange/90 transition-colors">
+      <Link
+        to={resultsHref()}
+        className={`mt-3 w-full flex items-center justify-center gap-2 font-semibold text-sm rounded-xl py-3.5 px-4 transition-colors ${
+          selectedTrades.length > 0
+            ? 'bg-orange text-white hover:bg-orange/90'
+            : 'bg-[#17334D] text-[#B9BBC8] hover:bg-[#1d3d5c]'
+        }`}
+      >
         Voir les opportunités <ArrowRight size={14} />
       </Link>
+      {selectedTrades.length > 0 && (
+        <p className="text-xs text-[#B9BBC8] mt-2">Précisez ensuite votre zone de recherche.</p>
+      )}
 
       <div className="flex items-center justify-between mt-4 text-xs">
         <span className="text-[#B9BBC8]">Zone : {zoneLabel}</span>
