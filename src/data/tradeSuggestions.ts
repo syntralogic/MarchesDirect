@@ -78,6 +78,10 @@ export const TRADE_SUGGESTION_SYNONYMS: Record<string, string[]> = {
   elec: ['electricite'],
   electricien: ['electricite'],
   clim: ['climatisation'],
+  // Same fix as the backend's TRADE_KEYWORD_SYNONYMS (27 Sep client audit) -
+  // kept in sync since this file is described as a trimmed copy of that
+  // référentiel.
+  climaticien: ['climatisation'],
   cvc: ['climatisation', 'chauffage', 'ventilation'],
   vmc: ['ventilation'],
   couvreur: ['toiture', 'couverture'],
