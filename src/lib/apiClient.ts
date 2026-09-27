@@ -466,9 +466,24 @@ export type ApiTrade = {
   opportunity_count: number;
 };
 
+export interface ApiTradeSuggestion {
+  label: string;
+  tradeId: number;
+  tradeSlug: string;
+  tradeName: string;
+}
+
 export const tradesApi = {
   list: async (): Promise<ApiTrade[]> => {
     const { data } = await apiClient.get('/trades');
+    return data;
+  },
+  // 26 Sep client spec: "Rechercher par métier ou secteur d'activité"
+  // autocomplete replacing the homepage sector cards - suggestions must
+  // appear from the first few letters, accent/case-insensitive.
+  suggestions: async (q: string): Promise<ApiTradeSuggestion[]> => {
+    if (!q.trim()) return [];
+    const { data } = await apiClient.get('/trades/suggestions', { params: { q } });
     return data;
   },
 };
