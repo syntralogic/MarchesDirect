@@ -251,7 +251,19 @@ export default function RecherchePage() {
     next.delete('trade_id');
     setSearchParams(next, { replace: true });
   };
-  const journeyParam = (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || undefined;
+  // 26 Sep client audit (point 2): "la recherche générale ne propose pas
+  // le même choix visible entre public, privé et sous-traitance." This was
+  // read-only from the URL - whichever `journey` a visitor arrived with
+  // (or none) was silently fixed for the whole visit, with no control
+  // anywhere on this page to see or change it. Now a real, visible filter
+  // (state initialized from the URL, same pattern as statutFilter just
+  // below): a visitor arrives with their entry point's choice already
+  // shown and selected, and can change it without leaving the page -
+  // "les choix du visiteur déjà renseignés, quelle que soit son entrée."
+  const [journeyFilter, setJourneyFilter] = useState<'' | 'tender' | 'public_procurement' | 'subcontracting'>(
+    (searchParams.get('journey') as 'tender' | 'public_procurement' | 'subcontracting' | null) || ''
+  );
+  const journeyParam = journeyFilter || undefined;
   // G14 (contre-audit 15 Sep): header tag/title/sub and the results-count
   // label were hardcoded to the "sous-traitant" wording no matter which
   // journey brought the visitor here - a marchés-publics search still
@@ -288,6 +300,7 @@ export default function RecherchePage() {
   );
   const [montantMin, setMontantMin] = useState(searchParams.get('min_value') || '');
   const [montantMax, setMontantMax] = useState(searchParams.get('max_value') || '');
+  const budgetRangeInvalid = montantMin !== '' && montantMax !== '' && Number(montantMin) > Number(montantMax);
   // R08 (client audit): "filtering isn't sorting" - filters existed but no
   // explicit sort control did. Defaults to the same active-first/soonest-
   // deadline order the results used before this control existed, so
@@ -423,7 +436,7 @@ export default function RecherchePage() {
     if (showRadius && radius !== String(DEFAULT_CITY_RADIUS_KM)) next.set('radius_km', radius);
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied, locationField, tradeId, journeyParam, statutFilter, natureFilter, sort, radius, showRadius]);
+  }, [applied, locationField, tradeId, journeyFilter, statutFilter, natureFilter, sort, radius, showRadius]);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
@@ -442,8 +455,14 @@ export default function RecherchePage() {
     // status values, so expand it to the literal list here.
     status: statutFilter === 'all' ? 'active,expired,awarded,cancelled' : (statutFilter || undefined),
     nature: natureFilter.length > 0 ? natureFilter.join(',') : undefined,
-    min_value: applied.montantMin ? Number(applied.montantMin) : undefined,
-    max_value: applied.montantMax ? Number(applied.montantMax) : undefined,
+    // Client (26 Sep audit, point 10): an inverted min>max range showed a
+    // silent zero-result list before (now the backend rejects it outright -
+    // see opportunities.ts) - simplest is to just not send a range that's
+    // already known to be invalid; budgetRangeInvalid's own inline message
+    // explains why nothing changed, rather than trading a silent empty
+    // list for a silent unfiltered one.
+    min_value: (!budgetRangeInvalid && applied.montantMin) ? Number(applied.montantMin) : undefined,
+    max_value: (!budgetRangeInvalid && applied.montantMax) ? Number(applied.montantMax) : undefined,
     sort,
   });
 
@@ -453,7 +472,7 @@ export default function RecherchePage() {
     if (!debouncedQuery && !debouncedLocation) return;
     const parts = [debouncedQuery, debouncedLocation].filter(Boolean);
     trackVisitorEvent('search', `Recherche : ${parts.join(' · ')}`, undefined, { q: debouncedQuery, location: debouncedLocation, journey: journeyParam });
-  }, [debouncedQuery, debouncedLocation, journeyParam]);
+  }, [debouncedQuery, debouncedLocation, journeyFilter]);
 
   // Applies the current (un-debounced) field values immediately - used by
   // both the "Rechercher" button and submitting the form (Enter key).
@@ -665,6 +684,31 @@ export default function RecherchePage() {
         </div>
 
         <div className="mb-2.5">
+          <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchType') || "Type d'opportunité"}</label>
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              ['', t('searchTypeAll') || 'Tous'],
+              ['public_procurement', t('searchTypePublic') || 'Marchés publics'],
+              ['tender', t('searchTypeTender') || "Appels d'offres privés"],
+              ['subcontracting', t('searchTypeSubcontracting') || 'Sous-traitance'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value || 'all'}
+                type="button"
+                onClick={() => setJourneyFilter(value)}
+                className={`px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${
+                  journeyFilter === value
+                    ? 'bg-orange/15 border-orange text-orange'
+                    : 'bg-[#031B30] border-[#17334D] text-[#B9BBC8] hover:border-[#2A4A6B]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-2.5">
           <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchStatut')}</label>
           <div className="relative">
             <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
@@ -733,10 +777,23 @@ export default function RecherchePage() {
               placeholder={t('searchMontantMaxPlaceholder')}
               value={montantMax}
               onChange={e => setMontantMax(e.target.value)}
-              className="w-full bg-[#031B30] border border-[#17334D] rounded-md px-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
+              className={`w-full bg-[#031B30] border rounded-md px-2.5 py-2 text-[11px] text-white placeholder:text-[#6B7280] focus:outline-none transition-colors ${
+                budgetRangeInvalid ? 'border-red-500/60 focus:border-red-500' : 'border-[#17334D] focus:border-orange'
+              }`}
             />
           </div>
         </div>
+        {/* Client (26 Sep audit, point 10): "le site accepte 100 000 €
+            minimum et 10 000 € maximum, puis affiche zéro résultat sans
+            expliquer l'erreur." Caught before the request even goes out -
+            the backend also rejects this range with a clear message
+            (opportunities.ts), this is just the same check surfaced the
+            moment it's true rather than after a round trip. */}
+        {budgetRangeInvalid && (
+          <p className="text-[10px] text-red-400 -mt-2">
+            Le montant minimum doit être inférieur ou égal au montant maximum.
+          </p>
+        )}
 
         <button
           type="submit"

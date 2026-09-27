@@ -122,6 +122,10 @@ export type ApiOpportunity = {
   id: string;
   title: string;
   description?: string;
+  // Present on detail responses (o.* there); the list/search endpoint
+  // doesn't select it yet (see opportunityAdapter.ts's isDemo comment) - see
+  // note in this session's report about that gap.
+  source_reference?: string | null;
   deadline: string | null;
   // 25 Sep client audit: submission time stated in the notice text (e.g.
   // "11h00"), derived server-side (utils/officialFields.ts) from the same
@@ -158,7 +162,6 @@ export type ApiOpportunityDetail = ApiOpportunity & {
   estimated_end_date?: string | null;
   journey_name?: string | null;
   cpv_display?: string | null;
-  source_reference?: string | null;
   identity_unlocked?: boolean;
   // Link back to the official notice (BOAMP/TED/PLACE) - null when the
   // source has no confirmed stable per-notice public URL (e.g. DECP).
@@ -312,9 +315,15 @@ export const opportunitiesApi = {
       return null;
     }
   },
-  getCounts: async () => {
+  // 26 Sep client audit (point 3 remainder): optional `status` lets a
+  // caller ask for a status-scoped cut of the same counts (e.g. 'active'
+  // for the OpportunityPaths tile, whose /parcours destination is
+  // active-only by design) instead of the default all-statuses total -
+  // see backend stats/counts's own comment for the full story.
+  getCounts: async (status?: string) => {
     const { data } = await apiClient.get<{ total: number; public_procurement: number; tender: number; subcontracting: number }>(
-      '/opportunities/stats/counts'
+      '/opportunities/stats/counts',
+      { params: status ? { status } : undefined }
     );
     return data;
   },

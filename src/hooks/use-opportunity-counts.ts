@@ -28,39 +28,54 @@ const EMPTY: OpportunityCounts = { total: 0, public_procurement: 0, tender: 0, s
 // show at all. This is the "compteurs préchargés" half of the ask; the
 // component-side skeleton (replacing the literal "…") is the "état de
 // chargement explicite" half, done in HomePage.tsx.
-let cachedCounts: OpportunityCounts | null = null;
-let inFlight: Promise<OpportunityCounts> | null = null;
+// 26 Sep client audit (point 3 remainder): the OpportunityPaths tile needs
+// the active-only cut of these same counts (its /parcours destination is
+// active-only by design - see apiClient.getCounts's comment), which is a
+// different number from HeroCounters/the map's all-statuses total. Keyed
+// by the status string actually requested ('' = default/all-statuses) so
+// each scope gets its own cache entry and in-flight dedupe instead of the
+// two tiles fighting over one shared cache slot.
+const cachedCountsByStatus: Record<string, OpportunityCounts> = {};
+const inFlightByStatus: Record<string, Promise<OpportunityCounts>> = {};
 
-function fetchCounts(): Promise<OpportunityCounts> {
-  if (cachedCounts) return Promise.resolve(cachedCounts);
-  if (!inFlight) {
-    inFlight = opportunitiesApi.getCounts()
-      .then(data => { cachedCounts = data; return data; })
+function fetchCounts(status?: string): Promise<OpportunityCounts> {
+  const key = status || '';
+  if (cachedCountsByStatus[key]) return Promise.resolve(cachedCountsByStatus[key]);
+  if (!inFlightByStatus[key]) {
+    inFlightByStatus[key] = opportunitiesApi.getCounts(status)
+      .then(data => { cachedCountsByStatus[key] = data; return data; })
       .catch(() => EMPTY)
-      .finally(() => { inFlight = null; });
+      .finally(() => { delete inFlightByStatus[key]; });
   }
-  return inFlight;
+  return inFlightByStatus[key];
 }
 
 // Real, live counts per journey - replaces the hardcoded "3 421+" on the
 // homepage and any other page that needs an honest, clickable-by-category
 // count instead of a static placeholder. See routes/opportunities.ts's
 // /stats/counts for why this can't disagree with what search shows.
-export function useOpportunityCounts() {
-  const [counts, setCounts] = useState<OpportunityCounts>(cachedCounts ?? EMPTY);
-  const [loading, setLoading] = useState(!cachedCounts);
+// Pass `status` (e.g. 'active') to get that status-scoped cut instead of
+// the default all-statuses total - only do this for a tile whose own
+// destination is scoped the same way, or the badge/list mismatch this was
+// built to prevent just reappears in the other direction.
+export function useOpportunityCounts(status?: string) {
+  const key = status || '';
+  const [counts, setCounts] = useState<OpportunityCounts>(cachedCountsByStatus[key] ?? EMPTY);
+  const [loading, setLoading] = useState(!cachedCountsByStatus[key]);
 
   useEffect(() => {
-    if (cachedCounts) return; // already have it - nothing to wait on
+    if (cachedCountsByStatus[key]) return; // already have it - nothing to wait on
     let cancelled = false;
-    fetchCounts().then(data => {
+    setLoading(true);
+    fetchCounts(status).then(data => {
       if (!cancelled) {
         setCounts(data);
         setLoading(false);
       }
     });
     return () => { cancelled = true; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return { counts, loading };
 }
