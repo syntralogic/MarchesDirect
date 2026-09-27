@@ -22,6 +22,7 @@ import {
 } from '@/lib/apiClient';
 import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from '@/lib/utils';
 import { useLang } from '@/contexts/LangContext';
+import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle } from '@/components/OpportunityAnalysisAccordions';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
 // once logged in, regardless of subscription (only the AI-assisted mémoire
@@ -111,24 +112,10 @@ function formatSeniority(created: string | null): string | null {
 // repeated the title verbatim under "Résumé" - detect and treat that as
 // "no real description" instead, so the block hides/shows the empty-state
 // message rather than reproducing the title.
-// Matches the backend's hasAnalysisContent() (routes/opportunities.ts) -
-// an ai_analysis_sections object can exist but have all 3 fields blank
-// (the coercion in generateOpportunityAnalysisSections falls back to '' per
-// key rather than throwing on a partial/edge-case response). Checking the
-// object is merely non-null treated that shape as "generated": it rendered
-// <OpportunityAnalysisAccordions>, whose own empty-items filter then
-// returned null - nothing shown where the ai_summary paragraph used to be,
-// instead of falling back to it.
-function hasAnalysisContent(sections: { presentation: string; conditions: string; entreprises: string } | null | undefined): boolean {
-  if (!sections) return false;
-  return Boolean(sections.presentation?.trim() || sections.conditions?.trim() || sections.entreprises?.trim());
-}
-
-function isRedundantWithTitle(text: string | null | undefined, title: string | null | undefined): boolean {
-  if (!text || !title) return false;
-  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
-  return normalize(text) === normalize(title);
-}
+// hasAnalysisContent/isRedundantWithTitle/OpportunityAnalysisAccordions now
+// live in components/OpportunityAnalysisAccordions.tsx (2nd 27 Sep audit,
+// point 2) so MissionDetailPage (sous-traitance) can reuse the exact same
+// component instead of never showing accordions at all.
 
 // DCE viewer (écran 8): document_label is the ingestion pipeline's own
 // best-effort tag (see schema.sql - 'RC', 'CCAP', 'CCTP', 'AAPC', 'Autre').
@@ -3259,116 +3246,3 @@ function RefineAnalysisAccordion({ t }: { t: (key: string) => string }) {
   );
 }
 
-// Client's 10 Sep spec: the opportunity analysis (previously one dense
-// paragraph - see ai_summary above) is now split into 3 fixed accordions,
-// reused identically on every fiche: Présentation du marché / Conditions
-// et points à vérifier / Entreprises concernées. First one open by
-// default, the other two collapsed; each toggles independently on click.
-// Content comes from ai_analysis_sections (generateOpportunityAnalysisSections
-// in aiService.ts) - this component only lays it out, using the site's
-// existing card/accordion styling (RefineAnalysisAccordion above), not the
-// client's mockup's own literal colors.
-function OpportunityAnalysisAccordions({
-  sections,
-  sourceText,
-  t,
-}: {
-  sections: { presentation: string; conditions: string; entreprises: string };
-  // Full, un-summarized opportunity description (raw `description` field).
-  // The 3 sections above are an AI-condensed 2-5 sentence synthesis, which
-  // risks trimming details a candidate actually needs (a specific clause,
-  // an exact figure, a secondary requirement the summary rolled up into a
-  // generic sentence). Rather than changing the generation itself - the
-  // condensed sections are what the client's 10 Sep spec asked for, for
-  // readability - this keeps the full original text one click away so
-  // nothing from the source is ever actually lost, per the later "do not
-  // lose information" clarification. Null/omitted when there's no
-  // meaningful original text to fall back to (already covered by
-  // isRedundantWithTitle upstream).
-  sourceText?: string | null;
-  t: (key: string) => string;
-}) {
-  const items = [
-    { key: 'presentation', icon: FileText, title: t('detailAccordionPresentation') || 'Présentation du marché', text: sections.presentation },
-    { key: 'conditions', icon: Search, title: t('detailAccordionConditions') || 'Conditions et points à vérifier', text: sections.conditions },
-    { key: 'entreprises', icon: Users, title: t('detailAccordionEntreprises') || 'Entreprises concernées', text: sections.entreprises },
-  ].filter(item => item.text && item.text.trim().length > 0);
-
-  const [openKey, setOpenKey] = useState<string | null>(items[0]?.key ?? null);
-  const [sourceOpen, setSourceOpen] = useState(false);
-
-  // Client's audit (15 Sep): "gérer clairement les annonces dont le
-  // descriptif ou l'analyse sont encore incomplets, pour que la suite du
-  // parcours ne donne pas une impression de précision que les informations
-  // disponibles ne permettent pas." Returning null here rendered a silent
-  // gap - no accordions, no explanation - which reads as "nothing to say
-  // about this opportunity" rather than "still being analyzed", right
-  // before the rest of the journey (concordance, dossier) proceeds as if
-  // it had full information to work from.
-  if (items.length === 0) {
-    return (
-      <div className="border border-[#17334D] rounded-xl bg-[#031B30] px-4 py-4 flex items-center gap-2.5">
-        <Loader2 size={15} className="text-orange shrink-0" />
-        <p className="text-xs text-[#B9BBC8]">{t('detailAnalysisIncomplete') || "Analyse détaillée en cours de génération pour cette opportunité."}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {/* O04 (contre-audit 15 Sep): "« Analyse de l'opportunité » à remettre
-          au-dessus des accordéons selon l'audit esthétique - ce titre de
-          groupe n'a pas été retrouvé dans la fiche privée contrôlée." The
-          three accordions rendered as a bare stack with no group heading
-          tying them together, so nothing on the page said these three
-          sections are the analysis of the opportunity. */}
-      <h2 className="text-lg font-bold text-white mb-3">
-        {t('detailAnalysisGroupTitle') || "Analyse de l'opportunité"}
-      </h2>
-      {items.map(item => {
-        const isOpen = openKey === item.key;
-        const Icon = item.icon;
-        return (
-          <div key={item.key} className="border border-[#17334D] rounded-xl bg-[#031B30] overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setOpenKey(cur => (cur === item.key ? null : item.key))}
-              className="w-full flex items-center gap-2.5 px-3.5 py-[18px] text-left"
-              aria-expanded={isOpen}
-            >
-              <Icon size={16} className="text-orange shrink-0" />
-              <span className="flex-1 text-sm font-semibold text-white">{item.title}</span>
-              <ChevronDown size={14} className={`text-[#B9BBC8] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isOpen && (
-              <div className="px-3.5 pb-4 text-sm text-[#EAF0F6] leading-relaxed whitespace-pre-line">
-                {stripMarkdownArtifacts(item.text)}
-              </div>
-            )}
-          </div>
-        );
-      })}
-      {sourceText && (
-        <div className="border border-[#17334D] rounded-xl bg-[#031B30] overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setSourceOpen(o => !o)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
-            aria-expanded={sourceOpen}
-          >
-            <FileText size={14} className="text-[#5B6B80] shrink-0" />
-            <span className="flex-1 text-xs font-semibold text-[#B9BBC8]">
-              {t('detailSourceTextToggle') || 'Voir le texte source complet'}
-            </span>
-            <ChevronDown size={13} className={`text-[#5B6B80] shrink-0 transition-transform ${sourceOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {sourceOpen && (
-            <div className="px-3.5 pb-4 text-xs text-[#B9BBC8] leading-relaxed whitespace-pre-line">
-              {stripMarkdownArtifacts(sourceText)}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
