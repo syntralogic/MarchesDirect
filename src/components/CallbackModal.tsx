@@ -5,6 +5,7 @@ import { useLang } from '@/contexts/LangContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
+import { normalizeFrPhoneDigits } from '@/lib/utils';
 
 interface CallbackModalProps {
   open: boolean;
@@ -87,7 +88,12 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
                       placeholder={field.placeholder}
                       required={field.key !== 'entreprise'}
                       value={form[field.key as keyof typeof form]}
-                      onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
+                      onChange={e => setForm(f => ({
+                        ...f,
+                        // 27 Sep audit, point 5: same +33/0033 truncation bug
+                        // as the dossier page's phone fields - normalize here too.
+                        [field.key]: field.key === 'telephone' ? normalizeFrPhoneDigits(e.target.value) : e.target.value,
+                      }))}
                       className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-9 pr-4 py-3 text-sm text-brand-primary placeholder:text-muted-foreground focus:outline-none focus:border-orange transition-colors"
                     />
                   </div>
