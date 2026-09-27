@@ -202,7 +202,13 @@
     color: #FF6500;
   }
   .bg-orange {
-    background-color: #FF6500;
+    /* #C24E00, not #FF6500: this class is used for solid-fill buttons with
+       white text (bg-orange text-white). #FF6500 gives ~2.95:1 white-on-
+       orange contrast, below the 4.5:1 AA threshold (25 Sep audit, point
+       11) - #C24E00 gives ~4.79:1. text-orange/border-orange are untouched
+       since those render orange-on-dark-navy, where #FF6500 already passes
+       AA (~5.8:1) and this darker shade would drop below it. */
+    background-color: #C24E00;
   }
   .border-orange {
     border-color: #FF6500;
