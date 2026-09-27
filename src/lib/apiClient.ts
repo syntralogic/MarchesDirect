@@ -125,6 +125,28 @@ export function getApiErrorMessage(err: unknown, fallback = 'Une erreur est surv
   return fallback;
 }
 
+// 27 Sep audit, point 3: a request made with responseType: 'blob' (file
+// downloads, e.g. downloadPrefilledDossier) still gets its error body
+// parsed as a Blob by axios even when the backend sent plain JSON (a 409
+// "confirmez d'abord vos coordonnées", a 500, etc.) - so getApiErrorMessage
+// above could never read data.message/data.error for these calls, and a
+// real, specific backend error silently fell through to the generic
+// fallback text. Async because reading a Blob's contents always is; call
+// this from a blob-download catch block instead of getApiErrorMessage.
+export async function getBlobApiErrorMessage(err: unknown, fallback = 'Une erreur est survenue.'): Promise<string> {
+  if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+    try {
+      const text = await err.response.data.text();
+      const data = JSON.parse(text) as ApiError;
+      if (data?.message) return data.message;
+      if (data?.error) return data.error;
+    } catch {
+      // Not JSON (e.g. an HTML gateway-timeout page) - fall through.
+    }
+  }
+  return getApiErrorMessage(err, fallback);
+}
+
 // ============================================================================
 // Business data endpoints (opportunities, dashboard, trades, alerts, chatbot,
 // subscriptions, CRM) - everything beyond auth. `apiClient` above already

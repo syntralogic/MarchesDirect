@@ -14,7 +14,7 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId, getConsultationsToday } from '@/lib/visitorTracking';
 import {
-  opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage,
+  opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getBlobApiErrorMessage,
   dossiersApi, siretApi,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
@@ -2636,7 +2636,7 @@ export default function OpportunityDetailPage() {
                         URL.revokeObjectURL(url);
                       }
                     } catch (err) {
-                      toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
+                      toast.error(await getBlobApiErrorMessage(err, 'Échec du téléchargement.'));
                     } finally {
                       setDossierDownloading(false);
                     }
@@ -2667,7 +2667,11 @@ export default function OpportunityDetailPage() {
                         a.click();
                         URL.revokeObjectURL(url);
                       } catch (err) {
-                        toast.error(getApiErrorMessage(err, 'Échec du téléchargement.'));
+                        // 27 Sep audit, point 3: this is a blob-typed request, so
+                        // the real backend reason (e.g. "confirmez d'abord vos
+                        // coordonnées") needs the blob-aware unwrapper, not the
+                        // regular getApiErrorMessage which can't read a Blob body.
+                        toast.error(await getBlobApiErrorMessage(err, 'Échec du téléchargement.'));
                       } finally {
                         setPrefilledDownloading(false);
                       }
