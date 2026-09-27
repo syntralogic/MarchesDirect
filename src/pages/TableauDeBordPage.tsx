@@ -34,18 +34,30 @@ const BID_STATUS_LABEL: Record<string, string> = {
 };
 
 // Client's 12 Sep card spec: status badge + progress % + status line per
-// candidature card. ApiBidSummary's `status` is the only real per-bid
-// signal available (no granular "N pièces manquantes" count exists yet -
-// see the comment above where this is used) - each bucket maps to one
-// reasonable state derived from that real status, not a fabricated
-// per-record number.
-const BID_PROGRESS_META: Record<string, { pct: number; badgeKey: string; badgeFallback: string; badgeColor: string; detailKey: string; detailFallback: string }> = {
-  draft: { pct: 20, badgeKey: 'dashBadgeInitiative', badgeFallback: 'À votre initiative', badgeColor: 'text-green-400', detailKey: 'dashDetailDraft', detailFallback: 'Demandez la préparation de votre candidature.' },
-  in_progress: { pct: 60, badgeKey: 'dashBadgeInProgress', badgeFallback: 'Préparation en cours', badgeColor: 'text-green-400', detailKey: 'dashDetailInProgress', detailFallback: "Votre chargé d'affaires poursuit la préparation." },
-  submitted: { pct: 100, badgeKey: 'dashBadgeSubmitted', badgeFallback: 'Candidature déposée', badgeColor: 'text-green-400', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
-  awarded: { pct: 100, badgeKey: 'dashBadgeAwarded', badgeFallback: 'Marché remporté', badgeColor: 'text-green-400', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
-  lost: { pct: 100, badgeKey: 'dashBadgeLost', badgeFallback: 'Marché non retenu', badgeColor: 'text-[#B9BBC8]', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
+// candidature card.
+//
+// 3rd client audit, point 10 ("25 % dans le dossier contre 20 % dans le
+// tableau de bord"): pct used to be a second, independent guess derived
+// only from status (draft=20/in_progress=60/submitted+=100), while the
+// fiche's own dossier-progress block computes doneCount/4 from actual
+// document state. /tenders/bids/mine now returns the same
+// documents_prepared/dossier_generated presence booleans the fiche
+// already derives, so bidProgressPct below uses the identical 4-step
+// formula (aperçu, documents préparés, dossier généré, dépôt effectué) -
+// this map now only supplies the badge/status copy per status, not pct.
+const BID_STATUS_META: Record<string, { badgeKey: string; badgeFallback: string; badgeColor: string; detailKey: string; detailFallback: string }> = {
+  draft: { badgeKey: 'dashBadgeInitiative', badgeFallback: 'À votre initiative', badgeColor: 'text-green-400', detailKey: 'dashDetailDraft', detailFallback: 'Demandez la préparation de votre candidature.' },
+  in_progress: { badgeKey: 'dashBadgeInProgress', badgeFallback: 'Préparation en cours', badgeColor: 'text-green-400', detailKey: 'dashDetailInProgress', detailFallback: "Votre chargé d'affaires poursuit la préparation." },
+  submitted: { badgeKey: 'dashBadgeSubmitted', badgeFallback: 'Candidature déposée', badgeColor: 'text-green-400', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
+  awarded: { badgeKey: 'dashBadgeAwarded', badgeFallback: 'Marché remporté', badgeColor: 'text-green-400', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
+  lost: { badgeKey: 'dashBadgeLost', badgeFallback: 'Marché non retenu', badgeColor: 'text-[#B9BBC8]', detailKey: 'dashDetailSubmitted', detailFallback: 'Marchés Direct a effectué le dépôt. Le justificatif est disponible.' },
 };
+
+function bidProgressPct(b: ApiBidSummary): number {
+  const filed = b.status === 'submitted' || b.status === 'awarded' || b.status === 'lost' || !!b.submitted_at;
+  const steps = [true, b.documents_prepared, b.dossier_generated, filed];
+  return Math.round((steps.filter(Boolean).length / steps.length) * 100);
+}
 
 export default function TableauDeBordPage() {
   const { t } = useLang();
@@ -217,7 +229,8 @@ export default function TableauDeBordPage() {
           ) : (
             <div className="space-y-3 mb-6">
               {bids.map(b => {
-                const meta = BID_PROGRESS_META[b.status] || BID_PROGRESS_META.draft;
+                const meta = BID_STATUS_META[b.status] || BID_STATUS_META.draft;
+                const pct = bidProgressPct(b);
                 return (
                   <div key={b.id} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
                     <div className="flex items-start justify-between gap-3 mb-1">
@@ -228,10 +241,10 @@ export default function TableauDeBordPage() {
                       {[b.location_city, b.deadline ? `${new Date(b.deadline).toLocaleDateString('fr-FR')} · 12 h` : null].filter(Boolean).join(' · ')}
                     </p>
                     <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden mb-2">
-                      <div className="h-full bg-orange rounded-full" style={{ width: `${meta.pct}%` }} />
+                      <div className="h-full bg-orange rounded-full" style={{ width: `${pct}%` }} />
                     </div>
                     <p className="text-xs text-[#B9BBC8] mb-3">
-                      {meta.pct} % {t('dashPreparationLabel') || 'de préparation'} · {t(meta.detailKey) || meta.detailFallback}
+                      {pct} % {t('dashPreparationLabel') || 'de préparation'} · {t(meta.detailKey) || meta.detailFallback}
                     </p>
                     <Link
                       to={`/opportunites/${b.opportunity_id}/candidature`}
