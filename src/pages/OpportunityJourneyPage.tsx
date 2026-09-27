@@ -362,6 +362,19 @@ export default function OpportunityJourneyPage() {
     max_value: amountRangeForApi().max,
     recent_days: recentDaysForApi(),
     sort,
+    // 27 Sep client decision (companion to OpportunityPaths' homepage tile
+    // fix, same session): with no status param the backend defaults to
+    // active-only (routes/opportunities.ts), so this guided search always
+    // undercounted the same way the homepage tile used to - the "Marchés
+    // publics" tile now promises the full all-statuses total, but clicking
+    // through still only ever listed the small active-only slice. Sending
+    // every real-world status explicitly (RecherchePage's existing 'all'
+    // expansion, same four values) keeps this results list consistent with
+    // that tile instead of contradicting it. The `status` local state above
+    // is a different, dossier-progress filter (Non analysé/En cours/Déposé)
+    // applied client-side further down - unrelated to this market-status
+    // param and left untouched.
+    status: 'active,expired,awarded,cancelled',
   });
 
   useScrollRestore(!loading);
