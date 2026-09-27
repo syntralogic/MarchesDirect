@@ -228,6 +228,11 @@ export type ApiOpportunityDetail = ApiOpportunity & {
     scope_details?: { value: string; available: boolean };
     intervention_calendar?: { value: string; available: boolean };
     constraints_expectations?: { value: string; available: boolean };
+    // Client audit (27 Sep, "maintenance CVC en Gironde"): plafond de
+    // commande per lot/période on an accord-cadre - a ceiling, never a
+    // guaranteed amount, so it's kept separate from estimated_value both
+    // here and in how it's rendered.
+    order_caps?: { value: string; available: boolean };
     // Client's audit: attribution info + fuller buyer contact details were
     // entirely missing (backend aiService.extractOpportunityFacts).
     attribution_winner?: { value: string; available: boolean };

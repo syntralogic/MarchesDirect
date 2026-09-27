@@ -1350,6 +1350,12 @@ export default function OpportunityDetailPage() {
               rows.push({ label: t('dossierFactValue'), value: formatAmount(opportunity.estimated_value, opportunity.currency) });
             }
 
+            // Plafond de commande — client audit (27 Sep, "maintenance CVC
+            // en Gironde"): a cap on an accord-cadre à bons de commande, kept
+            // as its own row with its own label rather than merged into
+            // "Montant" above, so it's never read as a guaranteed budget.
+            if (facts?.order_caps?.available) rows.push({ label: t('dossierFactOrderCaps') || 'Plafond de commande', value: facts.order_caps.value });
+
             // Échéance — raw deadline/deadline_time fallback, same logic.
             if (facts?.submission_deadline?.available) {
               rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
