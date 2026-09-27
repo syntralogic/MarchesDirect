@@ -25,6 +25,22 @@ export interface Opportunity {
   description?: string;
   profileRequired?: string[];
   identityUnlocked?: boolean;
+  // 2nd 27 Sep client audit, point 2: threaded through so sous-traitance
+  // missions (MissionDetailPage, via use-mission's real API fetch) can
+  // render the exact same 3 fixed accordions as public/private fiches
+  // instead of a flat description - these already come back from
+  // GET /opportunities/:id regardless of journey, just weren't carried
+  // past this adapter before.
+  aiAnalysisSections?: { presentation: string; conditions: string; entreprises: string } | null;
+  aiSummary?: string | null;
+  aiClassificationStatus?: string;
+  officialUrl?: string | null;
+  // Genuinely raw source text (api.description, un-conflated with
+  // ai_summary) - `description` above already prefers ai_summary when
+  // present (client's WhatsApp ask, "très brute et peu lisible"), so it
+  // can't double as the accordions' "voir le texte source complet" toggle
+  // without that toggle just echoing the summary back verbatim.
+  rawDescription?: string | null;
   // Client audit (25 Sep, point 2): "les annonces de démonstration
   // doivent être clairement distinguées des opportunités réelles" -
   // demo/seed rows (source_reference starting with "DEMO-", see backend

@@ -82,5 +82,15 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
     // clearly distinguished from real opportunities - they weren't
     // flagged anywhere on the frontend before this.
     isDemo: !!api.source_reference && api.source_reference.startsWith('DEMO-'),
+    // 2nd 27 Sep client audit, point 2: same fields OpportunityDetailPage
+    // already reads straight off the API response - carried through here
+    // too so MissionDetailPage (sous-traitance), which only has this
+    // adapted Opportunity shape to work with, can show the same 3
+    // accordions instead of silently dropping them.
+    aiAnalysisSections: api.ai_analysis_sections ?? null,
+    aiSummary: api.ai_summary ?? null,
+    aiClassificationStatus: api.ai_classification_status,
+    officialUrl: api.official_url ?? null,
+    rawDescription: api.description ?? null,
   };
 }
