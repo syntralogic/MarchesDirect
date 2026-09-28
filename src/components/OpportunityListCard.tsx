@@ -50,19 +50,33 @@ const LIFECYCLE_BADGE: Record<Exclude<NonNullable<Opportunity['lifecycleStatus']
   cancelled: { text: 'Annulé', className: 'text-red-400 border-red-400/40' },
 };
 
-function getDeadlineText(deadline: string | undefined, t: (key: string) => string) {
-  if (!deadline) return '-';
-  const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
-  if (Number.isNaN(days)) return '-';
-  if (days < 0) return t('listingClosedLabel');
-  return `${days} ${days > 1 ? t('listingDaysPlural') : t('listingDaySingular')}`;
+// Awarded / cancelled / expired listings have no meaningful "days left":
+// the consultation is over (and awarded notices usually carry no deadline at
+// all), so the second column shows the outcome under a "Statut" label
+// instead of a bare "-" under "Avant clôture". Active listings without a
+// published deadline say so explicitly rather than showing a dash.
+function getDeadlineInfo(
+  deadline: string | undefined,
+  lifecycle: Opportunity['lifecycleStatus'],
+  t: (key: string) => string,
+): { value: string; label: string } {
+  if (lifecycle && lifecycle !== 'active') {
+    return { value: LIFECYCLE_BADGE[lifecycle].text, label: t('listingStatusLabel') };
+  }
+  const days = deadline ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000) : NaN;
+  if (Number.isNaN(days)) return { value: t('listingNoDeadline'), label: t('listingDeadlineLabel') };
+  if (days < 0) return { value: t('listingClosedLabel'), label: t('listingStatusLabel') };
+  return {
+    value: `${days} ${days > 1 ? t('listingDaysPlural') : t('listingDaySingular')}`,
+    label: t('listingClosesInLabel'),
+  };
 }
 
 export function OpportunityListCard({ opportunity: o, matchScore, canScore, compatible, to, ctaLabel, loadedCount }: OpportunityListCardProps) {
   const { t } = useLang();
   const navigate = useNavigate();
   const destination = to ?? `/opportunites/${o.id}`;
-  const deadlineText = getDeadlineText(o.deadline, t);
+  const deadlineInfo = getDeadlineInfo(o.deadline, o.lifecycleStatus, t);
 
   let statusLine: { text: string; className: string };
   if (compatible !== undefined) {
@@ -145,8 +159,8 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
           )}
         </div>
         <div>
-          <p className="text-lg font-bold text-white leading-tight">{deadlineText}</p>
-          <p className="text-[11px] text-[#B9BBC8]">{t('listingClosesInLabel')}</p>
+          <p className="text-lg font-bold text-white leading-tight">{deadlineInfo.value}</p>
+          <p className="text-[11px] text-[#B9BBC8]">{deadlineInfo.label}</p>
         </div>
       </div>
 
