@@ -2979,30 +2979,48 @@ export default function OpportunityDetailPage() {
               <h2 className="text-lg font-bold text-white">{t('dossierDceTitle') || 'DCE — Dossier de consultation'}</h2>
             </div>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceSub') || 'Les documents du marché et leurs versions.'}</p>
-            <div className="flex items-center justify-between border-t border-[#17334D] pt-3">
+            <div className="border-t border-[#17334D] pt-3 space-y-3">
               {(() => {
-                // Was always pointing "Règlement de consultation" at
-                // official_url, which is the BOAMP/DECP notice page, not
-                // the actual RC document - client's exact complaint. If
-                // the ingestion pipeline actually parsed a real RC file
-                // (dceDocuments), link to that and use its real name;
-                // otherwise be honest about what official_url actually is.
-                const rcDoc = dceDocuments.find(d => d.document_label === 'RC' && (d.status === 'downloaded' || d.status === 'parsed'));
-                if (rcDoc) {
+                // Every ingested DCE file gets its own row (RC, CCTP, CCAP, DPGF...),
+                // not just the RC: the card promises "Les documents du marché" but
+                // used to show the RC only, so the other downloaded files were
+                // unreachable (28 Sep user test). Failed/pending files are shown
+                // honestly as unavailable instead of being silently dropped.
+                // official_url is the BOAMP/DECP notice page, not a DCE file, so it
+                // is only used for the fallback "Avis du marché" row below.
+                const usable = dceDocuments.filter(d => (d.status === 'downloaded' || d.status === 'parsed') && d.source_url);
+                const unavailable = dceDocuments.filter(d => d.status === 'failed');
+                const ORDER = ['RC', 'AAPC', 'CCAP', 'CCTP', 'DPGF', 'BPU', 'Autre'];
+                const rank = (l?: string | null) => { const i = ORDER.indexOf(l || 'Autre'); return i === -1 ? ORDER.length : i; };
+                const sorted = [...usable].sort((a, b) => rank(a.document_label) - rank(b.document_label));
+                const sizeLabel = (n?: number | null) => n ? (n >= 1048576 ? `${(n / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(n / 1024))} Ko`) : '';
+                if (sorted.length > 0) {
                   return (
                     <>
-                      <div>
-                        <p className="text-sm text-white font-semibold">{DCE_LABEL_NAMES.RC}</p>
-                        <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
-                      </div>
-                      <a href={rcDoc.source_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
-                        {t('dossierDceConsult') || 'Consulter'}
-                      </a>
+                      {sorted.map(doc => (
+                        <div key={doc.id} className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm text-white font-semibold">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || DCE_LABEL_NAMES.Autre}</p>
+                            <p className="text-[11px] text-[#5B6B80]">
+                              {[opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : '', sizeLabel(doc.file_size_bytes)].filter(Boolean).join(' · ')}
+                            </p>
+                          </div>
+                          <a href={doc.source_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
+                            {t('dossierDceConsult') || 'Consulter'}
+                          </a>
+                        </div>
+                      ))}
+                      {unavailable.map(doc => (
+                        <div key={doc.id} className="flex items-center justify-between gap-3">
+                          <p className="text-sm text-[#B9BBC8]">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || DCE_LABEL_NAMES.Autre}</p>
+                          <span className="text-xs text-[#5B6B80] shrink-0">{t('dossierDceNotAvailable') || 'Document pas encore disponible'}</span>
+                        </div>
+                      ))}
                     </>
                   );
                 }
                 return (
-                  <>
+                  <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm text-white font-semibold">{t('dossierDceNoticeName') || "Avis du marché"}</p>
                       <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
@@ -3012,18 +3030,11 @@ export default function OpportunityDetailPage() {
                         {t('dossierDceConsult') || 'Consulter'}
                       </a>
                     ) : (
-                      // D05 (contre-audit 15 Sep): this used to be a live
-                      // "Consulter" button with no href and no document
-                      // behind it - clicking it still called
-                      // markDceViewed('dce'), so "DCE consulté" flipped to
-                      // done and the progress bar jumped 20%→40% even
-                      // though nothing was actually shown ("aucune analyse
-                      // ne s'affiche" in the audit). Don't mark a step
-                      // complete for an action that didn't do anything;
-                      // say plainly that there's no document yet instead.
+                      // D05 (15 Sep audit): no href = no live button, and never mark
+                      // "DCE consulté" for an action that showed nothing.
                       <span className="text-xs text-[#5B6B80] shrink-0">{t('dossierDceNotAvailable') || 'Document pas encore disponible'}</span>
                     )}
-                  </>
+                  </div>
                 );
               })()}
             </div>

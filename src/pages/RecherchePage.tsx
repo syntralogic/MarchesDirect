@@ -151,9 +151,17 @@ export default function RecherchePage() {
     const n = normalizeFr(text.trim());
     return n === 'france' || n === 'france entiere' || n === 'toute la france';
   };
+  // A city handed over by the URL (home map / city search: ?city=Paris&lat=..&lng=..)
+  // stays a city even when its name is also a department name ("Paris" = dept 75).
+  // Without this the text-only resolver below flipped it to 'department', so the
+  // chosen radius (e.g. 50 km) was ignored and only dept 75 came back (28 Sep test).
+  const urlCityLockRef = useRef<string | null>(
+    initialCity && !initialRegion && !initialDepartment ? normalizeFr(initialCity.trim()) : null
+  );
   const resolveLocationField = (text: string): 'region' | 'department' | 'city' => {
     const parts = text.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length === 0 || isWholeFranceText(text)) return 'city';
+    if (urlCityLockRef.current && parts.length === 1 && normalizeFr(parts[0]) === urlCityLockRef.current) return 'city';
     if (parts.every((p) => regionNamesFolded.has(normalizeFr(p)))) return 'region';
     if (departements && parts.every((p) => departements.some((d) => d.code === p || normalizeFr(d.nom) === normalizeFr(p)))) {
       return 'department';
