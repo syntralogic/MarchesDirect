@@ -705,8 +705,14 @@ export default function OpportunityDetailPage() {
     return () => { cancelled = true; };
   }, [screen, isAuthenticated, id]);
 
+  // Remembers which opportunity's score request already failed. Without this,
+  // a failed request left matchScore null and scoreLoading false again, so this
+  // effect re-fired immediately and hammered the API in an endless loop (seen in
+  // the Render logs: the same match-score 404 several times per second).
+  const scoreFailedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
+    if (scoreFailedKeyRef.current === `${id}|${isAuthenticated}`) return;
     // Gate on this specific opportunity's own confirmation, not the
     // session-wide `companyKnown` - otherwise a company confirmed on a
     // different, earlier opportunity would compute (and cache) a score for
@@ -716,7 +722,10 @@ export default function OpportunityDetailPage() {
     setScoreError(null);
     opportunitiesApi.getMatchScore(id, getSessionId(), refineAnswersParam)
       .then(setMatchScore)
-      .catch(err => setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité.")))
+      .catch(err => {
+        scoreFailedKeyRef.current = `${id}|${isAuthenticated}`;
+        setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité."));
+      })
       .finally(() => setScoreLoading(false));
   }, [id, screen, matchScore, scoreLoading, t, isAuthenticated]);
 
