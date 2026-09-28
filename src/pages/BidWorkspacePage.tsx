@@ -82,6 +82,22 @@ export default function BidWorkspacePage() {
   // button and the Acte d'engagement row below - either one produces both.
   const handleGenerateDraft = async () => {
     if (!bid) return;
+    // 3rd client audit, point 9: "une ligne de bordereau à 20 € disparaît
+    // après préparation puis rechargement". Root cause - pricing rows are
+    // only ever persisted by the explicit "Enregistrer le bordereau"
+    // button (handleSavePricing) below; every row edit above only touches
+    // this component's own `pricing` state. Générer mon brouillon then
+    // blindly replaced that state with whatever pricing the server had on
+    // file (setPricing(result.bid.pricing_schedule_json) further down) -
+    // silently discarding a line the visitor had just typed but not yet
+    // saved, with no warning at all. Detect that case up front and refuse
+    // to overwrite unsaved local edits.
+    const savedPricing = JSON.stringify(bid.pricing_schedule_json || []);
+    const localPricing = JSON.stringify(pricing);
+    if (savedPricing !== localPricing) {
+      toast.error("Enregistrez d'abord le bordereau de prix (bouton « Enregistrer ») avant de générer le brouillon, pour ne pas perdre vos modifications.");
+      return;
+    }
     setGeneratingDraft(true);
     try {
       const result = await tendersApi.generateBidDocuments(bid.id);
@@ -90,8 +106,13 @@ export default function BidWorkspacePage() {
       if (result.bid.pricing_schedule_json) setPricing(result.bid.pricing_schedule_json);
       toast.success('Brouillon généré.');
     } catch (err) {
-      // Display custom error message instead of the backend error
-      toast.error('Cette action nécessite l\'intervention manuelle du chargé d\'affaires. Veuillez le contacter directement.');
+      // 3rd client audit, point 9: this always showed the same "contactez
+      // le chargé d'affaires" message no matter what actually failed - a
+      // wrong subscription state or an incomplete company profile (a real
+      // 400/403/500 the backend already describes in plain French) got
+      // masked behind copy that doesn't even apply to those cases. Show
+      // what the backend actually said.
+      toast.error(getApiErrorMessage(err, 'Échec de la génération du brouillon. Vérifiez que votre profil entreprise est complet.'));
     } finally {
       setGeneratingDraft(false);
     }
@@ -107,8 +128,7 @@ export default function BidWorkspacePage() {
       setBid(result.bid);
       toast.success('DC1, DC2 et DUME générés.');
     } catch (err) {
-      // Also display custom message for forms generation if needed
-      toast.error('Cette action nécessite l\'intervention manuelle du chargé d\'affaires. Veuillez le contacter directement.');
+      toast.error(getApiErrorMessage(err, 'Échec de la génération des documents. Vérifiez que votre profil entreprise est complet.'));
     } finally {
       setGeneratingForms(false);
     }
