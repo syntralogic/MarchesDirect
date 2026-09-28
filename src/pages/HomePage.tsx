@@ -829,14 +829,14 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
 
   useEffect(() => {
     if (!search.trim()) return;
-    const query = search.trim().toLowerCase();
+    const query = normalizeFr(search);
     if (tab === 'regions' && regionsGeoJson) {
       const matches = (regionsGeoJson.features as { properties: GeoFeatureProps }[]).filter(f =>
-        f.properties.nom.toLowerCase().includes(query)
+        normalizeFr(f.properties.nom).includes(query)
       );
       // An exact name wins over a substring hit ("Rhône" also matches
       // "Bouches-du-Rhône"), otherwise typing the full name never selected.
-      const exact = matches.filter(f => f.properties.nom.toLowerCase() === query);
+      const exact = matches.filter(f => normalizeFr(f.properties.nom) === query);
       const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
       if (picked.length === 1) {
         const match = picked[0].properties;
@@ -844,9 +844,9 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
       }
     } else if (tab === 'departments' && departementsGeoJson) {
       const matches = (departementsGeoJson.features as { properties: GeoFeatureProps }[]).filter(
-        f => f.properties.nom.toLowerCase().includes(query) || f.properties.code?.includes(search.trim())
+        f => normalizeFr(f.properties.nom).includes(query) || f.properties.code?.includes(search.trim())
       );
-      const exact = matches.filter(f => f.properties.nom.toLowerCase() === query || f.properties.code === search.trim());
+      const exact = matches.filter(f => normalizeFr(f.properties.nom) === query || f.properties.code === search.trim());
       const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
       if (picked.length === 1) {
         const match = picked[0].properties;
@@ -1065,7 +1065,7 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
                             : false;
                           const isSearchMatch =
                             search !== '' &&
-                            (geo.properties.nom.toLowerCase().includes(search.toLowerCase()) ||
+                            (normalizeFr(geo.properties.nom).includes(normalizeFr(search)) ||
                               (geo.properties.code?.includes(search) ?? false));
                           const labelText = tab === 'regions' ? geo.properties.nom : geo.properties.code;
                           const centroid = geoCentroid(geo as unknown as Parameters<typeof geoCentroid>[0]);
