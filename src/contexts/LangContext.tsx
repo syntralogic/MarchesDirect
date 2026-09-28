@@ -164,7 +164,7 @@ const frTranslations: Translations = {
   // things behind the same generic word, on two different screens.
   // "du marché" makes clear this one filters the market itself.
   searchStatut: 'Statut du marché',
-  searchStatutAll: 'Tous (en cours et nouveaux)',
+  searchStatutAll: 'Tous (ouverts d\'abord, puis clôturés)',
   // Client (25 Sep): homepage tiles and the region map count every status
   // (70 695 marchés publics total) but the search results default to
   // active-only (~11k) - clicking through from a big total landed on a much
@@ -1783,7 +1783,7 @@ const enTranslations: Translations = {
   searchAvailability1: 'Within 1 month',
   searchAvailability3: 'Within 3 months',
   searchStatut: 'Market status',
-  searchStatutAll: 'All (open and new)',
+  searchStatutAll: 'All (open first, then closed)',
   searchStatutEverything: 'All statuses (including closed)',
   searchStatutActive: 'Open',
   searchStatutExpired: 'Closed',
