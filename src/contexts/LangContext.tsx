@@ -207,6 +207,9 @@ const frTranslations: Translations = {
   listingViewOpportunity: 'Voir l\u2019opportunité',
   listingClosesInLabel: 'Avant clôture',
   listingClosedLabel: 'Clôturé',
+  listingStatusLabel: 'Statut',
+  listingDeadlineLabel: 'Date limite',
+  listingNoDeadline: 'Non communiquée',
   listingDaySingular: 'jour',
   listingDaysPlural: 'jours',
 
@@ -1821,6 +1824,9 @@ const enTranslations: Translations = {
   listingViewOpportunity: 'View opportunity',
   listingClosesInLabel: 'Before closing',
   listingClosedLabel: 'Closed',
+  listingStatusLabel: 'Status',
+  listingDeadlineLabel: 'Deadline',
+  listingNoDeadline: 'Not disclosed',
   listingDaySingular: 'day',
   listingDaysPlural: 'days',
 
