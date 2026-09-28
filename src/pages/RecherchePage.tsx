@@ -19,7 +19,7 @@ import { useTrades } from '@/hooks/use-trades';
 // autocomplete - not exported from there, small enough to duplicate here
 // rather than widen that file's surface for one shared helper.
 function normalizeFr(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-'’]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 export default function RecherchePage() {
@@ -162,6 +162,16 @@ export default function RecherchePage() {
   };
   const resolveLocationValue = (text: string, field: 'region' | 'department' | 'city'): string => {
     if (isWholeFranceText(text)) return '';
+    if (field === 'region') {
+      // Typed without accents/hyphens ("Ile de France") still has to reach
+      // the backend under the canonical region name.
+      return text
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => frenchRegions.find((r) => normalizeFr(r.name) === normalizeFr(p))?.name || p)
+        .join(',');
+    }
     if (field !== 'department' || !departements) return text;
     // Backend expects département codes, not names - map any typed names
     // ("Gironde") to their code ("33") the same way the map/autocomplete
@@ -350,7 +360,7 @@ export default function RecherchePage() {
   // the visitor had actually searched for. Every filter now round-trips
   // both ways: read here on mount, and written back below whenever it
   // changes (see the setSearchParams effect near `applied`).
-  const [statutFilter, setStatutFilter] = useState(searchParams.get('status') || '');
+  const [statutFilter, setStatutFilter] = useState(searchParams.get('status') === 'all' ? '' : (searchParams.get('status') || ''));
   // R04's deeper fix already classifies opportunities server-side; this is
   // just the control that was missing to actually filter by it.
   const [natureFilter, setNatureFilter] = useState<string[]>(
@@ -807,7 +817,6 @@ export default function RecherchePage() {
               className="w-full bg-[#031B30] border border-[#17334D] rounded-md pl-7 pr-6 py-2 text-[11px] text-white focus:outline-none appearance-none cursor-pointer"
             >
               <option value="">{t('searchStatutAll')}</option>
-              <option value="all">{t('searchStatutEverything')}</option>
               <option value="active">{t('searchStatutActive')}</option>
               <option value="expired">{t('searchStatutExpired')}</option>
               <option value="awarded">{t('searchStatutAwarded')}</option>
