@@ -29,11 +29,19 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Real totals: every marché in the database (all statuses, duplicates
+  // excluded) as the headline number, with the still-open ones underneath;
+  // registered users counted from the users table (not companies).
   const statCards = stats ? [
-    { labelKey: 'adminStatsTenders', value: stats.activeOpportunities.toLocaleString('fr-FR'), icon: FileText, color: 'text-orange', href: '/admin/tenders' },
-    { labelKey: 'adminStatsUsers', value: stats.totalCompanies.toLocaleString('fr-FR'), icon: Users, color: 'text-blue-400', href: '/admin/users' },
-    { labelKey: 'adminStatsMatches', value: stats.matchRate !== null ? `${stats.matchRate}%` : '—', icon: TrendingUp, color: 'text-green-400', href: '/admin/tenders' },
-    { labelKey: 'adminStatsRevenue', value: `€${Math.round(stats.monthlyRecurringRevenue).toLocaleString('fr-FR')}`, icon: Euro, color: 'text-yellow-400', href: '/admin/settings' },
+    {
+      labelKey: 'adminStatsTendersTotal',
+      value: (stats.totalOpportunities ?? stats.activeOpportunities).toLocaleString('fr-FR'),
+      sub: `${stats.activeOpportunities.toLocaleString('fr-FR')} ${t('adminStatsTenders').toLowerCase()}`,
+      icon: FileText, color: 'text-orange', href: '/admin/tenders',
+    },
+    { labelKey: 'adminStatsUsers', value: (stats.totalUsers ?? stats.totalCompanies).toLocaleString('fr-FR'), sub: '', icon: Users, color: 'text-blue-400', href: '/admin/users' },
+    { labelKey: 'adminStatsMatches', value: stats.matchRate !== null ? `${stats.matchRate}%` : '—', sub: '', icon: TrendingUp, color: 'text-green-400', href: '/admin/tenders' },
+    { labelKey: 'adminStatsRevenue', value: `€${Math.round(stats.monthlyRecurringRevenue).toLocaleString('fr-FR')}`, sub: '', icon: Euro, color: 'text-yellow-400', href: '/admin/settings' },
   ] : [];
 
   return (
@@ -61,6 +69,7 @@ export default function AdminDashboard() {
                   <stat.icon size={20} className={stat.color} />
                 </div>
                 <p className="text-xs text-[#B9BBC8]">{t(stat.labelKey)}</p>
+                {stat.sub && <p className="text-[11px] text-[#B9BBC8]/70 mt-0.5">{stat.sub}</p>}
               </button>
             ))}
           </div>

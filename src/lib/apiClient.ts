@@ -1098,6 +1098,8 @@ export type ApiSourceStat = {
 // only way to pull fresh listings was to wait for the every-2-hour cron.
 export type ApiAdminStats = {
   activeOpportunities: number;
+  totalOpportunities?: number;
+  totalUsers?: number;
   totalCompanies: number;
   matchRate: number | null;
   monthlyRecurringRevenue: number;
