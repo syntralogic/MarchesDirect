@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/use-debounce';
 import {
   Building2, Handshake, ChevronRight, Globe,
@@ -1366,6 +1366,7 @@ interface SectorsSectionProps {
 }
 
 function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionProps) {
+  const navigate = useNavigate();
   const { t } = useLang();
   // 26 Sep client spec ("Voici le texte complet avec cette précision
   // intégrée"): replace the sector cards entirely with a search+
@@ -1482,6 +1483,15 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
           value={query}
           onChange={(e) => { setQuery(e.target.value); setSuggestOpen(true); }}
           onFocus={() => setSuggestOpen(true)}
+          // 28 Sep user test: Enter did nothing here (only the "Voir les
+          // opportunités" link worked), unlike the city field above which
+          // already submits on Enter. Same destination as that link.
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            if (!query.trim() && selectedTrades.length === 0) return;
+            e.preventDefault();
+            navigate(resultsHref());
+          }}
           placeholder={selectedTrades.length > 0 ? 'Ajouter un métier…' : 'Votre métier, activité ou produit…'}
           className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
         />
