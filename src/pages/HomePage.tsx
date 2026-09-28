@@ -36,7 +36,7 @@ function touchAwareZoomFilter(event: { type: string; touches?: TouchList; ctrlKe
 }
 
 function normalizeFr(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-'’]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // ---------------------------------------------------------------------------
