@@ -2772,7 +2772,18 @@ export default function OpportunityDetailPage() {
                   }}
                   className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline disabled:opacity-50"
                 >
-                  {dossierDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {t('dossierPrefilledDownload') || 'Télécharger'}
+                  {/* 3rd client audit, point 9: "le libellé doit correspondre
+                      à l'action réelle" - this button always read
+                      "Télécharger" even while the onClick above (not
+                      dossierReady) actually just navigates to the
+                      candidature workspace with no file involved. Label it
+                      by what it's really about to do. */}
+                  {dossierDownloading
+                    ? <Loader2 size={13} className="animate-spin" />
+                    : dossierReady ? <Download size={13} /> : <FileText size={13} />}{' '}
+                  {dossierReady
+                    ? (t('dossierPrefilledDownload') || 'Télécharger')
+                    : (t('dossierPrefilledPrepare') || 'Préparer mon dossier')}
                 </button>
               </div>
             ) : leadCaptured ? (
