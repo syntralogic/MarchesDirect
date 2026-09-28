@@ -5,11 +5,10 @@ import { CallbackModal } from '@/components/CallbackModal';
 import {
   Target, ArrowRight, CheckCircle, FileText, Handshake,
   Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Building2,
-  Briefcase, FolderSearch, Trophy, Lock, ChevronRight, Users, ShieldCheck,
+  Briefcase, Trophy, Lock, ChevronRight, ShieldCheck,
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 
-import aboutImage from "@/assets/aboutImage.png";
 import mem1 from "@/assets/1.jpeg";
 import mem2 from "@/assets/2.jpeg";
 import mem3 from "@/assets/3.jpeg";

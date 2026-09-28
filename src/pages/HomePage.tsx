@@ -89,36 +89,6 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
   );
 }
 
-function HeroCounters() {
-  const { counts, loading } = useOpportunityCounts();
-  const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
-  return (
-    <>
-      <Link to="/marches-publics?status=TousStatuts" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
-        <div>
-          <div className="text-xs text-white font-semibold">Marchés publics</div>
-          {loading ? <div className="h-3 w-20 mt-1 rounded bg-[#17334D] animate-pulse" aria-hidden="true" /> : <div className="text-xs text-[#B9BBC8]">{`${fmt(counts.public_procurement)} opportunités`}</div>}
-        </div>
-        <ChevronRight size={16} className="text-[#B9BBC8]" />
-      </Link>
-      <Link to="/appels-doffres" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
-        <div>
-          <div className="text-xs text-white font-semibold">Appels d'offres privés</div>
-          {loading ? <div className="h-3 w-20 mt-1 rounded bg-[#17334D] animate-pulse" aria-hidden="true" /> : <div className="text-xs text-[#B9BBC8]">{`${fmt(counts.tender)} opportunités`}</div>}
-        </div>
-        <ChevronRight size={16} className="text-[#B9BBC8]" />
-      </Link>
-      <Link to="/sous-traitance" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center justify-between hover:border-orange/40 transition-colors">
-        <div>
-          <div className="text-xs text-white font-semibold">Sous-traitance</div>
-          {loading ? <div className="h-3 w-20 mt-1 rounded bg-[#17334D] animate-pulse" aria-hidden="true" /> : <div className="text-xs text-[#B9BBC8]">{`${fmt(counts.subcontracting)} opportunités`}</div>}
-        </div>
-        <ChevronRight size={16} className="text-[#B9BBC8]" />
-      </Link>
-    </>
-  );
-}
-
 function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
   // 27 Sep client decision (reverses the 26 Sep change below): these tiles
   // were switched to the active-only count so the number would never
@@ -860,11 +830,6 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
     if (tab === 'regions') return selectedRegions;
     if (tab === 'departments') return selectedDepts;
     return selectedCities;
-  };
-  const clearAllSelections = () => {
-    if (tab === 'regions') setSelectedRegions([]);
-    else if (tab === 'departments') setSelectedDepts([]);
-    else setSelectedCities([]);
   };
   const removeSelection = (item: any) => {
     if (tab === 'regions') setSelectedRegions(prev => prev.filter(r => r.code !== item.code));
