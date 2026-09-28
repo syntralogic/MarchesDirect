@@ -453,6 +453,7 @@ interface GeographicSectionProps {
 // lifted, to keep this change as small as the bug it fixes.
 function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, selectedDepts, setSelectedDepts }: GeographicSectionProps) {
   const { t } = useLang();
+  const navigate = useNavigate();
   const { counts: siteWideCounts } = useOpportunityCounts();
   const [search, setSearch] = useState('');
   const [selectedCities, setSelectedCities] = useState<{name: string; coords: [number, number]}[]>([]);
@@ -833,16 +834,22 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
       const matches = (regionsGeoJson.features as { properties: GeoFeatureProps }[]).filter(f =>
         f.properties.nom.toLowerCase().includes(query)
       );
-      if (matches.length === 1) {
-        const match = matches[0].properties;
+      // An exact name wins over a substring hit ("Rhône" also matches
+      // "Bouches-du-Rhône"), otherwise typing the full name never selected.
+      const exact = matches.filter(f => f.properties.nom.toLowerCase() === query);
+      const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
+      if (picked.length === 1) {
+        const match = picked[0].properties;
         setSelectedRegions(prev => (prev.some(r => r.code === match.code) ? prev : [...prev, match]));
       }
     } else if (tab === 'departments' && departementsGeoJson) {
       const matches = (departementsGeoJson.features as { properties: GeoFeatureProps }[]).filter(
         f => f.properties.nom.toLowerCase().includes(query) || f.properties.code?.includes(search.trim())
       );
-      if (matches.length === 1) {
-        const match = matches[0].properties;
+      const exact = matches.filter(f => f.properties.nom.toLowerCase() === query || f.properties.code === search.trim());
+      const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
+      if (picked.length === 1) {
+        const match = picked[0].properties;
         setSelectedDepts(prev => (prev.some(d => d.code === match.code) ? prev : [...prev, match]));
       }
     }
@@ -1002,12 +1009,23 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
+                  // 28 Sep user test: Enter did nothing in this field (and the
+                  // arrow next to it was a no-op), so typing "Bretagne" only
+                  // highlighted the map - the visitor had to scroll below it to
+                  // find the real CTA. Same destination as that CTA.
+                  onKeyDown={e => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    if ((tab === 'regions' ? selectedRegions : selectedDepts).length > 0) navigate(buildSearchUrl());
+                  }}
                   placeholder={tab === 'regions' ? 'Grand Est' : 'Bas-Rhin'}
                   className="w-full bg-[#031B30] border border-[#17334D] rounded-xl pl-9 pr-3 py-3 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
                 />
               </div>
               <button
-                onClick={() => setSearch(s => s)}
+                onClick={() => {
+                  if ((tab === 'regions' ? selectedRegions : selectedDepts).length > 0) navigate(buildSearchUrl());
+                }}
                 className="w-12 h-12 rounded-xl bg-orange text-white flex items-center justify-center hover:bg-orange/90 transition-colors"
                 aria-label="Rechercher"
               >
