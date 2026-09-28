@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
@@ -92,6 +92,24 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// 28 Sep user test: nothing reset the scroll position on navigation, so
+// clicking "Voir les opportunités" from the bottom of the home page opened
+// /recherche already scrolled ~3700px down - the visitor landed in the middle
+// of the results list with the search form and filters out of sight.
+// Only reacts to a real page change (pathname) on a forward navigation: a
+// back/forward (POP) keeps the browser's own restoration, an #anchor keeps
+// its own scroll target, and query-string edits on the same page (filters
+// syncing to the URL) never yank the page back to the top.
+const ScrollToTop: React.FC = () => {
+  const { pathname, hash } = useLocation();
+  const navType = useNavigationType();
+  useEffect(() => {
+    if (navType === 'POP' || hash) return;
+    window.scrollTo(0, 0);
+  }, [pathname, hash, navType]);
+  return null;
+};
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -100,6 +118,7 @@ const App: React.FC = () => {
           <FavoritesProvider>
           <CompanyKnownProvider>
           <BrowserRouter>
+            <ScrollToTop />
             <AppLayout>
             <Routes>
               {/* Public Routes */}

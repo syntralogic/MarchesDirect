@@ -20,7 +20,13 @@ export function useTrades() {
     tradesApi.list()
       .then((data: Trade[]) => {
         if (cancelled) return;
-        setTrades(Array.isArray(data) ? data.filter(t => t?.name && t?.id) : []);
+        // GET /api/trades returns numeric ids (13), while every consumer
+        // compares them to strings coming from the URL (?trade_id=13).
+        // The strict === in RecherchePage never matched, so the selected
+        // métier chips never rendered (found in the 28 Sep user test).
+        setTrades(Array.isArray(data)
+          ? data.filter(t => t?.name && t?.id != null).map(t => ({ ...t, id: String(t.id) }))
+          : []);
       })
       .catch(() => {
         if (!cancelled) setTrades([]);
