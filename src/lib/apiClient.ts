@@ -1056,6 +1056,7 @@ export const seoPagesApi = {
 };
 
 export type ApiDataSource = {
+  id?: number;
   code: string;
   name: string;
   active: boolean;
@@ -1067,6 +1068,14 @@ export type ApiDataSource = {
 // description/estimated_value) from GET /api/admin/data-sources'
 // sourceStats - answers "which source, how many opportunities, how
 // complete" directly instead of only showing connector on/off state.
+export type ApiConnectorRun = {
+  source_id: number;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  error_message?: string | null;
+};
+
 export type ApiSourceStat = {
   source_id: number;
   code: string;
@@ -1100,13 +1109,14 @@ export const adminApi = {
     const { data } = await apiClient.get<ApiAdminStats>('/admin/stats');
     return data;
   },
-  dataSources: async (): Promise<{ sources: ApiDataSource[]; sourceStats: ApiSourceStat[] }> => {
+  dataSources: async (): Promise<{ sources: ApiDataSource[]; sourceStats: ApiSourceStat[]; recentRuns?: ApiConnectorRun[] }> => {
     const { data } = await apiClient.get('/admin/data-sources');
     return data;
   },
-  runDataSource: async (code: string): Promise<unknown> => {
-    const { data } = await apiClient.post(`/admin/data-sources/${code}/run`);
-    return data;
+  // 202 = started in the background (long-running connectors: BOAMP, DECP).
+  runDataSource: async (code: string): Promise<{ background: boolean }> => {
+    const res = await apiClient.post(`/admin/data-sources/${code}/run`);
+    return { background: res.status === 202 };
   },
   opportunities: async (params: { q?: string; status?: string; page?: number; limit?: number }) => {
     const { data } = await apiClient.get<{ results: ApiAdminOpportunity[]; pagination: ApiPagination }>('/admin/opportunities', { params });

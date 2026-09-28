@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Save, Globe, Shield, Bell, Check, Database, RefreshCw } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
-import { adminApi, type ApiDataSource, type ApiSourceStat } from '@/lib/apiClient';
+import { adminApi, type ApiDataSource, type ApiSourceStat, type ApiConnectorRun } from '@/lib/apiClient';
 
 export default function AdminSettings() {
   const { t, lang } = useLang();
@@ -12,28 +12,55 @@ export default function AdminSettings() {
   const [sourceStats, setSourceStats] = useState<ApiSourceStat[] | null>(null);
   const [sourcesError, setSourcesError] = useState(false);
   const [runningCode, setRunningCode] = useState<string | null>(null);
-  const [runResult, setRunResult] = useState<{ code: string; ok: boolean } | null>(null);
+  const [runResult, setRunResult] = useState<{ code: string; state: 'ok' | 'failed' | 'background' | 'already' } | null>(null);
+  const [recentRuns, setRecentRuns] = useState<ApiConnectorRun[]>([]);
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const loadSources = () => {
+  const loadSources = () =>
     adminApi
       .dataSources()
       .then((res) => {
         setSources(res.sources);
         setSourceStats(res.sourceStats || []);
+        setRecentRuns(res.recentRuns || []);
+        // A later successful load must clear an earlier failure - before,
+        // the red "Impossible de charger" stayed on screen next to data
+        // that had in fact loaded fine.
+        setSourcesError(false);
       })
       .catch(() => setSourcesError(true));
+
+  useEffect(() => {
+    loadSources();
+    return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
+  }, []);
+
+  // Long connectors (BOAMP/DECP) run server-side after the 202: poll until
+  // the source has a fresh finished log, so the panel updates by itself.
+  const pollUntilDone = () => {
+    if (pollTimer.current) clearInterval(pollTimer.current);
+    const startedPolling = Date.now();
+    pollTimer.current = setInterval(async () => {
+      await loadSources();
+      if (Date.now() - startedPolling > 15 * 60 * 1000) {
+        if (pollTimer.current) clearInterval(pollTimer.current);
+      }
+    }, 8000);
   };
 
-  useEffect(loadSources, []);
+  const latestRunFor = (sourceId: number | undefined) =>
+    sourceId === undefined ? undefined : recentRuns.find((r) => r.source_id === sourceId);
 
   const runSource = async (code: string) => {
     setRunningCode(code);
     setRunResult(null);
     try {
-      await adminApi.runDataSource(code);
-      setRunResult({ code, ok: true });
-    } catch {
-      setRunResult({ code, ok: false });
+      const { background } = await adminApi.runDataSource(code);
+      setRunResult({ code, state: background ? 'background' : 'ok' });
+      if (background) pollUntilDone();
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      setRunResult({ code, state: status === 409 ? 'already' : 'failed' });
     } finally {
       setRunningCode(null);
       loadSources();
@@ -72,7 +99,12 @@ export default function AdminSettings() {
           </h2>
           <p className="text-xs text-[#B9BBC8] mb-4">{t('adminDataSourcesDesc')}</p>
 
-          {sourcesError && <p className="text-xs text-red-400">{t('adminLoadError') || 'Erreur de chargement.'}</p>}
+          {sourcesError && (
+            <p className="text-xs text-red-400 flex items-center gap-2 flex-wrap">
+              {t('adminLoadError') || 'Erreur de chargement.'}
+              <button onClick={() => loadSources()} className="underline hover:text-red-300">{t('adminRetry')}</button>
+            </p>
+          )}
           {!sourcesError && !sources && <p className="text-xs text-[#B9BBC8]">{t('adminLoading') || 'Chargement...'}</p>}
 
           {sources && (
@@ -99,14 +131,19 @@ export default function AdminSettings() {
                       className="inline-flex items-center gap-1.5 text-[11px] font-semibold border border-[#17334D] text-[#B9BBC8] hover:text-white hover:border-orange/40 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
                       <RefreshCw size={12} className={runningCode === s.code ? 'animate-spin' : ''} />
-                      {runningCode === s.code ? t('adminRunning') : t('adminRunNow')}
+                      {runningCode === s.code ? t('adminRunning') : latestRunFor(s.id)?.status === 'failed' ? t('adminResume') : t('adminRunNow')}
                     </button>
                   </div>
-                  {runResult && runResult.code === s.code && (
-                    <span className={`text-[11px] w-full ${runResult.ok ? 'text-green-400' : 'text-red-400'}`}>
-                      {runResult.ok ? t('adminRunSuccess') : t('adminRunFailed')}
+                  {runResult && runResult.code === s.code ? (
+                    <span className={`text-[11px] w-full ${runResult.state === 'failed' ? 'text-red-400' : runResult.state === 'ok' ? 'text-green-400' : 'text-[#B9BBC8]'}`}>
+                      {runResult.state === 'ok' && t('adminRunSuccess')}
+                      {runResult.state === 'failed' && t('adminRunFailed')}
+                      {runResult.state === 'background' && t('adminRunBackground')}
+                      {runResult.state === 'already' && t('adminRunAlready')}
                     </span>
-                  )}
+                  ) : latestRunFor(s.id)?.status === 'failed' ? (
+                    <span className="text-[11px] w-full text-red-400">{t('adminLastRunFailed')}</span>
+                  ) : null}
                 </div>
               ))}
             </div>
