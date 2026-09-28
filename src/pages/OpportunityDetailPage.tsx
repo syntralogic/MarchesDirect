@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
   CheckCircle2, XCircle, HelpCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
-  Building2, Users, TrendingUp, Pencil, Award, User, ThumbsUp, Info, Search, Copy, Send,
+  Building2, Users, TrendingUp, Pencil, Award, User, Search, Copy, Send,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -165,10 +165,6 @@ const JOURNEY_LABEL: Record<string, { label: string; icon: typeof Landmark }> = 
   subcontracting: { label: 'Sous-traitance', icon: Handshake },
 };
 
-// Placeholder near-term slots, matching the client's prototype (e.g.
-// "Aujourd'hui · 17h30"). Not backed by a real staff calendar yet.
-const CALLBACK_SLOTS = ["Aujourd'hui · 17h30", "Demain · 08h30", "Demain · 14h00", 'Après-demain · 10h00'];
-
 // Which opportunities THIS visitor has actually identified a company for,
 // scoped per-opportunity-id rather than relying on CompanyKnownContext's
 // `companyKnown` alone. `companyKnown` is session-wide and, once true from
@@ -266,8 +262,6 @@ export default function OpportunityDetailPage() {
   // enregistrées" (favorites) the client's spec names for this selector.
   const [savedOpportunities, setSavedOpportunities] = useState<{ id: string; title: string; location_city: string | null; estimated_value: number | null }[]>([]);
   
-  // FIX 2: No auto-advance - users must click "Continuer" to go to screen 2
-  const autoAdvancedRef = useRef(false);
   // Client's 13 Sep concordance-apercu screenshots: the "Recevoir mon
   // dossier pré-rempli" CTA sits right under the score card (before the
   // two accordions below), always visible - not gated behind auth/
@@ -344,7 +338,6 @@ export default function OpportunityDetailPage() {
   const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [callbackConfirmed, setCallbackConfirmed] = useState(false);
   const [quickPassword, setQuickPassword] = useState('');
   const [quickPasswordSubmitting, setQuickPasswordSubmitting] = useState(false);
@@ -848,27 +841,6 @@ export default function OpportunityDetailPage() {
       .then(setChecklistDocs)
       .catch(() => {});
   }, [isAuthenticated]);
-
-  const handleBookSlot = async (slotLabel: string) => {
-    if (!id) return;
-    if (!slotForm.email) {
-      setSlotError(t('followUpNeedsContact') || 'Identifiez votre entreprise et enregistrez vos coordonnées ci-dessus avant de choisir un créneau.');
-      setContactChoice(null);
-      return;
-    }
-    setSelectedSlot(slotLabel);
-    setSlotSubmitting('slot');
-    setSlotError(null);
-    try {
-      const result = await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'slot', slotLabel });
-      setAccess({ identityUnlocked: result.identityUnlocked });
-    } catch (err) {
-      setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Merci de réessayer."));
-      setSelectedSlot(null);
-    } finally {
-      setSlotSubmitting(null);
-    }
-  };
 
   const handleCallback = async () => {
     if (!id) return;
@@ -3198,6 +3170,37 @@ export default function OpportunityDetailPage() {
             )}
           </div>
 
+          {!isAuthenticated && callbackConfirmed && !quickPasswordDismissed && (
+            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+              <h2 className="text-sm font-bold text-white mb-1">{t('quickPasswordTitle') || 'Créer mon accès'}</h2>
+              <p className="text-xs text-[#B9BBC8] mb-3">{t('quickPasswordSub') || 'Ajoutez un mot de passe pour retrouver votre dossier et suivre son avancement.'}</p>
+              {quickPasswordDone ? (
+                <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                  <CheckCircle2 size={14} className="shrink-0" /> {t('quickPasswordDone') || 'Votre accès a été créé.'}
+                </div>
+              ) : (
+                <form onSubmit={handleQuickPassword} className="space-y-2">
+                  <input
+                    type="password"
+                    value={quickPassword}
+                    onChange={e => setQuickPassword(e.target.value)}
+                    placeholder={t('quickPasswordPlaceholder') || 'Mot de passe (8 caractères min.)'}
+                    className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                  />
+                  {quickPasswordError && <p className="text-xs text-red-400">{quickPasswordError}</p>}
+                  <div className="flex items-center gap-3 pt-1">
+                    <button type="submit" disabled={quickPasswordSubmitting} className="flex-1 flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                      {quickPasswordSubmitting ? <Loader2 size={14} className="animate-spin" /> : (t('quickPasswordSubmit') || 'Créer mon accès')}
+                    </button>
+                    <button type="button" onClick={() => setQuickPasswordDismissed(true)} className="text-xs text-[#5B6B80] hover:text-white shrink-0">
+                      {t('quickPasswordLater') || 'Plus tard'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
             <h2 className="text-lg font-bold text-white mb-3">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</h2>
             <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubMoreSub') || "Retrouvez vos opportunités enregistrées et choisissez les prochaines candidatures."}</p>
@@ -3224,8 +3227,6 @@ export default function OpportunityDetailPage() {
   );
 }
 
-type DossierPrepItem = { label: string; ready: boolean; readyText: string; pendingText: string };
-
 // "Votre entreprise" card (client's screenshot, écran "Concordance"): icon +
 // muted label above, white value below - a missing value never leaves a
 // blank cell or an omitted row, it shows the caller's explicit fallback
@@ -3246,140 +3247,6 @@ function CompanyInfoRow({ icon: Icon, label, value, empty }: { icon: typeof MapP
         <p className="text-[10px] text-[#5B6B80]">{label}</p>
         <p className={isKnown ? 'text-white font-medium' : 'text-[#5B6B80] italic'}>{value || empty || '—'}</p>
       </div>
-    </div>
-  );
-}
-
-function DossierPrepBlock({
-  t, siretCompany, matchScore, checklistDocs, checklistRefCount, onContactManager,
-}: {
-  t: (key: string) => string;
-  siretCompany: ApiSiretCompany | null;
-  matchScore: ApiMatchScore | null;
-  checklistDocs: ApiCompanyDocument[];
-  checklistRefCount: number;
-  onContactManager: () => void;
-}) {
-  const hasDoc = (type: string) => checklistDocs.some(d => d.document_type === type);
-
-  const items: DossierPrepItem[] = [
-    { label: t('prepIdentity') || "Identité de l'entreprise", ready: !!siretCompany?.name, readyText: t('prepPrefilled') || 'Préremplie', pendingText: t('prepToIdentify') || 'À identifier' },
-    { label: t('prepPresentation') || "Présentation de l'entreprise", ready: !!siretCompany?.activity, readyText: t('prepPrepared') || 'Préparée', pendingText: t('prepToComplete') || 'À compléter' },
-    { label: t('prepRequirements') || 'Exigences du marché', ready: !!matchScore, readyText: t('prepAnalyzed') || 'Analysées', pendingText: t('prepToAnalyze') || 'À analyser' },
-    { label: t('prepKbis') || 'Extrait KBIS', ready: hasDoc('kbis'), readyText: t('checklistAdded') || 'Ajouté', pendingText: t('checklistAdd') || 'À ajouter' },
-    { label: t('prepInsurance') || 'Assurance décennale', ready: hasDoc('insurance'), readyText: t('checklistAdded') || 'Ajouté', pendingText: t('checklistAdd') || 'À ajouter' },
-    { label: t('prepReferences') || 'Références similaires', ready: checklistRefCount > 0, readyText: t('checklistAdded') || 'Ajouté', pendingText: t('prepToComplete') || 'À compléter' },
-    // Never marked ready here: no free draft-generation runs before a
-    // chargé d'affaires is involved (client's explicit rule against
-    // inventing documents or auto-picking a price).
-    { label: t('prepDc1') || 'Brouillon DC1', ready: false, readyText: '', pendingText: t('prepWithManager') || 'À préparer avec un chargé d\'affaires' },
-    { label: t('prepDc2') || 'Brouillon DC2', ready: false, readyText: '', pendingText: t('prepWithManager') || 'À préparer avec un chargé d\'affaires' },
-    { label: t('prepMemo') || 'Trame du mémoire technique', ready: false, readyText: '', pendingText: t('prepWithManager') || 'À préparer avec un chargé d\'affaires' },
-    { label: t('prepPrice') || "Prix de l'offre", ready: false, readyText: '', pendingText: t('prepToValidate') || 'À valider' },
-  ];
-  const readyCount = items.filter(i => i.ready).length;
-
-  return (
-    <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-      <h2 className="text-sm font-bold text-white mb-1">{t('prepTitle') || 'Votre candidature peut déjà commencer'}</h2>
-      <p className="text-xs text-orange font-semibold mb-4">
-        {(t('prepSummary') || '{ready} éléments déjà préparés — {pending} informations à compléter')
-          .replace('{ready}', String(readyCount)).replace('{pending}', String(items.length - readyCount))}
-      </p>
-      <div className="space-y-2 mb-4">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
-            <span className="text-[#B9BBC8]">{item.label}</span>
-            {item.ready ? (
-              <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {item.readyText}</span>
-            ) : (
-              <span className="text-[#5B6B80] shrink-0">{item.pendingText}</span>
-            )}
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={onContactManager}
-        className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
-      >
-        <PhoneCall size={14} /> {t('prepCta') || 'Finaliser ce dossier avec un chargé d\'affaires'}
-      </button>
-      <p className="text-[11px] text-[#5B6B80] text-center mt-2.5">{t('prepPromise') || 'Aucun dossier lancé sans votre accord.'}</p>
-    </div>
-  );
-}
-
-// "Affinez votre analyse" (prototype V17, section 3.4) - an optional,
-// collapsed-by-default refinement block. Three questions, each its own
-// sub-accordion, each answered with Oui / Non / Je ne sais pas buttons only
-// - the spec is explicit that there's no free-text field here. Purely local
-// UI state: the spec describes the interaction, not a backend contract for
-// storing the answers, so nothing is invented server-side for this.
-type RefineAnswer = 'oui' | 'non' | 'nsp' | null;
-
-function RefineAnalysisAccordion({ t }: { t: (key: string) => string }) {
-  const [open, setOpen] = useState(false);
-  const [answers, setAnswers] = useState<Record<string, RefineAnswer>>({ q1: null, q2: null, q3: null });
-  const [expandedQ, setExpandedQ] = useState<string | null>(null);
-
-  const questions = [
-    { key: 'q1', label: t('refineQ1') || 'Disposez-vous de la qualification professionnelle requise ?' },
-    { key: 'q2', label: t('refineQ2') || 'Avez-vous une référence récente sur un chantier comparable ?' },
-    { key: 'q3', label: t('refineQ3') || "Pouvez-vous mobiliser l'équipe nécessaire sur ce délai ?" },
-  ];
-
-  return (
-    <div className="bg-[#061D32] border border-[#17334D] rounded-2xl overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between p-5 text-left"
-      >
-        <div>
-          <h2 className="text-sm font-bold text-white">{t('refineTitle') || 'Affinez votre analyse'}</h2>
-          <p className="text-[11px] text-[#B9BBC8] mt-0.5">{t('refineOptional') || 'Optionnel · 3 questions'}</p>
-        </div>
-        <ChevronDown size={16} className={`text-[#B9BBC8] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="px-5 pb-5 space-y-2">
-          {questions.map(q => (
-            <div key={q.key} className="border border-[#17334D] rounded-xl overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setExpandedQ(cur => (cur === q.key ? null : q.key))}
-                className="w-full flex items-center justify-between p-3 text-left bg-[#031B30]"
-              >
-                <span className="text-xs text-white font-medium pr-2">{q.label}</span>
-                <div className="flex items-center gap-2 shrink-0">
-                  {answers[q.key] && (
-                    <span className="text-[10px] font-semibold text-orange uppercase">
-                      {answers[q.key] === 'oui' ? (t('refineYes') || 'Oui') : answers[q.key] === 'non' ? (t('refineNo') || 'Non') : (t('refineUnsure') || 'Je ne sais pas')}
-                    </span>
-                  )}
-                  <ChevronDown size={13} className={`text-[#5B6B80] transition-transform ${expandedQ === q.key ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-              {expandedQ === q.key && (
-                <div className="flex gap-2 p-3 bg-[#061D32]">
-                  {(['oui', 'non', 'nsp'] as const).map(val => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setAnswers(a => ({ ...a, [q.key]: val }))}
-                      className={`flex-1 text-xs font-semibold rounded-lg py-2 border transition-colors ${answers[q.key] === val ? 'border-orange bg-orange/10 text-white' : 'border-[#5b6d7d] text-white hover:border-orange/50'}`}
-                    >
-                      {val === 'oui' ? (t('refineYes') || 'Oui') : val === 'non' ? (t('refineNo') || 'Non') : (t('refineUnsure') || 'Je ne sais pas')}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
