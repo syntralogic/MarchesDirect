@@ -797,8 +797,33 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
   })();
   const zoomLevelLabel = labelDensity >= 4 ? 'Élevé' : labelDensity >= 2 ? 'Moyen' : 'Faible';
 
+  // BUG (found in user testing, 29 Sep): typing a name letter-by-letter can
+  // pass through an intermediate string that uniquely (if briefly) matches a
+  // *different* region/department than the one being typed - e.g. "Cotes d
+  // Armor" passes through "cote", which uniquely substring-matches
+  // "Provence-Alpes-Côte d'Azur". That got auto-added to selectedRegions and,
+  // because this effect only ever added and never removed, it stayed
+  // selected (and got searched on Enter) even once further typing made it no
+  // longer match anything. These refs remember which region/department (if
+  // any) THIS effect auto-added for the current tab, so a later run can undo
+  // that specific auto-add when it's no longer the unique match - without
+  // touching a region/department the user selected by clicking the map.
+  const autoMatchedRegionCode = useRef<string | null>(null);
+  const autoMatchedDeptCode = useRef<string | null>(null);
   useEffect(() => {
-    if (!search.trim()) return;
+    if (!search.trim()) {
+      if (autoMatchedRegionCode.current) {
+        const staleCode = autoMatchedRegionCode.current;
+        setSelectedRegions(prev => prev.filter(r => r.code !== staleCode));
+        autoMatchedRegionCode.current = null;
+      }
+      if (autoMatchedDeptCode.current) {
+        const staleCode = autoMatchedDeptCode.current;
+        setSelectedDepts(prev => prev.filter(d => d.code !== staleCode));
+        autoMatchedDeptCode.current = null;
+      }
+      return;
+    }
     const query = normalizeFr(search);
     if (tab === 'regions' && regionsGeoJson) {
       const matches = (regionsGeoJson.features as { properties: GeoFeatureProps }[]).filter(f =>
@@ -808,20 +833,32 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
       // "Bouches-du-Rhône"), otherwise typing the full name never selected.
       const exact = matches.filter(f => normalizeFr(f.properties.nom) === query);
       const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
-      if (picked.length === 1) {
+      const newCode = picked.length === 1 ? picked[0].properties.code : null;
+      if (autoMatchedRegionCode.current && autoMatchedRegionCode.current !== newCode) {
+        const staleCode = autoMatchedRegionCode.current;
+        setSelectedRegions(prev => prev.filter(r => r.code !== staleCode));
+      }
+      if (newCode && newCode !== autoMatchedRegionCode.current) {
         const match = picked[0].properties;
         setSelectedRegions(prev => (prev.some(r => r.code === match.code) ? prev : [...prev, match]));
       }
+      autoMatchedRegionCode.current = newCode;
     } else if (tab === 'departments' && departementsGeoJson) {
       const matches = (departementsGeoJson.features as { properties: GeoFeatureProps }[]).filter(
         f => normalizeFr(f.properties.nom).includes(query) || f.properties.code?.includes(search.trim())
       );
       const exact = matches.filter(f => normalizeFr(f.properties.nom) === query || f.properties.code === search.trim());
       const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
-      if (picked.length === 1) {
+      const newCode = picked.length === 1 ? picked[0].properties.code : null;
+      if (autoMatchedDeptCode.current && autoMatchedDeptCode.current !== newCode) {
+        const staleCode = autoMatchedDeptCode.current;
+        setSelectedDepts(prev => prev.filter(d => d.code !== staleCode));
+      }
+      if (newCode && newCode !== autoMatchedDeptCode.current) {
         const match = picked[0].properties;
         setSelectedDepts(prev => (prev.some(d => d.code === match.code) ? prev : [...prev, match]));
       }
+      autoMatchedDeptCode.current = newCode;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, tab, regionsGeoJson, departementsGeoJson]);
