@@ -638,8 +638,23 @@ export default function RecherchePage() {
                       const searchTerm = searchTermForSuggestion(s);
                       setQuery(searchTerm);
                       setQuerySuggestOpen(false);
-                      setLocationField(resolveLocationField(location));
-                      setApplied({ query: searchTerm, location: resolveLocationValue(location, resolveLocationField(location)), montantMin, montantMax });
+                      // 29 Sep fix: same draft-loss bug the chip-remove
+                      // button and "Rechercher"/Enter already handle (see
+                      // handleSearch's effectiveLocation) - a second
+                      // département/région typed but not yet clicked from
+                      // its own suggestion dropdown was silently dropped
+                      // here, because this handler applied `location`
+                      // directly instead of folding locationDraft in first.
+                      const effectiveLocation = locationChips.length > 0 && locationDraft.trim()
+                        ? [...locationChips, locationDraft.trim()].join(', ')
+                        : location;
+                      if (effectiveLocation !== location) {
+                        setLocation(effectiveLocation);
+                        setLocationDraft('');
+                      }
+                      const field = resolveLocationField(effectiveLocation);
+                      setLocationField(field);
+                      setApplied({ query: searchTerm, location: resolveLocationValue(effectiveLocation, field), montantMin, montantMax });
                     }}
                     className="w-full text-left px-2.5 py-2 text-[11px] text-white hover:bg-orange/10 border-b border-[#17334D] last:border-b-0"
                   >
