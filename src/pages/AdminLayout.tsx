@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Users, Settings, UserCheck, CreditCard, Building,
-  Bell, Search, LogOut, Menu, X, CheckCircle2, XCircle, Mail
+  Bell, Search, LogOut, ArrowLeft, Menu, X, CheckCircle2, XCircle, Mail
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ADMIN_LINKS = [
   { key: 'adminDashboard', href: '/admin', icon: LayoutDashboard },
@@ -25,6 +26,8 @@ export function showToast(message: string, type: 'success' | 'error' = 'success'
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLang();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: 'success' | 'error' }>>([]);
 
@@ -40,6 +43,15 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     window.addEventListener('app-toast', handleToast);
     return () => window.removeEventListener('app-toast', handleToast);
   }, []);
+
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Admin';
+  const initials = (displayName.split(' ').map(w => w[0]).join('').slice(0, 2) || 'AD').toUpperCase();
+
+  const handleLogout = () => {
+    setMobileOpen(false);
+    logout();
+    navigate('/connexion', { replace: true });
+  };
 
   const isActive = (href: string) =>
     href === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(href);
@@ -75,20 +87,27 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <div className="px-3 py-6 border-t border-[#17334D]">
         <div className="flex items-center gap-3 px-4 mb-4">
           <div className="w-9 h-9 rounded-full bg-orange/20 border border-orange/30 flex items-center justify-center text-xs font-bold text-orange">
-            AD
+            {initials}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-white truncate">Admin</p>
-            <p className="text-xs text-[#B9BBC8] truncate">admin@marchesdirect.fr</p>
+            <p className="text-sm font-bold text-white truncate">{displayName}</p>
+            <p className="text-xs text-[#B9BBC8] truncate">{user?.email ?? ''}</p>
           </div>
         </div>
         <Link
           to="/"
           className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors"
         >
-          <LogOut size={16} />
+          <ArrowLeft size={16} />
           {t('backToSite')}
         </Link>
+        <button
+          onClick={handleLogout}
+          className="mt-1 w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-[#B9BBC8] hover:text-red-400 hover:bg-red-400/10 transition-colors"
+        >
+          <LogOut size={16} />
+          {t('profileLogout')}
+        </button>
       </div>
     </div>
   );
