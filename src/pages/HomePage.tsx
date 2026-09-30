@@ -269,18 +269,21 @@ function DemoWalkthroughSection() {
 // TESTIMONIALS ("Des entrepreneurs racontent leur candidature.")
 // ---------------------------------------------------------------------------
 function TestimonialsSection() {
-  // Client (20 Sep): "Les trois photos que je t'ai envoyées serviront de
-  // vignettes pour les vidéos sur le site. Lorsqu'un visiteur cliquera sur
-  // l'une d'elles, il accédera à la vidéo correspondante." Real thumbnails
-  // (with their own baked-in text/branding) replace the old hand-built
-  // placeholder circle + "À intégrer" badge. The third image (plateforme
-  // demo) is wired above to the real public/demo.mp4. These two are
-  // testimonial-specific clips the client hasn't sent video files for yet -
-  // only the thumbnails - so they honestly fall back to DemoVideoModal's
-  // "vidéo bientôt disponible" state on click rather than faking a video.
+  // 30 Sep, client over WhatsApp: "Ca c'est la 1ere video temoignage avec la
+  // miniature. Tu peux supprimer les autres image de temoignage. En tout il
+  // y aura 8 video temoignage." First real testimonial clip (with its own
+  // thumbnail) replaces the two placeholder-only images from 20 Sep, which
+  // only ever had a thumbnail and fell back to DemoVideoModal's "vidéo
+  // bientôt disponible" state - the client is now sending the real videos
+  // one at a time, 8 total, so this array grows the same way as each one
+  // arrives instead of staying a fixed pair.
   const slides = [
-    { title: 'Un contrat de plus de 345 000 € — maintenance de chaudières.', image: '/testimonials/temoignage-chaudieres.jpeg', alt: 'Témoignage client : contrat de plus de 345 000 € en maintenance de chaudières' },
-    { title: 'Un contrat de plus de 125 000 € — menuiseries pour un lotissement (exemple fictif).', image: '/testimonials/exemple-menuiseries.jpeg', alt: 'Exemple fictif : contrat de plus de 125 000 € en pose de fenêtres et portes' },
+    {
+      title: '10 mois de planning rempli — Bordeaux Élec.',
+      image: '/testimonials/temoignage-didier-bourdon.jpeg',
+      alt: 'Témoignage client : Didier Bourdon, directeur de Bordeaux Élec, 10 mois de planning rempli',
+      videoUrl: '/testimonials/temoignage-didier-bourdon.mp4',
+    },
   ];
   const [i, setI] = useState(0);
   const [videoOpen, setVideoOpen] = useState(false);
@@ -307,28 +310,30 @@ function TestimonialsSection() {
           </span>
         </button>
 
-        <div className="flex items-center justify-center gap-3 mt-3">
-          <button
-            onClick={() => setI((i - 1 + slides.length) % slides.length)}
-            className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
-            aria-label="Témoignage précédent"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <p className="text-[11px] text-[#B9BBC8] text-center">
-            Témoignage {i + 1} sur {slides.length}
-          </p>
-          <button
-            onClick={() => setI((i + 1) % slides.length)}
-            className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
-            aria-label="Témoignage suivant"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
+        {slides.length > 1 && (
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <button
+              onClick={() => setI((i - 1 + slides.length) % slides.length)}
+              className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
+              aria-label="Témoignage précédent"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <p className="text-[11px] text-[#B9BBC8] text-center">
+              Témoignage {i + 1} sur {slides.length}
+            </p>
+            <button
+              onClick={() => setI((i + 1) % slides.length)}
+              className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
+              aria-label="Témoignage suivant"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
-      <DemoVideoModal open={videoOpen} onClose={() => setVideoOpen(false)} videoUrl="" title={slide.title} />
+      <DemoVideoModal open={videoOpen} onClose={() => setVideoOpen(false)} videoUrl={slide.videoUrl || ''} title={slide.title} />
     </section>
   );
 }
