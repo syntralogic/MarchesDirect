@@ -43,7 +43,7 @@ export default function LoginPage() {
       </div>
 
       {mfa ? (
-        <MfaStep mfaToken={mfa.token} userId={mfa.userId} onDone={() => navigate(location.state?.from || '/tableau-de-bord', { replace: true })} />
+        <MfaStep mfaToken={mfa.token} onDone={() => navigate(location.state?.from || '/tableau-de-bord', { replace: true })} />
       ) : (
         <form onSubmit={handleSubmit} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
           {error && (
@@ -94,8 +94,9 @@ export default function LoginPage() {
   );
 }
 
-function MfaStep({ mfaToken, userId, onDone }: { mfaToken: string; userId: string; onDone: () => void }) {
+function MfaStep({ mfaToken, onDone }: { mfaToken: string; onDone: () => void }) {
   const { t } = useLang();
+  const { refreshProfile } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -105,8 +106,14 @@ function MfaStep({ mfaToken, userId, onDone }: { mfaToken: string; userId: strin
     setSubmitting(true);
     setError(null);
     try {
-      const { data } = await apiClient.post('/auth/mfa/verify-login', { userId, mfaToken: code });
+      // mfaToken is the signed challenge from /auth/login (proves the password
+      // step); the server derives the user from it, so userId isn't sent.
+      const { data } = await apiClient.post('/auth/mfa/verify-login', { mfaToken, code: code.trim() });
       tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      // Without this the AuthContext still has no user (it only loads the
+      // profile on mount), so the protected route we navigate to would bounce
+      // straight back to /connexion.
+      await refreshProfile();
       onDone();
     } catch {
       setError(t('loginMfaInvalid') || 'Code invalide.');
@@ -114,8 +121,6 @@ function MfaStep({ mfaToken, userId, onDone }: { mfaToken: string; userId: strin
       setSubmitting(false);
     }
   };
-
-  void mfaToken;
 
   return (
     <form onSubmit={handleVerify} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
@@ -129,6 +134,8 @@ function MfaStep({ mfaToken, userId, onDone }: { mfaToken: string; userId: strin
         className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white text-center tracking-[0.3em] focus:outline-none focus:border-orange"
         placeholder="000000"
         maxLength={6}
+        inputMode="numeric"
+        autoComplete="one-time-code"
       />
       <button type="submit" disabled={submitting} className="w-full bg-orange text-white font-semibold text-sm py-2.5 rounded-lg disabled:opacity-50">
         {submitting ? t('loginVerifying') : t('loginMfaVerify')}
