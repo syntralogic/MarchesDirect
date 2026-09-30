@@ -201,7 +201,7 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, completeSignup } = useAuth();
-  const { company: anonSiretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, phoneVerified, captureLead, confirmPhoneVerified } = useCompanyKnown();
+  const { company: anonSiretCompany, candidates, lookup: lookupSiret, confirm: confirmCandidate, leadCaptured, leadPhone: contextLeadPhone, leadEmail: contextLeadEmail, phoneVerified, captureLead, confirmPhoneVerified, resetPhoneVerification } = useCompanyKnown();
 
   // The company card (below) and the "Dossier prep" checklist both key off
   // `siretCompany`, but that comes from CompanyKnownContext, which only ever
@@ -434,6 +434,19 @@ export default function OpportunityDetailPage() {
   const [editEmail, setEditEmail] = useState('');
   const [editContactError, setEditContactError] = useState<string | null>(null);
   const [editContactSaving, setEditContactSaving] = useState(false);
+  // Genuine gap flagged by an earlier pass (see the OTP form's own comment
+  // below): editing to a NEW phone number here called captureLead directly,
+  // which 403s ('phone_not_verified') whenever otpRequired is true and the
+  // new number hasn't been OTP-confirmed yet - the visitor saw that error
+  // text with no code-entry screen ever appearing, and no way to actually
+  // finish saving the new number. otpPending* below carries the edited
+  // phone/email through to the OTP screen and back (phoneForOtp and
+  // handleOtpSubmit further down); otpEditMode marks that this OTP round is
+  // for a contact *edit*, not the very first capture, so confirming the code
+  // closes the edit panel instead of advancing screen -> 3.
+  const [otpPendingPhone, setOtpPendingPhone] = useState<string | null>(null);
+  const [otpPendingEmail, setOtpPendingEmail] = useState<string | null>(null);
+  const [otpEditMode, setOtpEditMode] = useState(false);
   const handleContactUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^0[1-9]\d{8}$/.test(editPhone)) {
@@ -446,8 +459,21 @@ export default function OpportunityDetailPage() {
     }
     setEditContactSaving(true);
     setEditContactError(null);
-    const { error } = await captureLead(editPhone, editEmail, id);
+    const { error, code } = await captureLead(editPhone, editEmail, id);
     setEditContactSaving(false);
+    if (code === 'phone_not_verified') {
+      // phoneVerified is session-wide and still true from the *previous*
+      // number's confirmation - without resetting it here the OTP form's own
+      // `!phoneVerified` gate stays false and the screen never appears.
+      resetPhoneVerification();
+      setOtpPendingPhone(editPhone);
+      setOtpPendingEmail(editEmail);
+      setOtpEditMode(true);
+      setOtpSent(false);
+      setPendingOtpVerification(true);
+      await sendOtp(editPhone);
+      return;
+    }
     if (error) {
       setEditContactError(error);
     } else {
@@ -531,7 +557,7 @@ export default function OpportunityDetailPage() {
   // completed the OTP step still needs a code sent - without this, they'd
   // see the "saisir le code" screen with no code ever having been sent and
   // no way to trigger one except the resend button.
-  const phoneForOtp = leadPhone || contextLeadPhone || '';
+  const phoneForOtp = otpPendingPhone || leadPhone || contextLeadPhone || '';
   useEffect(() => {
     if (otpRequired && !isAuthenticated && leadCaptured && !phoneVerified && !otpSent && !otpSending && phoneForOtp) {
       setPendingOtpVerification(true);
@@ -552,14 +578,16 @@ export default function OpportunityDetailPage() {
       await siretApi.confirmPhoneOtp(phoneForOtp, otpCode, getSessionId());
       confirmPhoneVerified();
       let dossierEmailed = false;
-      if (!leadCaptured) {
-        // 20 Sep fix: for a brand-new visitor this is the first point the
-        // phone is actually proven, so this is where captureLead (POST
-        // /siret/lead) finally runs - it would have 403'd (phone_not_verified)
-        // any earlier. A returning visitor who already had leadCaptured=true
-        // from an earlier session doesn't need this repeated.
-        const email = leadEmail || contextLeadEmail || '';
-        const result = await captureLead(phoneForOtp, email, id);
+      // otpEditMode: a contact-edit (handleContactUpdate) is what triggered
+      // this OTP round - captureLead 403'd there (phone_not_verified) and
+      // never actually saved the new number, so it must run again now that
+      // the code is confirmed. Runs unconditionally in that case (not just
+      // `!leadCaptured`): leadCaptured is already true for a visitor editing
+      // an existing lead, but this specific (new) phone still isn't saved.
+      if (!leadCaptured || otpEditMode) {
+        const phone = otpPendingPhone || phoneForOtp;
+        const email = otpPendingEmail || leadEmail || contextLeadEmail || '';
+        const result = await captureLead(phone, email, id);
         if (result.error) {
           setOtpError(result.error);
           setOtpSubmitting(false);
@@ -568,6 +596,18 @@ export default function OpportunityDetailPage() {
         dossierEmailed = !!result.dossierEmailed;
       }
       setPendingOtpVerification(false);
+      setOtpCode('');
+      if (otpEditMode) {
+        // Contact-edit path: close the edit panel and clear the pending
+        // edit state instead of advancing the main journey - the visitor
+        // was already past screen 2/3 before opening "Modifier".
+        setOtpEditMode(false);
+        setOtpPendingPhone(null);
+        setOtpPendingEmail(null);
+        setEditingContact(false);
+        setOtpSubmitting(false);
+        return;
+      }
       setDossierJustEmailed(dossierEmailed);
       // Client's exact button label is "Enregistrer et continuer" - one
       // action, not submit-then-a-second-tap. Was previously just setting
@@ -856,6 +896,18 @@ export default function OpportunityDetailPage() {
     if (!slotForm.email) {
       setSlotError(t('followUpNeedsContact') || 'Identifiez votre entreprise et enregistrez vos coordonnées ci-dessus avant de demander un rappel.');
       setContactChoice(null);
+      return;
+    }
+    // A "call me back" request is worthless with no number to call - this
+    // only checked email before, so an authenticated visitor who reached
+    // this screen without ever going through the phone-collecting lead form
+    // (slotForm.phone still '') could submit a callback request with no
+    // phone at all, silently accepted by the backend (phone is an optional
+    // free-text field there - see routes/opportunities.ts). The inline
+    // phone field below (shown only while this check fails) is how it gets
+    // filled in before this can pass.
+    if (!/^0[1-9]\d{8}$/.test(slotForm.phone)) {
+      setSlotError(t('leadPhoneInvalid') || 'Le téléphone doit contenir 10 chiffres.');
       return;
     }
     setSlotSubmitting('callback');
@@ -3181,9 +3233,32 @@ export default function OpportunityDetailPage() {
                     <CheckCircle2 size={14} className="shrink-0" /> {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : (t('accessCallbackConfirmed') || 'Rappel demandé')}
                   </div>
                 ) : (
-                  <button type="button" disabled={!!slotSubmitting} onClick={handleCallback} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                    {slotSubmitting === 'callback' ? <Loader2 size={14} className="animate-spin" /> : <PhoneCall size={14} />} {t('accessCallbackNoSlot') || 'Confirmer la demande de rappel'}
-                  </button>
+                  <div className="space-y-2.5">
+                    {/* Only slotForm.email is guaranteed filled by the time a
+                        visitor reaches this screen (see the effect that
+                        seeds slotForm from leadEmail/contextLeadEmail/
+                        user?.email) - a logged-in visitor who never went
+                        through the phone-collecting lead form on this
+                        opportunity has no phone here at all yet. Shown only
+                        while that's true, so a returning visitor who already
+                        has one skips straight to the confirm button as
+                        before. */}
+                    {!/^0[1-9]\d{8}$/.test(slotForm.phone) && (
+                      <div>
+                        <label className="block text-xs font-semibold text-white mb-1">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
+                        <input
+                          value={slotForm.phone}
+                          onChange={e => setSlotForm(f => ({ ...f, phone: normalizeFrPhoneDigits(e.target.value) }))}
+                          inputMode="numeric"
+                          placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'}
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                        />
+                      </div>
+                    )}
+                    <button type="button" disabled={!!slotSubmitting} onClick={handleCallback} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                      {slotSubmitting === 'callback' ? <Loader2 size={14} className="animate-spin" /> : <PhoneCall size={14} />} {t('accessCallbackNoSlot') || 'Confirmer la demande de rappel'}
+                    </button>
+                  </div>
                 )}
                 {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
               </div>
