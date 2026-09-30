@@ -125,6 +125,19 @@ export function getApiErrorMessage(err: unknown, fallback = 'Une erreur est surv
   return fallback;
 }
 
+// Machine-readable code alongside getApiErrorMessage's human-readable
+// message (e.g. POST /siret/lead's 403 body is { error: 'phone_not_verified',
+// message: '...' }) - callers that need to branch on *which* error happened
+// (not just display text) read this instead of string-matching the message,
+// which breaks the moment the message wording changes.
+export function getApiErrorCode(err: unknown): string | undefined {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as ApiError | undefined;
+    return data?.error;
+  }
+  return undefined;
+}
+
 // 27 Sep audit, point 3: a request made with responseType: 'blob' (file
 // downloads, e.g. downloadPrefilledDossier) still gets its error body
 // parsed as a Blob by axios even when the backend sent plain JSON (a 409

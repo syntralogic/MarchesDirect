@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { siretApi, getApiErrorMessage, type ApiSiretCompany, type ApiSiretCandidate } from '@/lib/apiClient';
+import { siretApi, getApiErrorMessage, getApiErrorCode, type ApiSiretCompany, type ApiSiretCandidate } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
 
 interface CompanyKnownContextType {
@@ -18,8 +18,18 @@ interface CompanyKnownContextType {
   phoneVerified: boolean;
   lookup: (query: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
   confirm: (siret: string) => Promise<{ error: string | null; companyKnown?: boolean; siret?: string | null }>;
-  captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null; dossierEmailed?: boolean }>;
+  // `code` is the backend's machine-readable error id (e.g.
+  // 'phone_not_verified' from POST /siret/lead's 403) when there is one -
+  // lets a caller branch on *which* error happened, not just display `error`.
+  captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null; code?: string; dossierEmailed?: boolean }>;
   confirmPhoneVerified: () => void;
+  // Undoes confirmPhoneVerified() for a phone number change that itself
+  // still needs its own OTP check - phoneVerified is session-wide, so
+  // without this, editing to a new, unverified phone after an earlier
+  // number was already confirmed left phoneVerified stuck at true and hid
+  // the OTP step for the new number entirely (see OpportunityDetailPage's
+  // handleContactUpdate).
+  resetPhoneVerification: () => void;
 }
 
 const CompanyKnownContext = createContext<CompanyKnownContextType | undefined>(undefined);
@@ -115,7 +125,7 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
       setLeadEmail(email);
       return { error: null, dossierEmailed: result.dossierEmailed };
     } catch (err) {
-      return { error: getApiErrorMessage(err, "L'enregistrement de vos coordonnées a échoué.") };
+      return { error: getApiErrorMessage(err, "L'enregistrement de vos coordonnées a échoué."), code: getApiErrorCode(err) };
     }
   }, [leadPhone]);
 
@@ -126,8 +136,12 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
     setPhoneVerified(true);
   }, []);
 
+  const resetPhoneVerification = useCallback(() => {
+    setPhoneVerified(false);
+  }, []);
+
   return (
-    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, candidates, loading, leadCaptured, leadPhone, leadEmail, phoneVerified, lookup, confirm, captureLead, confirmPhoneVerified }}>
+    <CompanyKnownContext.Provider value={{ companyKnown, company, siret, candidates, loading, leadCaptured, leadPhone, leadEmail, phoneVerified, lookup, confirm, captureLead, confirmPhoneVerified, resetPhoneVerification }}>
       {children}
     </CompanyKnownContext.Provider>
   );
