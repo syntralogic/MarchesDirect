@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Users, Settings, UserCheck, CreditCard, Building,
-  Bell, Search, LogOut, ArrowLeft, Menu, X, CheckCircle2, XCircle, Mail
+  Search, LogOut, ArrowLeft, Menu, X, CheckCircle2, XCircle, Mail
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { AdminNotificationBell } from '@/components/AdminNotificationBell';
 
 const ADMIN_LINKS = [
   { key: 'adminDashboard', href: '/admin', icon: LayoutDashboard },
@@ -147,10 +148,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => showToast('Notifications checked')} className="relative p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors">
-                <Bell size={18} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange rounded-full" />
-              </button>
+              <AdminNotificationBell />
             </div>
           </div>
         </header>

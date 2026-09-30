@@ -1146,6 +1146,14 @@ export const adminApi = {
     const { data } = await apiClient.get<ApiAdminStats>('/admin/stats');
     return data;
   },
+  // Powers the header bell in AdminLayout.tsx - see that component's own
+  // comment for why this reuses the dashboard's "Activité récente" feed
+  // instead of a separate, made-up notion of "admin notification". Same
+  // {user, action, target, time} shape as ApiAdminStats.recentActivity.
+  notifications: async (limit = 20): Promise<{ notifications: ApiAdminStats['recentActivity'] }> => {
+    const { data } = await apiClient.get('/admin/notifications', { params: { limit } });
+    return data;
+  },
   dataSources: async (): Promise<{ sources: ApiDataSource[]; sourceStats: ApiSourceStat[]; recentRuns?: ApiConnectorRun[] }> => {
     const { data } = await apiClient.get('/admin/data-sources');
     return data;
