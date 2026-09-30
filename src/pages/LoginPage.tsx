@@ -4,6 +4,7 @@ import { Mail, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, tokenStorage } from '@/lib/apiClient';
 import { useLang } from '@/contexts/LangContext';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 export default function LoginPage() {
   const { t } = useLang();
@@ -49,6 +50,11 @@ export default function LoginPage() {
           {error && (
             <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
           )}
+          <GoogleSignInButton
+            onSuccess={() => navigate(location.state?.from || '/tableau-de-bord', { replace: true })}
+            onMfa={setMfa}
+            onError={setError}
+          />
           <div>
             <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('loginEmail')}</label>
             <div className="relative">
