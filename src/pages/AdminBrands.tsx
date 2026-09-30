@@ -6,6 +6,14 @@ import { useLang } from '@/contexts/LangContext';
 
 const emptyForm = { code: '', name: '', domain: '', language: 'fr', regionFocus: '', colorPrimary: '', colorSecondary: '' };
 
+// 30 Sep 2026 input-validation audit: code/name/domain only had HTML
+// `required` (non-empty), so any string passed - a domain with a protocol/
+// path/spaces, or a code with uppercase/spaces/punctuation - and only
+// failed later, opaquely, at brand-hostname resolution. Mirrors the
+// backend's own validateBrandFields() in admin.ts.
+const BRAND_CODE_RE = /^[a-z0-9][a-z0-9_-]{1,39}$/;
+const BRAND_DOMAIN_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
+
 export default function AdminBrands() {
   const { t } = useLang();
   const [brands, setBrands] = useState<ApiAdminBrand[]>([]);
@@ -14,6 +22,7 @@ export default function AdminBrands() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -28,12 +37,30 @@ export default function AdminBrands() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    const code = form.code.trim();
+    const name = form.name.trim();
+    // Strip a pasted-in protocol/path so "https://marches-sud.fr/" becomes
+    // just "marches-sud.fr" instead of being rejected outright - a common
+    // way admins would naturally paste a domain in.
+    const domain = form.domain.trim().replace(/^[a-z]+:\/\//i, '').replace(/\/.*$/, '').toLowerCase();
+
+    if (!BRAND_CODE_RE.test(code)) {
+      setFormError(t('adminBrandsCodeInvalid') || 'Le code ne doit contenir que des lettres minuscules, chiffres, "-" ou "_" (2 à 40 caractères).');
+      return;
+    }
+    if (!BRAND_DOMAIN_RE.test(domain)) {
+      setFormError(t('adminBrandsDomainInvalid') || "Le domaine n'est pas valide (ex. marches-sud.fr, sans http:// ni espace).");
+      return;
+    }
+
     setSaving(true);
     try {
       const created = await adminApi.createBrand({
-        code: form.code.trim(),
-        name: form.name.trim(),
-        domain: form.domain.trim(),
+        code,
+        name,
+        domain,
         language: form.language,
         regionFocus: form.regionFocus || undefined,
         colorPrimary: form.colorPrimary || undefined,
@@ -44,11 +71,16 @@ export default function AdminBrands() {
       setModalOpen(false);
       setForm(emptyForm);
     } catch (err) {
-      showToast(getApiErrorMessage(err, t('adminBrandsCreateFailed') || 'Échec de la création.'), 'error');
+      // Server-side validation (or a unique-code/domain conflict) still
+      // surfaces here - the client check above only catches the common
+      // format mistakes before spending a round trip on them.
+      setFormError(getApiErrorMessage(err, t('adminBrandsCreateFailed') || 'Échec de la création.'));
     } finally {
       setSaving(false);
     }
   };
+
+  const closeModal = () => { setModalOpen(false); setFormError(null); setForm(emptyForm); };
 
   return (
     <AdminLayout>
@@ -92,11 +124,11 @@ export default function AdminBrands() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setModalOpen(false)} />
+          <div className="absolute inset-0 bg-black/70" onClick={closeModal} />
           <form onSubmit={handleCreate} className="relative w-full max-w-md bg-[#061D32] border border-[#17334D] rounded-2xl p-6 z-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-white">{t('adminBrandsNew')}</h2>
-              <button type="button" onClick={() => setModalOpen(false)} aria-label={t('close')}><X size={18} className="text-[#B9BBC8]" /></button>
+              <button type="button" onClick={closeModal} aria-label={t('close')}><X size={18} className="text-[#B9BBC8]" /></button>
             </div>
             <div className="space-y-3">
               <div>
@@ -126,6 +158,9 @@ export default function AdminBrands() {
                 </div>
               </div>
             </div>
+            {formError && (
+              <p className="text-xs text-red-400 mt-3">{formError}</p>
+            )}
             <button type="submit" disabled={saving} className="w-full mt-5 bg-orange text-white font-bold py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
               {saving && <Loader2 size={14} className="animate-spin" />} {t('adminBrandsCreate')}
             </button>
