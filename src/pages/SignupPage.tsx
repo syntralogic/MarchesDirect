@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, Building2, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLang } from '@/contexts/LangContext';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 export default function SignupPage() {
   const { t } = useLang();
@@ -53,6 +54,12 @@ export default function SignupPage() {
         {error && (
           <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
         )}
+
+        <GoogleSignInButton
+          onSuccess={() => navigate(location.state?.from || '/tableau-de-bord', { replace: true })}
+          onMfa={() => navigate('/connexion', { state: location.state })}
+          onError={setError}
+        />
 
         <div>
           <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('signupCompanyName')}</label>

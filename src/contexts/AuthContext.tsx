@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null; mfaRequired?: boolean; mfaToken?: string; userId?: string }>;
+  loginWithGoogle: (credential: string) => Promise<{ error: string | null; mfaRequired?: boolean; mfaToken?: string; userId?: string }>;
   register: (payload: RegisterPayload) => Promise<{ error: string | null }>;
   completeSignup: (sessionId: string, password: string) => Promise<{ error: string | null }>;
   logout: () => void;
@@ -94,6 +95,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      const { data } = await apiClient.post('/auth/google', { credential });
+      if (data.mfaRequired) {
+        return { error: null, mfaRequired: true, mfaToken: data.mfaToken, userId: data.userId };
+      }
+      tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      await refreshProfile();
+      return { error: null };
+    } catch (err) {
+      return { error: getApiErrorMessage(err, 'La connexion Google a échoué.') };
+    }
+  };
+
   const register = async (payload: RegisterPayload) => {
     try {
       const { data } = await apiClient.post('/auth/register', payload);
@@ -129,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, company, loading, isAuthenticated: !!user, login, register, completeSignup, logout, refreshProfile }}
+      value={{ user, company, loading, isAuthenticated: !!user, login, loginWithGoogle, register, completeSignup, logout, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
