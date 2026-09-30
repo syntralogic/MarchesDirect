@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Save, Globe, Shield, Bell, Check, Database, RefreshCw } from 'lucide-react';
+import { Save, Globe, Shield, Bell, Check, Database, RefreshCw, Loader2 } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
-import { adminApi, type ApiDataSource, type ApiSourceStat, type ApiConnectorRun } from '@/lib/apiClient';
+import { adminApi, getApiErrorMessage, type ApiDataSource, type ApiSourceStat, type ApiConnectorRun, type ApiAdminSettings } from '@/lib/apiClient';
 
 export default function AdminSettings() {
   const { t, lang } = useLang();
@@ -79,10 +79,63 @@ export default function AdminSettings() {
   const [supportEmail, setSupportEmail] = useState('support@marchesdirect.fr');
   const [maintenanceMessage, setMaintenanceMessage] = useState('Site under maintenance. Please check back soon.');
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-    showToast(t('adminSettingsSaved') || 'Settings saved successfully');
+  // General section only, for now - Security (2FA) and Notifications
+  // (email alerts) toggles above stay local-only until a follow-up wires
+  // them to something real; see admin.ts's SETTINGS_KEYS comment.
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminApi.settings()
+      .then((s: ApiAdminSettings) => {
+        setSiteName(s.siteName);
+        setSupportEmail(s.supportEmail);
+        setMaintenance(s.maintenanceMode);
+        setMaintenanceMessage(s.maintenanceMessage);
+      })
+      .catch(err => setSettingsError(getApiErrorMessage(err, t('adminSettingsLoadError') || 'Impossible de charger les paramètres.')))
+      .finally(() => setSettingsLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const handleSave = async () => {
+    setSaveError(null);
+    if (!siteName.trim()) {
+      setSaveError(t('adminSiteNameRequired') || 'Le nom du site est requis.');
+      return;
+    }
+    if (!EMAIL_RE.test(supportEmail.trim())) {
+      setSaveError(t('adminSupportEmailInvalid') || "L'email de support n'est pas valide.");
+      return;
+    }
+    if (maintenance && !maintenanceMessage.trim()) {
+      setSaveError(t('adminMaintenanceMessageRequired') || 'Un message de maintenance est requis quand le mode maintenance est actif.');
+      return;
+    }
+    setSavingSettings(true);
+    try {
+      const result = await adminApi.updateSettings({
+        siteName,
+        supportEmail,
+        maintenanceMode: maintenance,
+        maintenanceMessage,
+      });
+      // Reflect back whatever the server actually stored (trimmed values).
+      setSiteName(result.siteName);
+      setSupportEmail(result.supportEmail);
+      setMaintenanceMessage(result.maintenanceMessage);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      showToast(t('adminSettingsSaved') || 'Settings saved successfully');
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, t('adminSettingsSaveFailed') || "Échec de l'enregistrement."));
+    } finally {
+      setSavingSettings(false);
+    }
   };
 
   return (
@@ -191,19 +244,25 @@ export default function AdminSettings() {
           <h2 className="text-base font-bold text-white flex items-center gap-2 mb-4">
             <Globe size={18} className="text-orange" /> {t('adminGeneral')}
           </h2>
+          {settingsError && (
+            <p className="text-xs text-red-400 mb-3 flex items-center gap-2 flex-wrap">
+              {settingsError}
+              <button onClick={() => { setSettingsLoading(true); setSettingsError(null); adminApi.settings().then(s => { setSiteName(s.siteName); setSupportEmail(s.supportEmail); setMaintenance(s.maintenanceMode); setMaintenanceMessage(s.maintenanceMessage); }).catch(err => setSettingsError(getApiErrorMessage(err, t('adminSettingsLoadError') || 'Impossible de charger les paramètres.'))).finally(() => setSettingsLoading(false)); }} className="underline hover:text-red-300">{t('adminRetry')}</button>
+            </p>
+          )}
           <div className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('adminSiteName')}</label>
-              <input value={siteName} onChange={e => setSiteName(e.target.value)} className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange" />
+              <input disabled={settingsLoading} value={siteName} onChange={e => setSiteName(e.target.value)} maxLength={200} className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange disabled:opacity-50" />
             </div>
             <div>
               <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('adminSupportEmail')}</label>
-              <input type="email" value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange" />
+              <input type="email" disabled={settingsLoading} value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange disabled:opacity-50" />
             </div>
             {maintenance && (
               <div>
                 <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('adminMaintenanceMessage') || 'Message'}</label>
-                <input value={maintenanceMessage} onChange={e => setMaintenanceMessage(e.target.value)} className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange" />
+                <input disabled={settingsLoading} value={maintenanceMessage} onChange={e => setMaintenanceMessage(e.target.value)} maxLength={1000} className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange disabled:opacity-50" />
               </div>
             )}
           </div>
@@ -243,8 +302,9 @@ export default function AdminSettings() {
           </div>
         </div>
 
-        <button onClick={handleSave} className={`inline-flex items-center gap-2 font-bold px-6 py-3 rounded-xl transition-colors text-sm ${saved ? 'bg-green-500 text-white' : 'bg-orange text-white hover:bg-orange/90'}`}>
-          {saved ? <Check size={16} /> : <Save size={16} />} {saved ? t('adminSaved') : t('adminSaveChanges')}
+        {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+        <button onClick={handleSave} disabled={savingSettings || settingsLoading} className={`inline-flex items-center gap-2 font-bold px-6 py-3 rounded-xl transition-colors text-sm disabled:opacity-50 ${saved ? 'bg-green-500 text-white' : 'bg-orange text-white hover:bg-orange/90'}`}>
+          {savingSettings ? <Loader2 size={16} className="animate-spin" /> : saved ? <Check size={16} /> : <Save size={16} />} {saved ? t('adminSaved') : t('adminSaveChanges')}
         </button>
       </div>
     </AdminLayout>
