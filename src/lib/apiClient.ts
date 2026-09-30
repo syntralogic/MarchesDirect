@@ -1200,6 +1200,24 @@ export const adminApi = {
     const { data } = await apiClient.patch(`/admin/subscriptions/${id}/cancel`, { immediate });
     return data;
   },
+  // 30 Sep 2026: General settings section, first increment - see admin.ts's
+  // own comment for what's persisted vs. what (2FA/email alerts, maintenance
+  // enforcement) is still a follow-up.
+  settings: async (): Promise<ApiAdminSettings> => {
+    const { data } = await apiClient.get<ApiAdminSettings>('/admin/settings');
+    return data;
+  },
+  updateSettings: async (settings: ApiAdminSettings): Promise<ApiAdminSettings> => {
+    const { data } = await apiClient.put<ApiAdminSettings>('/admin/settings', settings);
+    return data;
+  },
+};
+
+export type ApiAdminSettings = {
+  siteName: string;
+  supportEmail: string;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
 };
 
 export type ApiAdminBrand = {
