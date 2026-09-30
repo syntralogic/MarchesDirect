@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { mockArticles } from '@/data/mockData';
 import { useLang } from '@/contexts/LangContext';
@@ -48,8 +49,9 @@ export default function ActualitesPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filtered.map(article => (
-          <div
+          <Link
             key={article.id}
+            to={`/actualites/${article.id}`}
             className="flex flex-col bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 group transition-all cursor-pointer"
           >
             <div className={`text-xs font-semibold px-2.5 py-1 rounded-full border w-fit mb-3 ${CAT_COLORS[article.category] || 'text-orange bg-orange/10 border-orange/20'}`}>
@@ -63,7 +65,7 @@ export default function ActualitesPage() {
               <span className="text-xs text-[#B9BBC8]">{article.date}</span>
               <ArrowRight size={14} className="text-orange group-hover:translate-x-1 transition-transform" />
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
