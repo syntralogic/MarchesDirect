@@ -33,6 +33,7 @@ import ProfilPage from '@/pages/ProfilPage';
 import CompanyVaultPage from '@/pages/CompanyVaultPage';
 import EquipePage from '@/pages/EquipePage';
 import ActualitesPage from '@/pages/ActualitesPage';
+import ArticleDetailPage from '@/pages/ArticleDetailPage';
 import ZonesPage from '@/pages/ZonesPage';
 import SecteursPage from '@/pages/SecteursPage';
 import InternationalPage from '@/pages/InternationalPage';
@@ -160,6 +161,7 @@ const App: React.FC = () => {
               <Route path="/profil/dossier-entreprise" element={<RequireAuth><CompanyVaultPage /></RequireAuth>} />
               <Route path="/equipe" element={<EquipePage />} />
               <Route path="/actualites" element={<ActualitesPage />} />
+              <Route path="/actualites/:id" element={<ArticleDetailPage />} />
               <Route path="/zones" element={<ZonesPage />} />
               <Route path="/secteurs" element={<SecteursPage />} />
               <Route path="/international" element={<InternationalPage />} />
