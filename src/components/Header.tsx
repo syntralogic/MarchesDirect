@@ -4,6 +4,7 @@ import { Menu, X, User } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
+import { NotificationBell } from '@/components/NotificationBell';
 
 const NAV_LINKS = [
   { key: 'tenders', href: '/parcours?type=appels-doffres' },
@@ -88,12 +89,14 @@ export function Header() {
               >
                 {t('bookAppointment')}
               </button>
+              <NotificationBell />
               <Link to="/profil" aria-label={t('profile')} className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors">
                 <User size={18} />
               </Link>
             </div>
 
             <div className="flex md:hidden items-center gap-1">
+              <NotificationBell />
               <button
                 onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
                 className="px-2 py-1 rounded text-xs font-semibold text-[#B9BBC8] border border-[#17334D]"

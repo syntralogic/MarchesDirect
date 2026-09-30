@@ -15,6 +15,10 @@ const frTranslations: Translations = {
   clearSearch: 'Effacer la recherche',
   dashboard: 'Tableau de bord',
   profile: 'Profil',
+  notifBellLabel: 'Notifications',
+  notifEmpty: 'Aucune notification pour le moment.',
+  notifMarkAllRead: 'Tout marquer comme lu',
+  notifLoadError: 'Impossible de charger les notifications.',
   contact: 'Contact',
   close: 'Fermer',
   // Hero
@@ -1664,6 +1668,10 @@ const enTranslations: Translations = {
   clearSearch: 'Clear search',
   dashboard: 'Dashboard',
   profile: 'Profile',
+  notifBellLabel: 'Notifications',
+  notifEmpty: 'No notifications yet.',
+  notifMarkAllRead: 'Mark all as read',
+  notifLoadError: 'Could not load notifications.',
   contact: 'Contact',
   close: 'Close',
   // Hero
