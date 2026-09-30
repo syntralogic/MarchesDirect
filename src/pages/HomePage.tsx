@@ -159,20 +159,11 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
 // ---------------------------------------------------------------------------
 // DEMO WALKTHROUGH ("De la recherche au dossier, en 1 minute.")
 // ---------------------------------------------------------------------------
+// 30 Sep, client on WhatsApp (screenshot, yellow circle): remove the 3-step
+// walkthrough (tabs + detail card + step nav) that used to sit under the
+// demo thumbnail. The thumbnail/button that opens the real demo video stays.
 function DemoWalkthroughSection() {
   const [demoOpen, setDemoOpen] = useState(false);
-  const [step, setStep] = useState<0 | 1 | 2>(0);
-  const steps = [
-    { label: 'Opportunité', title: 'Chauffage · lot 03', desc: 'Épinal · 120 000 € HT', card: { label: 'Opportunité', title: 'Chauffage · lot 03', meta: 'Épinal · 120 000 € HT', note: 'Critères et conditions' },
-      heading: 'Comprenez ce que l’acheteur attend.',
-      explain: 'Travaux demandés, budget, délais et conditions : les informations utiles sont réunies dans une fiche.' },
-    { label: 'Concordance', title: '78 % de concordance', desc: 'Votre entreprise correspond aux critères demandés', card: { label: 'Concordance', title: '78 % de concordance', meta: 'Votre entreprise correspond aux critères demandés', note: 'Analyse IA' },
-      heading: 'Voyez si cette opportunité vous correspond.',
-      explain: 'Notre IA compare votre profil aux exigences du marché et calcule un indice de correspondance clair, avec le détail de son calcul.' },
-    { label: 'Dossier', title: 'Le besoin · les critères · le dossier', desc: "Votre chargé d'affaires prépare la candidature", card: { label: 'Dossier', title: 'Le besoin · les critères · le dossier', meta: "Votre chargé d'affaires prépare la candidature", note: 'Vous validez avant dépôt' },
-      heading: 'Votre dossier est préparé pour vous.',
-      explain: "Le besoin, les critères de l'acheteur et le dossier de candidature sont réunis ; votre chargé d'affaires prépare, vous validez avant le dépôt." },
-  ];
   return (
     <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-4">
@@ -181,7 +172,7 @@ function DemoWalkthroughSection() {
 
       <button
         onClick={() => setDemoOpen(true)}
-        className="w-full text-left rounded-2xl border border-[#17334D] bg-[#061D32] mb-6 relative overflow-hidden hover:border-orange/50 transition-colors group"
+        className="w-full text-left rounded-2xl border border-[#17334D] bg-[#061D32] relative overflow-hidden hover:border-orange/50 transition-colors group"
       >
         {/* Client (20 Sep): real thumbnail image for the demo video, click
             opens the actual demo (DemoVideoModal / public/demo.mp4) -
@@ -197,68 +188,6 @@ function DemoWalkthroughSection() {
           </span>
         </span>
       </button>
-
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {steps.map((s, i) => (
-          <button
-            key={s.label}
-            onClick={() => setStep(i as 0 | 1 | 2)}
-            className={`rounded-xl border px-2 py-2.5 text-center transition-colors ${
-              step === i ? 'border-orange bg-orange/10' : 'border-[#17334D] bg-[#031B30] hover:border-orange/40'
-            }`}
-          >
-            <div className={`text-[11px] font-bold ${step === i ? 'text-orange' : 'text-[#B9BBC8]'}`}>0{i + 1}</div>
-            <div className={`text-xs font-semibold mt-0.5 ${step === i ? 'text-orange' : 'text-white'}`}>{s.label}</div>
-          </button>
-        ))}
-      </div>
-
-      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-4 md:p-5">
-        <div className="flex gap-4">
-          <div className="w-32 md:w-40 shrink-0 rounded-xl border border-[#17334D] bg-[#031B30] p-3">
-            <span className="inline-block text-[10px] font-semibold text-[#B9BBC8] bg-[#061D32] border border-[#17334D] rounded-md px-2 py-0.5 mb-2">
-              {steps[step].card.label}
-            </span>
-            <div className="text-xs font-bold text-white leading-snug">{steps[step].card.title}</div>
-            <div className="text-[10px] text-[#B9BBC8] mt-1">{steps[step].card.meta}</div>
-            <div className="text-[10px] text-[#B9BBC8] mt-2">{steps[step].card.note}</div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base md:text-lg font-bold text-white leading-snug mb-2">
-              {steps[step].heading}
-            </h3>
-            <p className="text-xs md:text-sm text-[#B9BBC8] leading-relaxed">
-              {steps[step].explain}
-            </p>
-            <button
-              onClick={() => setDemoOpen(true)}
-              className="mt-4 inline-flex items-center gap-2 text-orange font-semibold text-sm hover:gap-3 transition-all"
-            >
-              Voir dans la démo <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between mt-4">
-        <button
-          onClick={() => setStep((s => ((s + 2) % 3) as 0 | 1 | 2))}
-          className="w-10 h-10 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange hover:border-orange/40 transition-colors"
-          aria-label="Étape précédente"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <span className="text-xs text-[#B9BBC8]">
-          Étape {step + 1} sur 3 · {steps[step].label}
-        </span>
-        <button
-          onClick={() => setStep((s => ((s + 1) % 3) as 0 | 1 | 2))}
-          className="w-10 h-10 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange hover:border-orange/40 transition-colors"
-          aria-label="Étape suivante"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
 
       <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </section>
