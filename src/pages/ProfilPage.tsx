@@ -142,6 +142,7 @@ export default function ProfilPage() {
       await companiesApi.updateMe({
         name: companyForm.name,
         siret: companyForm.siret,
+        phone: typeof companyForm.phone === 'string' ? companyForm.phone.trim() : companyForm.phone,
         legal_form: companyForm.legal_form,
         website_url: companyForm.website_url,
         address_street: companyForm.address_street,
@@ -238,8 +239,9 @@ export default function ProfilPage() {
     );
   }
 
-  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
-  const initials = (user.firstName?.[0] || user.email[0]).toUpperCase() + (user.lastName?.[0] || '').toUpperCase();
+  const safeEmail = typeof user.email === 'string' ? user.email.trim() : '';
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || safeEmail;
+  const initials = ((user.firstName?.[0] || safeEmail[0] || '?').toUpperCase() + (user.lastName?.[0] || '').toUpperCase());
   const planLabel = company?.subscription_tier
     ? String(company.subscription_tier).charAt(0).toUpperCase() + String(company.subscription_tier).slice(1)
     : t('profileTrial') || 'Essai';
@@ -282,7 +284,7 @@ export default function ProfilPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InputField label={t('profileFullName')} value={fullName} onChange={() => {}} disabled />
-              <InputField label={t('profileEmail')} value={user.email} onChange={() => {}} type="email" disabled />
+              <InputField label={t('profileEmail')} value={safeEmail} onChange={() => {}} type="email" disabled />
               <InputField label={t('profilePhone')} value={companyForm.phone as string || ''} onChange={v => setCompanyForm(f => ({ ...f, phone: v }))} type="tel" />
             </div>
             <NotWiredNote>{t('profileNotWired')}</NotWiredNote>
