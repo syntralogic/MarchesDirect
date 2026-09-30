@@ -800,6 +800,11 @@ export const accountApi = {
     const { data } = await apiClient.post('/auth/mfa/confirm', { mfaToken });
     return data;
   },
+  // Turning 2FA off needs the account password AND a current authenticator code.
+  mfaDisable: async (password: string, code: string) => {
+    const { data } = await apiClient.post('/auth/mfa/disable', { password, code });
+    return data;
+  },
   updateNotificationPreferences: async (prefs: Partial<{
     emailAlerts: boolean; newOpps: boolean; deadlineAlerts: boolean; weeklyDigest: boolean; mobileNotifs: boolean;
   }>) => {

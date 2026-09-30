@@ -2,7 +2,124 @@ import { useEffect, useRef, useState } from 'react';
 import { Save, Globe, Shield, Bell, Check, Database, RefreshCw, Loader2 } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
-import { adminApi, getApiErrorMessage, type ApiDataSource, type ApiSourceStat, type ApiConnectorRun, type ApiAdminSettings } from '@/lib/apiClient';
+import { useAuth } from '@/contexts/AuthContext';
+import { adminApi, accountApi, getApiErrorMessage, type ApiDataSource, type ApiSourceStat, type ApiConnectorRun, type ApiAdminSettings } from '@/lib/apiClient';
+
+// Real 2FA (TOTP) for the signed-in admin: state comes from the server
+// (user.mfaEnabled via /auth/me), not local React state, so it survives a
+// reload. Enabling walks through QR scan + a confirming code; disabling needs
+// the account password and a current code.
+function TwoFactorPanel() {
+  const { t } = useLang();
+  const { user, refreshProfile } = useAuth();
+  const enabled = !!user?.mfaEnabled;
+
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [setup, setSetup] = useState<{ qrCode: string; manualEntryKey: string } | null>(null);
+  const [disabling, setDisabling] = useState(false);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+
+  const reset = () => { setSetup(null); setDisabling(false); setCode(''); setPassword(''); setError(null); };
+
+  const startSetup = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setSetup(await accountApi.mfaEnable());
+    } catch (err) {
+      setError(getApiErrorMessage(err, t('profileMfaSetupFailed') || 'Échec de la configuration 2FA.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmSetup = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await accountApi.mfaConfirm(code.trim());
+      await refreshProfile();
+      reset();
+      showToast(t('profileMfaEnabled') || 'Authentification à deux facteurs activée.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, t('profileMfaInvalidCode') || 'Code invalide.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDisable = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await accountApi.mfaDisable(password, code.trim());
+      await refreshProfile();
+      reset();
+      showToast(t('adminTwoFactorDisabledOk') || 'Authentification à deux facteurs désactivée.');
+    } catch (err) {
+      setError(getApiErrorMessage(err, t('adminTwoFactorDisableFailed') || 'Impossible de désactiver la 2FA.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inputCls = 'w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-orange';
+  const btnCls = 'text-xs font-semibold px-4 py-2 rounded-xl disabled:opacity-40 inline-flex items-center gap-1.5';
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <span className="text-sm text-white">{t('adminTwoFactor')}</span>
+          <p className="text-xs text-[#B9BBC8] mt-0.5">{enabled ? t('adminTwoFactorOn') : t('adminTwoFactorOff')}</p>
+        </div>
+        {!setup && !disabling && (
+          enabled ? (
+            <button onClick={() => { setError(null); setDisabling(true); }} className={`${btnCls} text-red-400 border border-red-500/40 hover:bg-red-500/10`}>
+              {t('adminTwoFactorDisable')}
+            </button>
+          ) : (
+            <button onClick={startSetup} disabled={busy} className={`${btnCls} text-orange border border-orange hover:bg-orange/10`}>
+              {busy && <Loader2 size={12} className="animate-spin" />} {t('profileTwoFactorActivate')}
+            </button>
+          )
+        )}
+      </div>
+
+      {setup && (
+        <div className="mt-4 pt-4 border-t border-[#17334D] space-y-3">
+          <p className="text-xs text-[#B9BBC8]">{t('profileTwoFactorScan')}</p>
+          <img src={setup.qrCode} alt="QR code 2FA" className="w-40 h-40 rounded-lg bg-white p-2" />
+          <p className="text-xs text-[#B9BBC8]">{t('profileTwoFactorManual')} <span className="text-white font-mono break-all">{setup.manualEntryKey}</span></p>
+          <input value={code} onChange={e => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder={t('profileTwoFactorCode')} className={inputCls} />
+          <div className="flex gap-2">
+            <button onClick={confirmSetup} disabled={busy || code.trim().length !== 6} className={`${btnCls} bg-orange text-white`}>
+              {busy && <Loader2 size={12} className="animate-spin" />} {t('profileTwoFactorConfirm')}
+            </button>
+            <button onClick={reset} disabled={busy} className={`${btnCls} text-[#B9BBC8] border border-[#17334D]`}>{t('adminTwoFactorCancel')}</button>
+          </div>
+        </div>
+      )}
+
+      {disabling && (
+        <div className="mt-4 pt-4 border-t border-[#17334D] space-y-3">
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" placeholder={t('adminTwoFactorPassword')} className={inputCls} />
+          <input value={code} onChange={e => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder={t('profileTwoFactorCode')} className={inputCls} />
+          <div className="flex gap-2">
+            <button onClick={confirmDisable} disabled={busy || !password || code.trim().length !== 6} className={`${btnCls} bg-red-500 text-white`}>
+              {busy && <Loader2 size={12} className="animate-spin" />} {t('adminTwoFactorDisableConfirm')}
+            </button>
+            <button onClick={reset} disabled={busy} className={`${btnCls} text-[#B9BBC8] border border-[#17334D]`}>{t('adminTwoFactorCancel')}</button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
+    </div>
+  );
+}
 
 export default function AdminSettings() {
   const { t, lang } = useLang();
@@ -72,16 +189,15 @@ export default function AdminSettings() {
     return new Date(iso).toLocaleString(lang === 'en' ? 'en-GB' : 'fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  const [twoFactor, setTwoFactor] = useState(true);
   const [maintenance, setMaintenance] = useState(false);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [siteName, setSiteName] = useState('Marchés Direct');
   const [supportEmail, setSupportEmail] = useState('support@marchesdirect.fr');
   const [maintenanceMessage, setMaintenanceMessage] = useState('Site under maintenance. Please check back soon.');
 
-  // General section only, for now - Security (2FA) and Notifications
-  // (email alerts) toggles above stay local-only until a follow-up wires
-  // them to something real; see admin.ts's SETTINGS_KEYS comment.
+  // General settings are persisted via /admin/settings and 2FA via the real
+  // /auth/mfa/* endpoints (TwoFactorPanel below); the Notifications (email
+  // alerts) toggle is still local-only until a follow-up wires it.
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -273,12 +389,7 @@ export default function AdminSettings() {
             <Shield size={18} className="text-orange" /> {t('adminSecurity')}
           </h2>
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-white">{t('adminTwoFactor')}</span>
-              <button onClick={() => setTwoFactor(!twoFactor)} className={`relative w-12 h-6 rounded-full transition-colors ${twoFactor ? 'bg-green-500' : 'bg-[#17334D]'}`}>
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${twoFactor ? 'translate-x-6' : ''}`} />
-              </button>
-            </div>
+            <TwoFactorPanel />
             <div className="flex items-center justify-between">
               <span className="text-sm text-white">{t('adminMaintenance')}</span>
               <button onClick={() => setMaintenance(!maintenance)} className={`relative w-12 h-6 rounded-full transition-colors ${maintenance ? 'bg-orange' : 'bg-[#17334D]'}`}>
