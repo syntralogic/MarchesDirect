@@ -707,13 +707,30 @@ export const dashboardApi = {
   },
 };
 
+export type ApiAlert = {
+  id: string;
+  company_id: string;
+  alert_type: 'new_opportunity' | 'deadline_reminder' | 'document_expiry' | string;
+  opportunity_id: string | null;
+  bid_response_id: string | null;
+  title: string | null;
+  message: string | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+};
+
 export const alertsApi = {
-  list: async () => {
-    const { data } = await apiClient.get('/alerts');
+  list: async (unreadOnly = false): Promise<ApiAlert[]> => {
+    const { data } = await apiClient.get('/alerts', unreadOnly ? { params: { unread_only: 'true' } } : undefined);
     return data;
   },
   markRead: async (id: string) => {
     const { data } = await apiClient.put(`/alerts/${id}/read`);
+    return data;
+  },
+  markAllRead: async () => {
+    const { data } = await apiClient.put('/alerts/read-all');
     return data;
   },
 };
