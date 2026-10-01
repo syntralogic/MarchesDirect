@@ -35,31 +35,41 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 // Single-flight refresh so parallel 401s don't each trigger their own refresh call.
-let refreshPromise: Promise<string | null> | null = null;
+// Only a definitive rejection of the refresh token (400/401/403) may end the
+// session. A network failure, cold start, timeout or 5xx says nothing about the
+// token's validity - clearing it there logged people out whenever the server
+// was merely slow or unreachable ("Impossible de contacter le serveur" followed
+// by a bounce to the login page).
+type RefreshResult = { token: string | null; sessionInvalid: boolean };
 
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshAccessToken(): Promise<RefreshResult> {
   const refreshToken = tokenStorage.getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) return { token: null, sessionInvalid: true };
 
   try {
-    const { data } = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
+    const { data } = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken }, { timeout: 20000 });
     tokenStorage.setTokens(data.accessToken, data.refreshToken);
-    return data.accessToken as string;
-  } catch {
-    tokenStorage.clear();
-    return null;
+    return { token: data.accessToken as string, sessionInvalid: false };
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+    const sessionInvalid = status === 400 || status === 401 || status === 403;
+    if (sessionInvalid) tokenStorage.clear();
+    return { token: null, sessionInvalid };
   }
 }
+
+// Single-flight refresh so parallel 401s don't each trigger their own refresh call.
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 apiClient.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
-    if (error.response?.status === 401 && original && !original._retry && !original.url?.includes('/auth/')) {
+    if (error.response?.status === 401 && original && !original._retry && !isCredentialEndpoint(original.url)) {
       original._retry = true;
       refreshPromise = refreshPromise ?? refreshAccessToken();
-      const newToken = await refreshPromise;
+      const { token: newToken, sessionInvalid } = await refreshPromise;
       refreshPromise = null;
 
       if (newToken) {
@@ -68,14 +78,27 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       }
 
-      // Refresh failed - force a clean logout so the UI doesn't sit in a stuck state.
-      tokenStorage.clear();
-      window.dispatchEvent(new Event('md:session-expired'));
+      // Refresh token definitively rejected - clean logout. If the refresh merely
+      // failed to reach the server, keep the session and let the caller show a
+      // retryable error.
+      if (sessionInvalid) {
+        tokenStorage.clear();
+        window.dispatchEvent(new Event('md:session-expired'));
+      }
     }
 
     return Promise.reject(error);
   }
 );
+
+// Endpoints whose 401 means 'wrong credentials / bad link', not 'expired access
+// token'. /auth/me is deliberately NOT here: a 401 there on page load is the
+// normal expired-access-token case and must go through the refresh flow,
+// otherwise returning users are bounced to the login page.
+function isCredentialEndpoint(url?: string): boolean {
+  if (!url || !url.includes('/auth/')) return false;
+  return !/\/auth\/(me|mfa\/status)(\?|$)/.test(url);
+}
 
 export interface ApiError {
   error: string;

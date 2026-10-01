@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { apiClient, tokenStorage, getApiErrorMessage, ACCESS_TOKEN_KEY } from '@/lib/apiClient';
 import type { AuthUser, Company, RegisterPayload } from '@/types/auth';
 import { toast } from 'sonner';
+import axios from 'axios';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -33,8 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await apiClient.get('/auth/me');
       setUser(data.user);
       setCompany(data.company ?? null);
-    } catch {
-      // Token invalid/expired and refresh already failed upstream - clear local state.
+    } catch (err) {
+      // Only drop the session when the server definitively rejected it. A
+      // network error / cold start / 5xx must keep the tokens so the next
+      // request can succeed instead of bouncing the person to the login page.
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status !== 401 && status !== 403) return;
       tokenStorage.clear();
       setUser(null);
       setCompany(null);
