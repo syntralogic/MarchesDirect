@@ -75,7 +75,7 @@ export default function RecherchePage() {
   const initialCity = initialCities.join(', ');
   const initialRegion = initialRegions.join(', ');
   const initialDepartment = initialDepartments.join(',');
-  const [location, setLocation] = useState(initialRegion || initialDepartment || initialCity);
+  const [location, setLocation] = useState([initialRegion, initialDepartment].filter(Boolean).join(', ') || initialCity);
   // 25 Sep audit (Bordeaux 123 vs 90 mismatch): HomePage's map counter now
   // hands off the exact lat/lng/radius_km it computed its total with (see
   // HomePage's searchAroundCity/buildSearchUrl) instead of leaving this
@@ -158,7 +158,11 @@ export default function RecherchePage() {
   const urlCityLockRef = useRef<string | null>(
     initialCity && !initialRegion && !initialDepartment ? normalizeFr(initialCity.trim()) : null
   );
-  const resolveLocationField = (text: string): 'region' | 'department' | 'city' => {
+  // 30 Sep audit (point 3): a department and a region picked together
+  // (Gironde, Dordogne, then Bretagne) used to fall through to 'city', so the
+  // URL got city=Dordogne&city=Bretagne. 'zones' keeps the TYPE of every part:
+  // regions stay regions, departments stay departments.
+  const resolveLocationField = (text: string): 'region' | 'department' | 'zones' | 'city' => {
     const parts = text.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length === 0 || isWholeFranceText(text)) return 'city';
     if (urlCityLockRef.current && parts.length === 1 && normalizeFr(parts[0]) === urlCityLockRef.current) return 'city';
@@ -166,9 +170,22 @@ export default function RecherchePage() {
     if (departements && parts.every((p) => departements.some((d) => d.code === p || normalizeFr(d.nom) === normalizeFr(p)))) {
       return 'department';
     }
+    if (departements && parts.every((p) => regionNamesFolded.has(normalizeFr(p)) || departements.some((d) => d.code === p || normalizeFr(d.nom) === normalizeFr(p)))) {
+      return 'zones';
+    }
     return 'city';
   };
-  const resolveLocationValue = (text: string, field: 'region' | 'department' | 'city'): string => {
+  // Splits a resolved 'zones' value into its region names and department codes.
+  const splitZones = (value: string): { regions: string[]; departments: string[] } => {
+    const regions: string[] = [];
+    const departments: string[] = [];
+    for (const part of value.split(',').map((x) => x.trim()).filter(Boolean)) {
+      if (regionNamesFolded.has(normalizeFr(part))) regions.push(part);
+      else departments.push(part);
+    }
+    return { regions, departments };
+  };
+  const resolveLocationValue = (text: string, field: 'region' | 'department' | 'zones' | 'city'): string => {
     if (isWholeFranceText(text)) return '';
     if (field === 'region') {
       // Typed without accents/hyphens ("Ile de France") still has to reach
@@ -178,6 +195,15 @@ export default function RecherchePage() {
         .map((p) => p.trim())
         .filter(Boolean)
         .map((p) => frenchRegions.find((r) => normalizeFr(r.name) === normalizeFr(p))?.name || p)
+        .join(',');
+    }
+    if (field === 'zones' && departements) {
+      return text
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => frenchRegions.find((r) => normalizeFr(r.name) === normalizeFr(p))?.name
+          || departements.find((d) => normalizeFr(d.nom) === normalizeFr(p))?.code || p)
         .join(',');
     }
     if (field !== 'department' || !departements) return text;
@@ -191,8 +217,8 @@ export default function RecherchePage() {
       .map((p) => departements.find((d) => normalizeFr(d.nom) === normalizeFr(p))?.code || p)
       .join(',');
   };
-  const [locationField, setLocationField] = useState<'region' | 'department' | 'city'>(
-    initialDepartment && !initialRegion ? 'department' : (initialCity && !initialRegion ? 'city' : (initialRegion ? 'region' : resolveLocationField(location)))
+  const [locationField, setLocationField] = useState<'region' | 'department' | 'zones' | 'city'>(
+    initialDepartment && initialRegion ? 'zones' : initialDepartment && !initialRegion ? 'department' : (initialCity && !initialRegion ? 'city' : (initialRegion ? 'region' : resolveLocationField(location)))
   );
   // Computed synchronously off the live `location` string (not the
   // debounced `locationField` state above) so chips appear the instant a
@@ -208,9 +234,10 @@ export default function RecherchePage() {
   // generalizing what was department-only logic - resolveLocationField's
   // own parts.every() check already requires a location to be entirely
   // one kind or the other, so a mode is unambiguous once any chip exists.
-  const chipMode: 'department' | 'region' | null =
+  const chipMode: 'department' | 'region' | 'zones' | null =
     resolveLocationField(location) === 'department' ? 'department' :
-    resolveLocationField(location) === 'region' ? 'region' : null;
+    resolveLocationField(location) === 'region' ? 'region' :
+    resolveLocationField(location) === 'zones' ? 'zones' : null;
   const locationChips = chipMode ? location.split(',').map((s) => s.trim()).filter(Boolean) : [];
   const locationInputValue = locationChips.length > 0 ? locationDraft : location;
   const locationSuggestions = useMemo(() => {
@@ -224,17 +251,15 @@ export default function RecherchePage() {
       items.push({ type: 'france', nom: 'France entière' });
     }
     const alreadyPicked = new Set(locationChips.map((c) => normalizeFr(c)));
-    // Once a chip of one kind exists, only suggest more of that same kind -
-    // resolveLocationField requires every comma-separated part to be the
-    // same kind, so mixing would just silently misclassify the whole field.
-    if (chipMode !== 'department') {
+    // Regions and departments can now be mixed freely (see 'zones' above).
+    {
       frenchRegions
         .filter((r) => !alreadyPicked.has(normalizeFr(r.name)))
         .filter((r) => !q || normalizeFr(r.name).includes(q))
         .slice(0, 7)
         .forEach((r) => items.push({ type: 'region', nom: r.name }));
     }
-    if (chipMode !== 'region' && departements) {
+    if (departements) {
       departements
         .filter((d) => !alreadyPicked.has(normalizeFr(d.nom)) && !alreadyPicked.has(d.code))
         .filter((d) => !q || normalizeFr(d.nom).includes(q) || d.code === raw || d.code.startsWith(q))
@@ -405,7 +430,7 @@ export default function RecherchePage() {
   // runs) went out with no location filter at all, briefly showing
   // unfiltered/national results before narrowing a moment later. Seeds
   // from the same value `location` itself was just initialized from.
-  const [applied, setApplied] = useState({ query: initialQuery, location: initialRegion || initialDepartment || initialCity, montantMin: searchParams.get('min_value') || '', montantMax: searchParams.get('max_value') || '' });
+  const [applied, setApplied] = useState({ query: initialQuery, location: [initialRegion, initialDepartment].filter(Boolean).join(', ') || initialCity, montantMin: searchParams.get('min_value') || '', montantMax: searchParams.get('max_value') || '' });
 
   // MOVED here (was above, right after headerKeySuffix): this block reads
   // `applied.location` in a useEffect dependency array, which is evaluated
@@ -495,7 +520,13 @@ export default function RecherchePage() {
     if (applied.query) next.set('q', applied.query);
     if (applied.location) {
       const values = applied.location.split(',').map((s) => s.trim()).filter(Boolean);
-      values.forEach((v) => next.append(locationField, v));
+      if (locationField === 'zones') {
+        const z = splitZones(applied.location);
+        z.regions.forEach((v) => next.append('region', v));
+        z.departments.forEach((v) => next.append('department', v));
+      } else {
+        values.forEach((v) => next.append(locationField, v));
+      }
     }
     if (tradeId) next.set('trade_id', tradeId);
     if (journeyParam) next.set('journey', journeyParam);
@@ -516,8 +547,10 @@ export default function RecherchePage() {
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
-    region: locationField === 'region' ? (applied.location || undefined) : undefined,
-    department: locationField === 'department' ? (applied.location || undefined) : undefined,
+    region: locationField === 'region' ? (applied.location || undefined)
+      : locationField === 'zones' ? (splitZones(applied.location).regions.join(',') || undefined) : undefined,
+    department: locationField === 'department' ? (applied.location || undefined)
+      : locationField === 'zones' ? (splitZones(applied.location).departments.join(',') || undefined) : undefined,
     // Real distance filter when we have coordinates + a chosen radius;
     // otherwise the plain city text-match (unchanged fallback).
     city: locationField === 'city' && !cityCoords ? (applied.location || undefined) : undefined,
@@ -681,7 +714,7 @@ export default function RecherchePage() {
               {locationChips.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-1.5">
                   {locationChips.map((chip) => {
-                    const match = chipMode === 'department' ? departements?.find((d) => normalizeFr(d.nom) === normalizeFr(chip) || d.code === chip) : undefined;
+                    const match = chipMode === 'department' || chipMode === 'zones' ? departements?.find((d) => normalizeFr(d.nom) === normalizeFr(chip) || d.code === chip) : undefined;
                     return (
                       <span
                         key={chip}
@@ -722,7 +755,7 @@ export default function RecherchePage() {
                 <MapPin size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
                 <input
                   type="text"
-                  placeholder={locationChips.length > 0 ? (chipMode === 'region' ? (t('searchLocationAddAnotherRegion') || 'Ajouter une région…') : (t('searchLocationAddAnother') || 'Ajouter un département…')) : t('searchLocationPlaceholder')}
+                  placeholder={locationChips.length > 0 ? (chipMode === 'region' ? (t('searchLocationAddAnotherRegion') || 'Ajouter une région…') : chipMode === 'zones' ? 'Ajouter une région ou un département…' : (t('searchLocationAddAnother') || 'Ajouter un département…')) : t('searchLocationPlaceholder')}
                   value={locationInputValue}
                   onChange={e => {
                     const v = e.target.value;
