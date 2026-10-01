@@ -61,6 +61,8 @@ const RAW_LABEL_MAP: Record<string, string> = {
   MARCHE: 'Marché',
   MARCHE_PUBLIC: 'Marché public',
   PARTENARIAT_INNOVATION: "Partenariat d'innovation",
+  BILANS_CARBONE: 'Bilan carbone',
+  BILAN_CARBONE: 'Bilan carbone',
 };
 
 // Looks like a raw enum/code straight from source data: all caps (or
