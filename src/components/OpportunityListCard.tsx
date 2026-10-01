@@ -81,7 +81,12 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
   let statusLine: { text: string; className: string };
   if (compatible !== undefined) {
     statusLine = compatible
-      ? { text: t('searchCompatible'), className: 'text-[#3FA96E]' }
+      // 30 Sep audit, point 7: "Profil recherché compatible" was shown on every
+      // result as soon as a company was identified, for very different métiers,
+      // before any real comparison. Without a computed concordance the card only
+      // invites the visitor to check it; the positive wording stays reserved for
+      // a real score (branch below).
+      ? { text: t('searchCheckMatch') || 'Ouvrez la fiche pour vérifier la concordance', className: 'text-[#B9BBC8]' }
       : { text: t('searchIdentifyPrompt'), className: 'text-[#B9BBC8]' };
   } else if (canScore) {
     if (matchScore === undefined) statusLine = { text: '\u2026', className: 'text-[#B9BBC8]' };
