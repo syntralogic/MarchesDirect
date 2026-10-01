@@ -2927,7 +2927,14 @@ export default function OpportunityDetailPage() {
               <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-2.5 rounded-xl justify-center">
                 <CheckCircle2 size={13} /> {t('dossierRequestSent') || "Demande envoyée à votre chargé d'affaires"}
               </div>
-            ) : !isAuthenticated ? (
+            ) : !(isAuthenticated && company?.subscription_status === 'active') ? (
+              // 30 Sep audit, point 9: a logged-in account in its 14-day trial was
+              // treated like an accompanied client - the click recorded a real
+              // request ("Demande envoyée à votre chargé d'affaires") instead of
+              // opening the appointment flow. Being connected is not enough: only
+              // an active subscription (client with accompagnement) transmits the
+              // opportunity to its chargé d'affaires; a visitor or trial account
+              // books a rendez-vous.
               // 20 Sep fix: this used to fire the authed /generate call (or,
               // in an earlier pass, redirect straight to /connexion) for an
               // anonymous visitor who has, in fact, already received their
