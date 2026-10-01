@@ -21,7 +21,7 @@ const DOC_LABELS: Record<string, string> = {
 // "Dossier final" (client's dix images, écrans 10 & 17): a generated/present
 // item shows a green check, a pending one shows a plain outline circle -
 // same visual language in both places rather than two different components.
-function ChecklistRow({ label, sublabel, done, action }: { label: string; sublabel?: string; done: boolean; action?: React.ReactNode }) {
+function ChecklistRow({ label, sublabel, done, action, extra }: { label: string; sublabel?: string; done: boolean; action?: React.ReactNode; extra?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2.5 border-b border-[#17334D] last:border-b-0">
       <div className="flex items-start gap-2.5 min-w-0">
@@ -31,9 +31,34 @@ function ChecklistRow({ label, sublabel, done, action }: { label: string; sublab
           {sublabel && <p className="text-[10px] text-[#B9BBC8]">{sublabel}</p>}
         </div>
       </div>
-      {action}
+      <div className="flex items-center gap-3 shrink-0">
+        {extra}
+        {action}
+      </div>
     </div>
   );
+}
+
+// A real, openable file for each generated document (plain text, UTF-8), named
+// after the document - the visitor can download it right after generation.
+function downloadTextFile(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function describeGenerationError(err: unknown, fallback: string): string {
+  const data = (err as any)?.response?.data;
+  if (data?.error === 'active_subscription_required') {
+    return "La génération automatique des documents est réservée aux clients accompagnés. Prenez rendez-vous avec un chargé d'affaires : il prépare avec vous DC1, DC2, DUME et l'acte d'engagement.";
+  }
+  return getApiErrorMessage(err, fallback);
 }
 
 export default function BidWorkspacePage() {
@@ -52,6 +77,10 @@ export default function BidWorkspacePage() {
   const [downloading, setDownloading] = useState(false);
   const [generatingDraft, setGeneratingDraft] = useState(false);
   const [generatingForms, setGeneratingForms] = useState(false);
+  // 30 Sep audit, point 8: the generate buttons went disabled then enabled again
+  // with no document and no visible reason (the failure only flashed in a toast).
+  // The reason now stays on the page until the next attempt.
+  const [genError, setGenError] = useState<string | null>(null);
   const [bookingSlot, setBookingSlot] = useState<string | null>(null);
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
 
@@ -99,6 +128,7 @@ export default function BidWorkspacePage() {
       return;
     }
     setGeneratingDraft(true);
+    setGenError(null);
     try {
       const result = await tendersApi.generateBidDocuments(bid.id);
       setBid(result.bid);
@@ -112,7 +142,9 @@ export default function BidWorkspacePage() {
       // 400/403/500 the backend already describes in plain French) got
       // masked behind copy that doesn't even apply to those cases. Show
       // what the backend actually said.
-      toast.error(getApiErrorMessage(err, 'Échec de la génération du brouillon. Vérifiez que votre profil entreprise est complet.'));
+      const msg = describeGenerationError(err, 'Échec de la génération du brouillon. Vérifiez que votre profil entreprise est complet.');
+      setGenError(msg);
+      toast.error(msg);
     } finally {
       setGeneratingDraft(false);
     }
@@ -123,12 +155,15 @@ export default function BidWorkspacePage() {
   const handleGenerateForms = async () => {
     if (!bid) return;
     setGeneratingForms(true);
+    setGenError(null);
     try {
       const result = await tendersApi.generateForms(bid.id);
       setBid(result.bid);
       toast.success('DC1, DC2 et DUME générés.');
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Échec de la génération des documents. Vérifiez que votre profil entreprise est complet.'));
+      const msg = describeGenerationError(err, 'Échec de la génération des documents. Vérifiez que votre profil entreprise est complet.');
+      setGenError(msg);
+      toast.error(msg);
     } finally {
       setGeneratingForms(false);
     }
@@ -271,7 +306,13 @@ export default function BidWorkspacePage() {
           {/* Documents de candidature (écran 10) */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-5">
             <h2 className="text-sm font-bold text-white flex items-center gap-2 mb-1"><FileText size={15} className="text-orange" /> Documents de candidature</h2>
-            <p className="text-xs text-[#B9BBC8] mb-3">Ces documents sont générés directement à partir de l'entreprise à partir de son profil.</p>
+            <p className="text-xs text-[#B9BBC8] mb-3">Ces documents sont préremplis à partir du profil de l'entreprise : vérifiez chaque champ et complétez ce qui reste à renseigner avant le dépôt.</p>
+            {genError && (
+              <div role="alert" className="flex items-start gap-2 p-3 mb-3 bg-red-400/5 border border-red-400/30 rounded-xl text-xs text-[#EAF0F6]">
+                <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                <span>{genError}</span>
+              </div>
+            )}
 
             <ChecklistRow
               label="DC1" sublabel="Lettre de candidature — à générer"
@@ -281,6 +322,9 @@ export default function BidWorkspacePage() {
                   {generatingForms ? <Loader2 size={11} className="animate-spin" /> : null} {bid.dc1_text ? 'Régénérer' : 'Générer'}
                 </button>
               }
+              extra={bid.dc1_text ? (
+                <button type="button" onClick={() => downloadTextFile('DC1-lettre-de-candidature.txt', bid.dc1_text || '')} className="text-[10px] font-bold text-[#4EA1FF] hover:underline shrink-0">Télécharger</button>
+              ) : null}
             />
             <ChecklistRow
               label="DC2" sublabel="Déclaration du candidat — à générer"
@@ -290,6 +334,9 @@ export default function BidWorkspacePage() {
                   {generatingForms ? <Loader2 size={11} className="animate-spin" /> : null} {bid.dc2_text ? 'Régénérer' : 'Générer'}
                 </button>
               }
+              extra={bid.dc2_text ? (
+                <button type="button" onClick={() => downloadTextFile('DC2-declaration-du-candidat.txt', bid.dc2_text || '')} className="text-[10px] font-bold text-[#4EA1FF] hover:underline shrink-0">Télécharger</button>
+              ) : null}
             />
             <ChecklistRow
               label="DUME" sublabel="Document unique de marché européen — à générer"
@@ -299,6 +346,9 @@ export default function BidWorkspacePage() {
                   {generatingForms ? <Loader2 size={11} className="animate-spin" /> : null} {bid.dume_text ? 'Régénérer' : 'Générer'}
                 </button>
               }
+              extra={bid.dume_text ? (
+                <button type="button" onClick={() => downloadTextFile('DUME-brouillon.txt', bid.dume_text || '')} className="text-[10px] font-bold text-[#4EA1FF] hover:underline shrink-0">Télécharger</button>
+              ) : null}
             />
             <ChecklistRow
               label="Acte d'engagement" sublabel="Pièce contractuelle à compléter — à générer"
@@ -308,6 +358,9 @@ export default function BidWorkspacePage() {
                   {generatingDraft ? <Loader2 size={11} className="animate-spin" /> : null} {bid.engagement_act_text ? 'Régénérer' : 'Générer'}
                 </button>
               }
+              extra={bid.engagement_act_text ? (
+                <button type="button" onClick={() => downloadTextFile('acte-d-engagement.txt', bid.engagement_act_text || '')} className="text-[10px] font-bold text-[#4EA1FF] hover:underline shrink-0">Télécharger</button>
+              ) : null}
             />
           </div>
 
