@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
@@ -261,6 +261,19 @@ export default function OpportunityDetailPage() {
   // several saved candidatures. Populated from the same "opportunités
   // enregistrées" (favorites) the client's spec names for this selector.
   const [savedOpportunities, setSavedOpportunities] = useState<{ id: string; title: string; location_city: string | null; estimated_value: number | null }[]>([]);
+  // Saved opportunities other than the current one, deduped by id and by
+  // displayed label (the same marché can be saved twice under different ids
+  // after a merge) - the selector used to list the same line several times.
+  const otherSavedOpportunities = useMemo(() => {
+    const seen = new Set<string>(opportunity ? [compactOpportunityLabel(opportunity.title, opportunity.location_city, opportunity.estimated_value)] : []);
+    return savedOpportunities.filter(o => {
+      if (o.id === id) return false;
+      const label = compactOpportunityLabel(o.title, o.location_city, o.estimated_value);
+      if (seen.has(label)) return false;
+      seen.add(label);
+      return true;
+    });
+  }, [savedOpportunities, opportunity, id]);
   
   // Client's 13 Sep concordance-apercu screenshots: the "Recevoir mon
   // dossier pré-rempli" CTA sits right under the score card (before the
@@ -1719,7 +1732,7 @@ export default function OpportunityDetailPage() {
                     value={siretCompany.googleRating ? `${siretCompany.googleRating}/5${siretCompany.googleReviewCount ? ` (${siretCompany.googleReviewCount} avis)` : ''}` : null}
                     empty="Non disponible"
                   />
-                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.join(', ') : null} empty="Aucune certification détectée dans notre recherche" />
+                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.map(c => humanizeRawLabel(c) || c).filter((c, i, a) => a.indexOf(c) === i).join(', ') : null} empty="Aucune certification détectée dans notre recherche" />
                 </div>
 
                 {/* "Présence détectée" (client reference screens 5-6),
@@ -2615,6 +2628,8 @@ export default function OpportunityDetailPage() {
               status column later if the client wants steps to persist
               server-side. */}
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+            {otherSavedOpportunities.length > 0 && (
+            <>
             <label className="block text-xs font-semibold text-[#B9BBC8] mb-2">{t('dossierSelectorLabel') || 'Vos opportunités enregistrées'}</label>
             <div className="relative">
               <select
@@ -2622,13 +2637,9 @@ export default function OpportunityDetailPage() {
                 onChange={e => { if (e.target.value !== id) navigate(`/opportunites/${e.target.value}`); }}
                 className="w-full appearance-none bg-[#031B30] border border-[#17334D] rounded-xl px-3.5 py-2.5 pr-9 text-sm text-white cursor-pointer"
               >
-                {/* Current opportunity always shows even if it isn't (yet)
-                    saved, so the selector never renders empty/without the
-                    page you're actually on. */}
-                {!savedOpportunities.some(o => o.id === id) && (
-                  <option value={id}>{compactOpportunityLabel(opportunity.title, opportunity.location_city, opportunity.estimated_value)}</option>
-                )}
-                {savedOpportunities.map(o => (
+                {/* Current opportunity always first, then the other saved ones. */}
+                <option value={id}>{compactOpportunityLabel(opportunity.title, opportunity.location_city, opportunity.estimated_value)}</option>
+                {otherSavedOpportunities.map(o => (
                   <option key={o.id} value={o.id}>
                     {compactOpportunityLabel(o.title, o.location_city, o.estimated_value)}
                   </option>
@@ -2636,7 +2647,9 @@ export default function OpportunityDetailPage() {
               </select>
               <ChevronDown size={14} className="text-[#B9BBC8] absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
-            <div className="mt-3">
+            </>
+            )}
+            <div className={otherSavedOpportunities.length > 0 ? 'mt-3' : ''}>
               <h2 className="text-sm font-bold text-white">{opportunity.title}</h2>
               <p className="text-xs text-[#B9BBC8] mt-1">
                 {tradeLabel}
