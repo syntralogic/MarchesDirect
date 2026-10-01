@@ -3197,7 +3197,15 @@ export default function OpportunityDetailPage() {
                   const done = checklistDocs.some(d => d.document_type === item.type);
                   return (
                     <div key={item.type} className="flex items-center justify-between gap-3 text-xs">
-                      <span className="text-[#B9BBC8]">{t(item.labelKey)}</span>
+                      {/* 30 Sep audit, point 10: "Assurance décennale" was proposed on
+                          every marché, even an IT contract (Le Havre). The décennale
+                          only applies to construction works; other markets ask for the
+                          professional liability certificate. */}
+                      <span className="text-[#B9BBC8]">
+                        {item.type === 'insurance' && !['travaux', 'mixte'].includes(String(opportunity.nature_prestation || ''))
+                          ? (t('checklistInsuranceRc') || "Attestation d'assurance (responsabilité civile professionnelle)")
+                          : t(item.labelKey)}
+                      </span>
                       {done ? (
                         <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
                       ) : (
