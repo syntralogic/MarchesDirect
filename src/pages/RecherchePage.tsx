@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, Loader2, X } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
-import { opportunitiesApi } from '@/lib/apiClient';
+import { opportunitiesApi, tradesApi } from '@/lib/apiClient';
 import { useScrollRestore } from '@/hooks/use-scroll-restore';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useLang } from '@/contexts/LangContext';
@@ -12,7 +12,7 @@ import { LoadMoreButton } from '@/components/LoadMoreButton';
 import { OpportunityListCard } from '@/components/OpportunityListCard';
 import { frenchRegions } from '@/data/mockData';
 import { DEFAULT_CITY_RADIUS_KM, CITY_RADIUS_OPTIONS_KM } from '@/lib/searchRadius';
-import { matchTradeSuggestions, searchTermForSuggestion } from '@/data/tradeSuggestions';
+import { matchTradeSuggestions, searchTermForSuggestion, tradeDisplayName, normalizeFr as normalizeTradeText } from '@/data/tradeSuggestions';
 import { useTrades } from '@/hooks/use-trades';
 
 // Same accent/case fold HomePage.tsx uses for its (working) department
@@ -334,6 +334,29 @@ export default function RecherchePage() {
     }
     setSearchParams(next, { replace: true });
   };
+  // 30 Sep audit, point 4: on this page a suggested métier (Menuiserie) was
+  // turned into a keyword (q=Menuiserie) next to the existing métier chips, so
+  // Électricité + Couverture + Menuiserie never became three métiers. A
+  // suggestion that resolves to a real métier is now added as one more chip
+  // (same trade_id list as the home page); anything else stays a keyword.
+  const addTradeFilter = (newId: string) => {
+    const ids = selectedTrades.map(t => t.id);
+    if (ids.includes(newId)) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('trade_id', [...ids, newId].join(','));
+    next.delete('q');
+    setSearchParams(next, { replace: true });
+  };
+  const resolveSuggestionToTrade = async (label: string): Promise<string | null> => {
+    try {
+      const res = await tradesApi.suggestions(label);
+      const wanted = normalizeTradeText(label);
+      const hit = res.find(r => normalizeTradeText(r.label) === wanted) || (res.length === 1 ? res[0] : null);
+      return hit ? String(hit.tradeId) : null;
+    } catch {
+      return null;
+    }
+  };
   // 26 Sep client audit (point 2): "la recherche générale ne propose pas
   // le même choix visible entre public, privé et sous-traitance." This was
   // read-only from the URL - whichever `journey` a visitor arrived with
@@ -632,7 +655,7 @@ export default function RecherchePage() {
             <span className="text-[9px] font-medium text-[#B9BBC8]">{t('searchTradeFilterLabel') || 'Métier'}</span>
             {selectedTrades.map((trade) => (
               <span key={trade.id} className="inline-flex items-center gap-1 bg-orange/15 border border-orange/40 text-orange text-[10px] font-medium rounded-full pl-2.5 pr-1.5 py-1">
-                {trade.name}
+                {tradeDisplayName(trade.name)}
                 <button
                   type="button"
                   onClick={() => removeTradeFilter(trade.id)}
@@ -663,7 +686,18 @@ export default function RecherchePage() {
                   <button
                     key={s}
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
+                      // 30 Sep audit, point 4: a suggestion naming a real métier
+                      // becomes a métier chip, not a keyword.
+                      if (selectedTrades.length > 0) {
+                        const tid = await resolveSuggestionToTrade(s);
+                        if (tid) {
+                          addTradeFilter(tid);
+                          setQuery('');
+                          setQuerySuggestOpen(false);
+                          return;
+                        }
+                      }
                       // Client audit (26 Sep, point 9): search on the
                       // actual query the suggestion resolves to, not
                       // necessarily its full displayed text - see
