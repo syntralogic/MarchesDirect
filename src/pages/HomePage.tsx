@@ -104,7 +104,13 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
   // active-only subset once you click through - the bigger catalogue-size
   // number is what this tile is meant to communicate now, not a promise
   // that /parcours will list exactly that many.
-  const { counts, loading } = useOpportunityCounts();
+  // 1 Oct client decision: show the two numbers separately and never mix
+  // them - OPEN markets first (what an artisan can still answer, and exactly
+  // what /parcours lists), then the whole catalogue (archives included) as a
+  // secondary figure.
+  const { counts, loading: loadingAll } = useOpportunityCounts();
+  const { counts: openCounts, loading: loadingOpen } = useOpportunityCounts('active');
+  const loading = loadingAll || loadingOpen;
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
   const paths = [
     { icon: Building, title: 'Marchés publics', sub: 'Travaux et prestations pour les organismes publics', href: '/parcours?type=marches-publics', key: 'public_procurement' as const },
@@ -115,6 +121,7 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
     <div className="grid grid-cols-1 gap-1 md:gap-2">
       {paths.map(p => {
         const count = counts[p.key];
+        const openCount = openCounts[p.key];
         return (
           <Link key={p.href} to={p.href} className="flex items-center gap-2 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all">
             <div className="w-9 h-9 md:w-11 md:h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
@@ -125,10 +132,15 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
               <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
               <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0.5 leading-tight md:leading-snug">{p.sub}</div>
             </div>
-            <div className="text-[11px] text-orange font-semibold whitespace-nowrap shrink-0">
+            <div className="text-right whitespace-nowrap shrink-0">
               {loading
                 ? <div className="h-3 w-16 rounded bg-orange/20 animate-pulse" aria-hidden="true" />
-                : `${fmt(count)} opportunité${count > 1 ? 's' : ''}`}
+                : (
+                  <>
+                    <div className="text-[11px] text-orange font-semibold">{`${fmt(openCount)} ouverte${openCount > 1 ? 's' : ''}`}</div>
+                    <div className="text-[9px] text-[#B9BBC8]">{`${fmt(count)} au catalogue`}</div>
+                  </>
+                )}
             </div>
             <ChevronRight size={16} className="text-orange shrink-0 md:hidden" />
             <ChevronRight size={16} className="text-orange shrink-0 hidden md:block" />
