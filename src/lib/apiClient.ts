@@ -229,6 +229,8 @@ export type ApiOpportunity = {
 // by the list endpoint's narrower SELECT - kept separate so list-page code
 // doesn't have to deal with fields it never receives.
 export type ApiOpportunityDetail = ApiOpportunity & {
+  // travaux / fournitures / etudes / mixte (backend utils/naturePrestation.ts)
+  nature_prestation?: string | null;
   raw_data?: Record<string, any> | null;
   ai_matched_trades?: { trade_id: string; trade_name?: string; confidence: number; reasoning?: string }[] | null;
   contract_type?: string | null;
