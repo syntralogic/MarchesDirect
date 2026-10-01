@@ -1,3 +1,4 @@
+import { tradeDisplayName } from '@/data/tradeSuggestions';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -1417,7 +1418,7 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
           <div className="flex flex-wrap gap-2">
             {selectedTrades.map((st) => (
               <span key={st.tradeId} className="inline-flex items-center gap-1.5 bg-orange/10 border border-orange/50 text-white text-sm font-medium rounded-full pl-3.5 pr-2 py-1.5">
-                {st.tradeName}
+                {tradeDisplayName(st.tradeName)}
                 <button type="button" onClick={() => removeTrade(st.tradeId)} aria-label={`Retirer ${st.tradeName}`} className="hover:bg-orange/25 rounded-full p-1 touch-manipulation text-orange">
                   <X size={13} />
                 </button>

@@ -160,3 +160,16 @@ const TRADE_SUGGESTION_SEARCH_TERM: Record<string, string> = {
 export function searchTermForSuggestion(display: string): string {
   return TRADE_SUGGESTION_SEARCH_TERM[display] || display;
 }
+
+
+// 30 Sep audit, point 4: picking "Étanchéité" on the home page created a
+// "Couverture" chip - the label and the scope changed with no explanation.
+// Étanchéité belongs to the Couverture trade in the référentiel; the chip now
+// says so ("Couverture / étanchéité") on every page instead of a silent switch.
+const TRADE_DISPLAY_NAME: Record<string, string> = {
+  couverture: 'Couverture / étanchéité',
+};
+
+export function tradeDisplayName(name: string): string {
+  return TRADE_DISPLAY_NAME[normalizeFr(name)] || name;
+}
