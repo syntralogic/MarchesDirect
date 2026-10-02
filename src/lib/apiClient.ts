@@ -1223,6 +1223,19 @@ export const adminApi = {
     const { data } = await apiClient.get<{ results: ApiCrmLead[]; pagination: ApiPagination }>('/crm/leads', { params });
     return data;
   },
+  // 30 Sep CRM check: the client extracts his data from the CRM - one click gives
+  // all leads as an Excel-ready CSV (authenticated, so fetched as a blob).
+  exportLeadsCsv: async (params: { status?: string; lead_source?: string; from?: string; to?: string } = {}) => {
+    const { data } = await apiClient.get('/crm/leads/export.csv', { params, responseType: 'blob' });
+    const url = URL.createObjectURL(data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
   updateContactLeadStatus: async (id: string, status: string) => {
     const { data } = await apiClient.put(`/crm/leads/${id}/status`, { status });
     return data;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Mail, Phone, Building2, ExternalLink, ShieldCheck, Clock, History, Search, FileSearch, Globe } from 'lucide-react';
+import { Loader2, Mail, Phone, Building2, ExternalLink, ShieldCheck, Clock, History, Search, FileSearch, Globe, Download } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import { useLang } from '@/contexts/LangContext';
 import { adminApi, getApiErrorMessage, type ApiAdminOpportunityLead, type ApiVisitorEvent } from '@/lib/apiClient';
@@ -86,6 +86,13 @@ export default function AdminLeads() {
           <h1 className="text-2xl font-extrabold text-white">{t('adminLeads')}</h1>
           <p className="text-sm text-[#B9BBC8]">{t('adminManageLeads')}</p>
         </div>
+        <button
+          type="button"
+          onClick={() => adminApi.exportLeadsCsv(status === 'all' ? {} : { status }).catch(err => showToast(getApiErrorMessage(err, 'Export impossible'), 'error'))}
+          className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg border border-orange text-orange hover:bg-orange/10 transition-colors"
+        >
+          <Download size={14} /> Exporter en CSV (Excel)
+        </button>
       </div>
 
       <div className="flex gap-2 mb-6">
