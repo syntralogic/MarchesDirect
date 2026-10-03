@@ -94,7 +94,7 @@ export function OpportunityAnalysisAccordions({
           >
             <FileText size={14} className="text-[#5B6B80] shrink-0" />
             <span className="flex-1 text-xs font-semibold text-[#B9BBC8]">
-              {t('detailSourceTextToggle') || 'Voir le texte source complet'}
+              {t('detailSourceTextToggle') || 'Voir l'extrait de l'avis'}
             </span>
             <ChevronDown size={13} className={`text-[#5B6B80] shrink-0 transition-transform ${sourceOpen ? 'rotate-180' : ''}`} />
           </button>
