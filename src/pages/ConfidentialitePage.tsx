@@ -1,4 +1,5 @@
 import { useLang } from '@/contexts/LangContext';
+import { resetAnalyticsConsent } from '@/lib/consent';
 
 export default function ConfidentialitePage() {
   const { t } = useLang();
@@ -10,7 +11,7 @@ export default function ConfidentialitePage() {
     { title: t('privacyRights'), text: t('privacyRightsText'), id: 'droits' },
     { title: t('privacyDelete'), text: t('privacyDeleteText') },
     { title: t('privacySecurity'), text: t('privacySecurityText') },
-    { title: t('privacyCookies'), text: t('privacyCookiesText') },
+    { title: t('privacyCookies'), text: t('privacyCookiesText'), id: 'cookies' },
   ];
 
   return (
@@ -25,6 +26,11 @@ export default function ConfidentialitePage() {
           <div key={s.title} id={s.id} className="bg-[#061D32] border border-[#17334D] rounded-xl p-5 scroll-mt-24">
             <h2 className="text-sm font-bold text-orange uppercase tracking-wide mb-3">{s.title}</h2>
             <p className="text-sm text-[#B9BBC8] leading-relaxed">{s.text}</p>
+            {s.id === 'cookies' && (
+              <button type="button" onClick={resetAnalyticsConsent} className="mt-3 text-sm font-semibold text-orange hover:underline">
+                {t('consentManage')}
+              </button>
+            )}
           </div>
         ))}
       </div>

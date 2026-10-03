@@ -1,5 +1,5 @@
 import RequestPrivacyNote from '@/components/RequestPrivacyNote';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2, AlertTriangle, Download } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
@@ -94,8 +94,12 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
   // DEV-14: the contact-details step is the real start of the form.
+  const formStartedRef = useRef(false);
   useEffect(() => {
-    if (step === 4) trackVisitorEvent('form_started', 'Formulaire commencé : appointment', undefined, { kind: 'appointment' });
+    if (step === 4 && !formStartedRef.current) {
+      formStartedRef.current = true;
+      trackVisitorEvent('form_started', 'Formulaire commencé : appointment', undefined, { kind: 'appointment' });
+    }
   }, [step]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});

@@ -19,6 +19,10 @@ export default async function handler(req: any, res: any) {
   const staticPaths = [
     '/', '/recherche', '/marches-publics', '/appels-doffres', '/sous-traitance',
     '/tarifs', '/a-propos', '/team', '/how-it-works', '/faq', '/contact',
+    '/actualites',
+    // DEV-12: one URL per published article (ids of mockArticles in
+    // src/data/mockData.ts - keep in sync when an article is added/removed).
+    ...['a1', 'a2', 'a3', 'a4', 'a5', 'a6'].map((id) => `/actualites/${id}`),
   ];
 
   let seoUrls: { loc: string; lastmod?: string }[] = [];
