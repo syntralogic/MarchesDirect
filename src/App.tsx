@@ -1,6 +1,6 @@
 import NotFound from '@/pages/NotFound';
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
@@ -54,10 +54,46 @@ import AdminContacts from '@/pages/AdminContacts';
 import AdminSubscriptions from '@/pages/AdminSubscriptions';
 import AdminBrands from '@/pages/AdminBrands';
 import AdminSettings from '@/pages/AdminSettings';
+import { siteStatusApi } from '@/lib/apiClient';
+
+// AdminSettings' Maintenance toggle has been saveable since 30 Sep, but
+// nothing on the site ever actually enforced it (schema.sql said so
+// plainly on the app_settings table itself) - flipping it in the admin
+// panel visibly did nothing. This is the visitor-facing half of the fix
+// (server.ts's maintenance gate is the other half, on the API side).
+function MaintenancePage({ message }: { message: string }) {
+  return (
+    <div className="min-h-screen w-full bg-[#001326] flex items-center justify-center px-4">
+      <div className="max-w-md w-full text-center border border-[#17334D] bg-[#061D32] rounded-2xl p-8">
+        <span className="text-xl font-bold tracking-tight block mb-4">
+          <span className="text-white">Marchés</span><span className="text-orange"> Direct</span>
+        </span>
+        <p className="text-sm text-[#B9BBC8] whitespace-pre-wrap">{message}</p>
+      </div>
+    </div>
+  );
+}
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  // /connexion (login + magic link) and /admin stay reachable during
+  // maintenance - otherwise an admin who turns this on has no way back in
+  // to turn it back off.
+  const isLogin = location.pathname.startsWith('/connexion');
+
+  // Checked once per load, not per navigation - a value that only changes
+  // when an admin explicitly saves it doesn't need refetching on every
+  // route change, and the server-side gate (server.ts) is what actually
+  // enforces this for every API call regardless of what this check shows.
+  const [maintenance, setMaintenance] = useState<{ active: boolean; message: string } | null>(null);
+  useEffect(() => {
+    siteStatusApi.get()
+      .then((s) => setMaintenance({ active: s.maintenanceMode, message: s.maintenanceMessage }))
+      // Fails open on purpose (same reasoning as server.ts's own fallback):
+      // a broken status check must never itself look like "site is down".
+      .catch(() => {});
+  }, []);
 
   // Footer/menu links like "Zones géographiques" (#mdh-zones on the
   // homepage) are plain anchor hashes, but react-router doesn't scroll to
@@ -72,6 +108,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
     });
     return () => cancelAnimationFrame(raf);
   }, [location.pathname, location.hash]);
+
+  if (maintenance?.active && !isAdmin && !isLogin) {
+    return <MaintenancePage message={maintenance.message} />;
+  }
 
   if (isAdmin) {
     return <div className="min-h-screen w-full bg-[#001326]">{children}</div>;
