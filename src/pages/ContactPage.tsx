@@ -72,7 +72,7 @@ export default function ContactPage() {
 
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-16">
-      <PageMeta title="Contact | Marchés Direct" description="Une question sur un marché ou sur Marchés Direct ? Écrivez à notre équipe, nous vous répondons rapidement." />
+      <PageMeta title="Contact | Marchés Direct" description="Une question sur un marché ou sur Marchés Direct ? Écrivez à notre équipe, nous vous répondons." />
       {/* Header */}
       <div className="text-center mb-8 md:mb-10">
         <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('contactTag')}</span>

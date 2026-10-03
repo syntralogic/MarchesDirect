@@ -65,7 +65,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
         <div className="flex items-center justify-between p-5 border-b border-[#17334D]">
           <div>
             <h2 className="text-lg font-bold text-brand-primary">{t('callbackTitle')}</h2>
-            <p className="text-xs text-brand-muted mt-0.5">Un conseiller vous rappelle rapidement.</p>
+            <p className="text-xs text-brand-muted mt-0.5">Un conseiller vous rappelle.</p>
           </div>
           <button onClick={handleClose} aria-label={t('close')} className="p-2 rounded-lg hover:bg-white/10 text-brand-muted hover:text-brand-primary transition-colors">
             <X size={18} />
