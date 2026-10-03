@@ -224,7 +224,8 @@ const frTranslations: Translations = {
   sortLabel: 'Trier par',
   sortRecent: 'Plus récents',
   sortMatch: 'Pertinence',
-  sortDeadline: 'Échéance proche (défaut)',
+  sortTimeLeft: 'Plus de temps pour répondre',
+  sortDeadline: 'Échéance la plus proche',
 
   // Appels Page
   appelsTag: 'Marchés privés',
@@ -1861,7 +1862,8 @@ const enTranslations: Translations = {
   sortLabel: 'Sort by',
   sortRecent: 'Most recent',
   sortMatch: 'Relevance',
-  sortDeadline: 'Upcoming deadline (default)',
+  sortTimeLeft: 'Most time to respond',
+  sortDeadline: 'Closest deadline',
 
   // Appels Page
   appelsTag: 'Private Markets',

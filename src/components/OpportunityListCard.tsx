@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLang } from '@/contexts/LangContext';
 import { SaveButton } from '@/components/SaveButton';
 import type { Opportunity } from '@/data/mockData';
+import { formatDeadlineExact } from '@/lib/deadlineFormat';
 
 interface OpportunityListCardProps {
   opportunity: Opportunity;
@@ -65,9 +66,12 @@ function getDeadlineInfo(
   }
   const days = deadline ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000) : NaN;
   if (Number.isNaN(days)) return { value: t('listingNoDeadline'), label: t('listingDeadlineLabel') };
-  if (days < 0) return { value: t('listingClosedLabel'), label: t('listingStatusLabel') };
+  // Past the exact hour counts as closed (a deadline earlier today is not "0 jour").
+  if (new Date(deadline as string).getTime() < Date.now()) return { value: t('listingClosedLabel'), label: t('listingStatusLabel') };
+  // DEV-02: a precise date (and hour when the source has one) instead of
+  // "1 jour"; same-day deadlines read "Aujourd'hui à 19 h".
   return {
-    value: `${days} ${days > 1 ? t('listingDaysPlural') : t('listingDaySingular')}`,
+    value: formatDeadlineExact(deadline) || `${days} ${days > 1 ? t('listingDaysPlural') : t('listingDaySingular')}`,
     label: t('listingClosesInLabel'),
   };
 }
