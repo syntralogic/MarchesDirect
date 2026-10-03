@@ -1261,7 +1261,7 @@ export default function OpportunityDetailPage() {
                           ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
                           : (t('detailAnalysisFailedNoLink') || "L'analyse automatique a échoué pour ce marché."))
                       : opportunity.ai_classification_status === 'processing'
-                        ? (t('detailAnalysisPending') || 'Analyse en cours de génération pour cette opportunité.')
+                        ? (t('detailAnalysisPending') || 'Les informations de la source sont affichées ci-dessous ; l’analyse détaillée n’est pas encore disponible.')
                         : (opportunity.official_url
                             ? (t('detailNoDescription') || "Aucune description détaillée n'est disponible pour cette annonce. Consultez l'annonce officielle ci-dessous.")
                             : (t('detailNoDescriptionNoLink') || "Aucune description détaillée n'est disponible pour cette annonce."))}
@@ -1455,7 +1455,15 @@ export default function OpportunityDetailPage() {
             // description" complaint, so it's intentionally left out.
 
             // Prestations et lots
-            if (facts?.allotment?.available) rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
+            if (facts?.allotment?.available) {
+              rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
+            } else {
+              // DEV-03: lots straight from the notice ("Lots : a ; b ; c") when the
+              // analysis did not produce an allotment - they are source data.
+              const m = /(?:^|\n)\s*Lots\s*:\s*([\s\S]+)$/.exec(String(opportunity.description || ''));
+              const lotList = m ? m[1].split(/\s;\s/).map(x => x.replace(/\s+/g, ' ').trim()).filter(x => x.length >= 4) : [];
+              if (lotList.length) rows.push({ label: t('dossierFactAllotment'), value: lotList.join(' · ') });
+            }
 
             // Périmètre et quantités — client audit (25 Sep, point 10):
             // private tender / sous-traitance listings without a
@@ -1494,7 +1502,16 @@ export default function OpportunityDetailPage() {
             if (facts?.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: humanizeRawLabel(facts.procedure_type.value) || facts.procedure_type.value });
             if (facts?.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: humanizeRawLabel(facts.submission_method.value) || facts.submission_method.value });
             if (facts?.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
-            if (facts?.technical_visit?.available) rows.push({ label: t('dossierFactTechnicalVisit'), value: facts.technical_visit.value });
+            // DEV-03: a mandatory visit is highlighted by its own label; an unknown
+            // one says "À vérifier" instead of silently disappearing (absent !=
+            // "no visit").
+            if (facts?.technical_visit?.available) {
+              const v = String(facts.technical_visit.value || '');
+              const mandatory = /obligatoire/i.test(v) && !/(non|pas)\s+obligatoire|facultative/i.test(v);
+              rows.push({ label: mandatory ? 'Visite obligatoire' : t('dossierFactTechnicalVisit'), value: v });
+            } else {
+              rows.push({ label: t('dossierFactTechnicalVisit'), value: 'À vérifier dans le règlement de consultation' });
+            }
             if (facts?.contract_duration?.available) rows.push({ label: t('dossierFactDuration'), value: facts.contract_duration.value });
             if (facts?.intervention_calendar?.available) rows.push({ label: t('dossierFactCalendar') || "Calendrier d'intervention", value: facts.intervention_calendar.value });
             if (facts?.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
