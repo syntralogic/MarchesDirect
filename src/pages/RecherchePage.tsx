@@ -587,6 +587,20 @@ export default function RecherchePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applied, locationField, tradeId, journeyFilters, statutFilter, natureFilter, sortChoice, radius, showRadius]);
 
+  // DEV-05: "Affiner ma recherche" (mobile) - collapsed by default, active secondary
+  // filters summarised as chips next to the toggle.
+  const [showSecondary, setShowSecondary] = useState(false);
+  const secondaryChips: string[] = [
+    ...journeyFilters.map(j => j === 'public_procurement' ? (t('searchTypePublic') || 'Marchés publics')
+      : j === 'tender' ? (t('searchTypeTender') || "Appels d'offres privés")
+      : j === 'subcontracting' ? (t('searchTypeSubcontracting') || 'Sous-traitance') : j),
+    ...(statutFilter ? [statutFilter === 'active' ? t('searchStatutActive') : statutFilter === 'expired' ? t('searchStatutExpired')
+      : statutFilter === 'awarded' ? t('searchStatutAwarded') : statutFilter === 'cancelled' ? t('searchStatutCancelled') : statutFilter] : []),
+    ...natureFilter.map(n => n === 'travaux' ? (t('natureTravaux') || 'Travaux') : n === 'fournitures' ? (t('natureFournitures') || 'Fournitures')
+      : n === 'etudes' ? (t('natureEtudes') || 'Études') : n === 'services' ? (t('natureServices') || 'Services') : (t('natureMixte') || 'Mixte')),
+    ...((applied.montantMin || applied.montantMax) ? [`Montant : ${applied.montantMin || '0'} – ${applied.montantMax || '∞'} €`] : []),
+  ];
+
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
     region: locationField === 'region' ? (applied.location || undefined)
@@ -884,6 +898,29 @@ export default function RecherchePage() {
           )}
         </div>
 
+        {/* DEV-05 (plan de corrections, 3 Oct): on a phone the secondary filters (type,
+            statut, nature, montant) sit behind "Affiner ma recherche"; the filters
+            currently applied stay visible as chips so the visitor always sees what
+            narrows the list. On desktop everything stays open. */}
+        <div className="md:hidden mb-2.5">
+          <button
+            type="button"
+            onClick={() => setShowSecondary(v => !v)}
+            aria-expanded={showSecondary}
+            className="w-full flex items-center justify-between bg-[#031B30] border border-[#17334D] rounded-md px-3 py-2 text-[11px] font-semibold text-white"
+          >
+            <span>Affiner ma recherche{secondaryChips.length > 0 ? ` (${secondaryChips.length})` : ''}</span>
+            <ChevronDown size={12} className={`text-[#B9BBC8] transition-transform ${showSecondary ? 'rotate-180' : ''}`} />
+          </button>
+          {secondaryChips.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {secondaryChips.map(c => (
+                <span key={c} className="px-2 py-0.5 rounded-md text-[10px] font-medium border bg-orange/15 border-orange text-orange">{c}</span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className={showSecondary ? 'block' : 'hidden md:block'}>
         <div className="mb-2.5">
           <label className="text-[9px] font-medium text-[#B9BBC8] mb-1 block">{t('searchType') || "Type d'opportunité"}</label>
           <div className="flex flex-wrap gap-1.5">
@@ -1002,6 +1039,7 @@ export default function RecherchePage() {
             Le montant minimum doit être inférieur ou égal au montant maximum.
           </p>
         )}
+        </div>
 
         <button
           type="submit"

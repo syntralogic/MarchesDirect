@@ -58,28 +58,37 @@ export default function SecteursPage() {
           {trades.map(trade => {
             const Icon = tradeIcon(trade.slug);
             return (
-              <Link
+              <div
                 key={trade.id}
-                // DEV-04 (plan de corrections, 3 Oct): the number says its scope
-                // (marchés ouverts first, catalogue second) and the link opens
-                // exactly the filter used for the first number: métier + "En cours".
-                // The catalogue figure is a separate link (status=all) - a count
-                // limited to open marchés never opens the whole catalogue.
-                to={`/recherche?trade_id=${trade.id}&status=active`}
-                className="group bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 transition-all flex flex-col"
+                className="group relative bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 transition-all flex flex-col"
               >
+                {/* DEV-04 (plan de corrections, 3 Oct): the number says its scope and
+                    each link opens exactly the filter used for its number: the card
+                    (stretched link) = métier + "En cours"; the catalogue figure is its
+                    own link = métier + tous statuts. Counts come from the list's own
+                    predicate (backend /api/trades), so click-through totals match. */}
                 <div className="flex items-start gap-4 mb-4">
                   <div className="w-11 h-11 rounded-xl bg-orange/10 border border-orange/20 flex items-center justify-center shrink-0">
                     <Icon size={22} className="text-orange" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold text-white group-hover:text-orange transition-colors">{trade.name}</h3>
+                    <h3 className="text-base font-bold text-white group-hover:text-orange transition-colors">
+                      <Link
+                        to={`/recherche?trade_id=${trade.id}&status=active`}
+                        className="after:absolute after:inset-0 after:rounded-2xl focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-orange"
+                      >
+                        {trade.name}
+                      </Link>
+                    </h3>
                     <span className="text-xs text-orange font-semibold">
                       {(trade.open_count ?? 0).toLocaleString('fr-FR')} marchés ouverts
                     </span>
-                    <span className="text-[11px] text-[#B9BBC8] ml-2">
+                    <Link
+                      to={`/recherche?trade_id=${trade.id}&status=all`}
+                      className="relative z-10 text-[11px] text-[#B9BBC8] ml-2 underline-offset-2 hover:underline hover:text-orange"
+                    >
                       · {trade.opportunity_count.toLocaleString('fr-FR')} au catalogue (archives incluses)
-                    </span>
+                    </Link>
                   </div>
                 </div>
                 {trade.description && (
@@ -88,7 +97,7 @@ export default function SecteursPage() {
                 <div className="flex items-center gap-1 text-xs text-orange font-semibold mt-auto">
                   {t('sectorsSeeOpp')} <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

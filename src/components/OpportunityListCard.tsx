@@ -114,6 +114,13 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
     try {
       const key = `${window.location.pathname}${window.location.search}`;
       sessionStorage.setItem(`scrollPos:${key}`, String(window.scrollY));
+      // DEV-05: also remember WHICH card was opened and where it sat in the
+      // viewport, so going back lands on the same card even if card heights
+      // changed meanwhile (fonts/images/badges) - the raw pixel offset alone drifts.
+      const el = document.querySelector(`[data-opp-id="${CSS.escape(String(o.id))}"]`);
+      if (el) {
+        sessionStorage.setItem(`scrollAnchor:${key}`, JSON.stringify({ id: String(o.id), top: Math.round(el.getBoundingClientRect().top) }));
+      }
       // See loadedCount prop doc above - without this, useOpportunities'
       // fresh mount on back-navigation always starts from page 1/PAGE_SIZE
       // again, so a scroll position saved against a 200-row-tall page gets
@@ -131,6 +138,7 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
 
   return (
     <div
+      data-opp-id={String(o.id)}
       className="relative bg-[#061D32] border border-[#17334D] rounded-2xl p-4 hover:border-orange/40 transition-colors duration-200 cursor-pointer"
       onClick={() => { saveScrollForReturn(); navigate(destination); }}
     >

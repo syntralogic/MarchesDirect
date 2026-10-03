@@ -33,7 +33,21 @@ export function useScrollRestore(ready: boolean) {
     if (saved == null) return;
     restoredRef.current = key;
     requestAnimationFrame(() => {
-      window.scrollTo({ top: Number(saved), behavior: 'auto' });
+      // DEV-05: prefer the card that was opened (same card, same spot on screen);
+      // fall back to the saved pixel position when it is not in the list.
+      let top = Number(saved);
+      try {
+        const raw = sessionStorage.getItem(`scrollAnchor:${key.slice('scrollPos:'.length)}`);
+        if (raw) {
+          const a = JSON.parse(raw) as { id: string; top: number };
+          const el = document.querySelector(`[data-opp-id="${CSS.escape(a.id)}"]`);
+          if (el) top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - a.top);
+          sessionStorage.removeItem(`scrollAnchor:${key.slice('scrollPos:'.length)}`);
+        }
+      } catch {
+        // non-fatal: pixel position is used
+      }
+      window.scrollTo({ top, behavior: 'auto' });
       try {
         sessionStorage.removeItem(key); // one-time use, so a later fresh visit doesn't jump
       } catch {
