@@ -416,7 +416,17 @@ export default function RecherchePage() {
   // the visitor had actually searched for. Every filter now round-trips
   // both ways: read here on mount, and written back below whenever it
   // changes (see the setSearchParams effect near `applied`).
-  const [statutFilter, setStatutFilter] = useState(searchParams.get('status') === 'all' ? '' : (searchParams.get('status') || ''));
+  // DEV-02 (plan de corrections, 3 Oct): a NEW public-marchés search opens on
+  // "En cours" - the closed ones are one explicit choice away ("Clôturé",
+  // "Tous"). "Tous" is written to the URL as status=all so an explicit choice
+  // is never overridden by the default on reload or when coming back.
+  const [statutFilter, setStatutFilter] = useState(() => {
+    const p = searchParams.get('status');
+    if (p === 'all') return '';
+    if (p) return p;
+    const j = (searchParams.get('journey') || '').split(',').map(x => x.trim()).filter(Boolean);
+    return j.length === 1 && j[0] === 'public_procurement' ? 'active' : '';
+  });
   // R04's deeper fix already classifies opportunities server-side; this is
   // just the control that was missing to actually filter by it.
   const [natureFilter, setNatureFilter] = useState<string[]>(
@@ -429,9 +439,17 @@ export default function RecherchePage() {
   // explicit sort control did. Defaults to the same active-first/soonest-
   // deadline order the results used before this control existed, so
   // nothing changes until the visitor picks something else.
-  const [sort, setSort] = useState<'deadline' | 'recent' | 'match'>(
-    (searchParams.get('sort') as 'deadline' | 'recent' | 'match' | null) || 'deadline'
+  // DEV-01 (plan de corrections, 3 Oct): for public marchés the default order is
+  // now "Plus de temps pour répondre" (farthest deadline first). A sort the
+  // visitor picked himself lives in the URL (?sort=) and is never overridden -
+  // including "Échéance la plus proche" - so it survives a filter change or a
+  // return from a fiche. Other families keep their previous default.
+  type SortKey = 'time_left' | 'deadline' | 'recent' | 'match';
+  const [sortChoice, setSortChoice] = useState<SortKey | null>(
+    (searchParams.get('sort') as SortKey | null) || null
   );
+  const publicOnly = journeyFilters.length === 1 && journeyFilters[0] === 'public_procurement';
+  const sort: SortKey = sortChoice ?? (publicOnly ? 'time_left' : 'deadline');
 
   const debouncedQuery = useDebounce(query, 400);
   const debouncedLocation = useDebounce(location, 400);
@@ -554,10 +572,11 @@ export default function RecherchePage() {
     if (tradeId) next.set('trade_id', tradeId);
     if (journeyParam) next.set('journey', journeyParam);
     if (statutFilter) next.set('status', statutFilter);
+    else if (publicOnly) next.set('status', 'all');
     if (natureFilter.length > 0) next.set('nature', natureFilter.join(','));
     if (applied.montantMin) next.set('min_value', applied.montantMin);
     if (applied.montantMax) next.set('max_value', applied.montantMax);
-    if (sort !== 'deadline') next.set('sort', sort);
+    if (sortChoice) next.set('sort', sortChoice);
     // Client audit (25 Sep): the radius selector was decorative for the URL -
     // changing it never round-tripped through searchParams, so a reload or
     // a shared link always fell back to DEFAULT_CITY_RADIUS_KM (50 km) no
@@ -566,7 +585,7 @@ export default function RecherchePage() {
     if (showRadius && radius !== String(DEFAULT_CITY_RADIUS_KM)) next.set('radius_km', radius);
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applied, locationField, tradeId, journeyFilters, statutFilter, natureFilter, sort, radius, showRadius]);
+  }, [applied, locationField, tradeId, journeyFilters, statutFilter, natureFilter, sortChoice, radius, showRadius]);
 
   const { opportunities: filtered, loading, error, total, hasMore, loadingMore, loadMore } = useOpportunities({
     q: applied.query || undefined,
@@ -1010,10 +1029,11 @@ export default function RecherchePage() {
         <div className="relative shrink-0">
           <select
             value={sort}
-            onChange={e => setSort(e.target.value as 'deadline' | 'recent' | 'match')}
+            onChange={e => setSortChoice(e.target.value as SortKey)}
             aria-label={t('sortLabel')}
             className="bg-[#031B30] border border-[#17334D] rounded-md pl-2 pr-6 py-1.5 text-[10px] text-white focus:outline-none appearance-none cursor-pointer"
           >
+            {publicOnly && <option value="time_left">{t('sortTimeLeft')}</option>}
             <option value="deadline">{t('sortDeadline')}</option>
             <option value="recent">{t('sortRecent')}</option>
             <option value="match">{t('sortMatch')}</option>

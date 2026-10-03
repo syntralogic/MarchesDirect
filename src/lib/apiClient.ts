@@ -231,6 +231,7 @@ export type ApiOpportunity = {
 export type ApiOpportunityDetail = ApiOpportunity & {
   // travaux / fournitures / etudes / mixte (backend utils/naturePrestation.ts)
   nature_prestation?: string | null;
+  trade_id?: string | null;
   raw_data?: Record<string, any> | null;
   ai_matched_trades?: { trade_id: string; trade_name?: string; confidence: number; reasoning?: string }[] | null;
   contract_type?: string | null;
@@ -335,7 +336,7 @@ export type OpportunitySearchParams = {
   // R08 (client audit): explicit sort control. 'match' only has an effect
   // when q is also set (nothing to rank relevance against otherwise) -
   // backend falls back to the default order in that case.
-  sort?: 'recent' | 'match' | 'deadline';
+  sort?: 'time_left' | 'recent' | 'match' | 'deadline';
   page?: number;
   limit?: number;
 };

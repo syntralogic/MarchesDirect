@@ -1127,6 +1127,25 @@ export default function OpportunityDetailPage() {
           <h1 className="text-lg md:text-xl font-extrabold text-white leading-snug">{opportunity.title}</h1>
           <SaveButton opportunityId={opportunity.id} size="md" />
         </div>
+        {/* DEV-02 (plan de corrections, 3 Oct): a closed / awarded / cancelled
+            marché says so right under the title, before any company form, and
+            offers similar open marchés instead of a candidature that is no
+            longer possible. The same rule (status OR passed deadline) drives the
+            list, the fiche and the dossier request. */}
+        {(['expired', 'awarded', 'cancelled'].includes(String(opportunity.status)) || (!!opportunity.deadline && new Date(opportunity.deadline).getTime() < Date.now())) && (
+          <div role="status" className="flex flex-wrap items-center gap-3 mb-3 p-3 rounded-xl border border-white/15 bg-white/5">
+            <span className="text-xs font-bold text-white">
+              {opportunity.status === 'awarded' ? 'Marché attribué' : opportunity.status === 'cancelled' ? 'Marché annulé' : 'Marché clôturé'}
+            </span>
+            <span className="text-[11px] text-[#B9BBC8]">Cette fiche est consultable comme exemple : la candidature n’est plus possible.</span>
+            <Link
+              to={`/recherche?${new URLSearchParams({ ...(opportunity.journey ? { journey: String(opportunity.journey) } : {}), ...(opportunity.trade_id ? { trade_id: String(opportunity.trade_id) } : {}), ...(opportunity.journey === 'public_procurement' ? { status: 'active' } : {}) }).toString()}`}
+              className="text-[11px] font-bold text-orange hover:underline"
+            >
+              Voir des marchés similaires
+            </Link>
+          </div>
+        )}
         <div className="flex flex-wrap gap-4 text-xs text-[#B9BBC8]">
           {(opportunity.location_city || opportunity.location_region) && (
             <span className="flex items-center gap-1.5"><MapPin size={13} /> {[opportunity.location_city, opportunity.location_region].filter(Boolean).join(', ')}</span>
