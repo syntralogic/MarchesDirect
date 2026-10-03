@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { mockArticles } from '@/data/mockData';
+import PageMeta from '@/components/common/PageMeta';
 import { useLang } from '@/contexts/LangContext';
 
 export default function ActualitesPage() {
@@ -25,6 +26,7 @@ export default function ActualitesPage() {
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-16">
+      <PageMeta title="Actualités des marchés publics et privés | Marchés Direct" description="Réglementation, nouvelles consultations et secteurs à suivre : les articles Marchés Direct pour répondre plus sereinement aux marchés." />
       <div className="mb-8 md:mb-10">
         <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('newsPageTag')}</span>
         <h1 className="text-2xl md:text-3xl font-extrabold text-white mt-1 mb-2">{t('newsPageTitle')}</h1>
