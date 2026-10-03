@@ -1143,7 +1143,7 @@ export default function OpportunityDetailPage() {
               Demo/seed rows are the only ones whose source_reference starts
               with "DEMO-" (see backend scripts/seed.js) - real BOAMP/PLACE/
               TED ingestion never produces that prefix. */}
-          {!!opportunity.source_reference && opportunity.source_reference.startsWith('DEMO-') && (
+          {(!!opportunity.is_demo || (!!opportunity.source_reference && opportunity.source_reference.startsWith('DEMO-'))) && (
             <span className="text-[11px] font-semibold rounded-full px-3 py-1 text-purple-300 bg-purple-400/10 border border-purple-400/40">
               {t('detailDemoBadge') || 'Exemple de démonstration'}
             </span>

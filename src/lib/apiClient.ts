@@ -223,6 +223,8 @@ export type ApiOpportunity = {
   buyer_name?: string | null;
   match_score?: number;
   identity_unlocked?: boolean;
+  // true for templated catalogue rows with no real source (editorial_catalog)
+  is_demo?: boolean;
 };
 
 // Extra fields only returned by GET /opportunities/:id (SELECT o.*, ...), not

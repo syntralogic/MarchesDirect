@@ -81,7 +81,7 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
     // on the backend, source_reference "DEMO-PUB-1".."DEMO-PUB-4") must be
     // clearly distinguished from real opportunities - they weren't
     // flagged anywhere on the frontend before this.
-    isDemo: !!api.source_reference && api.source_reference.startsWith('DEMO-'),
+    isDemo: !!api.is_demo || (!!api.source_reference && api.source_reference.startsWith('DEMO-')),
     // 2nd 27 Sep client audit, point 2: same fields OpportunityDetailPage
     // already reads straight off the API response - carried through here
     // too so MissionDetailPage (sous-traitance), which only has this
