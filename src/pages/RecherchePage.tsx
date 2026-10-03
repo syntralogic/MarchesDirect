@@ -615,6 +615,7 @@ export default function RecherchePage() {
     min_value: (!budgetRangeInvalid && applied.montantMin) ? Number(applied.montantMin) : undefined,
     max_value: (!budgetRangeInvalid && applied.montantMax) ? Number(applied.montantMax) : undefined,
     sort,
+    pageSize: 24,
   });
 
   useScrollRestore(!loading);

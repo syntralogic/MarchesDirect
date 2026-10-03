@@ -980,6 +980,17 @@ export default function OpportunityDetailPage() {
     );
   }
 
+  // DEV-02 (plan de corrections, 3 Oct): one closed rule for the whole fiche -
+  // status declared by the source OR a deadline already passed. A closed marché
+  // never offers an active candidature action; it offers similar open marchés.
+  const closedFiche = ['expired', 'awarded', 'cancelled'].includes(String(opportunity.status))
+    || (!!opportunity.deadline && new Date(opportunity.deadline).getTime() < Date.now());
+  const similarMarchesHref = `/recherche?${new URLSearchParams({
+    ...(opportunity.journey ? { journey: String(opportunity.journey) } : {}),
+    ...(opportunity.trade_id ? { trade_id: String(opportunity.trade_id) } : {}),
+    ...(opportunity.journey === 'public_procurement' ? { status: 'active' } : {}),
+  }).toString()}`;
+
   const journey = opportunity.journey || 'tender';
   const isPublic = journey === 'public_procurement';
   const journeyMeta = JOURNEY_LABEL[journey] || JOURNEY_LABEL.tender;
@@ -1132,14 +1143,14 @@ export default function OpportunityDetailPage() {
             offers similar open marchés instead of a candidature that is no
             longer possible. The same rule (status OR passed deadline) drives the
             list, the fiche and the dossier request. */}
-        {(['expired', 'awarded', 'cancelled'].includes(String(opportunity.status)) || (!!opportunity.deadline && new Date(opportunity.deadline).getTime() < Date.now())) && (
+        {closedFiche && (
           <div role="status" className="flex flex-wrap items-center gap-3 mb-3 p-3 rounded-xl border border-white/15 bg-white/5">
             <span className="text-xs font-bold text-white">
               {opportunity.status === 'awarded' ? 'Marché attribué' : opportunity.status === 'cancelled' ? 'Marché annulé' : 'Marché clôturé'}
             </span>
             <span className="text-[11px] text-[#B9BBC8]">Cette fiche est consultable comme exemple : la candidature n’est plus possible.</span>
             <Link
-              to={`/recherche?${new URLSearchParams({ ...(opportunity.journey ? { journey: String(opportunity.journey) } : {}), ...(opportunity.trade_id ? { trade_id: String(opportunity.trade_id) } : {}), ...(opportunity.journey === 'public_procurement' ? { status: 'active' } : {}) }).toString()}`}
+              to={similarMarchesHref}
               className="text-[11px] font-bold text-orange hover:underline"
             >
               Voir des marchés similaires
@@ -1624,6 +1635,20 @@ export default function OpportunityDetailPage() {
           concordance / lead capture only ever belongs to screen 2. */}
       {screen === 1 && !isAuthenticated && (
           <div className="space-y-4">
+            {/* DEV-06 (plan de corrections, 3 Oct): after "Précédent" the visitor
+                lands back on the SIRET form with the company already identified.
+                He gets a direct way back to his concordance (company and answers
+                kept); a new search is reserved for "Modifier mon entreprise". */}
+            {siretCompany && (
+              <button
+                type="button"
+                onClick={() => setScreen(2)}
+                className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors"
+              >
+                {t('backToConcordance') || 'Revenir à ma concordance'}
+                <span className="text-xs font-normal opacity-90">— {siretCompany.name || 'votre entreprise'}</span>
+              </button>
+            )}
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
@@ -1878,6 +1903,11 @@ export default function OpportunityDetailPage() {
                   Reading on and reaching the dossier excerpt/form further
                   down stays entirely the visitor's own choice; no button is
                   needed to "continue" there. */}
+              {closedFiche ? (
+                <Link to={similarMarchesHref} className="w-full flex items-center justify-center gap-2 border border-orange/50 text-orange font-bold py-3 rounded-xl hover:bg-orange/10 transition-colors mt-4">
+                  Voir des marchés similaires
+                </Link>
+              ) : (
               <button
                 type="button"
                 onClick={() => setShowAccountManagerModal(true)}
@@ -1885,6 +1915,7 @@ export default function OpportunityDetailPage() {
               >
                 <Calendar size={16} /> {t('scoreTalkToManagerCta') || 'Échanger avec un chargé d\u2019affaires'}
               </button>
+              )}
 
               {/* One line per criterion: what the market asks, what the company
                   does, and one of three states. Unknown data stays "à
@@ -1923,6 +1954,7 @@ export default function OpportunityDetailPage() {
                   right next to the score it actually affects. */}
               {siretCompany?.statut && siretCompany.statut !== 'Active' && (
                 <div className="border-l-2 border-[#bd7027] bg-[#bd7027]/10 rounded-r-lg pl-3 pr-3 py-2.5 mt-4">
+                  <p className="text-xs font-bold text-white mb-1">Situation de l’entreprise à vérifier avec un conseiller</p>
                   <p className="text-xs text-[#EAF0F6] leading-relaxed">
                     {t('scoreStatusNotice', { status: siretCompany.statut }) || `Statut « ${siretCompany.statut} » d'après la fiche officielle : l'indice ci-dessus ne tient pas compte de ce statut et doit être interprété avec prudence tant que la situation de l'entreprise n'est pas clarifiée.`}
                   </p>
@@ -2972,7 +3004,11 @@ export default function OpportunityDetailPage() {
             </div>
             <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierGenerateSub') || "Votre chargé d'affaires prépare et dépose votre candidature."}</p>
 
-            {dossier?.status && dossier.status !== 'draft' ? (
+            {closedFiche ? (
+              <Link to={similarMarchesHref} className="w-full flex items-center justify-center gap-2 border border-orange/50 text-orange text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
+                Voir des marchés similaires
+              </Link>
+            ) : dossier?.status && dossier.status !== 'draft' ? (
               <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-2.5 rounded-xl justify-center">
                 <CheckCircle2 size={13} /> {t('dossierRequestSent') || "Demande envoyée à votre chargé d'affaires"}
               </div>

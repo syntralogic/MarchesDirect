@@ -11,7 +11,7 @@ import type { Opportunity } from '@/data/mockData';
 // DB, and totalPages/total from the backend's pagination response were
 // silently discarded. Now fetches a full page of 100 and exposes total/
 // hasMore/loadMore so pages can page through everything.
-const PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 100;
 
 export function useOpportunities(params: OpportunitySearchParams['journey'] | OpportunitySearchParams) {
   // Accepts either a bare journey (existing call sites: useOpportunities('tender'))
@@ -23,6 +23,10 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
     : { journey: params };
 
   const { journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature } = searchParams;
+  // DEV-05 (plan de corrections, 3 Oct): the search page loads 24 cards at a time
+  // ("Voir plus" adds 24) instead of 100; other pages keep 100. Passed as
+  // `pageSize` on the params object.
+  const PAGE_SIZE = (searchParams as { pageSize?: number }).pageSize || DEFAULT_PAGE_SIZE;
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -119,7 +123,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature]);
+  }, [journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature, PAGE_SIZE]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || page >= totalPages) return;

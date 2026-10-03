@@ -46,7 +46,7 @@ export function LoadMoreButton({ hasMore, loadingMore, onLoadMore, total, shown 
           t('loadMore')
         )}
       </button>
-      <span className="text-[10px] text-[#B9BBC8]">{total !== undefined ? `${shown} / ${total}` : `${shown} affichées`}</span>
+      <span className="text-[10px] text-[#B9BBC8]">{total !== undefined ? `${shown} sur ${total.toLocaleString('fr-FR')} résultats` : `${shown} affichées`}</span>
     </div>
   );
 }

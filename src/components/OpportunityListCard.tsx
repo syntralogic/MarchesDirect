@@ -157,14 +157,20 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
         </div>
       </div>
 
-      <h3 className="text-base font-bold text-white leading-snug mb-1 line-clamp-2">{o.title}</h3>
-      <p className="text-xs text-[#B9BBC8] mb-4">{o.location}</p>
+      <h3 title={o.title} className="text-base font-bold text-white leading-snug mb-1 line-clamp-2">{o.title}</h3>
+      <p className="text-xs text-[#B9BBC8] mb-4 line-clamp-2">{o.location}</p>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <p className="text-lg font-bold text-orange leading-tight">{o.amount}</p>
-          {o.amount !== 'Montant non communiqué' && (
-            <p className="text-[11px] text-[#B9BBC8]">{t('detailBudget')}</p>
+          {/* DEV-05: no big repeated "Montant non communiqué" block - an unknown
+              amount is a small discreet line, never an invented estimate. */}
+          {o.amount !== 'Montant non communiqué' ? (
+            <>
+              <p className="text-lg font-bold text-orange leading-tight">{o.amount}</p>
+              <p className="text-[11px] text-[#B9BBC8]">{t('detailBudget')}</p>
+            </>
+          ) : (
+            <p className="text-[11px] text-[#B9BBC8] leading-tight">{t('detailBudget')} : non communiqué</p>
           )}
         </div>
         <div>
