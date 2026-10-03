@@ -9,7 +9,6 @@ import { CompanyKnownProvider } from '@/contexts/CompanyKnownContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
-import { ChatbotWidget } from '@/components/ChatbotWidget';
 
 import HomePage from '@/pages/HomePage';
 import AppelsPage from '@/pages/AppelsPage';
@@ -80,16 +79,12 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen w-full">
       <Header />
-      {/* pb-40 (not just pb-16 for the bottom nav) also clears the fixed
-          chatbot launcher button (bottom-20 + h-14 ≈ 136px from the bottom
-          on mobile), which was overlapping the last card on pages like the
-          opportunity detail "Analyse stratégique" tab. */}
-      <main className="flex-1 pb-40 md:pb-0 min-w-0">
+      {/* pb-24 clears the fixed mobile bottom nav. */}
+      <main className="flex-1 pb-24 md:pb-0 min-w-0">
         {children}
       </main>
       <Footer />
       <BottomNav />
-      <ChatbotWidget />
     </div>
   );
 }
