@@ -21,6 +21,7 @@ import {
   type ApiDossierRequest,
 } from '@/lib/apiClient';
 import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from '@/lib/utils';
+import { publicReference } from '@/lib/publicReference';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle } from '@/components/OpportunityAnalysisAccordions';
 
@@ -1563,10 +1564,10 @@ export default function OpportunityDetailPage() {
             // "officielle" when there's an official_url to back that up;
             // otherwise use a neutral label rather than imply an
             // official-looking identifier that isn't one.
-            if (opportunity.source_reference) {
+            if (publicReference(opportunity)) {
               rows.push({
                 label: opportunity.official_url ? t('dossierFactReference') : (t('dossierFactReferenceInternal') || 'Référence'),
-                value: opportunity.source_reference,
+                value: publicReference(opportunity) as string,
               });
             }
 
@@ -3146,7 +3147,7 @@ export default function OpportunityDetailPage() {
                           <div className="min-w-0">
                             <p className="text-sm text-white font-semibold">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || DCE_LABEL_NAMES.Autre}</p>
                             <p className="text-[11px] text-[#5B6B80]">
-                              {[opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : '', sizeLabel(doc.file_size_bytes)].filter(Boolean).join(' · ')}
+                              {[publicReference(opportunity) ? `${t('dossierDceRef') || 'Référence'} · ${publicReference(opportunity)}` : '', sizeLabel(doc.file_size_bytes)].filter(Boolean).join(' · ')}
                             </p>
                           </div>
                           <a href={doc.source_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
@@ -3167,7 +3168,7 @@ export default function OpportunityDetailPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm text-white font-semibold">{t('dossierDceNoticeName') || "Avis du marché"}</p>
-                      <p className="text-[11px] text-[#5B6B80]">{opportunity.source_reference ? `${t('dossierDceRef') || 'Référence'} · ${opportunity.source_reference}` : ''}</p>
+                      <p className="text-[11px] text-[#5B6B80]">{publicReference(opportunity) ? `${t('dossierDceRef') || 'Référence'} · ${publicReference(opportunity)}` : ''}</p>
                     </div>
                     {opportunity.official_url ? (
                       <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
