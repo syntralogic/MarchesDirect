@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PageMeta from '@/components/common/PageMeta';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { tradesApi, ApiTrade } from '@/lib/apiClient';
@@ -33,6 +34,7 @@ export default function SecteursPage() {
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12">
+      <PageMeta title="Marchés par secteur d'activité | Marchés Direct" description="Parcourez les marchés ouverts par métier : travaux, énergie, informatique, transport, services et plus encore." />
       {/* Header */}
       <div className="mb-8 md:mb-10">
         <span className="text-xs font-bold text-orange uppercase tracking-widest">{t('sectorsPageTag')}</span>

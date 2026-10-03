@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import PageMeta from '@/components/common/PageMeta';
 import { useSearchParams } from 'react-router-dom';
 import { Search, MapPin, Calendar, ChevronDown, Loader2, X } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
@@ -662,6 +663,7 @@ export default function RecherchePage() {
 
   return (
     <div className="page-fade-in max-w-md mx-auto px-4 py-3 min-h-screen pb-24">
+      <PageMeta title="Recherche de marchés publics et privés | Marchés Direct" description="Trouvez les marchés publics, appels d'offres privés et missions de sous-traitance de votre métier, dans votre zone, avec la date limite de réponse." />
       
       {/* Header */}
       <div className="mb-3">

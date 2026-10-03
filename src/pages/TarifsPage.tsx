@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PageMeta from '@/components/common/PageMeta';
 import { useNavigate } from 'react-router-dom';
 import { 
   Check, Monitor, FileText, Trophy, 
@@ -62,6 +63,7 @@ export default function TarifsPage() {
   return (
     // Responsive: Perfect mobile (max-w-md) & Premium web (max-w-5xl)
     <div className="page-fade-in w-full max-w-md md:max-w-5xl mx-auto px-4 py-6 overflow-x-hidden">
+      <PageMeta title="Tarifs et accompagnement | Marchés Direct" description="Découvrez l'offre Marchés Direct et ce qu'elle comprend pour trouver et préparer vos réponses aux marchés." />
       
       {/* ========== 1. HEADER ========== */}
       <div className="mb-6 md:mb-12">
