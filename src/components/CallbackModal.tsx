@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
-import { getSessionId } from '@/lib/visitorTracking';
+import { getSessionId, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { normalizeFrPhoneDigits, isValidFrPhone } from '@/lib/utils';
 import RequiredLegend from '@/components/RequiredLegend';
 
@@ -24,6 +24,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const { t } = useLang();
   const { brandId } = useBrand();
   const [submitted, setSubmitted] = useState(false);
+  const startTracker = useMemo(() => createFormStartTracker('callback'), []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -59,6 +60,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
         message: form.moment ? `Créneau souhaité : ${MOMENT_LABELS[form.moment] || form.moment}` : undefined,
         sessionId: getSessionId(),
       });
+      trackRequestSubmitted('callback');
       setSubmitted(true);
     } catch (err) {
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
@@ -84,7 +86,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
 
         <div className="p-5">
           {!submitted ? (
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <form onSubmit={handleSubmit} onFocusCapture={startTracker} noValidate className="space-y-4">
               <RequiredLegend />
               {[
                 { key: 'nom', label: t('callbackName'), icon: User, placeholder: 'Jean Dupont', type: 'text' },

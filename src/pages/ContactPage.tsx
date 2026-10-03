@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import PageMeta from '@/components/common/PageMeta';
 import { Calendar, Phone, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -7,7 +7,7 @@ import { useLang } from '@/contexts/LangContext';
 import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
-import { getSessionId } from '@/lib/visitorTracking';
+import { getSessionId, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { isValidEmail, isValidFrPhone } from '@/lib/utils';
 import RequiredLegend from '@/components/RequiredLegend';
 
@@ -20,6 +20,7 @@ export default function ContactPage() {
   const [apptOpen, setApptOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const startTracker = useMemo(() => createFormStartTracker('contact'), []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -79,6 +80,7 @@ export default function ContactPage() {
         message: `Sujet : ${subject}\n\n${message}`,
         sessionId: getSessionId(),
       });
+      trackRequestSubmitted('contact');
       setSubmitted(true);
     } catch (err) {
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
@@ -132,7 +134,7 @@ export default function ContactPage() {
           </button>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} noValidate className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 space-y-4">
+        <form onSubmit={handleSubmit} onFocusCapture={startTracker} noValidate className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 space-y-4">
           <RequiredLegend />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

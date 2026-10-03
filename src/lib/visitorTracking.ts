@@ -21,7 +21,35 @@ export function getSessionId(): string {
   }
 }
 
-type VisitorEventType = 'search' | 'view_opportunity' | 'view_seo_page';
+// DEV-14: funnel events. `request_submitted` is the ONLY conversion event and
+// is fired strictly after the server confirmed the request was saved - never
+// on the button click. No e-mail, phone, password or document is ever put in
+// eventData (only ids, the journey family and the form kind).
+export type VisitorEventType =
+  | 'search'
+  | 'view_opportunity'
+  | 'view_seo_page'
+  | 'company_identified'
+  | 'concordance_shown'
+  | 'form_started'
+  | 'request_submitted';
+
+export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request';
+
+// Returns a handler to attach to a <form onFocusCapture>: fires `form_started`
+// once per form instance, when the visitor first touches a field.
+export function createFormStartTracker(kind: RequestKind, extra?: () => Record<string, unknown>) {
+  let fired = false;
+  return () => {
+    if (fired) return;
+    fired = true;
+    trackVisitorEvent('form_started', `Formulaire commencé : ${kind}`, undefined, { kind, ...(extra ? extra() : {}) });
+  };
+}
+
+export function trackRequestSubmitted(kind: RequestKind, extra?: Record<string, unknown>) {
+  trackVisitorEvent('request_submitted', `Demande enregistrée : ${kind}`, undefined, { kind, ...(extra || {}) });
+}
 
 // Fire-and-forget by design: a failed analytics beacon must never surface
 // an error to the visitor or block navigation. Swallows all errors.
