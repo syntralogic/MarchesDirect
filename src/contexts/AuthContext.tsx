@@ -96,6 +96,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await refreshProfile();
       return { error: null };
     } catch (err) {
+      // DEV-07: a network failure or a server-side error must not read as
+      // "wrong password" - say the service is unavailable instead, and keep
+      // the credentials message for real access refusals (400/401/403).
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (!status || status >= 500 || status === 429) {
+        return { error: 'Service momentanément indisponible. Réessayez dans un instant.' };
+      }
       return { error: getApiErrorMessage(err, 'Email ou mot de passe incorrect.') };
     }
   };
