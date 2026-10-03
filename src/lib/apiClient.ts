@@ -900,6 +900,21 @@ export const brandsApi = {
   },
 };
 
+// maintenanceMode has been saveable from AdminSettings since 30 Sep but was
+// never actually enforced anywhere - see server.ts's own comment on the
+// maintenance gate. This is what App.tsx calls once on load to find out
+// whether to show the maintenance page. Public/unauthenticated, so plain
+// axios (not the shared apiClient instance) - same pattern as brandsApi
+// above, and deliberately not run through the same interceptor a signed-in
+// request would use.
+export type ApiSiteStatus = { maintenanceMode: boolean; maintenanceMessage: string };
+export const siteStatusApi = {
+  get: async (): Promise<ApiSiteStatus> => {
+    const { data } = await axios.get(`${API_URL}/api/site-status`);
+    return data;
+  },
+};
+
 export type ApiCompany = {
   id: string;
   name: string;
