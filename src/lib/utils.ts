@@ -93,6 +93,15 @@ export function normalizeFrPhoneDigits(raw: string): string {
   return digits.slice(0, 10);
 }
 
+// DEV-08: client-side checks for the public request forms (the server validates
+// again). Phone is checked on the normalized domestic digits: 0 + 9 digits.
+export function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+export function isValidFrPhone(raw: string): boolean {
+  return /^0[1-9]\d{8}$/.test(normalizeFrPhoneDigits(raw));
+}
+
 export function stripMarkdownArtifacts(text: string): string {
   return text
     .replace(/^#{1,6}\s*/gm, '')       // # / ## headers

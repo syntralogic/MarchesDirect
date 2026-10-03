@@ -6,7 +6,8 @@ import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
-import { normalizeFrPhoneDigits } from '@/lib/utils';
+import { normalizeFrPhoneDigits, isValidFrPhone } from '@/lib/utils';
+import RequiredLegend from '@/components/RequiredLegend';
 
 interface CallbackModalProps {
   open: boolean;
@@ -25,15 +26,24 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: '' });
 
   if (!open) return null;
 
-  const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setError(null); }, 300); };
+  const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setError(null); setFieldErrors({}); }, 300); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
+
+    // DEV-08: errors shown next to the field, before anything is sent.
+    const errs: Record<string, string> = {};
+    if (!form.nom.trim()) errs.nom = t('requestErrRequired');
+    if (!form.telephone) errs.telephone = t('requestErrRequired');
+    else if (!isValidFrPhone(form.telephone)) errs.telephone = t('requestErrPhone');
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) { setError(null); return; }
 
     setSubmitting(true);
     setError(null);
@@ -51,7 +61,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Échec de l'envoi — réessayez."));
+      setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
     } finally {
       setSubmitting(false);
     }
@@ -74,30 +84,34 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
 
         <div className="p-5">
           {!submitted ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+              <RequiredLegend />
               {[
                 { key: 'nom', label: t('callbackName'), icon: User, placeholder: 'Jean Dupont', type: 'text' },
                 { key: 'entreprise', label: t('callbackCompany'), icon: Building2, placeholder: 'Ma Société SAS', type: 'text' },
                 { key: 'telephone', label: t('callbackPhone'), icon: Phone, placeholder: '06 00 00 00 00', type: 'tel' },
               ].map(field => (
                 <div key={field.key}>
-                  <label className="text-xs text-brand-muted mb-1.5 block font-medium">{field.label}</label>
+                  <label className="text-xs text-brand-muted mb-1.5 block font-medium">{field.label}{field.key !== 'entreprise' && <span aria-hidden="true" className="text-orange"> *</span>}</label>
                   <div className="relative">
                     <field.icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type={field.type}
                       placeholder={field.placeholder}
                       required={field.key !== 'entreprise'}
+                      aria-required={field.key !== 'entreprise'}
+                      aria-invalid={!!fieldErrors[field.key]}
                       value={form[field.key as keyof typeof form]}
-                      onChange={e => setForm(f => ({
+                      onChange={e => { setFieldErrors(fe => ({ ...fe, [field.key]: '' })); setForm(f => ({
                         ...f,
                         // 27 Sep audit, point 5: same +33/0033 truncation bug
                         // as the dossier page's phone fields - normalize here too.
                         [field.key]: field.key === 'telephone' ? normalizeFrPhoneDigits(e.target.value) : e.target.value,
-                      }))}
-                      className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-9 pr-4 py-3 text-sm text-brand-primary placeholder:text-muted-foreground focus:outline-none focus:border-orange transition-colors"
+                      })); }}
+                      className={`w-full bg-[#061D32] border rounded-xl pl-9 pr-4 py-3 text-sm text-brand-primary placeholder:text-muted-foreground focus:outline-none focus:border-orange transition-colors ${fieldErrors[field.key] ? 'border-red-500/60' : 'border-[#17334D]'}`}
                     />
                   </div>
+                  {fieldErrors[field.key] && <p role="alert" className="text-[11px] text-red-400 mt-1">{fieldErrors[field.key]}</p>}
                 </div>
               ))}
 
