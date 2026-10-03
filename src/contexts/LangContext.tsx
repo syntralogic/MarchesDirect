@@ -315,7 +315,6 @@ const frTranslations: Translations = {
   planProBadge: 'Le plus choisi',
   planProFeat1: 'Métiers et parcours de recherche illimités',
   planProFeat2: 'Score de correspondance et résumé IA',
-  planProFeat3: 'Chatbot IA',
   planProFeat4: 'Module réponse aux appels d\'offres',
   planProFeat5: 'Profil entreprise et coffre-fort documentaire',
   planProCta: 'Demander un rappel',
@@ -422,11 +421,14 @@ const frTranslations: Translations = {
 
   // Confidentialité
   privacyTitle: 'Politique de confidentialité',
-  privacyUpdated: 'Dernière mise à jour : 1er août 2026',
+  privacyUpdated: 'Dernière mise à jour : 3 octobre 2026',
   privacyData: 'Données collectées',
   privacyDataText: "Marchés Direct collecte les données nécessaires à la fourniture de ses services : nom, prénom, adresse email, numéro de téléphone, SIRET de l'entreprise, adresse postale et préférences de recherche. Ces données sont collectées lors de l'inscription et lors de l'utilisation du service.",
   privacyPurpose: 'Finalités du traitement',
-  privacyPurposeText: "Vos données sont utilisées pour : créer et gérer votre compte, vous envoyer des alertes d'opportunités, générer vos dossiers de réponse, améliorer nos services grâce à des statistiques anonymisées, et vous contacter dans le cadre du support client.",
+  // DRAFT (DEV-08 / LEGAL-02): same three purposes as the Concordance form note and the
+  // contact-preferences panel. Final wording (legal basis, recipients, retention) to be
+  // validated by the person in charge of the data-protection notice.
+  privacyPurposeText: "Vos données sont utilisées pour : créer et gérer votre compte ; traiter vos demandes (rappel, rendez-vous, message, demande de dossier) et vous recontacter à ce sujet ; vous envoyer le dossier demandé ; vous présenter l'accompagnement de Marchés Direct par téléphone ou par e-mail, sauf si vous choisissez « Suivi de ma demande uniquement » dans vos préférences de contact (choix modifiable à tout moment) ; vous envoyer les alertes d'opportunités que vous avez activées ; assurer le support client. Les statistiques de visite ne sont enregistrées qu'avec votre accord (voir « Cookies »).",
   privacyRetention: 'Conservation des données',
   privacyRetentionText: "Vos données sont conservées pendant la durée de votre abonnement et jusqu'à 3 ans après la résiliation de votre compte, sauf obligation légale de conservation plus longue. Les données de facturation sont conservées 10 ans conformément aux obligations comptables.",
   privacyRights: 'Vos droits (RGPD)',
@@ -1255,21 +1257,9 @@ const frTranslations: Translations = {
 
   // Team Profile
   teamSeeProfile: 'Voir son profil',
-
-  // Chatbot translations
-  chatbotTitle: 'Assistant Marchés Direct',
-  chatbotLoginRequired: 'Connectez-vous pour discuter avec l\'assistant et obtenir de l\'aide sur vos opportunités.',
-  chatbotLogin: 'Se connecter',
-  chatbotBookAppointment: 'Prendre rendez-vous avec un chargé d\'affaires',
-  chatbotLoading: 'Chargement...',
-  chatbotPlaceholder: 'Posez une question sur vos opportunités, votre dossier ou la plateforme.',
-  chatbotInputPlaceholder: 'Écrivez votre message...',
-  chatbotSend: 'Envoyer le message',
   teamLinkedinLabel: 'Profil LinkedIn de',
   teamEmailLabel: 'Contacter',
   teamEmailLabelSuffix: 'par e-mail',
-  chatbotSendError: 'Échec de l\'envoi du message.',
-  chatbotRetry: 'Réessayer',
 
   // Opportunity Card translations
   amount: 'Montant',
@@ -1975,7 +1965,6 @@ const enTranslations: Translations = {
   planProBadge: 'Most popular',
   planProFeat1: 'Unlimited trades and search profiles',
   planProFeat2: 'Match score for your company and AI summary',
-  planProFeat3: 'AI Chatbot',
   planProFeat4: 'Tender response module',
   planProFeat5: 'Company profile and document vault',
   planProCta: 'Request a callback',
@@ -2082,11 +2071,11 @@ const enTranslations: Translations = {
 
   // Confidentialité
   privacyTitle: 'Privacy Policy',
-  privacyUpdated: 'Last updated: August 1, 2026',
+  privacyUpdated: 'Last updated: October 3, 2026',
   privacyData: 'Data collected',
   privacyDataText: "Marchés Direct collects the data necessary to provide its services: first name, last name, email address, phone number, company SIRET, postal address and search preferences. This data is collected during registration and during use of the service.",
   privacyPurpose: 'Purposes of processing',
-  privacyPurposeText: "Your data is used to: create and manage your account, send you opportunity alerts, generate your response files, improve our services through anonymized statistics, and contact you for customer support.",
+  privacyPurposeText: "Your data is used to: create and manage your account; handle your requests (callback, appointment, message, file request) and get back to you about them; send you the file you asked for; present Marchés Direct's support offer by phone or e-mail, unless you choose the \"follow-up of my request only\" option in your contact preferences (you can change this at any time); send you the opportunity alerts you turned on; provide customer support. Visit statistics are only recorded with your consent (see \"Cookies\").",
   privacyRetention: 'Data retention',
   privacyRetentionText: "Your data is kept for the duration of your subscription and up to 3 years after the cancellation of your account, unless there is a legal obligation for longer retention. Billing data is kept for 10 years in accordance with accounting obligations.",
   privacyRights: 'Your rights (GDPR)',
@@ -2904,21 +2893,9 @@ const enTranslations: Translations = {
 
   // Team Profile - English
   teamSeeProfile: 'See profile',
-
-  // Chatbot translations - English
-  chatbotTitle: 'Marchés Direct Assistant',
-  chatbotLoginRequired: 'Log in to chat with the assistant and get help with your opportunities.',
-  chatbotLogin: 'Log in',
-  chatbotBookAppointment: 'Book an appointment with an advisor',
-  chatbotLoading: 'Loading...',
-  chatbotPlaceholder: 'Ask a question about your opportunities, your file or the platform.',
-  chatbotInputPlaceholder: 'Write your message...',
-  chatbotSend: 'Send message',
   teamLinkedinLabel: 'LinkedIn profile of',
   teamEmailLabel: 'Contact',
   teamEmailLabelSuffix: 'by email',
-  chatbotSendError: 'Failed to send message.',
-  chatbotRetry: 'Retry',
 
   // Opportunity Card translations - English
   amount: 'Amount',

@@ -662,9 +662,12 @@ export default function RecherchePage() {
   };
 
   return (
-    <div className="page-fade-in max-w-md mx-auto px-4 py-3 min-h-screen pb-24">
-      <PageMeta title="Recherche de marchés publics et privés | Marchés Direct" description="Trouvez les marchés publics, appels d'offres privés et missions de sous-traitance de votre métier, dans votre zone, avec la date limite de réponse." />
-      
+    <div className="page-fade-in max-w-md md:max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-6 min-h-screen pb-24">
+      {/* DEV-12: only the clean /recherche page is indexable; every filtered/sorted variant is noindex so the engines never index thousands of combinations. */}
+      <PageMeta title="Recherche de marchés publics et privés | Marchés Direct" description="Trouvez les marchés publics, appels d'offres privés et missions de sous-traitance de votre métier, dans votre zone, avec la date limite de réponse." noindex={searchParams.toString() !== ''} />
+
+      {/* DEV-05 / UX-01: on desktop the form keeps a readable width while the results below use the full width (two cards per row). */}
+      <div className="md:max-w-3xl">
       {/* Header */}
       <div className="mb-3">
         <span className="text-[9px] font-bold text-orange uppercase tracking-widest mb-1 block">{t(`searchHeaderTag${headerKeySuffix}`)}</span>
@@ -1052,6 +1055,7 @@ export default function RecherchePage() {
           {t('searchButton')}
         </button>
       </form>
+      </div>
 
       {/* Results Header */}
       {/* Was filtered.length - only the currently loaded batch (max
@@ -1096,7 +1100,7 @@ export default function RecherchePage() {
           Clôturé/Attribué/Annulé status). OpportunityListCard already has
           the correct real-status badge logic (used elsewhere); this page
           just wasn't using it. */}
-      <div className="space-y-2">
+      <div className="space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
         {filtered.map((o) => (
           <OpportunityListCard key={o.id} opportunity={o} compatible={companyKnown} loadedCount={filtered.length} />
         ))}
