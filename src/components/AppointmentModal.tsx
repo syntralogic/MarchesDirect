@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
-import { getSessionId } from '@/lib/visitorTracking';
+import { getSessionId, trackVisitorEvent, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { normalizeFrPhoneDigits, isValidEmail, isValidFrPhone } from '@/lib/utils';
 import RequiredLegend from '@/components/RequiredLegend';
 
@@ -93,6 +93,10 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   const [selectedSlot, setSelectedSlot] = useState('');
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
+  // DEV-14: the contact-details step is the real start of the form.
+  useEffect(() => {
+    if (step === 4) trackVisitorEvent('form_started', 'Formulaire commencé : appointment', undefined, { kind: 'appointment' });
+  }, [step]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -217,6 +221,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
         message: `Motif : ${motif}${marketLabel ? `\nMarché : ${marketLabel}` : ''}\nCréneau souhaité : ${selectedDate} à ${selectedSlot}`,
         sessionId: getSessionId(),
       });
+      trackRequestSubmitted('appointment');
       setStep(5);
     } catch (err) {
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);

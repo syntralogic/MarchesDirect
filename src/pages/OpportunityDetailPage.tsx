@@ -12,7 +12,7 @@ import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { SaveButton } from '@/components/SaveButton';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
-import { trackVisitorEvent, getSessionId, getConsultationsToday } from '@/lib/visitorTracking';
+import { trackVisitorEvent, getSessionId, getConsultationsToday, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getBlobApiErrorMessage,
   dossiersApi, siretApi,
@@ -256,6 +256,9 @@ export default function OpportunityDetailPage() {
   // gates moving on to the next screen, never the analysis itself.
   // FIX 1: Always start on screen 1, regardless of authentication status.
   const [screen, setScreen] = useState<1 | 2 | 3>(1);
+  // DEV-14 funnel events (ids and journey family only - never contact data).
+  const leadFormStartTracker = useMemo(() => createFormStartTracker('dossier_request', () => ({ opportunityId: id })), [id]);
+  const concordanceShownFor = useRef<string | null>(null);
   // Dossier hub's opportunity selector (client's 10 Sep card spec): was a
   // hardcoded <select disabled> showing only the current opportunity as its
   // one option - the reference mockup's selector actually switches between
@@ -544,6 +547,7 @@ export default function OpportunityDetailPage() {
     // leaving the visitor on a blank Concordance screen (the bug: the lead
     // form disappears once leadCaptured flips true, but nothing used to
     // take its place or advance `screen`).
+    trackRequestSubmitted('dossier_request', { opportunityId: id, journey: opportunity?.journey });
     setDossierJustEmailed(!!dossierEmailed);
     setJustUnlockedAnalysis(true);
     setScreen(3);
@@ -622,6 +626,7 @@ export default function OpportunityDetailPage() {
         setOtpSubmitting(false);
         return;
       }
+      trackRequestSubmitted('dossier_request', { opportunityId: id, journey: opportunity?.journey });
       setDossierJustEmailed(dossierEmailed);
       // Client's exact button label is "Enregistrer et continuer" - one
       // action, not submit-then-a-second-tap. Was previously just setting
@@ -701,6 +706,12 @@ export default function OpportunityDetailPage() {
   // a full page reload, which would also have lost screen/refineAnswers/
   // siret state kept in memory or sessionStorage.
   const [retryTick, setRetryTick] = useState(0);
+  useEffect(() => {
+    if (screen === 2 && opportunity && id && concordanceShownFor.current !== id) {
+      concordanceShownFor.current = id;
+      trackVisitorEvent('concordance_shown', 'Concordance affichée', undefined, { opportunityId: id, journey: opportunity.journey });
+    }
+  }, [screen, opportunity, id]);
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -820,6 +831,7 @@ export default function OpportunityDetailPage() {
     // nothing to mark yet in that case.
     else if (result.companyKnown) {
       markOpportunityConfirmed(id, result.siret);
+      trackVisitorEvent('company_identified', 'Entreprise identifiée', undefined, { opportunityId: id });
       setScreen(2);
     }
     setSiretSubmitting(false);
@@ -833,6 +845,7 @@ export default function OpportunityDetailPage() {
     if (result.error) setSiretError(result.error);
     else if (result.companyKnown) {
       markOpportunityConfirmed(id, result.siret);
+      trackVisitorEvent('company_identified', 'Entreprise identifiée', undefined, { opportunityId: id });
       setScreen(2);
     }
     setConfirmingCandidate(null);
@@ -928,6 +941,7 @@ export default function OpportunityDetailPage() {
     setSlotError(null);
     try {
       await opportunitiesApi.requestAccess(id, { ...slotForm, sessionId: getSessionId(), mode: 'callback' });
+      trackRequestSubmitted('callback', { opportunityId: id, journey: opportunity?.journey });
       setCallbackConfirmed(true);
     } catch (err) {
       setSlotError(getApiErrorMessage(err, t('accessRequestFailed') || "L'envoi a échoué. Merci de réessayer."));
@@ -2437,7 +2451,7 @@ export default function OpportunityDetailPage() {
                     })()}
 
                   {!(isAuthenticated || leadCaptured || pendingOtpVerification) && (
-                    <form onSubmit={handleLeadSubmit} className="space-y-3">
+                    <form onSubmit={handleLeadSubmit} onFocusCapture={leadFormStartTracker} className="space-y-3">
                       <div>
                         <label className="block text-sm font-semibold text-white mb-1.5">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
                         <input
