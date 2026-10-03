@@ -436,7 +436,13 @@ const frTranslations: Translations = {
   privacySecurity: 'Sécurité',
   privacySecurityText: "Marchés Direct met en œuvre des mesures techniques et organisationnelles adaptées pour protéger vos données : chiffrement en transit (TLS), chiffrement au repos, authentification à deux facteurs disponible, audit de sécurité régulier et hébergement conforme ISO 27001.",
   privacyCookies: 'Cookies',
-  privacyCookiesText: "Nous utilisons des cookies strictement nécessaires au fonctionnement du service (session, préférences) et des cookies analytiques anonymisés pour améliorer l'expérience. Aucun cookie publicitaire tiers n'est utilisé.",
+  privacyCookiesText: "Nous utilisons des cookies et stockages strictement nécessaires au fonctionnement du service (session, préférences). Les statistiques de visite (pages consultées, étapes du parcours) ne sont enregistrées qu'avec votre accord, et vous pouvez le refuser ou le modifier à tout moment ; le site fonctionne de la même façon dans les deux cas. Aucun cookie publicitaire tiers n'est utilisé.",
+  consentTitle: 'Statistiques de visite.',
+  consentText: "Acceptez-vous que nous enregistrions les pages que vous consultez et les étapes de votre parcours, pour améliorer le site ? Le site fonctionne de la même façon si vous refusez.",
+  consentLearnMore: 'En savoir plus',
+  consentAccept: 'Accepter',
+  consentRefuse: 'Refuser',
+  consentManage: 'Modifier mon choix sur les statistiques de visite',
   privacyDpo: "Pour toute question relative à vos données personnelles, contactez notre DPO :",
 
   // CGU
@@ -2090,7 +2096,13 @@ const enTranslations: Translations = {
   privacySecurity: 'Security',
   privacySecurityText: "Marchés Direct implements appropriate technical and organizational measures to protect your data: encryption in transit (TLS), encryption at rest, two-factor authentication available, regular security audit and ISO 27001 compliant hosting.",
   privacyCookies: 'Cookies',
-  privacyCookiesText: "We use strictly necessary cookies for the operation of the service (session, preferences) and anonymized analytical cookies to improve the experience. No third-party advertising cookies are used.",
+  privacyCookiesText: "We use strictly necessary cookies and storage for the operation of the service (session, preferences). Visit statistics (pages viewed, steps of the journey) are only recorded with your consent; you can refuse or change it at any time, and the site works the same either way. No third-party advertising cookies are used.",
+  consentTitle: 'Visit statistics.',
+  consentText: 'Do you agree that we record the pages you view and the steps of your journey, to improve the site? The site works the same if you refuse.',
+  consentLearnMore: 'Learn more',
+  consentAccept: 'Accept',
+  consentRefuse: 'Refuse',
+  consentManage: 'Change my choice about visit statistics',
   privacyDpo: "For any question regarding your personal data, contact our DPO:",
 
   // CGU

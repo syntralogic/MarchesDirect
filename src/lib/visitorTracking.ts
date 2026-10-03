@@ -1,4 +1,5 @@
 import { API_URL } from '@/lib/apiClient';
+import { getAnalyticsConsent } from '@/lib/consent';
 
 const SESSION_KEY = 'md_visitor_session_id';
 
@@ -6,7 +7,14 @@ const SESSION_KEY = 'md_visitor_session_id';
 // this is what links an anonymous browsing session to whichever CRM lead
 // they eventually leave contact details on (see requestAccess/submitLead
 // payloads, which send this same id as `sessionId`).
+// DEV-14: without the visitor's consent the id is NOT stored (it lives only
+// in memory for this page load, enough for a form to carry its own request id).
+let memoryId: string | null = null;
 export function getSessionId(): string {
+  if (getAnalyticsConsent() !== 'granted') {
+    if (!memoryId) memoryId = `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return memoryId;
+  }
   try {
     let id = localStorage.getItem(SESSION_KEY);
     if (!id) {
@@ -54,6 +62,8 @@ export function trackRequestSubmitted(kind: RequestKind, extra?: Record<string, 
 // Fire-and-forget by design: a failed analytics beacon must never surface
 // an error to the visitor or block navigation. Swallows all errors.
 export function trackVisitorEvent(eventType: VisitorEventType, eventLabel?: string, brandId?: string, eventData?: Record<string, unknown>) {
+  // No consent (not asked yet, or refused) = nothing is recorded.
+  if (getAnalyticsConsent() !== 'granted') return;
   try {
     fetch(`${API_URL}/api/visitor-events`, {
       method: 'POST',

@@ -10,6 +10,7 @@ import { CompanyKnownProvider } from '@/contexts/CompanyKnownContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
+import ConsentBanner from '@/components/ConsentBanner';
 
 import HomePage from '@/pages/HomePage';
 import AppelsPage from '@/pages/AppelsPage';
@@ -126,6 +127,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       <Footer />
       <BottomNav />
+      <ConsentBanner />
     </div>
   );
 }
