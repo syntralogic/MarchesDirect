@@ -8,7 +8,8 @@ import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
-import { normalizeFrPhoneDigits } from '@/lib/utils';
+import { normalizeFrPhoneDigits, isValidEmail, isValidFrPhone } from '@/lib/utils';
+import RequiredLegend from '@/components/RequiredLegend';
 
 interface AppointmentModalProps {
   open: boolean;
@@ -93,6 +94,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Point 5 (20 Sep client audit): "Le rendez-vous demandé depuis le
   // dossier réclame à nouveau entreprise, email et téléphone, alors que
@@ -183,13 +185,23 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
     URL.revokeObjectURL(url);
   };
 
-  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); };
+  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); setFieldErrors({}); };
   const handleClose = () => { onClose(); setTimeout(reset, 300); };
 
   const stepLabels = ['Motif', 'Date', 'Heure', 'Contact', 'Confirmation'];
 
   const handleConfirm = async () => {
     if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
+
+    // DEV-08: errors shown next to the field, before anything is sent.
+    const errs: Record<string, string> = {};
+    if (!form.nom.trim()) errs.nom = t('requestErrRequired');
+    if (!form.email.trim()) errs.email = t('requestErrRequired');
+    else if (!isValidEmail(form.email)) errs.email = t('requestErrEmail');
+    if (form.telephone && !isValidFrPhone(form.telephone)) errs.telephone = t('requestErrPhone');
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) { setError(null); return; }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -207,7 +219,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
       });
       setStep(5);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Échec de l'envoi — réessayez."));
+      setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
     } finally {
       setSubmitting(false);
     }
@@ -356,33 +368,37 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
           {/* Step 4: Contact */}
           {step === 4 && (
             <div>
-              <h3 className="font-semibold text-brand-primary mb-4">Vos coordonnées</h3>
+              <h3 className="font-semibold text-brand-primary mb-1">Vos coordonnées</h3>
+              <RequiredLegend className="mb-4" />
               <div className="space-y-3">
                 {[
-                  { key: 'nom', label: 'Nom complet', icon: User, placeholder: 'Jean Dupont' },
-                  { key: 'entreprise', label: 'Entreprise', icon: Building2, placeholder: 'Ma Société SAS' },
-                  { key: 'email', label: 'Email', icon: Mail, placeholder: 'jean@exemple.fr' },
-                  { key: 'telephone', label: 'Téléphone', icon: Phone, placeholder: '06 00 00 00 00' },
+                  { key: 'nom', label: 'Nom complet', icon: User, placeholder: 'Jean Dupont', required: true },
+                  { key: 'entreprise', label: 'Entreprise', icon: Building2, placeholder: 'Ma Société SAS', required: false },
+                  { key: 'email', label: 'Email', icon: Mail, placeholder: 'jean@exemple.fr', required: true },
+                  { key: 'telephone', label: 'Téléphone', icon: Phone, placeholder: '06 00 00 00 00', required: false },
                 ].map(field => (
                   <div key={field.key}>
-                    <label className="text-xs text-brand-muted mb-1 block">{field.label}</label>
+                    <label className="text-xs text-brand-muted mb-1 block">{field.label}{field.required && <span aria-hidden="true" className="text-orange"> *</span>}</label>
                     <div className="relative">
                       <field.icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                       <input
-                        type="text"
+                        type={field.key === 'email' ? 'email' : field.key === 'telephone' ? 'tel' : 'text'}
                         placeholder={field.placeholder}
+                        aria-required={field.required}
+                        aria-invalid={!!fieldErrors[field.key]}
                         value={form[field.key as keyof typeof form]}
-                        onChange={e => setForm(f => ({
+                        onChange={e => { setFieldErrors(fe => ({ ...fe, [field.key]: '' })); setForm(f => ({
                           ...f,
                           // 27 Sep audit, point 5: this free-text field had no
                           // phone normalization at all, so "+33 6 ..." got
                           // truncated/rejected the same way editPhone did on
                           // the dossier page - reuse the same helper here.
                           [field.key]: field.key === 'telephone' ? normalizeFrPhoneDigits(e.target.value) : e.target.value,
-                        }))}
-                        className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-9 pr-4 py-3 text-sm text-brand-primary placeholder:text-muted-foreground focus:outline-none focus:border-orange transition-colors"
+                        })); }}
+                        className={`w-full bg-[#061D32] border rounded-xl pl-9 pr-4 py-3 text-sm text-brand-primary placeholder:text-muted-foreground focus:outline-none focus:border-orange transition-colors ${fieldErrors[field.key] ? 'border-red-500/60' : 'border-[#17334D]'}`}
                       />
                     </div>
+                    {fieldErrors[field.key] && <p role="alert" className="text-[11px] text-red-400 mt-1">{fieldErrors[field.key]}</p>}
                   </div>
                 ))}
               </div>
@@ -392,12 +408,12 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
                   <ChevronLeft size={14} className="inline mr-1" /> Retour
                 </button>
                 <button
-                  disabled={!form.nom || !form.email || submitting}
+                  disabled={submitting}
                   onClick={handleConfirm}
                   className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2"
                 >
                   {submitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  {submitting ? 'Envoi en cours...' : 'Confirmer'}
+                  {submitting ? t('requestSending') : 'Confirmer'}
                 </button>
               </div>
               <RequestPrivacyNote className="mt-3 text-center" />

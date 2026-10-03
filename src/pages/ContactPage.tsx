@@ -8,6 +8,8 @@ import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
+import { isValidEmail, isValidFrPhone } from '@/lib/utils';
+import RequiredLegend from '@/components/RequiredLegend';
 
 type ContactOption = 'rdv' | 'rappel' | 'message';
 
@@ -20,6 +22,11 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const clearErr = (k: string) => setFieldErrors(fe => ({ ...fe, [k]: '' }));
+  const errCls = (k: string) => (fieldErrors[k] ? 'border-red-500/60' : 'border-[#17334D]');
+  const fieldErr = (k: string) => fieldErrors[k] ? <p role="alert" className="text-[11px] text-red-400 mt-1">{fieldErrors[k]}</p> : null;
+  const star = <span aria-hidden="true" className="text-orange"> *</span>;
 
   const SUBJECTS = [
     t('contactSubj1'),
@@ -47,6 +54,16 @@ export default function ContactPage() {
     e.preventDefault();
     if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
 
+    // DEV-08: errors shown next to the field, before anything is sent.
+    const errs: Record<string, string> = {};
+    if (!nom.trim()) errs.nom = t('requestErrRequired');
+    if (!email.trim()) errs.email = t('requestErrRequired');
+    else if (!isValidEmail(email)) errs.email = t('requestErrEmail');
+    if (phone.trim() && !isValidFrPhone(phone)) errs.phone = t('requestErrPhone');
+    if (!message.trim()) errs.message = t('requestErrRequired');
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) { setError(null); return; }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -64,7 +81,7 @@ export default function ContactPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Échec de l'envoi — réessayez."));
+      setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
     } finally {
       setSubmitting(false);
     }
@@ -115,13 +132,15 @@ export default function ContactPage() {
           </button>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6 space-y-4">
+          <RequiredLegend />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactName')}</label>
-              <input required value={nom} onChange={e => setNom(e.target.value)}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange"
+              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactName')}{star}</label>
+              <input required aria-required="true" aria-invalid={!!fieldErrors.nom} value={nom} onChange={e => { clearErr('nom'); setNom(e.target.value); }}
+                className={`w-full bg-[#031B30] border ${errCls('nom')} rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange`}
                 placeholder={t('contactNamePlaceholder')} />
+              {fieldErr('nom')}
             </div>
             <div>
               <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactCompany')}</label>
@@ -130,16 +149,18 @@ export default function ContactPage() {
                 placeholder={t('contactCompanyPlaceholder')} />
             </div>
             <div>
-              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactEmail')}</label>
-              <input required type="email" value={email} onChange={e => setEmail(e.target.value)}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange"
+              <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactEmail')}{star}</label>
+              <input required aria-required="true" aria-invalid={!!fieldErrors.email} type="email" value={email} onChange={e => { clearErr('email'); setEmail(e.target.value); }}
+                className={`w-full bg-[#031B30] border ${errCls('email')} rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange`}
                 placeholder={t('contactEmailPlaceholder')} />
+              {fieldErr('email')}
             </div>
             <div>
               <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactPhone')}</label>
-              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange"
+              <input type="tel" aria-invalid={!!fieldErrors.phone} value={phone} onChange={e => { clearErr('phone'); setPhone(e.target.value); }}
+                className={`w-full bg-[#031B30] border ${errCls('phone')} rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange`}
                 placeholder={t('contactPhonePlaceholder')} />
+              {fieldErr('phone')}
             </div>
           </div>
           <div>
@@ -150,10 +171,11 @@ export default function ContactPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactMessageLabel')}</label>
-            <textarea required rows={5} value={message} onChange={e => setMessage(e.target.value)}
-              className="w-full bg-[#031B30] border border-[#17334D] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange resize-none"
+            <label className="text-xs font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('contactMessageLabel')}{star}</label>
+            <textarea required aria-required="true" aria-invalid={!!fieldErrors.message} rows={5} value={message} onChange={e => { clearErr('message'); setMessage(e.target.value); }}
+              className={`w-full bg-[#031B30] border ${errCls('message')} rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#B9BBC8] focus:outline-none focus:border-orange resize-none`}
               placeholder={t('contactMessagePlaceholder')} />
+            {fieldErr('message')}
           </div>
           {error && <p className="text-xs text-red-400">{error}</p>}
           <button
