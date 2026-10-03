@@ -4,6 +4,7 @@ import { Calendar, Phone, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import { CallbackModal } from '@/components/CallbackModal';
 import { useLang } from '@/contexts/LangContext';
+import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
@@ -161,8 +162,9 @@ export default function ContactPage() {
             className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors text-sm disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 size={16} className="animate-spin" />}
-            {t('contactSubmit')}
+            {submitting ? t('requestSending') : t('contactSubmit')}
           </button>
+          <RequestPrivacyNote className="text-center" />
         </form>
       )}
 

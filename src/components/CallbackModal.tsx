@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
@@ -128,8 +129,9 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
                 className="w-full bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors mt-2 disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {submitting && <Loader2 size={16} className="animate-spin" />}
-                {t('callbackSubmit')}
+                {submitting ? t('requestSending') : t('callbackSubmit')}
               </button>
+              <RequestPrivacyNote className="mt-3 text-center" />
             </form>
           ) : (
             <div className="text-center py-6">
