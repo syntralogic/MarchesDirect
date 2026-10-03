@@ -42,6 +42,7 @@ import ConfidentialitePage from '@/pages/ConfidentialitePage';
 import CguPage from '@/pages/CguPage';
 import ContactPage from '@/pages/ContactPage';
 import LoginPage from '@/pages/LoginPage';
+import MagicLinkPage from '@/pages/MagicLinkPage';
 import SignupPage from '@/pages/SignupPage';
 import { RequireAuth } from '@/components/common/RequireAuth';
 
@@ -178,6 +179,7 @@ const App: React.FC = () => {
                   route itself is gone, not just its buttons. */}
 
               <Route path="/connexion" element={<LoginPage />} />
+              <Route path="/connexion/lien" element={<MagicLinkPage />} />
               <Route path="/inscription" element={<SignupPage />} />
 
               {/* Admin Routes */}

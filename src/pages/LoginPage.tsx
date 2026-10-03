@@ -16,6 +16,15 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [mfa, setMfa] = useState<{ token: string; userId: string } | null>(null);
+  // PAR-03 / DEV-07: no recovery entry existed on this page at all. The
+  // actual auth system now supports passwordless accounts (6 Sep brief -
+  // password_hash can be NULL), so "forgot password" is a magic-link email
+  // rather than a reset form - the one recovery path that works for every
+  // account regardless of whether it has a password set.
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,6 +43,81 @@ export default function LoginPage() {
     }
     navigate(location.state?.from || '/tableau-de-bord', { replace: true });
   };
+
+  const handleForgotSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setForgotSubmitting(true);
+    try {
+      await apiClient.post('/auth/magic-link', { email: forgotEmail, purpose: 'login' });
+    } catch {
+      // Backend never reveals whether the email exists (see requestMagicLink's
+      // comment); show the same confirmation either way so the UI doesn't leak it.
+    } finally {
+      setForgotSubmitting(false);
+      setForgotSent(true);
+    }
+  };
+
+  if (forgotMode) {
+    return (
+      <div className="page-fade-in max-w-sm mx-auto px-4 py-10 md:py-16 min-h-screen">
+        <div className="mb-6">
+          <span className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1 block">{t('loginEyebrow') || 'Connexion'}</span>
+          <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">{t('loginForgotTitle') || 'Mot de passe oublié'}</h1>
+          <p className="text-[#B9BBC8] text-xs leading-snug">
+            {t('loginForgotSub') || 'Recevez un lien de connexion par e-mail, valable 1 heure.'}
+          </p>
+        </div>
+        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
+          {forgotSent ? (
+            <>
+              <div className="text-[11px] text-[#B9BBC8] bg-white/5 border border-[#17334D] rounded-lg px-3 py-2">
+                {t('loginForgotSent') || "Si un compte existe pour cette adresse, un lien de connexion vient d'être envoyé."}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setForgotMode(false); setForgotSent(false); }}
+                className="w-full text-center text-orange font-semibold text-xs hover:underline py-1"
+              >
+                {t('loginForgotBack') || 'Retour à la connexion'}
+              </button>
+            </>
+          ) : (
+            <form onSubmit={handleForgotSubmit} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('loginEmail')}</label>
+                <div className="relative">
+                  <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
+                  <input
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-8 pr-3 py-2.5 text-xs text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
+                    placeholder="vous@entreprise.fr"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={forgotSubmitting}
+                className="w-full bg-orange text-white font-semibold text-sm py-2.5 rounded-lg disabled:opacity-50"
+              >
+                {forgotSubmitting ? t('loginConnecting') : (t('loginForgotSend') || 'Recevoir un lien de connexion')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setForgotMode(false)}
+                className="w-full text-center text-[#B9BBC8] text-xs hover:underline py-1"
+              >
+                {t('loginForgotBack') || 'Retour à la connexion'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-fade-in max-w-sm mx-auto px-4 py-10 md:py-16 min-h-screen">
@@ -82,6 +166,13 @@ export default function LoginPage() {
                 placeholder="********"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setForgotMode(true)}
+              className="text-orange text-[11px] font-semibold hover:underline mt-1.5"
+            >
+              {t('loginForgot') || 'Mot de passe oublié ?'}
+            </button>
           </div>
           <button
             type="submit"
