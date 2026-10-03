@@ -31,7 +31,7 @@ export default function TarifsPage() {
       price: '89',
       period: t('planProPeriod'),
       badge: t('planProBadge'),
-      features: [t('planProFeat1'), t('planProFeat2'), t('planProFeat3'), t('planProFeat4'), t('planProFeat5')],
+      features: [t('planProFeat1'), t('planProFeat2'), t('planProFeat4'), t('planProFeat5')],
       cta: t('planProCta'),
       // Not 'checkout': per the client's explicit instruction (WhatsApp),
       // this site never sells a subscription directly - it's a lead-capture
