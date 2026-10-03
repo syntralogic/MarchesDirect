@@ -337,6 +337,8 @@ export type OpportunitySearchParams = {
   // when q is also set (nothing to rank relevance against otherwise) -
   // backend falls back to the default order in that case.
   sort?: 'time_left' | 'recent' | 'match' | 'deadline';
+  // DEV-05: cards per load (default 100); the search page uses 24.
+  pageSize?: number;
   page?: number;
   limit?: number;
 };
@@ -549,6 +551,8 @@ export type ApiTrade = {
   description: string | null;
   cpv_code: string | null;
   opportunity_count: number;
+  // DEV-04: marchés still open (status 'active') - what the "En cours" link lists.
+  open_count?: number;
 };
 
 export interface ApiTradeSuggestion {

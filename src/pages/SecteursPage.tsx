@@ -60,14 +60,12 @@ export default function SecteursPage() {
             return (
               <Link
                 key={trade.id}
-                // 26 Sep client audit (point 3): the badge below counts every
-                // status ("Carrelage: 9 opportunités"), same as /api/trades'
-                // opportunity_count, but the plain trade_id link defaulted to
-                // active-only and landed on just 1 result - the announced
-                // figure and the list it links to must describe the same
-                // set. status=all is the sentinel RecherchePage expands into
-                // the real active,expired,awarded,cancelled list.
-                to={`/recherche?trade_id=${trade.id}&status=all`}
+                // DEV-04 (plan de corrections, 3 Oct): the number says its scope
+                // (marchés ouverts first, catalogue second) and the link opens
+                // exactly the filter used for the first number: métier + "En cours".
+                // The catalogue figure is a separate link (status=all) - a count
+                // limited to open marchés never opens the whole catalogue.
+                to={`/recherche?trade_id=${trade.id}&status=active`}
                 className="group bg-[#061D32] border border-[#17334D] rounded-2xl p-5 hover:border-orange/40 transition-all flex flex-col"
               >
                 <div className="flex items-start gap-4 mb-4">
@@ -76,7 +74,12 @@ export default function SecteursPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base font-bold text-white group-hover:text-orange transition-colors">{trade.name}</h3>
-                    <span className="text-xs text-orange font-semibold">{trade.opportunity_count.toLocaleString('fr-FR')} opportunités</span>
+                    <span className="text-xs text-orange font-semibold">
+                      {(trade.open_count ?? 0).toLocaleString('fr-FR')} marchés ouverts
+                    </span>
+                    <span className="text-[11px] text-[#B9BBC8] ml-2">
+                      · {trade.opportunity_count.toLocaleString('fr-FR')} au catalogue (archives incluses)
+                    </span>
                   </div>
                 </div>
                 {trade.description && (
