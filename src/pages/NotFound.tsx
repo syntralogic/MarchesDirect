@@ -2,39 +2,32 @@ import { Link } from "react-router-dom";
 import PageMeta from "@/components/common/PageMeta";
 import { useLang } from '@/contexts/LangContext';
 
+// DEV-12: unknown URLs land here (instead of silently redirecting to the home
+// page) with a noindex robots tag, so search engines don't index junk paths.
 export default function NotFound() {
   const { t } = useLang();
 
   return (
     <>
-      <PageMeta title={t('notFoundTitle') || "Page Not Found"} description="" />
-      <div className="relative flex flex-col items-center justify-center min-h-screen p-6 overflow-hidden z-1">
-        <div className="mx-auto w-full max-w-[242px] text-center sm:max-w-[472px]">
-          <h1 className="mb-8 font-bold text-gray-800 text-title-md dark:text-white/90 xl:text-title-2xl">
-            {t('notFoundError') || "ERROR"}
-          </h1>
-
-          <img src="/images/error/404.svg" alt="404" className="dark:hidden" />
-          <img
-            src="/images/error/404-dark.svg"
-            alt="404"
-            className="hidden dark:block"
-          />
-
-          <p className="mt-10 mb-6 text-base text-gray-700 dark:text-gray-400 sm:text-lg">
-            {t('notFoundMessage') || "The page may have been deleted or does not exist. Please check the URL is correct."}
-          </p>
-
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3.5 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
-          >
-            {t('notFoundBack') || "Back to home"}
-          </Link>
-        </div>
-        <p className="absolute text-sm text-center text-gray-500 -translate-x-1/2 bottom-6 left-1/2 dark:text-gray-400">
-          &copy; {new Date().getFullYear()}
+      <PageMeta
+        title={`${t('notFoundTitle') || "Page non trouvée"} | Marchés Direct`}
+        description=""
+        noindex
+      />
+      <div className="page-fade-in flex flex-col items-center justify-center text-center px-6 py-24 min-h-[60vh]">
+        <p className="text-xs font-bold text-orange uppercase tracking-widest mb-3">404</p>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-3">
+          {t('notFoundTitle') || "Page non trouvée"}
+        </h1>
+        <p className="text-sm text-[#B9BBC8] max-w-md mb-8">
+          {t('notFoundMessage') || "La page a peut-être été supprimée ou n'existe pas. Veuillez vérifier que l'URL est correcte."}
         </p>
+        <Link
+          to="/"
+          className="inline-flex items-center justify-center rounded-xl bg-orange px-5 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+        >
+          {t('notFoundBack') || "Retour à l'accueil"}
+        </Link>
       </div>
     </>
   );
