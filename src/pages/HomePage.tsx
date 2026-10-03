@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid, geoMercator } from 'd3-geo';
+import { mockArticles } from '@/data/mockData';
 import { useLang } from '@/contexts/LangContext';
 import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -1530,11 +1531,11 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
 // BLOG ("Répondre à un marché : les premiers repères.")
 // ---------------------------------------------------------------------------
 function BlogSection() {
-  const posts = [
-    { category: 'Premiers pas', title: 'Premier marché : par où commencer ?', icon: CompassIcon },
-    { category: 'Réglementation', title: 'Marchés publics : les changements à connaître en 2026', icon: DocIcon },
-    { category: 'Tendances', title: 'Les secteurs qui recherchent de nouveaux partenaires', icon: TrendIcon },
-  ];
+  // Each card opens its own article (/actualites/:id), same data as /actualites.
+  const posts = (['a4', 'a1', 'a2'] as const)
+    .map(id => mockArticles.find(x => x.id === id))
+    .filter((x): x is (typeof mockArticles)[number] => Boolean(x))
+    .map((x, i) => ({ id: x.id, category: x.category, title: x.title, icon: [CompassIcon, DocIcon, TrendIcon][i] }));
   return (
     <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <div className="flex items-start justify-between mb-4">
@@ -1551,7 +1552,7 @@ function BlogSection() {
 
       <div className="flex flex-col gap-3">
         {posts.map(p => (
-          <Link key={p.title} to="/actualites" className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center gap-4 hover:border-orange/50 transition-colors group">
+          <Link key={p.id} to={`/actualites/${p.id}`} className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center gap-4 hover:border-orange/50 transition-colors group">
             <span className="shrink-0 w-12 h-12 rounded-full border-2 border-orange text-orange flex items-center justify-center group-hover:bg-orange/10 transition-colors">
               <p.icon />
             </span>

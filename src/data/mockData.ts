@@ -440,9 +440,9 @@ export const mockArticles = [
   {
     id: 'a1',
     category: 'Réglementation',
-    title: 'Marchés publics : les changements à connaître en 2026',
+    title: 'Marchés publics : bien préparer son dossier administratif',
     date: '15 août 2026',
-    description: 'Les nouvelles règles issues de la réforme de la commande publique entrent en vigueur. Tour d\'horizon des impacts pour les entreprises.',
+    description: 'Dématérialisation, critères d\'attribution, obligations déclaratives : les points de vigilance pour répondre vite avec un dossier à jour.',
   },
   {
     id: 'a2',
