@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar } from 'lucide-react';
 import { mockArticles } from '@/data/mockData';
 import { articleBodies } from '@/data/articleBodies';
+import PageMeta from '@/components/common/PageMeta';
 import { useLang } from '@/contexts/LangContext';
 
 const CAT_COLORS: Record<string, string> = {
@@ -19,6 +20,7 @@ export default function ArticleDetailPage() {
   if (!article) {
     return (
       <div className="page-fade-in max-w-3xl mx-auto px-4 md:px-6 py-16 text-center">
+        <PageMeta title={`${fr ? 'Article introuvable' : 'Article not found'} | Marchés Direct`} description="" />
         <h1 className="text-2xl font-extrabold text-white mb-3">{fr ? 'Article introuvable' : 'Article not found'}</h1>
         <Link to="/actualites" className="text-orange text-sm hover:underline">
           {fr ? "← Retour aux actualités" : '← Back to news'}
@@ -31,6 +33,7 @@ export default function ArticleDetailPage() {
 
   return (
     <div className="page-fade-in max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-16">
+      <PageMeta title={`${article.title} | Marchés Direct`} description={article.description} />
       <Link to="/actualites" className="inline-flex items-center gap-2 text-sm text-[#B9BBC8] hover:text-white transition-colors mb-8">
         <ArrowLeft size={14} /> {fr ? 'Retour aux actualités' : 'Back to news'}
       </Link>
