@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageMeta from '@/components/common/PageMeta';
 import { ChevronRight, MapPin, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLang } from '@/contexts/LangContext';
@@ -73,6 +74,7 @@ export default function ZonesPage() {
 
   return (
     <div className="page-fade-in max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 min-h-screen flex flex-col">
+      <PageMeta title="Marchés par zone géographique | Marchés Direct" description="Explorez les marchés ouverts autour de chez vous : par ville, département ou région." />
 
       {/* Header */}
       <div className="mb-6">
