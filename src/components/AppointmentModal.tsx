@@ -1,3 +1,4 @@
+import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2, AlertTriangle, Download } from 'lucide-react';
@@ -396,9 +397,10 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
                   className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2"
                 >
                   {submitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  Confirmer
+                  {submitting ? 'Envoi en cours...' : 'Confirmer'}
                 </button>
               </div>
+              <RequestPrivacyNote className="mt-3 text-center" />
             </div>
           )}
 

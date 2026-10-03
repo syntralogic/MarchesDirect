@@ -98,6 +98,9 @@ const frTranslations: Translations = {
   callbackPhone: 'Téléphone',
   callbackTime: 'Moment souhaité',
   callbackSubmit: 'Demander un rappel',
+  requestSending: 'Envoi en cours...',
+  requestPrivacyNote: 'Vos coordonnées servent à traiter cette demande et à vous recontacter à ce sujet.',
+  requestPrivacyLink: 'Notice de confidentialité',
   callbackConfirm: 'Votre demande a bien été envoyée. Nous vous rappelons rapidement.',
   // Steps
   step1: 'On surveille',
@@ -1766,6 +1769,9 @@ const enTranslations: Translations = {
   callbackPhone: 'Phone',
   callbackTime: 'Preferred time',
   callbackSubmit: 'Request a callback',
+  requestSending: 'Sending...',
+  requestPrivacyNote: 'Your contact details are used to handle this request and to get back to you about it.',
+  requestPrivacyLink: 'Privacy notice',
   callbackConfirm: 'Your request has been sent. We will call you back shortly.',
   // Steps
   step1: 'We monitor',
