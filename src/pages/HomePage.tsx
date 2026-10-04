@@ -179,8 +179,8 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
 function DemoWalkthroughSection() {
   const [demoOpen, setDemoOpen] = useState(false);
   return (
-    <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-4">
+    <section className="px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
+      <h2 className="text-xl md:text-2xl font-bold text-white leading-tight mb-3">
         De la recherche au dossier, en 1 minute.
       </h2>
 
@@ -193,7 +193,7 @@ function DemoWalkthroughSection() {
             replaces the hand-built div mockup that used to stand in for it. */}
         <img
           src="/testimonials/demo-plateforme.jpeg"
-          alt="Démo de la plateforme : de l'offre au dossier"
+          alt="Démo interactive : découvrez comment ça marche, de la recherche au dossier pré-rempli (1 min 07)"
           className="w-full h-auto block"
         />
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
@@ -213,13 +213,12 @@ function DemoWalkthroughSection() {
 // ---------------------------------------------------------------------------
 function TestimonialsSection() {
   // 30 Sep, client over WhatsApp: "Ca c'est la 1ere video temoignage avec la
-  // miniature. Tu peux supprimer les autres image de temoignage. En tout il
-  // y aura 8 video temoignage." First real testimonial clip (with its own
-  // thumbnail) replaces the two placeholder-only images from 20 Sep, which
-  // only ever had a thumbnail and fell back to DemoVideoModal's "vidéo
-  // bientôt disponible" state - the client is now sending the real videos
-  // one at a time, 8 total, so this array grows the same way as each one
-  // arrives instead of staying a fixed pair.
+  // miniature ... En tout il y aura 8 video temoignage." 4 Oct: 2nd video (Nico,
+  // gérant chauffage & climatisation) added. The clips are NOT chained: the
+  // visitor moves from one thumbnail to the next with the arrows, and a video
+  // only plays when its own thumbnail is tapped ("Non du tout - tu as une
+  // flèche pour aller à la miniature suivante"). Adding a clip = one more entry
+  // in this array (+ its .mp4 and .jpeg in public/testimonials).
   const slides = [
     {
       title: '10 mois de planning rempli — Bordeaux Élec.',
@@ -227,52 +226,59 @@ function TestimonialsSection() {
       alt: 'Témoignage client : Didier Bourdon, directeur de Bordeaux Élec, 10 mois de planning rempli',
       videoUrl: '/testimonials/temoignage-didier-bourdon.mp4',
     },
+    {
+      title: 'Nico — gérant, chauffage & climatisation.',
+      image: '/testimonials/temoignage-nico.jpeg',
+      alt: 'Témoignage client : Nico, gérant dans le chauffage et la climatisation',
+      videoUrl: '/testimonials/temoignage-nico.mp4',
+    },
   ];
   const [i, setI] = useState(0);
   const [videoOpen, setVideoOpen] = useState(false);
   const slide = slides[i];
+  const arrow = 'w-9 h-9 shrink-0 rounded-full border border-[#17334D] bg-[#061D32] flex items-center justify-center text-[#B9BBC8] hover:text-orange hover:border-orange/50 transition-colors';
   return (
-    <section id="mdh-temoignages" className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
+    <section id="mdh-temoignages" className="px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">
         Leur expérience, avec leurs mots
       </span>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-5">
+      <h2 className="text-xl md:text-2xl font-bold text-white mt-1 mb-3 leading-tight">
         Des entrepreneurs racontent leur candidature.
       </h2>
 
-      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-4 md:p-5">
-        <button
-          onClick={() => setVideoOpen(true)}
-          className="relative w-full rounded-xl border border-[#17334D] overflow-hidden block group"
-        >
-          <img src={slide.image} alt={slide.alt} className="w-full h-auto block" />
-          <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-            <span className="w-14 h-14 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-              <PlayCircle size={28} className="text-white" />
-            </span>
-          </span>
-        </button>
-
-        {slides.length > 1 && (
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <button
-              onClick={() => setI((i - 1 + slides.length) % slides.length)}
-              className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
-              aria-label="Témoignage précédent"
-            >
+      {/* 4 Oct, client: "Réduire la taille car ça prend trop de place ... comme la
+          partie démo niveau taille". The portrait thumbnail is now capped in height
+          (about the height of the demo thumbnail just above) and the arrows sit
+          on each side of it instead of on a row of their own. */}
+      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-3">
+        <div className="flex items-center justify-center gap-3">
+          {slides.length > 1 && (
+            <button onClick={() => setI((i - 1 + slides.length) % slides.length)} className={arrow} aria-label="Témoignage précédent">
               <ChevronLeft size={16} />
             </button>
-            <p className="text-[11px] text-[#B9BBC8] text-center">
-              Témoignage {i + 1} sur {slides.length}
-            </p>
-            <button
-              onClick={() => setI((i + 1) % slides.length)}
-              className="w-9 h-9 rounded-full border border-[#17334D] flex items-center justify-center text-[#B9BBC8] hover:text-orange transition-colors"
-              aria-label="Témoignage suivant"
-            >
+          )}
+          <button
+            onClick={() => setVideoOpen(true)}
+            className="relative rounded-xl border border-[#17334D] overflow-hidden block group"
+            aria-label={`Lire la vidéo : ${slide.title}`}
+          >
+            <img src={slide.image} alt={slide.alt} loading="lazy" className="h-[240px] md:h-[280px] w-auto block" />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+              <span className="w-12 h-12 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                <PlayCircle size={24} className="text-white" />
+              </span>
+            </span>
+          </button>
+          {slides.length > 1 && (
+            <button onClick={() => setI((i + 1) % slides.length)} className={arrow} aria-label="Témoignage suivant">
               <ChevronRight size={16} />
             </button>
-          </div>
+          )}
+        </div>
+        {slides.length > 1 && (
+          <p className="text-[11px] text-[#B9BBC8] text-center mt-2">
+            Témoignage {i + 1} sur {slides.length}
+          </p>
         )}
       </div>
 
@@ -285,65 +291,49 @@ function TestimonialsSection() {
 // TEAM ("Une équipe pour préparer votre candidature.")
 // ---------------------------------------------------------------------------
 function TeamSection() {
+  // 4 Oct, client (screenshot, "Notre équipe" circled): "Réduire la taille car ça
+  // prend trop de place." Same content and same link, compacted: smaller
+  // heading, one short paragraph, a 76x100 portrait instead of 110x144 (this
+  // supersedes the 15 Sep A03 pixel spec, which is what made the block so tall)
+  // and tighter spacing. "Découvrir notre équipe" still lands on the portraits
+  // (#mdq-team) of /a-propos.
   return (
-    <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-4 md:p-6 relative">
-        <div className="flex items-start justify-between mb-2">
-          <span className="text-[11px] font-bold text-[#B9BBC8] uppercase tracking-widest">Notre équipe</span>
-          <Users size={20} className="text-[#B9BBC8]" />
+    <section className="px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
+      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-3 md:p-4">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-bold text-[#B9BBC8] uppercase tracking-widest">Notre équipe</span>
+          <Users size={16} className="text-[#B9BBC8]" />
         </div>
-        <h2 className="text-2xl md:text-3xl font-extrabold leading-tight mb-3">
+        <h2 className="text-lg md:text-2xl font-extrabold leading-tight mb-1">
           <span className="text-white">Une équipe pour </span>
           <span className="text-orange">préparer votre candidature.</span>
         </h2>
-        <p className="text-[#B9BBC8] text-sm md:text-base leading-relaxed mb-5">
-          Votre chargé d'affaires prépare le dossier.<br />
-          Vous le validez avant son dépôt.
+        <p className="text-[#B9BBC8] text-xs md:text-sm leading-snug mb-3">
+          Votre chargé d'affaires prépare le dossier. Vous le validez avant son dépôt.
         </p>
 
-        <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-3 md:p-4 flex gap-3 md:gap-4">
-          {/* Client audit (15 Sep), A03: the portrait rendered as an 80/96px
-              circle where the spec calls for a 110x144 portrait frame, and
-              the alt text said "Maria" while the card underneath names Elena
-              Popescu - a screen reader announced a different person from the
-              one on screen (InfoPage's copy of this card already had the
-              right name; this one was never updated with it).
-              Sized in explicit pixels rather than a Tailwind scale step
-              because the spec is in pixels and the previous responsive
-              w-20/md:w-24 pair is what let it drift off-spec in the first
-              place. */}
-          <div className="w-[110px] h-[144px] rounded-xl border-2 border-orange overflow-hidden shrink-0">
+        <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-2.5 flex gap-3">
+          <div className="w-[76px] h-[100px] rounded-lg border-2 border-orange overflow-hidden shrink-0">
             <img src={mem1} alt="Elena Popescu" className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] text-[#B9BBC8]">Votre premier contact</div>
-            {/* A03 also specifies the name at 26px; text-lg/md:text-xl
-                resolved to 18/20px, which is what the counter-audit
-                re-measured ("nom 20 px" against the 26px reference).
-                Pinned in px for the same reason as the frame above. */}
-            <div className="text-[26px] font-extrabold text-white leading-tight">Elena Popescu</div>
-            <div className="text-xs text-[#B9BBC8] mb-2">Assistante de direction</div>
-            <p className="text-[11px] md:text-xs text-[#B9BBC8] leading-relaxed">
+            <div className="text-[10px] text-[#B9BBC8]">Votre premier contact</div>
+            <div className="text-lg font-extrabold text-white leading-tight">Elena Popescu</div>
+            <div className="text-[11px] text-[#B9BBC8] mb-1">Assistante de direction</div>
+            <p className="text-[11px] text-[#B9BBC8] leading-snug">
               Elena accueille votre demande et vous oriente vers le bon interlocuteur.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#17334D]">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#17334D]">
           <span className="text-sm font-semibold text-orange">Découvrir notre équipe</span>
-          {/* Client's audit (15 Sep): "Découvrir l'équipe doit conduire aux
-              portraits, pas aux étapes de fonctionnement." This linked to
-              /a-propos with no hash at all, so it landed at the top of that
-              page - the workflow/steps section - rather than the team
-              portraits further down (#mdq-team). App.tsx's AppLayout
-              already scrolls to any hash on route change; this link just
-              never supplied one. */}
           <Link
             to="/a-propos#mdq-team"
-            className="w-10 h-10 rounded-full border border-orange text-orange flex items-center justify-center hover:bg-orange/10 transition-colors"
+            className="w-9 h-9 rounded-full border border-orange text-orange flex items-center justify-center hover:bg-orange/10 transition-colors"
             aria-label="Découvrir notre équipe"
           >
-            <ArrowUpRight size={18} />
+            <ArrowUpRight size={16} />
           </Link>
         </div>
       </div>
