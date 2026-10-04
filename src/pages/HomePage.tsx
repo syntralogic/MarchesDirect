@@ -159,20 +159,18 @@ function OpportunityPaths() {
           géographique" to the map - then "Démo vidéo" and "Témoignages vidéo",
           each with direct access to its own section on this page. */}
       <div className="grid grid-cols-2 gap-1 md:gap-2">
-        <a href="#mdh-metiers" onClick={e => scrollToSection(e, 'mdh-metiers')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
-          <Wrench size={18} className="text-orange md:hidden" />
-          <Wrench size={22} className="text-orange hidden md:block" />
+        <a href="#mdh-metiers" onClick={e => scrollToSection(e, 'mdh-metiers')} className="flex flex-col items-start gap-1.5 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3 md:p-4 hover:border-orange/50 transition-colors text-left">
+          <Wrench size={22} className="text-orange" aria-hidden="true" />
           <div className="min-w-0">
-            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Par métier</div>
-            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Votre activité, vos produits</div>
+            <div className="text-sm md:text-base font-bold text-white leading-tight">Par métier</div>
+            <div className="text-[11px] md:text-xs text-[#B9BBC8] mt-0.5 leading-snug">Votre activité, vos produits</div>
           </div>
         </a>
-        <a href="#mdh-zones" onClick={e => scrollToSection(e, 'mdh-zones')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
-          <MapPin size={18} className="text-orange md:hidden" />
-          <MapPin size={22} className="text-orange hidden md:block" />
+        <a href="#mdh-zones" onClick={e => scrollToSection(e, 'mdh-zones')} className="flex flex-col items-start gap-1.5 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3 md:p-4 hover:border-orange/50 transition-colors text-left">
+          <MapPin size={22} className="text-orange" aria-hidden="true" />
           <div className="min-w-0">
-            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Par zone géographique</div>
-            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Trouvez près de chez vous</div>
+            <div className="text-sm md:text-base font-bold text-white leading-tight">Par zone géographique</div>
+            <div className="text-[11px] md:text-xs text-[#B9BBC8] mt-0.5 leading-snug">Trouvez près de chez vous</div>
           </div>
         </a>
       </div>
@@ -207,7 +205,7 @@ function OpportunityPaths() {
 function DemoWalkthroughSection() {
   const [demoOpen, setDemoOpen] = useState(false);
   return (
-    <section id="mdh-demo" className="scroll-mt-16 px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
+    <section id="mdh-demo" className="scroll-mt-16 px-4 md:px-6 py-5 md:py-10 max-w-3xl md:max-w-5xl mx-auto w-full">
       <h2 className="text-xl md:text-2xl font-bold text-white leading-tight mb-3">
         De la recherche au dossier, en 1 minute.
       </h2>
@@ -319,49 +317,48 @@ function TestimonialsSection() {
 // TEAM ("Une équipe pour préparer votre candidature.")
 // ---------------------------------------------------------------------------
 function TeamSection() {
-  // 4 Oct, client (screenshot, "Notre équipe" circled): "Réduire la taille car ça
-  // prend trop de place." Same content and same link, compacted: smaller
-  // heading, one short paragraph, a 76x100 portrait instead of 110x144 (this
-  // supersedes the 15 Sep A03 pixel spec, which is what made the block so tall)
-  // and tighter spacing. "Découvrir notre équipe" still lands on the portraits
-  // (#mdq-team) of /a-propos.
+  // 4 Oct (evening), client: after seeing the compact version on the live site -
+  // "plus gros ... pareil pour la partie notre équipe, ça paraît trop petit".
+  // Same content and link as before; the block is wider on screen (same width as
+  // the demo section) with a larger portrait and larger text.
+  // "Découvrir notre équipe" still lands on the portraits (#mdq-team) of /a-propos.
   return (
-    <section className="px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
-      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-3 md:p-4">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-bold text-[#B9BBC8] uppercase tracking-widest">Notre équipe</span>
-          <Users size={16} className="text-[#B9BBC8]" />
+    <section className="px-4 md:px-6 py-5 md:py-10 max-w-3xl md:max-w-5xl mx-auto w-full">
+      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-4 md:p-7">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] md:text-xs font-bold text-[#B9BBC8] uppercase tracking-widest">Notre équipe</span>
+          <Users size={20} className="text-[#B9BBC8]" />
         </div>
-        <h2 className="text-lg md:text-2xl font-extrabold leading-tight mb-1">
+        <h2 className="text-2xl md:text-4xl font-extrabold leading-tight mb-2">
           <span className="text-white">Une équipe pour </span>
           <span className="text-orange">préparer votre candidature.</span>
         </h2>
-        <p className="text-[#B9BBC8] text-xs md:text-sm leading-snug mb-3">
+        <p className="text-[#B9BBC8] text-sm md:text-lg leading-snug mb-4 md:mb-5">
           Votre chargé d'affaires prépare le dossier. Vous le validez avant son dépôt.
         </p>
 
-        <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-2.5 flex gap-3">
-          <div className="w-[76px] h-[100px] rounded-lg border-2 border-orange overflow-hidden shrink-0">
+        <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-3 md:p-5 flex gap-4 md:gap-6">
+          <div className="w-[110px] h-[144px] md:w-[170px] md:h-[224px] rounded-lg border-2 border-orange overflow-hidden shrink-0">
             <img src={mem1} alt="Elena Popescu" className="w-full h-full object-cover" />
           </div>
-          <div className="min-w-0">
-            <div className="text-[10px] text-[#B9BBC8]">Votre premier contact</div>
-            <div className="text-lg font-extrabold text-white leading-tight">Elena Popescu</div>
-            <div className="text-[11px] text-[#B9BBC8] mb-1">Assistante de direction</div>
-            <p className="text-[11px] text-[#B9BBC8] leading-snug">
+          <div className="min-w-0 self-center">
+            <div className="text-xs md:text-sm text-[#B9BBC8]">Votre premier contact</div>
+            <div className="text-xl md:text-3xl font-extrabold text-white leading-tight">Elena Popescu</div>
+            <div className="text-sm md:text-base text-[#B9BBC8] mb-1.5">Assistante de direction</div>
+            <p className="text-sm md:text-base text-[#B9BBC8] leading-snug">
               Elena accueille votre demande et vous oriente vers le bon interlocuteur.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#17334D]">
-          <span className="text-sm font-semibold text-orange">Découvrir notre équipe</span>
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#17334D]">
+          <span className="text-base md:text-lg font-semibold text-orange">Découvrir notre équipe</span>
           <Link
             to="/a-propos#mdq-team"
-            className="w-9 h-9 rounded-full border border-orange text-orange flex items-center justify-center hover:bg-orange/10 transition-colors"
+            className="w-11 h-11 rounded-full border border-orange text-orange flex items-center justify-center hover:bg-orange/10 transition-colors"
             aria-label="Découvrir notre équipe"
           >
-            <ArrowUpRight size={16} />
+            <ArrowUpRight size={20} />
           </Link>
         </div>
       </div>
