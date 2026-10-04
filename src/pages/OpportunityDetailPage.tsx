@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
   CheckCircle2, XCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
-  Building2, Users, TrendingUp, Pencil, Award, User, Search, Copy, Send,
+  Building2, Users, TrendingUp, Pencil, Award, User, Search, Copy, Send, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -325,6 +325,9 @@ export default function OpportunityDetailPage() {
   // matching "Affinez votre concordance" right above it - was previously
   // always expanded with no toggle at all.
   const [strengthsOpen, setStrengthsOpen] = useState(false);
+  // 4 Oct brief (concordance_v3): the whole six-criteria analysis lives in ONE
+  // accordion, closed by default.
+  const [criteriaOpen, setCriteriaOpen] = useState(false);
   // Client (19 Sep): "les retours en arrière doivent conserver l'entreprise,
   // les réponses et les critères de recherche." Company identification
   // (CompanyKnownContext) and search criteria (RecherchePage's own
@@ -1047,7 +1050,7 @@ export default function OpportunityDetailPage() {
       <div className="flex items-center justify-between gap-1 mb-4 w-full">
         {([
           { n: 1, label: t('stepperOpportunity') || 'Votre opportunité', short: t('stepperOpportunityShort') || 'Opportunité' },
-          { n: 2, label: t('stepperConcordance') || 'Concordance', short: t('stepperConcordanceShort') || 'Concordance' },
+          { n: 2, label: t('stepperConcordance') || 'Mon analyse', short: t('stepperConcordanceShort') || 'Mon analyse' },
           { n: 3, label: t('stepperDossier') || 'Votre dossier', short: t('stepperDossierShort') || 'Dossier' },
         ] as const).map((s, i) => {
           // 27 Sep audit, point 5: "Votre opportunité" et "Votre dossier" ne
@@ -1075,16 +1078,16 @@ export default function OpportunityDetailPage() {
                 screen > s.n ? 'bg-green-400/15 text-green-400 border border-green-400/40'
                 : screen === s.n ? 'bg-orange text-white'
                 : reachable ? 'border border-orange/40 text-orange'
-                : 'border border-[#17334D] text-[#5B6B80]'
+                : 'border border-[#17334D] text-[#8A9BB0]'
               }`}>
                 {screen > s.n ? <CheckCircle2 size={14} /> : s.n}
               </span>
               {/* Short label always visible (mobile-first); the full
                   sentence-length label only from sm+ where there's room. */}
-              <span className={`sm:hidden text-[9px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#5B6B80]'}`}>
+              <span className={`sm:hidden text-[11px] font-semibold text-center leading-tight whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#8A9BB0]'}`}>
                 {s.short}
               </span>
-              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#5B6B80]'}`}>
+              <span className={`hidden sm:inline text-sm font-semibold whitespace-nowrap ${screen === s.n || screen > s.n ? (screen === s.n ? 'text-orange' : 'text-green-400') : reachable ? 'text-orange' : 'text-[#8A9BB0]'}`}>
                 {s.label}
               </span>
             </button>
@@ -1101,7 +1104,7 @@ export default function OpportunityDetailPage() {
           name for screen 1, which has no separate H2 of its own (its title
           lives inside the opportunity card instead). */}
       <p className="text-xs font-bold text-orange uppercase tracking-wide mb-3">
-        {t('stepperStepPrefix') || 'Étape'} {screen}{screen === 1 ? ` — ${t('stepperOpportunity') || 'Votre opportunité'}` : ''}
+        {t('stepperStepPrefix') || 'Étape'} {screen}{screen === 1 ? ` — ${t('stepperOpportunity') || 'Votre opportunité'}` : screen === 2 ? ` · ${t('stepperConcordance') || 'Mon analyse'}` : ''}
       </p>
 
 
@@ -1216,8 +1219,8 @@ export default function OpportunityDetailPage() {
           "Votre dossier" with the descriptive line directly underneath). */}
       {screen !== 1 && (
         <div className="mb-4">
-          <h2 className={screen === 3 ? 'text-2xl font-extrabold text-white' : 'text-xl font-extrabold text-white'}>
-            {screen === 2 ? (t('compatibilityTitle') || 'Concordance') : (t('detailDossier') || 'Votre dossier')}
+          <h2 className="text-2xl font-extrabold text-white leading-tight">
+            {screen === 2 ? (t('compatibilityTitle') || 'Ce marché est-il adapté à votre entreprise ?') : (t('detailDossier') || 'Votre dossier')}
           </h2>
           <p className="text-sm text-[#B9BBC8] mt-1">
             {screen === 2
@@ -1660,7 +1663,7 @@ export default function OpportunityDetailPage() {
                 onClick={() => setScreen(2)}
                 className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors"
               >
-                {t('backToConcordance') || 'Revenir à ma concordance'}
+                {t('backToConcordance') || 'Revenir à mon analyse'}
                 <span className="text-xs font-normal opacity-90">— {siretCompany.name || 'votre entreprise'}</span>
               </button>
             )}
@@ -1758,10 +1761,10 @@ export default function OpportunityDetailPage() {
                 4 stacked rows into one row of small status chips - same
                 underlying signals (never fabricated), just denser. */}
             {siretCompany && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5 mb-4">
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-9 h-9 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
+              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-3.5 md:p-4 mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
                       <Building2 size={16} className="text-orange" />
                     </span>
                     <p className="text-sm font-bold text-white">{t('siretYourCompany') || 'Votre entreprise'}</p>
@@ -1769,7 +1772,7 @@ export default function OpportunityDetailPage() {
                   <button
                     type="button"
                     onClick={() => { setScreen(1); setSiretInput(''); }}
-                    className="flex items-center gap-1.5 text-[11px] font-bold text-orange border border-orange/40 rounded-lg px-3 py-1.5 hover:bg-orange/10 transition-colors shrink-0"
+                    className="flex items-center gap-1.5 text-xs font-bold text-orange border border-orange/40 rounded-lg px-3 py-1.5 hover:bg-orange/10 transition-colors shrink-0"
                   >
                     <Pencil size={12} /> {t('siretModify') || 'Modifier'}
                   </button>
@@ -1783,9 +1786,9 @@ export default function OpportunityDetailPage() {
                     </span>
                   )}
                 </div>
-                {siretCompany.siret && <p className="text-xs text-[#5B6B80] mb-2.5">SIRET {siretCompany.siret}</p>}
+                {siretCompany.siret && <p className="text-xs text-[#8A9BB0] mb-2">SIRET {siretCompany.siret}</p>}
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs pt-2.5 border-t border-[#17334D] mt-0.5">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-2 border-t border-[#17334D]">
                   <CompanyInfoRow icon={MapPin} label="Localisation" value={[siretCompany.city, siretCompany.postal].filter(Boolean).join(' ') || siretCompany.address || null} />
                   <CompanyInfoRow
                     icon={User}
@@ -1818,8 +1821,8 @@ export default function OpportunityDetailPage() {
                     the same known/unknown distinction as CompanyInfoRow
                     above (25 Sep audit, point 4). Title kept as a tooltip on
                     the row rather than a repeated H2+sub. */}
-                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs pt-2.5 mt-2.5 border-t border-[#17334D]">
-                  <span className="text-[10px] text-[#5B6B80] w-full -mb-0.5">{t('presenceDetectedTitle')}</span>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs pt-2 mt-2 border-t border-[#17334D]">
+                  <span className="text-xs text-[#8A9BB0] w-full -mb-0.5">{t('presenceDetectedTitle')}</span>
                   {([
                     { icon: Globe, label: t('presenceWebsite'), detected: Boolean(siretCompany.website), value: siretCompany.website },
                     { icon: Facebook, label: t('presenceFacebook'), detected: Boolean(siretCompany.facebook), value: siretCompany.facebook },
@@ -1827,9 +1830,9 @@ export default function OpportunityDetailPage() {
                     { icon: BadgeCheck, label: t('presenceRge'), detected: Boolean(siretCompany.rgeOrganisme), value: siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : null },
                   ] as const).map((sig, i) => (
                     <div key={i} className="flex items-center gap-1.5" title={sig.value || t('presenceNotDetected')}>
-                      {sig.detected ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <XCircle size={13} className="text-[#5B6B80] shrink-0" />}
-                      <sig.icon size={12} className="text-[#5B6B80] shrink-0" />
-                      <span className={sig.detected ? 'text-white font-medium' : 'text-[#5B6B80] italic'}>{sig.label}</span>
+                      {sig.detected ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <XCircle size={13} className="text-[#8A9BB0] shrink-0" />}
+                      <sig.icon size={12} className="text-[#8A9BB0] shrink-0" />
+                      <span className={sig.detected ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{sig.label}</span>
                     </div>
                   ))}
                 </div>
@@ -1842,178 +1845,236 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
         ) : matchScore ? (
             <div className="space-y-4">
-            {/* Concordance card (client's 12 Sep concordance-apercu
-                reference): ring + "Indice de concordance" description
-                beside it, the numerical breakdown of the score (20 Sep
-                audit), and a highlighted quote using the server-computed whyRespond
-                text. score/matchLabel/whyRespond are all server-computed
-                (matchScoreService.ts) - never independently derived here. */}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <h2 className="text-2xl font-extrabold text-white mb-2 leading-tight">{t('scoreCardCaption') || 'Votre concordance avec ce marché'}</h2>
-              <p className="text-sm text-[#B9BBC8] mb-5">{opportunity.title}</p>
-              <div className="flex flex-row items-start gap-5">
-                <div className="relative w-28 h-28 shrink-0">
-                  <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
-                    <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
-                    <circle
-                      cx="50" cy="50" r="42" fill="none" stroke="#FF7A00" strokeWidth="10" strokeLinecap="round"
-                      strokeDasharray={2 * Math.PI * 42}
-                      strokeDashoffset={2 * Math.PI * 42 * (1 - (displayScore ?? 0) / 100)}
-                      className="transition-[stroke-dashoffset] duration-500 ease-out"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    {displayScore === null
-                      ? <span className="text-sm font-extrabold text-white text-center leading-tight px-2">{t('matchScoreToConfirm') || 'À confirmer'}</span>
-                      : <span className="text-2xl font-extrabold text-white">{displayScore}%</span>}
-                  </div>
-                </div>
-                <div className="flex-1 w-full min-w-0">
-                  <p className="text-base font-bold text-white">{t('scoreIndexTitle') || 'Indice de concordance'}</p>
-                  <p className="text-sm text-[#B9BBC8] mt-1.5 leading-relaxed">{t('scoreIndexDesc') || 'Ce score compare le profil de votre entreprise aux exigences du marché, à partir des informations disponibles. Vos réponses permettent de préciser cette évaluation.'}</p>
-                  <p className="text-[11px] text-[#B9BBC8] mt-2">
-                    {matchScore.scoreNote}
-                  </p>
-                </div>
-              </div>
+            {/* 4 Oct brief (mockup concordance_v3): the score and ONE short,
+                personalised conclusion stay visible; the six criteria collapse
+                into a single accordion (closed by default) with only a compact
+                synthesis outside; one important alert stays visible. Everything
+                below is derived from the real matchScore (score, statuses,
+                counts) - the wording of the mockup is only an example.
+                score/matchLabel/whyRespond remain server-computed
+                (matchScoreService.ts) and are never derived independently. */}
+            {(() => {
+              type Crit = ApiMatchScore['matchCriteria'][number];
+              const crits = matchScore.matchCriteria;
+              const total = crits.length;
+              const ORDER = ['metier', 'zone', 'disponibilite', 'moyens', 'experience', 'qualifications'];
+              const NOUN: Record<string, { txt: string; plural: boolean }> = {
+                metier: { txt: 'votre activité', plural: false },
+                zone: { txt: "votre zone d'intervention", plural: false },
+                experience: { txt: 'votre expérience', plural: false },
+                moyens: { txt: 'vos moyens', plural: true },
+                disponibilite: { txt: 'votre disponibilité', plural: false },
+                qualifications: { txt: 'vos qualifications', plural: true },
+              };
+              const sortedCrits = [...crits].sort((x, y) => (ORDER.indexOf(x.key) + 1 || 99) - (ORDER.indexOf(y.key) + 1 || 99));
+              const byStatus = (st: Crit['status']) => sortedCrits.filter(c => c.status === st);
+              const mism = byStatus('mismatch');
+              const ok = byStatus('match');
+              const conf = byStatus('confirm');
+              const joinFr = (a: string[]) => (a.length <= 1 ? (a[0] || '') : `${a.slice(0, -1).join(', ')} et ${a[a.length - 1]}`);
+              const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+              const sentence = (items: Crit[], verbSg: string, verbPl: string, tail: string) => {
+                const nouns = items.map(c => NOUN[c.key] || { txt: c.label.toLowerCase(), plural: false });
+                const plural = nouns.length > 1 || nouns[0].plural;
+                return `${cap(joinFr(nouns.map(n => n.txt)))} ${plural ? verbPl : verbSg}${tail}`;
+              };
+              // Personalised conclusion: at most the two most relevant criteria
+              // per status, so it stays short; the synthesis below carries the rest.
+              const parts: string[] = [];
+              if (total > 0 && ok.length === total) {
+                parts.push("Votre profil correspond à l'ensemble des critères évalués.");
+              } else {
+                if (ok.length) parts.push(sentence(ok.slice(0, 2), 'correspond', 'correspondent', ok.length === 1 && ok[0].key === 'metier' ? ' aux prestations recherchées.' : ' à ce marché.'));
+                if (mism.length) parts.push(sentence(mism.slice(0, 2), 'ne correspond pas', 'ne correspondent pas', ' à ce marché : à vérifier avant de candidater.'));
+                if (conf.length) parts.push(sentence(conf.slice(0, 2), 'reste', 'restent', ' à confirmer.'));
+              }
+              const conclusion = parts.length ? parts.slice(0, 2).join(' ') : (matchScore.whyRespond || '');
+              const TIER_TITLES: { min: number; title: string }[] = [
+                { min: 100, title: t('scoreTier100Title') || 'Concordance totale sur les critères évalués' },
+                { min: 90, title: t('scoreTier90Title') || 'Concordance quasi totale' },
+                { min: 75, title: t('scoreTier75Title') || 'Excellente concordance' },
+                { min: 50, title: t('scoreTier50Title') || 'Très bonne concordance' },
+                { min: 25, title: t('scoreTier25Title') || 'Des atouts pour répondre' },
+                { min: 0, title: t('scoreTier0Title') || 'Des possibilités à étudier' },
+              ];
+              const tierTitle = displayScore !== null ? TIER_TITLES.find(x => displayScore >= x.min)?.title : null;
+              const ConclusionIcon = mism.length ? AlertTriangle : (total > 0 && ok.length === total) ? CheckCircle2 : AlertCircle;
+              const conclusionIconClass = mism.length ? 'text-orange' : 'text-green-400';
 
-              {/* 27 Sep audit, point 8: a short, colored, score-tier message
-                  right under the percentage, always inviting the visitor to
-                  continue regardless of how low the score is - a weak score
-                  is about this one opportunity, never a verdict on the
-                  company. Purely derived from displayScore (same value the
-                  ring above shows), so it can never disagree with it; no
-                  separate computation. */}
-              {displayScore !== null && (() => {
-                const TIERS: { min: number; emoji: string; title: string; body: string }[] = [
-                  { min: 100, emoji: '🟢', title: t('scoreTier100Title') || 'Concordance totale sur les critères évalués', body: t('scoreTier100Body') || 'Votre profil correspond à l\u2019ensemble des critères évalués. Préparez maintenant votre candidature !' },
-                  { min: 90, emoji: '🟢', title: t('scoreTier90Title') || 'Concordance quasi totale', body: t('scoreTier90Body') || 'Votre profil correspond à la grande majorité des critères évalués. Passez à la préparation de votre candidature !' },
-                  { min: 75, emoji: '🟢', title: t('scoreTier75Title') || 'Excellente concordance', body: t('scoreTier75Body') || 'Votre profil est particulièrement adapté à cette opportunité. Préparez votre candidature avec l\u2019accompagnement de Marchés Direct !' },
-                  { min: 50, emoji: '🟡', title: t('scoreTier50Title') || 'Très bonne concordance', body: t('scoreTier50Body') || 'Votre entreprise présente de solides atouts pour ce marché. Passez à la préparation de votre candidature avec un chargé d\u2019affaires !' },
-                  { min: 25, emoji: '🟠', title: t('scoreTier25Title') || 'Des atouts pour répondre', body: t('scoreTier25Body') || 'Votre entreprise possède déjà des atouts pour ce marché. Échangez avec un chargé d\u2019affaires pour étudier vos possibilités de candidature et les points à compléter.' },
-                  { min: 0, emoji: '🔴', title: t('scoreTier0Title') || 'Des possibilités à étudier', body: t('scoreTier0Body') || 'Ce score concerne uniquement cette opportunité. Un chargé d\u2019affaires peut faire le point avec vous et vous aider à identifier des marchés plus adaptés à votre entreprise.' },
-                ] as const;
-                const tier = TIERS.find(x => displayScore >= x.min)!;
-                return (
-                  <div className="bg-[#031B30] border-l-2 border-orange rounded-r-lg pl-4 pr-3 py-3 mt-4">
-                    <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                      <span aria-hidden="true">{tier.emoji}</span> {tier.title}
-                    </p>
-                    <p className="text-xs text-[#B9BBC8] mt-1 leading-relaxed">{tier.body}</p>
-                  </div>
-                );
-              })()}
+              const statusLabel = (st: Crit['status']) => st === 'match' ? (t('matchStatusMatch') || 'Correspond') : st === 'mismatch' ? (t('matchStatusMismatch') || 'Ne correspond pas') : (t('matchStatusConfirm') || 'À confirmer');
+              const statusColor = (st: Crit['status']) => st === 'match' ? 'text-green-400' : st === 'mismatch' ? 'text-red-400' : 'text-[#B9BBC8]';
+              const countLabel = (st: Crit['status'], n: number) => n === 1 ? statusLabel(st) : st === 'match' ? `${n} correspondent` : st === 'mismatch' ? `${n} ne correspondent pas` : `${n} ${(t('matchStatusConfirm') || 'À confirmer').toLowerCase()}`;
+              const StatusIcon = ({ st }: { st: Crit['status'] }) => st === 'match'
+                ? <CheckCircle2 size={16} className="text-green-400 shrink-0 mt-0.5" />
+                : st === 'mismatch'
+                  ? <XCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                  : <AlertCircle size={16} className="text-[#B9BBC8] shrink-0 mt-0.5" />;
+              const groups = ([['mismatch', mism], ['match', ok], ['confirm', conf]] as const).filter(([, list]) => list.length > 0);
+              const detailToggleLabel = (t('criteriaDetailToggle') || 'Voir le détail des {n} critères').replace('{n}', String(total));
+              const detailHideLabel = (t('criteriaDetailHide') || 'Masquer le détail des {n} critères').replace('{n}', String(total));
 
-              {/* Passage concordance -> dossier, point 1 (27 Sep audit): the
-                  commercial action sits right here, under the score and its
-                  tier message, so the visitor can act without scrolling to
-                  the bottom of the page. Always visible at every score tier
-                  (see the tier copy above - a low score still invites the
-                  exchange, just framed as "étudier les possibilités"
-                  instead of "préparer la candidature"). Opens the existing
-                  AppointmentModal, which already pulls the identified
-                  company, this opportunity (via marketLabel) and any
-                  coordinates already on file (leadEmail/leadPhone) from
-                  CompanyKnownContext - nothing new to wire for that part.
-                  Reading on and reaching the dossier excerpt/form further
-                  down stays entirely the visitor's own choice; no button is
-                  needed to "continue" there. */}
-              {closedFiche ? (
-                <Link to={similarMarchesHref} className="w-full flex items-center justify-center gap-2 border border-orange/50 text-orange font-bold py-3 rounded-xl hover:bg-orange/10 transition-colors mt-4">
-                  Voir des marchés similaires
-                </Link>
-              ) : (
-              <button
-                type="button"
-                onClick={() => setShowAccountManagerModal(true)}
-                className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors mt-4"
-              >
-                <Calendar size={16} /> {t('scoreTalkToManagerCta') || 'Échanger avec un chargé d\u2019affaires'}
-              </button>
-              )}
+              // "Ce que l'annonce précise": a compact list instead of three text blocks.
+              const hasLot = !!tradeLabel;
+              const hasBudget = !!opportunity.estimated_value;
+              const hasDeadline = !!opportunity.deadline;
+              const daysLeft = hasDeadline ? Math.ceil((new Date(opportunity.deadline as string).getTime() - Date.now()) / 86400000) : NaN;
+              const dayBadge = Number.isNaN(daysLeft) ? '' : daysLeft < 0 ? ` · ${t('listingClosedLabel') || 'Clôturé'}` : daysLeft === 0 ? " · Aujourd'hui" : ` · J-${daysLeft}`;
+              const specRows = [
+                { label: t('annonceLot') || 'Lot', value: tradeLabel || (t('annonceNotSpecified') || 'Non précisé'), accent: false },
+                { label: t('annonceAmount') || 'Montant', value: hasBudget ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value as number)} € HT` : (t('annonceAmountMissing') || 'Non communiqué'), accent: false },
+                { label: t('annonceDeadline') || 'Échéance', value: hasDeadline ? `${formatDate(opportunity.deadline as string)}${dayBadge}` : (t('annonceDeadlineMissing') || 'Non communiquée'), accent: hasDeadline },
+              ];
+              const statusAlert = !!(siretCompany?.statut && siretCompany.statut !== 'Active');
 
-              {/* One line per criterion: what the market asks, what the company
-                  does, and one of three states. Unknown data stays "à
-                  confirmer" and is not counted in the percentage. */}
-              <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mt-5">
-                <p className="text-sm font-bold text-white mb-1">{t('matchCriteriaTitle') || 'Comment votre entreprise correspond à ce marché'}</p>
-                <p className="text-[11px] text-[#B9BBC8] mb-3">
-                  {t('matchCriteriaIntro') || 'Chaque critère compare votre entreprise à ce que le marché demande. Une information inconnue reste « à confirmer » et n\'est pas comptée.'}
-                </p>
-                <ul className="divide-y divide-[#17334D]">
-                  {matchScore.matchCriteria.map(c => (
-                    <li key={c.key} className="py-2.5 flex items-start gap-2.5">
-                      {c.status === 'match'
-                        ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-                        : c.status === 'mismatch'
-                          ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                          : <span className="w-[15px] h-[15px] rounded-full border border-[#5B6B80] shrink-0 mt-0.5" />}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-white">{c.label}</p>
-                        <p className="text-[11px] text-[#B9BBC8] mt-0.5 leading-relaxed">{c.detail}</p>
+              return (
+                <>
+                  {/* Score + short personalised conclusion - always visible. */}
+                  <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5">
+                    <h2 className="text-xl font-extrabold text-white mb-1 leading-tight">{t('scoreCardCaption') || 'Compatibilité avec cette opportunité'}</h2>
+                    <p className="text-sm text-[#B9BBC8] mb-4">{opportunity.title}</p>
+                    <div className="flex flex-row items-center gap-4">
+                      <div className="relative w-24 h-24 shrink-0">
+                        <svg viewBox="0 0 100 100" className="w-24 h-24 -rotate-90">
+                          <circle cx="50" cy="50" r="42" fill="none" stroke="#17334D" strokeWidth="10" />
+                          <circle
+                            cx="50" cy="50" r="42" fill="none" stroke="#FF7A00" strokeWidth="10" strokeLinecap="round"
+                            strokeDasharray={2 * Math.PI * 42}
+                            strokeDashoffset={2 * Math.PI * 42 * (1 - (displayScore ?? 0) / 100)}
+                            className="transition-[stroke-dashoffset] duration-500 ease-out"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          {displayScore === null
+                            ? <span className="text-sm font-extrabold text-white text-center leading-tight px-2">{t('matchScoreToConfirm') || 'À confirmer'}</span>
+                            : <span className="text-2xl font-extrabold text-white">{displayScore}%</span>}
+                        </div>
                       </div>
-                      <span className={`text-[11px] font-bold shrink-0 ${c.status === 'match' ? 'text-green-400' : c.status === 'mismatch' ? 'text-red-400' : 'text-[#B9BBC8]'}`}>
-                        {c.status === 'match' ? (t('matchStatusMatch') || 'Correspond') : c.status === 'mismatch' ? (t('matchStatusMismatch') || 'Ne correspond pas') : (t('matchStatusConfirm') || 'À confirmer')}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-base font-bold text-white">{t('scoreIndexTitle') || 'Indice de concordance'}</p>
+                        <p className="text-sm text-[#B9BBC8] mt-1 leading-relaxed">{t('scoreIndexDesc') || 'Compare le profil de votre entreprise aux exigences du marché. Vos réponses précisent cette évaluation.'}</p>
+                      </div>
+                    </div>
 
-              {/* Client (20 Sep, concordance point 4): the "Cessée" status on
-                  VERIFRANCE HABITAT matches the live data.gouv.fr record
-                  (siret.ts), so it is not a display bug - but its effect on
-                  this score was only ever explained deep in the "Aperçu du
-                  dossier" (scorePreviewStatusNotice below), where a visitor
-                  may never scroll. Same condition, same wording, surfaced
-                  right next to the score it actually affects. */}
-              {siretCompany?.statut && siretCompany.statut !== 'Active' && (
-                <div className="border-l-2 border-[#bd7027] bg-[#bd7027]/10 rounded-r-lg pl-3 pr-3 py-2.5 mt-4">
-                  <p className="text-xs font-bold text-white mb-1">Situation de l’entreprise à vérifier avec un conseiller</p>
-                  <p className="text-xs text-[#EAF0F6] leading-relaxed">
-                    {t('scoreStatusNotice', { status: siretCompany.statut }) || `Statut « ${siretCompany.statut} » d'après la fiche officielle : l'indice ci-dessus ne tient pas compte de ce statut et doit être interprété avec prudence tant que la situation de l'entreprise n'est pas clarifiée.`}
-                  </p>
-                </div>
-              )}
+                    {conclusion && (
+                      <div className="flex items-start gap-2.5 mt-4 pt-4 border-t border-[#17334D]">
+                        <ConclusionIcon size={18} className={`${conclusionIconClass} shrink-0 mt-0.5`} />
+                        <div className="min-w-0">
+                          {tierTitle && <p className="text-sm font-bold text-white mb-0.5">{tierTitle}</p>}
+                          <p className="text-sm text-white leading-relaxed">{conclusion}</p>
+                        </div>
+                      </div>
+                    )}
 
-              {/* The "N entreprises avec un indice comparable ont remporté un
-                  marché similaire" card was removed (20 Sep audit): its number
-                  was derived from the opportunity id, not from any award
-                  data, so it was an invented statistic even with its
-                  "Exemple illustratif" caption. */}
-
-              {/* 20 Sep audit: this was fixed copy claiming "Le lot, le budget
-                  et les critères donnent des repères concrets" on every fiche,
-                  including ones with no announced amount. It now only names
-                  what the notice actually provides. */}
-              {(() => {
-                const repères: string[] = [];
-                if (tradeLabel) repères.push(t('scoreReperLot') || 'le lot');
-                if (opportunity.estimated_value) repères.push(t('scoreReperBudget') || 'le budget');
-                if (opportunity.deadline) repères.push(t('scoreReperDeadline') || "l'échéance");
-                if (repères.length === 0) return null;
-                const list = repères.length > 1 ? `${repères.slice(0, -1).join(', ')} et ${repères[repères.length - 1]}` : repères[0];
-                return (
-                  <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
-                    <p className="text-sm text-white leading-relaxed">
-                      <span className="font-bold">{t('scoreStructuredTitle') || 'Ce que l\'annonce précise.'}</span>{' '}
-                      {(t('scoreStructuredDescDyn') || 'Repères disponibles pour préparer votre candidature : {list}.').replace('{list}', list)}
-                      {!opportunity.estimated_value && ` ${t('scoreBudgetNotCommunicated') || "Le montant n'est pas communiqué."}`}
-                    </p>
+                    {/* Fixed disclaimer: a fit measurement, never an odds-of-winning estimate. */}
+                    <p className="text-xs text-[#8A9BB0] leading-relaxed mt-3">{matchScore.scoreDisclaimer}</p>
                   </div>
-                );
-              })()}
 
-              {matchScore.whyRespond && (
-                <div className="border-l-2 border-orange rounded-r-lg bg-orange/5 pl-4 pr-3 py-3 mt-4">
-                  <p className="text-sm text-white leading-relaxed">{matchScore.whyRespond}</p>
-                </div>
-              )}
+                  {/* Compact synthesis + ONE closed accordion holding the full six-criteria analysis. */}
+                  {total > 0 && (
+                    <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5">
+                      <p className="text-base font-extrabold text-white mb-2 leading-tight">{t('matchCriteriaTitle') || 'Comment votre entreprise correspond à ce marché'}</p>
+                      <ul className="divide-y divide-[#17334D]">
+                        {groups.map(([st, list]) => (
+                          <li key={st} className="py-2.5 flex items-start gap-2.5">
+                            <StatusIcon st={st} />
+                            <div className="min-w-0 flex-1">
+                              {list.length === 1 ? (
+                                <>
+                                  <p className="text-sm font-semibold text-white">{list[0].label}</p>
+                                  <p className="text-xs text-[#B9BBC8] mt-0.5 leading-relaxed">{list[0].detail}</p>
+                                </>
+                              ) : (
+                                <p className="text-sm text-white leading-snug">{cap(list.map((c, i) => (i === 0 ? c.label : c.label.toLowerCase())).join(', '))}</p>
+                              )}
+                            </div>
+                            <span className={`text-xs font-bold shrink-0 mt-0.5 ${statusColor(st)}`}>{countLabel(st, list.length)}</span>
+                          </li>
+                        ))}
+                      </ul>
 
-              {/* Fixed disclaimer (client's exact wording): this is never
-                  an odds-of-winning estimate, only a fit measurement. */}
-              <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
-            </div>
+                      <button
+                        type="button"
+                        onClick={() => setCriteriaOpen(o => !o)}
+                        aria-expanded={criteriaOpen}
+                        aria-controls="criteria-detail"
+                        className="mt-1 inline-flex items-center gap-1.5 text-sm font-bold text-orange hover:underline"
+                      >
+                        {criteriaOpen ? detailHideLabel : detailToggleLabel}
+                        <ChevronDown size={15} className={`transition-transform ${criteriaOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {criteriaOpen && (
+                        <div id="criteria-detail" className="mt-3 pt-3 border-t border-[#17334D] space-y-3">
+                          {matchScore.scoreNote && <p className="text-xs text-[#B9BBC8] leading-relaxed">{matchScore.scoreNote}</p>}
+                          <p className="text-xs text-[#B9BBC8] leading-relaxed">
+                            {t('matchCriteriaIntro') || 'Chaque critère compare votre entreprise à ce que le marché demande. Une information inconnue reste « à confirmer » et n\'est pas comptée.'}
+                          </p>
+                          <ul className="divide-y divide-[#17334D]">
+                            {sortedCrits.map(c => (
+                              <li key={c.key} className="py-2.5 flex items-start gap-2.5">
+                                <StatusIcon st={c.status} />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-white">{c.label}</p>
+                                  <p className="text-xs text-[#B9BBC8] mt-0.5 leading-relaxed">{c.detail}</p>
+                                </div>
+                                <span className={`text-xs font-bold shrink-0 mt-0.5 ${statusColor(c.status)}`}>{statusLabel(c.status)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {statusAlert && siretCompany && (
+                            <p className="text-xs text-[#EAF0F6] leading-relaxed border-l-2 border-[#bd7027] bg-[#bd7027]/10 rounded-r-lg pl-3 pr-3 py-2.5">
+                              {t('scoreStatusNotice', { status: siretCompany.statut || '' }) || `Statut « ${siretCompany.statut} » d'après la fiche officielle : l'indice ci-dessus ne tient pas compte de ce statut et doit être interprété avec prudence tant que la situation de l'entreprise n'est pas clarifiée.`}
+                            </p>
+                          )}
+                          {matchScore.whyRespond && (
+                            <p className="text-sm text-white leading-relaxed border-l-2 border-orange bg-orange/5 rounded-r-lg pl-4 pr-3 py-3">{matchScore.whyRespond}</p>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-[#8A9BB0] leading-relaxed mt-3">
+                        {t('criteriaUnknownNote') || "Une information inconnue reste « à confirmer » et n'est pas comptée contre vous."}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Important alert - stays visible outside the accordion, with a named action
+                      (company status differs from the official record, e.g. « Cessée »). */}
+                  {statusAlert && (
+                    <div role="alert" className="flex items-start gap-3 border border-[#17334D] border-l-4 border-l-orange bg-[#061D32] rounded-2xl pl-3.5 pr-4 py-3.5">
+                      <AlertTriangle size={18} className="text-orange shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-sm text-white leading-relaxed">
+                          <span className="font-bold">{t('statusAlertTitle') || "Statut d'activité à vérifier"}</span>
+                          {' — '}
+                          {t('statusAlertBody') || 'nos données diffèrent de votre situation réelle ? À clarifier avant de candidater.'}
+                        </p>
+                        {!closedFiche && (
+                          <button type="button" onClick={() => setShowAccountManagerModal(true)} className="mt-1.5 text-sm font-bold text-orange hover:underline">
+                            {t('statusAlertAction') || 'Vérifier cette information'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* "Ce que l'annonce précise": one compact list (was three text blocks). */}
+                  {(hasLot || hasBudget || hasDeadline) && (
+                    <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5">
+                      <p className="text-base font-extrabold text-white mb-1">{(t('scoreStructuredTitle') || "Ce que l'annonce précise").replace(/\.$/, '')}</p>
+                      <dl className="divide-y divide-[#17334D]">
+                        {specRows.map(r => (
+                          <div key={r.label} className="flex items-baseline justify-between gap-4 py-2.5">
+                            <dt className="text-sm text-[#B9BBC8]">{r.label}</dt>
+                            <dd className={`text-sm font-bold text-right ${r.accent ? 'text-[#F2A66B]' : 'text-white'}`}>{r.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Client (4 Oct): the "Sur quoi repose ce pourcentage" table repeated the
                 six criteria already shown in "Comment votre entreprise correspond à ce
@@ -2050,7 +2111,7 @@ export default function OpportunityDetailPage() {
                   ].map(row => (
                     <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
                       <p className="text-xs font-bold text-white mb-1">{row.q}</p>
-                      {row.help && <p className="text-[11px] text-[#B9BBC8] mb-2">{row.help}</p>}
+                      {row.help && <p className="text-xs text-[#B9BBC8] mb-2">{row.help}</p>}
                       <div className="flex gap-2">
                         {(['oui', 'non', 'a_confirmer'] as const).map(opt => (
                           <button
@@ -2071,14 +2132,14 @@ export default function OpportunityDetailPage() {
                         const crit = matchScore.matchCriteria.find(c => c.key === CRITERION_FOR_ANSWER[row.key]);
                         if (!crit) return null;
                         return (
-                          <p className={`text-[11px] mt-2 font-semibold ${crit.status === 'match' ? 'text-green-400' : crit.status === 'mismatch' ? 'text-red-400' : 'text-[#B9BBC8]'}`}>
+                          <p className={`text-xs mt-2 font-semibold ${crit.status === 'match' ? 'text-green-400' : crit.status === 'mismatch' ? 'text-red-400' : 'text-[#B9BBC8]'}`}>
                             {crit.label} : {crit.status === 'match' ? (t('matchStatusMatch') || 'Correspond') : crit.status === 'mismatch' ? (t('matchStatusMismatch') || 'Ne correspond pas') : (t('matchStatusConfirm') || 'À confirmer')}
                           </p>
                         );
                       })()}
                     </div>
                   ))}
-                  <p className="text-[11px] text-[#B9BBC8]">
+                  <p className="text-xs text-[#B9BBC8]">
                     {t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}
                   </p>
                 </div>
@@ -2151,7 +2212,7 @@ export default function OpportunityDetailPage() {
                         {missing.map((row, i) => (
                           <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                             <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[#17334D]">
-                              <row.icon size={15} className="text-[#5B6B80]" />
+                              <row.icon size={15} className="text-[#8A9BB0]" />
                             </span>
                             <div className="min-w-0">
                               <p className="text-xs font-bold text-white">{row.verifyLabel}</p>
@@ -2168,6 +2229,25 @@ export default function OpportunityDetailPage() {
             </div>
           ) : null}
 
+                {/* 4 Oct brief (concordance_v3): the former orange "Échanger avec un
+                    chargé d'affaires" button is now a discreet link, so the dossier
+                    request below is the only primary action of the screen. Same
+                    handler as before (existing AppointmentModal, which already pulls
+                    company, opportunity and any coordinates on file). */}
+                {matchScore && (
+                  <div className="text-center my-4">
+                    {closedFiche ? (
+                      <Link to={similarMarchesHref} className="text-sm font-semibold text-[#B9BBC8] underline underline-offset-2 hover:text-white">
+                        {t('scoreSimilarLink') || 'Voir des marchés similaires'}
+                      </Link>
+                    ) : (
+                      <button type="button" onClick={() => setShowAccountManagerModal(true)} className="text-sm font-semibold text-[#B9BBC8] underline underline-offset-2 hover:text-white">
+                        {t('scoreCallbackLink') || "Vous préférez qu'un conseiller vous appelle directement ?"}
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Client's 14 Sep report: logged-in/already-qualified
                     visitors never saw this at all, since the whole block
                     used to be gated behind !(isAuthenticated ||
@@ -2175,14 +2255,13 @@ export default function OpportunityDetailPage() {
                     not just visitors still deciding whether to hand over
                     contact info. Only the email/phone capture form itself
                     stays gated below; the excerpt viewer is always here. */}
-                <div ref={leadGateRef} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+                <div ref={leadGateRef} className={`bg-[#061D32] border rounded-2xl p-4 md:p-5 ${(isAuthenticated || leadCaptured) ? 'border-[#17334D]' : 'border-orange'}`}>
                   {!(isAuthenticated || leadCaptured) ? (
                     <>
-                      <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-2">
-                        <Copy size={17} className="text-orange shrink-0" /> {t('scorePreviewOnlyTitle') || "Ceci n'est qu'un aperçu"}
+                      <p className="flex items-start gap-2 text-lg font-extrabold text-white mb-2 leading-snug">
+                        <FileText size={17} className="text-orange shrink-0 mt-1" /> {t('dossierCardTitle') || 'Votre dossier pré-rempli pour ce marché'}
                       </p>
-                      <p className="text-sm text-[#B9BBC8] mb-1">{t('scorePreviewCopy') || "Recevez votre dossier pré-rempli par e-mail et échangez avec un chargé d'affaires pour étudier vos possibilités et préparer votre candidature."}</p>
-                      <p className="text-sm text-[#B9BBC8] mb-4">{t('scorePreviewIncomplete') || 'Une base à compléter et à vérifier avec vos pièces avant le dépôt.'}</p>
+                      <p className="text-sm text-[#B9BBC8] mb-4 leading-relaxed">{t('dossierCardIntro') || "Consultez un extrait, puis recevez votre dossier par e-mail. Vous retrouverez vos documents et les possibilités d'accompagnement à l'étape suivante."}</p>
                     </>
                   ) : (
                     <p className="flex items-center gap-2 text-lg font-extrabold text-white mb-4">
@@ -2194,9 +2273,9 @@ export default function OpportunityDetailPage() {
                         excerpt link and the "viewed today" counter sit
                         together in one plain bordered box (no reddish
                         tint) - only the counter's own text is colored. */}
-                    <div className="bg-[#031B30] border border-[#17334D] rounded-xl p-4 mb-4">
-                      <button type="button" onClick={() => setExcerptOpen(o => !o)} className="flex items-center gap-2 text-sm text-orange font-semibold hover:underline">
-                        <Search size={14} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
+                    <div className="mb-4">
+                      <button type="button" onClick={() => setExcerptOpen(o => !o)} aria-expanded={excerptOpen} className="w-full flex items-center justify-center gap-2 border border-[#17334D] bg-[#031B30] rounded-xl py-3 text-sm text-orange font-bold hover:border-orange/50 transition-colors">
+                        <Search size={15} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
                       </button>
                       {realConsultations != null && realConsultations > 0 && (
                         <div className="flex items-start gap-2 mt-3">
@@ -2264,11 +2343,11 @@ export default function OpportunityDetailPage() {
                               <li className="flex justify-between gap-2 opacity-60"><span>09. {t('scorePreviewSection05Title') || 'Pièces à rassembler'}</span><span>p.11-12</span></li>
                               <li className="flex justify-between gap-2 opacity-60"><span>10. {t('scorePreviewSection06Title') || 'Pour finaliser votre candidature'}</span><span>p.13</span></li>
                             </ol>
-                            <p className="text-[10px] text-[#7c8b98] mt-2">{t('scorePreviewSommaireNote') || 'Pagination indicative : la longueur réelle dépend du contenu que vous complétez dans chaque section.'}</p>
+                            <p className="text-xs text-[#7c8b98] mt-2">{t('scorePreviewSommaireNote') || 'Pagination indicative : la longueur réelle dépend du contenu que vous complétez dans chaque section.'}</p>
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection01') || '01. Identification de l\'entreprise'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrefilled') || 'Pré-rempli'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection01') || '01. Identification de l\'entreprise'} <span className="inline-block text-xs rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrefilled') || 'Pré-rempli'}</span></h4>
                             <dl className="grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] gap-x-3 gap-y-1.5">
                               <dt className="text-[#4f6474]">{t('scorePreviewCompanyName') || 'Raison sociale'}</dt><dd className="font-bold">{siretCompany?.name || '—'}</dd>
                               <dt className="text-[#4f6474]">SIRET</dt><dd>{siretCompany?.siret || '—'}</dd>
@@ -2283,7 +2362,7 @@ export default function OpportunityDetailPage() {
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection02') || "02. Présentation de l'entreprise"} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewDrafted') || 'Pré-rédigée'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection02') || "02. Présentation de l'entreprise"} <span className="inline-block text-xs rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewDrafted') || 'Pré-rédigée'}</span></h4>
                             <p className="border-l-2 border-[#439377] bg-[#e5eee8] text-[#213c31] rounded-r p-3">
                               <span className="block text-[#38654d] mb-1">{t('scorePreviewDraftLabel') || 'Texte préparé pour votre dossier'}</span>
                               {t('scorePreviewDraftText', {
@@ -2298,13 +2377,13 @@ export default function OpportunityDetailPage() {
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection03a') || '03. Contexte et enjeux du marché'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03a') || '03. Contexte et enjeux du marché'} <span className="inline-block text-xs rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
                             <p>{t('scorePreviewSection03aBody', { opportunity: opportunity.title }) || `Rappel de l'objet du marché (« ${opportunity.title} »), des attentes du donneur d'ordre telles qu'elles ressortent du dossier de consultation, et des points de vigilance identifiés dans l'annonce.`}</p>
                             <p className="mt-1">{t('scorePreviewSection03aNotice') || "À renseigner : votre lecture des enjeux propres à ce marché (contraintes de site, délais, exigences particulières du règlement de consultation)."}</p>
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection03') || '04. Méthodologie d\'intervention'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03') || '04. Méthodologie d\'intervention'} <span className="inline-block text-xs rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
                             <p>{t('scorePreviewSection03Intro') || "Plan de rédaction proposé à partir de l'intitulé du marché. À adapter au dossier technique et à vos méthodes réelles."}</p>
                             <ol className="mt-2 space-y-2">
                               <li className="pb-2 border-b border-[#c4d0da]"><strong className="block">{t('scorePreviewMilestone1') || "Préparer l'intervention"}</strong>{t('scorePreviewMilestone1Desc') || "Décrire le repérage des éléments concernés, les accès, la protection des zones de travail et l'organisation de votre équipe."}</li>
@@ -2315,19 +2394,19 @@ export default function OpportunityDetailPage() {
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection03c') || '05. Moyens humains et matériels'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03c') || '05. Moyens humains et matériels'} <span className="inline-block text-xs rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
                             <p>{t('scorePreviewSection03cBody') || "Effectif dédié à ce chantier, qualifications mobilisées, matériel et véhicules affectés. Un tableau récapitulatif (nom du poste, nombre, qualification) est attendu ici."}</p>
                             <p className="mt-1 border-l-2 border-[#bd7027] pl-2.5 text-[#664320]">{t('scorePreviewSection03cNotice') || 'À renseigner : effectif réel affecté, qualifications et habilitations, liste du matériel mobilisé.'}</p>
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection03d') || '06. Planning prévisionnel d\'exécution'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03d') || '06. Planning prévisionnel d\'exécution'} <span className="inline-block text-xs rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
                             <p>{t('scorePreviewSection03dBody') || "Calendrier prévisionnel des phases décrites en section 04 (préparation, exécution, réception), rapporté à l'échéance de ce marché. Un planning détaillé (Gantt ou tableau par semaine) est attendu ici."}</p>
                             <p className="mt-1 border-l-2 border-[#bd7027] pl-2.5 text-[#664320]">{t('scorePreviewSection03dNotice') || "À renseigner : dates réelles, durée d'exécution envisagée, jalons intermédiaires."}</p>
                           </section>
 
                           <section className="pt-3 border-t border-[#c4d0da]">
-                            <h4 className="font-bold mb-2">{t('scorePreviewSection03e') || '07. Démarche qualité, sécurité et environnement'} <span className="inline-block text-[11px] rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
+                            <h4 className="font-bold mb-2">{t('scorePreviewSection03e') || '07. Démarche qualité, sécurité et environnement'} <span className="inline-block text-xs rounded px-1.5 py-0.5 text-[#205d44] bg-[#dcebe2] ml-1">{t('scorePreviewPrepared') || 'Préparée'}</span></h4>
                             <p>{t('scorePreviewSection03eBody') || "Dispositions prévues en matière de sécurité (plan de prévention, EPI), de contrôle qualité (auto-contrôles, réception) et de gestion environnementale (déchets, nuisances) sur ce chantier."}</p>
                             <p className="mt-1 border-l-2 border-[#bd7027] pl-2.5 text-[#664320]">{t('scorePreviewSection03eNotice') || 'À renseigner : certifications détenues (Qualibat, RGE, MASE...), procédures internes applicables à ce marché.'}</p>
                           </section>
@@ -2393,7 +2472,7 @@ export default function OpportunityDetailPage() {
                           onChange={e => setLeadEmail(e.target.value)}
                           type="email"
                           placeholder={t('leadEmailPlaceholder') || 'vous@exemple.fr'}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#8A9BB0] focus:outline-none focus:border-orange/50"
                         />
                       </div>
                       <div>
@@ -2403,7 +2482,7 @@ export default function OpportunityDetailPage() {
                           onChange={e => setLeadPhone(normalizeFrPhoneDigits(e.target.value))}
                           inputMode="numeric"
                           placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#8A9BB0] focus:outline-none focus:border-orange/50"
                         />
                       </div>
                       {leadError && <p className="text-xs text-red-400">{leadError}</p>}
@@ -2418,14 +2497,14 @@ export default function OpportunityDetailPage() {
                           to a contact-preferences center - there's no
                           separate one for an anonymous, not-yet-logged-in
                           visitor to land on). */}
-                      <p className="text-[11px] text-[#5B6B80] leading-relaxed">
+                      <p className="text-xs text-[#8A9BB0] leading-relaxed">
                         {t('leadConsentText')}
                       </p>
                       <div className="flex items-center gap-3">
-                        <button type="button" onClick={() => setContactPrefsOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline decoration-[#5B6B80]/50 hover:text-[#8B95A5] transition-colors">
+                        <button type="button" onClick={() => setContactPrefsOpen(o => !o)} className="text-xs text-[#8A9BB0] underline decoration-[#5B6B80]/50 hover:text-[#8B95A5] transition-colors">
                           {t('leadContactPreferences') || 'Préférences de contact'}
                         </button>
-                        <button type="button" onClick={() => setPrivacyPanelOpen(o => !o)} className="text-[11px] text-[#5B6B80] underline decoration-[#5B6B80]/50 hover:text-[#8B95A5] transition-colors">
+                        <button type="button" onClick={() => setPrivacyPanelOpen(o => !o)} className="text-xs text-[#8A9BB0] underline decoration-[#5B6B80]/50 hover:text-[#8B95A5] transition-colors">
                           {t('privacy') || 'Confidentialité'}
                         </button>
                       </div>
@@ -2433,7 +2512,7 @@ export default function OpportunityDetailPage() {
                         <div className="bg-[#031B30] border border-[#17334D] rounded-lg p-3 space-y-2">
                           <p className="text-xs font-bold text-white">{t('contactPrefsTitle') || 'Vos préférences de contact'}</p>
                           <label className="block">
-                            <span className="text-[11px] text-[#B9BBC8] block mb-1">{t('contactPrefsUsageLabel') || 'Utilisation de mes coordonnées'}</span>
+                            <span className="text-xs text-[#B9BBC8] block mb-1">{t('contactPrefsUsageLabel') || 'Utilisation de mes coordonnées'}</span>
                             <select
                               value={contactMode}
                               onChange={e => setContactMode(e.target.value as 'followup' | 'request-only')}
@@ -2443,12 +2522,12 @@ export default function OpportunityDetailPage() {
                               <option value="request-only">{t('contactPrefsRequestOnly') || 'Suivi de ma demande uniquement'}</option>
                             </select>
                           </label>
-                          <p className="text-[11px] text-[#5B6B80]">{t('contactPrefsHelp') || 'Nous pouvons échanger au sujet de votre dossier et vous présenter notre accompagnement.'}</p>
-                          <p className="text-[11px] text-[#5B6B80]">{t('contactPrefsNote') || "Ce choix ne change pas l'envoi de votre dossier pré-rempli."}</p>
+                          <p className="text-xs text-[#8A9BB0]">{t('contactPrefsHelp') || 'Nous pouvons échanger au sujet de votre dossier et vous présenter notre accompagnement.'}</p>
+                          <p className="text-xs text-[#8A9BB0]">{t('contactPrefsNote') || "Ce choix ne change pas l'envoi de votre dossier pré-rempli."}</p>
                           {contactMode === 'request-only' && (
-                            <p className="text-[11px] text-green-400">{t('contactPrefsConfirmed') || 'Votre opposition aux sollicitations commerciales est prise en compte.'}</p>
+                            <p className="text-xs text-green-400">{t('contactPrefsConfirmed') || 'Votre opposition aux sollicitations commerciales est prise en compte.'}</p>
                           )}
-                          <button type="button" onClick={() => setContactPrefsOpen(false)} className="text-[11px] text-orange font-semibold hover:underline">
+                          <button type="button" onClick={() => setContactPrefsOpen(false)} className="text-xs text-orange font-semibold hover:underline">
                             {t('contactPrefsClose') || 'Fermer les préférences'}
                           </button>
                         </div>
@@ -2464,10 +2543,10 @@ export default function OpportunityDetailPage() {
                         // /confidentialite page in the meantime.
                         <div className="bg-[#031B30] border border-[#17334D] rounded-lg p-3 space-y-2">
                           <p className="text-xs font-bold text-white">{t('privacyPanelTitle') || 'Vos données'}</p>
-                          <p className="text-[11px] text-[#5B6B80] leading-relaxed">
+                          <p className="text-xs text-[#8A9BB0] leading-relaxed">
                             {t('privacyPanelBody') || "Vos coordonnées servent à préparer et envoyer le dossier, à préciser votre demande et, selon vos préférences, à vous présenter les services d'accompagnement. Le choix « Suivi de ma demande uniquement » exclut les appels et messages de prospection ; seuls les échanges nécessaires au traitement de votre demande restent possibles."}
                           </p>
-                          <Link to="/confidentialite" target="_blank" rel="noopener noreferrer" className="text-[11px] text-orange font-semibold hover:underline">
+                          <Link to="/confidentialite" target="_blank" rel="noopener noreferrer" className="text-xs text-orange font-semibold hover:underline">
                             {t('privacyPanelFullPolicy') || 'Consulter la politique de confidentialité complète'}
                           </Link>
                         </div>
@@ -2486,11 +2565,10 @@ export default function OpportunityDetailPage() {
                           in handleLeadSubmit above (leadSubmitting spinner,
                           leadError message, inputs never cleared on
                           failure); this only changes the copy. */}
-                      <p className="text-center text-[11px] text-[#B9BBC8]">{t('leadSubmitEmailNote') || 'Votre dossier pré-rempli sera également envoyé à votre adresse e-mail.'}</p>
-                      <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                        {leadSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('leadSubmit') || 'Valider et accéder à mon dossier'}
+                      <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-between gap-2 bg-orange text-white font-bold px-5 py-3.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
+                        <span>{t('leadSubmit') || 'Recevoir mon dossier et continuer'}</span>
+                        {leadSubmitting ? <Loader2 size={16} className="animate-spin" /> : <ChevronRight size={18} />}
                       </button>
-                      <p className="text-center text-[11px] text-[#B9BBC8]">{t('scoreReassurance') || 'Votre premier dossier de candidature pré-rempli offert'}</p>
                     </form>
                   )}
 
@@ -2532,14 +2610,14 @@ export default function OpportunityDetailPage() {
                           inputMode="numeric"
                           autoFocus
                           placeholder={t('otpCodePlaceholder') || '123456'}
-                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white tracking-[0.3em] placeholder:tracking-normal placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50"
+                          className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white tracking-[0.3em] placeholder:tracking-normal placeholder:text-[#8A9BB0] focus:outline-none focus:border-orange/50"
                         />
                       </div>
                       {otpError && <p className="text-xs text-red-400">{otpError}</p>}
                       <button type="submit" disabled={otpSubmitting || !otpCode} className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
                         {otpSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('otpConfirm') || 'Vérifier le code'}
                       </button>
-                      <div className="text-[11px] text-[#5B6B80]">
+                      <div className="text-xs text-[#8A9BB0]">
                         <button
                           type="button"
                           onClick={() => { setOtpCode(''); sendOtp(phoneForOtp); }}
@@ -3002,10 +3080,10 @@ function CompanyInfoRow({ icon: Icon, label, value, empty }: { icon: typeof MapP
   const isKnown = Boolean(value);
   return (
     <div className="flex items-start gap-2">
-      <Icon size={14} className="text-[#5B6B80] shrink-0 mt-0.5" />
+      <Icon size={14} className="text-[#8A9BB0] shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <p className="text-[10px] text-[#5B6B80]">{label}</p>
-        <p className={isKnown ? 'text-white font-medium' : 'text-[#5B6B80] italic'}>{value || empty || '—'}</p>
+        <p className="text-[11px] text-[#8A9BB0]">{label}</p>
+        <p className={isKnown ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{value || empty || '—'}</p>
       </div>
     </div>
   );
