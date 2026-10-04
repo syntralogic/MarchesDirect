@@ -64,7 +64,7 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
           inside the card itself - kept as-is. */}
       <div className="border border-orange/40 rounded-2xl bg-[#061D32] p-3 md:p-6 orange-glow relative overflow-hidden">
         <div className="relative z-10">
-          <div className="min-h-[calc(100svh-9.25rem)] md:min-h-0">
+          <div className="min-h-[calc(100svh-7.5rem)] md:min-h-0">
           <span className="text-[11px] md:text-[11px] font-bold text-orange uppercase tracking-widest">
             Artisans · TPE · PME
           </span>
@@ -218,18 +218,18 @@ function DemoWalkthroughSection() {
 
       <button
         onClick={() => setDemoOpen(true)}
-        className="w-full aspect-[3/2] md:aspect-auto text-left rounded-2xl border border-[#17334D] bg-[#061D32] relative overflow-hidden hover:border-orange/50 transition-colors group block"
+        className="w-full text-left rounded-2xl border border-[#17334D] bg-[#061D32] relative overflow-hidden hover:border-orange/50 transition-colors group block"
       >
-        {/* 4 Oct (evening), client: a bit taller vertically (width was fine) - on
-            phones the 16:9 picture is shown at 3:2 (centered, edges trimmed a little);
-            on larger screens it keeps its own proportions. */}
+        {/* 4 Oct (evening), client: a bit taller, and nothing cut on the sides. The
+            picture is no longer cropped by CSS: it is rebuilt from the client's Thumb-A5
+            file at 16:10 (dead margins trimmed, background extended top/bottom), shown whole. */}
         {/* Client (20 Sep): real thumbnail image for the demo video, click
             opens the actual demo (DemoVideoModal / public/demo.mp4) -
             replaces the hand-built div mockup that used to stand in for it. */}
         <img
           src="/testimonials/demo-plateforme.jpeg"
           alt="Démo interactive : découvrez comment ça marche, de la recherche au dossier pré-rempli (1 min 07)"
-          className="w-full h-full object-cover block md:h-auto"
+          className="w-full h-auto block"
         />
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
           <span className="w-14 h-14 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
