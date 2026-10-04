@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
-  CheckCircle2, XCircle, HelpCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
+  CheckCircle2, XCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
   ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
   Building2, Users, TrendingUp, Pencil, Award, User, Search, Copy, Send,
 } from 'lucide-react';
@@ -22,6 +22,8 @@ import {
 } from '@/lib/apiClient';
 import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from '@/lib/utils';
 import { publicReference } from '@/lib/publicReference';
+import { formatDeadlineExact } from '@/lib/deadlineFormat';
+import { SOCIAL_PROOF } from '@/lib/socialProof';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle } from '@/components/OpportunityAnalysisAccordions';
 
@@ -311,7 +313,6 @@ export default function OpportunityDetailPage() {
     if (step === 'dce') setDceViewed(true); else setDceAnalysisViewed(true);
     if (tender?.id) tendersApi.markDceViewed(tender.id, step).catch(() => {});
   };
-  const [eligibilityOpen, setEligibilityOpen] = useState(false);
   // "Affinez votre concordance" mini self-assessment (client's 12 Sep
   // concordance-apercu reference): 3 yes/no/to-confirm questions the
   // visitor answers about themselves. Purely a self-reflection prompt for
@@ -352,7 +353,6 @@ export default function OpportunityDetailPage() {
     }
   }, [refineAnswers, refineAnswersStorageKey]);
   const [excerptOpen, setExcerptOpen] = useState(false);
-  const [companyPiecesOpen, setCompanyPiecesOpen] = useState(false);
   const [slotSubmitting, setSlotSubmitting] = useState<'slot' | 'callback' | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
   const [callbackConfirmed, setCallbackConfirmed] = useState(false);
@@ -2555,28 +2555,95 @@ export default function OpportunityDetailPage() {
           </>
       )}
 
-      {/* SUIVI & RAPPEL — "Votre dossier" hub (client's screenshot,
-          10:50pm brief item 4 discipline: one clear function per block).
-          "Opportunité enregistrée" banner, then two navigation lists
-          ("Dossier de candidature" -> BidWorkspacePage / dossier entreprise;
-          "Accompagnement" -> the existing rappel/rendez-vous flow, kept
-          working exactly as before, just presented as rows instead of a
-          big card), then a way back into search and the two bottom
-          buttons. */}
-      {screen === 3 && (
-        <div className="space-y-4 mt-4">
-          {/* 27 Sep audit, point 5: same explicit Précédent as screen 2,
-              at the top too - the bottom-of-page button further down
-              stays for the "revoir la concordance" action, this one is
-              just quick, top-of-screen navigation. */}
-          <button
-            type="button"
-            onClick={() => setScreen(2)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#B9BBC8] hover:text-white -mt-1 transition-colors"
-          >
-            <ArrowLeft size={12} /> {t('stepperPrevious') || 'Précédent'}
-          </button>
+      {/* VOTRE DOSSIER — client mockup "dossier_mix_v13" (4 Oct): one compact
+          card (contact + marché), "Mes documents" before the support, the
+          official notice as its own row, "Accompagnement complet" in 3rd
+          position, "Préparer mon dossier" as a collapsed 4th block, a dynamic
+          "Prochaine étape", then two light links. All handlers (callback,
+          rendez-vous, prefilled PDF download/resend, contact edit) are the
+          previous ones, only re-arranged. */}
+      {screen === 3 && (() => {
+        const companyName = siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise');
+        const ref = publicReference(opportunity);
+        const exactDeadline = formatDeadlineExact(opportunity.deadline as string | null);
+        const deadlineLabel = opportunity.deadline
+          ? (exactDeadline && /^(Aujourd|Demain)/.test(exactDeadline)
+              ? exactDeadline
+              : `${formatDate(opportunity.deadline as string)}${exactDeadline?.match(/ à .*$/)?.[0] || ''}`)
+          : null;
+        const dossierRequested = !!(dossier?.status && dossier.status !== 'draft');
+        const activeSubscriber = isAuthenticated && company?.subscription_status === 'active';
+        const nextLabel = callbackConfirmed
+          ? (t('dv13NextCallback') || 'Votre demande de rappel est enregistrée')
+          : dossierRequested
+            ? (t('dv13NextRequested') || "Votre chargé d'affaires prépare votre dossier")
+            : (t('dv13NextDefault') || "Votre échange avec un chargé d'affaires");
+        const nextIsDefault = !callbackConfirmed && !dossierRequested;
+        const usableDce = dceDocuments.filter(d => (d.status === 'downloaded' || d.status === 'parsed') && d.source_url);
+        const { accompaniedToday, reviewsRating, reviewsCount } = SOCIAL_PROOF;
+        const fmtRating = reviewsRating != null ? String(reviewsRating).replace('.', ',') : '';
 
+        const downloadPrefilledPdf = async () => {
+          if (!id) return;
+          setPrefilledDownloading(true);
+          try {
+            const blob = await siretApi.downloadPrefilledDossier(getSessionId(), id);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'dossier-pre-rempli.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+          } catch (err) {
+            toast.error(await getBlobApiErrorMessage(err, 'Échec du téléchargement.'));
+          } finally {
+            setPrefilledDownloading(false);
+          }
+        };
+        const resendPrefilled = async () => {
+          if (!id) return;
+          setPrefilledResending(true);
+          try {
+            const result = await siretApi.resendPrefilledDossier(getSessionId(), id);
+            if (result.sent) {
+              setPrefilledResent(true);
+            } else {
+              toast.error("Échec de l'envoi. Réessayez dans un instant.");
+            }
+          } catch (err) {
+            toast.error(getApiErrorMessage(err, "Échec de l'envoi."));
+          } finally {
+            setPrefilledResending(false);
+          }
+        };
+        const generateForSubscriber = async () => {
+          if (!id) return;
+          setDossierGenerating(true);
+          try {
+            const saved = await dossiersApi.generate(id, {
+              response_text: dossierResponseText,
+              partners: dossierPartners.filter(p => p.name.trim()),
+              checklist: CHECKLIST_DOCS.map(item => ({ label: item.type, done: checklistDocs.some(d => d.document_type === item.type) })),
+            });
+            setDossier(saved);
+            toast.success(t('dossierGenerateSuccess') || "Demande envoyée à votre chargé d'affaires.");
+          } catch (err) {
+            toast.error(getApiErrorMessage(err, t('dossierGenerateError') || "Impossible d'envoyer la demande."));
+          } finally {
+            setDossierGenerating(false);
+          }
+        };
+
+        const card = 'bg-[#061D32] border border-[#17334D] rounded-2xl p-4';
+        const prepItems = [
+          { icon: FileText, title: t('dv13Forms') || 'Formulaires de candidature', desc: t('dv13FormsDesc') || 'DC1, DC2, DUME — pré-remplis à partir de votre profil entreprise, vérifiés avec vous sur rendez-vous.' },
+          { icon: CheckCircle2, title: t('dv13Memo') || 'Mémoire technique', desc: t('dv13MemoDesc') || 'Construit avec vous, à partir des moyens et références réels de votre entreprise.' },
+          { icon: ShieldCheck, title: t('dv13Pieces') || 'Pièces de votre entreprise', desc: t('dv13PiecesDesc') || 'Le conseiller vous indique ce qui est nécessaire ; vous fournissez vos justificatifs (assurances, attestations, qualifications).' },
+          { icon: Euro, title: t('dv13Finance') || 'Réponse financière', desc: t('dv13FinanceDesc') || "Vous fournissez et validez vos prix ; le conseiller vous aide à compléter et vérifier les documents." },
+        ];
+
+        return (
+        <div className="space-y-3 mt-4">
           {justUnlockedAnalysis && (
             <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
               <CheckCircle2 size={14} className="shrink-0" />
@@ -2587,10 +2654,10 @@ export default function OpportunityDetailPage() {
             </div>
           )}
 
-          {(contextLeadPhone || contextLeadEmail) && (
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
-              {editingContact ? (
-                <form onSubmit={handleContactUpdate} className="space-y-3">
+          {/* 1. Compact card: company contact + marché (two former cards merged) */}
+          <div className={card}>
+            {editingContact ? (
+                              <form onSubmit={handleContactUpdate} className="space-y-3">
                   <p className="text-sm font-bold text-white">{t('dossierVerifyContactTitle') || 'Vérifier mes coordonnées'}</p>
                   <div>
                     <label className="block text-[11px] font-semibold text-[#B9BBC8] mb-1">{t('leadPhoneFieldLabel') || 'Votre téléphone'}</label>
@@ -2610,41 +2677,27 @@ export default function OpportunityDetailPage() {
                     </button>
                   </div>
                 </form>
-              ) : (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1">{t('dossierVerifyContactTitle') || 'Vérifier mes coordonnées'}</p>
-                    <p className="text-sm text-white truncate">{contextLeadPhone || '—'}</p>
-                    <p className="text-sm text-white truncate">{contextLeadEmail || '—'}</p>
-                  </div>
+            ) : (
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{companyName}</p>
+                  {(contextLeadPhone || contextLeadEmail) && (
+                    <p className="text-[11px] text-[#B9BBC8] break-words">{[contextLeadPhone, contextLeadEmail].filter(Boolean).join(' · ')}</p>
+                  )}
+                </div>
+                {(contextLeadPhone || contextLeadEmail) && (
                   <button
                     type="button"
                     onClick={() => { setEditPhone(contextLeadPhone || ''); setEditEmail(contextLeadEmail || ''); setEditContactError(null); setEditingContact(true); }}
-                    className="shrink-0 flex items-center gap-1.5 text-xs font-semibold text-orange hover:underline"
+                    className="shrink-0 text-xs font-semibold text-orange hover:underline"
                   >
-                    <Pencil size={12} /> {t('siretModify') || 'Modifier'}
+                    {t('siretModify') || 'Modifier'}
                   </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Client's 10 Sep interactive-card spec ("Votre dossier" - free
-              visitor view): reproduces the reference card layout exactly -
-              opportunity selector, 5-step progress, dossier pré-rempli,
-              locked "Générer mon dossier" (subscriber-only, no free draft
-              pipeline per the client's own rule), buyer criteria weighting,
-              DCE + analysis, the 3 locked candidature documents, pièces
-              d'entreprise count, and the accompagnement CTA - in that exact
-              order. Wired to real data everywhere it already exists
-              (matchScore for weighting, checklistDocs for the pièces
-              count); the dossier-progress step tracking itself has no
-              backend field yet, so it's derived client-side from signals
-              already on the page (see DOSSIER_STEPS below) rather than a
-              new migration - good enough to render correctly, worth a real
-              status column later if the client wants steps to persist
-              server-side. */}
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
+                )}
+              </div>
+            )}
+            <div className="border-t border-[#17334D] my-3" />
+            <div className="space-y-2">
             {otherSavedOpportunities.length > 0 && (
             <>
             <label className="block text-xs font-semibold text-[#B9BBC8] mb-2">{t('dossierSelectorLabel') || 'Vos opportunités enregistrées'}</label>
@@ -2666,615 +2719,125 @@ export default function OpportunityDetailPage() {
             </div>
             </>
             )}
-            <div className={otherSavedOpportunities.length > 0 ? 'mt-3' : ''}>
-              <h2 className="text-sm font-bold text-white">{opportunity.title}</h2>
-              <p className="text-xs text-[#B9BBC8] mt-1">
-                {tradeLabel}
-                {opportunity.deadline && <> · {formatDate(opportunity.deadline)}</>}
-              </p>
             </div>
+            <h2 className="text-base font-bold text-white leading-snug">{opportunity.title}</h2>
+            <p className="text-[11px] text-[#B9BBC8] mt-1">
+              {ref ? `${t('dv13Ref') || 'Réf.'} ${ref} · ` : ''}
+              {deadlineLabel && (
+                <>{t('dv13DeadlineLabel') || 'Date limite de réponse'} : <span className="font-bold text-orange">{deadlineLabel}</span></>
+              )}
+            </p>
           </div>
 
-          {(() => {
-            // "Dossier généré" / "Dépôt effectué" were hardcoded `false` -
-            // could never show as done even after the company actually
-            // generated their mémoire technique or the team filed the
-            // submission. `bid` (ApiBidResponse) is already fetched above
-            // via tendersApi.getBid - just wasn't being read here.
-            const dossierGenerated = !!bid?.technical_memo_text;
-            const dossierFiled = bid?.status === 'submitted' || !!bid?.submitted_at;
-            // 20 Sep client audit (round 2): opening "Voir l'analyse" used to
-            // bump the bar 20% -> 40% although nothing had been prepared.
-            // Consulting the DCE / its analysis is just reading, not work on
-            // the dossier, so those two lines stay visible below as
-            // informational "consultations" but no longer count. Only real
-            // states drive the percentage.
-            const documentsPrepared = !!(
-              bid?.dc1_text || bid?.dc2_text || bid?.dume_text || bid?.engagement_act_text
-              || (bid?.pricing_schedule_json && bid.pricing_schedule_json.length > 0)
-            );
-            const steps = [
-              { done: true, label: t('dossierStepPreview') || 'Aperçu disponible' },
-              { done: documentsPrepared, label: t('dossierStepDocsPrepared') || 'Documents préparés' },
-              { done: dossierGenerated, label: t('dossierStepGenerated') || 'Dossier généré' },
-              { done: dossierFiled, label: t('dossierStepFiled') || 'Dépôt effectué' },
-            ];
-            const consultations = [
-              { done: dceViewed, label: t('dossierStepDce') || 'DCE consulté' },
-              { done: dceAnalysisViewed, label: t('dossierStepAnalysis') || 'Analyse du DCE consultée' },
-            ];
-            const doneCount = steps.filter(s => s.done).length;
-            const pct = Math.round((doneCount / steps.length) * 100);
-            return (
-              <div id="dossier-progress-block" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-bold text-white">{t('dossierProgressTitle') || 'Avancement de votre dossier'}</h2>
-                  <span className="text-orange font-extrabold text-lg">{pct} %</span>
-                </div>
-                <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden mb-2">
-                  <div className="h-full bg-orange rounded-full transition-all" style={{ width: `${pct}%` }} />
-                </div>
-                <p className="text-xs text-[#B9BBC8] mb-3">
-                  {(t('dossierProgressSteps') || '{done} étape sur {total} terminée · Dépôt non effectué')
-                    .replace('{done}', String(doneCount)).replace('{total}', String(steps.length))}
-                </p>
-                <p className="flex items-center gap-1.5 text-xs text-[#B9BBC8] mb-2">
-                  <Clock3 size={13} className="shrink-0" /> {t('dossierStepPreview') || 'Aperçu disponible'}
-                </p>
-                <p className="text-xs text-white mb-2">{t('dossierProgressReady') || 'Votre aperçu est prêt. Découvrez la suite de l\'accompagnement.'}</p>
-                <button type="button" onClick={() => setDossierStepsOpen(o => !o)} className="flex items-center gap-1 text-xs font-semibold text-orange hover:underline">
-                  <ChevronRight size={12} className={`transition-transform ${dossierStepsOpen ? 'rotate-90' : ''}`} /> {t('dossierProgressSeeSteps') || 'Voir les étapes de préparation'}
+          {/* 2. Mes documents (before the support block) */}
+          <div className={card}>
+            <h2 className="text-base font-bold text-white mb-3">{t('dv13Docs') || 'Mes documents'}</h2>
+            <div className="flex items-start gap-3">
+              <span className="w-9 h-9 rounded-lg bg-[#0B2A44] border border-[#17334D] flex items-center justify-center shrink-0"><FileText size={15} className="text-[#B9BBC8]" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-white">{t('dv13Prefilled') || 'Votre dossier pré-rempli'}</p>
+                <p className="text-[11px] text-[#B9BBC8] mt-0.5">{t('dv13PrefilledSub') || 'Première base, à compléter avant le dépôt'}</p>
+              </div>
+              {isAuthenticated ? (
+                <Link to={`/opportunites/${id}/candidature`} className="shrink-0 text-xs font-bold text-orange hover:underline">{t('dv13Consult') || 'Consulter'}</Link>
+              ) : leadCaptured ? (
+                <button type="button" disabled={prefilledDownloading} onClick={downloadPrefilledPdf} className="shrink-0 flex items-center gap-1 text-xs font-bold text-orange hover:underline disabled:opacity-50">
+                  {prefilledDownloading && <Loader2 size={12} className="animate-spin" />} {t('dv13Consult') || 'Consulter'}
                 </button>
-                {dossierStepsOpen && (
-                  <div className="mt-3 pt-3 border-t border-[#17334D] space-y-2">
-                    {steps.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs">
-                        {s.done ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <span className="w-[13px] h-[13px] rounded-full border border-[#5B6B80] shrink-0" />}
-                        <span className={s.done ? 'text-white' : 'text-[#B9BBC8]'}>{s.label}</span>
-                      </div>
-                    ))}
-                    <div className="pt-2 mt-1 border-t border-[#17334D] space-y-2">
-                      {consultations.map((s, i) => (
-                        <div key={i} className="flex items-center gap-2 text-[11px] text-[#5B6B80]">
-                          {s.done ? <CheckCircle2 size={12} className="shrink-0" /> : <span className="w-3 h-3 rounded-full border border-[#17334D] shrink-0" />}
-                          <span>{s.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold text-white">{t('dossierPrefilledTitle') || 'Votre dossier pré-rempli'}</h2>
-              {/* 20 Sep fix: an anonymous visitor who just validated their
-                  email/phone on Concordance has, in fact, already received
-                  this document by email (see POST /siret/lead's
-                  dossierEmailed - sendPrefilledDossierEmail on the backend).
-                  The old copy here ("compte gratuit requis") told them the
-                  opposite and pushed them to /inscription regardless -
-                  exactly the "still asking for account creation" gap in the
-                  client's latest audit. Authenticated visitors keep the
-                  existing candidature-workspace document untouched below;
-                  this only changes what an anonymous, already-leadCaptured
-                  visitor sees. */}
-              <span className={`text-[11px] font-semibold ${dossierReady || (!isAuthenticated && leadCaptured) ? 'text-green-400' : 'text-orange'}`}>
-                {!isAuthenticated
-                  ? (leadCaptured
-                      ? (t('dossierPrefilledBadgeSent') || 'Offert · envoyé par e-mail')
-                      : (t('dossierPrefilledBadgeLocked') || 'Offert · compte gratuit requis'))
-                  : dossierReady
-                    ? (t('dossierPrefilledBadge') || 'Offert · disponible')
-                    : (t('dossierPrefilledBadgePending') || 'Offert · en préparation')}
-              </span>
+              ) : (
+                <Link to="/inscription" state={{ from: `/opportunites/${id}/candidature` }} className="shrink-0 text-xs font-bold text-orange hover:underline">{t('dv13Unlock') || 'Créer mon accès gratuit'}</Link>
+              )}
             </div>
-            <div className="flex items-start gap-3 mb-4">
-              <span className="w-9 h-9 rounded-lg bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0"><FileText size={16} className="text-orange" /></span>
-              <div>
-                <p className="text-sm font-semibold text-white">{siretCompany?.name || (t('dossierPrefilledYourCompany') || 'Votre entreprise')} × {opportunity.title}</p>
-                <p className="text-xs text-[#B9BBC8] mt-0.5">
-                  {!isAuthenticated
-                    ? (leadCaptured
-                        ? (t('dossierPrefilledDescSent', { email: leadEmail || contextLeadEmail || '' })
-                            || `Votre dossier pré-rempli a été envoyé à ${leadEmail || contextLeadEmail || 'votre adresse e-mail'}. Pensez à vérifier vos courriers indésirables si vous ne le voyez pas d'ici quelques minutes.`)
-                        : (t('dossierPrefilledDescLocked') || "Créez un compte gratuit (30 secondes) pour consulter et télécharger ce document - vous revenez directement ici après."))
-                    : dossierReady
-                      ? (t('dossierPrefilledDesc') || 'Votre entreprise, le lot retenu et une première trame de réponse rassemblés dans un document.')
-                      : (t('dossierPrefilledDescPending') || "Votre chargé d'affaires prépare la version finale de ce document - vous serez prévenu dès qu'il est prêt à télécharger.")}
-                </p>
-              </div>
-            </div>
-            {isAuthenticated ? (
-              <div className="flex items-center gap-4">
-                <Link to={`/opportunites/${id}/candidature`} className="bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors">
-                  {t('dossierPrefilledConsult') || 'Consulter mon dossier'}
-                </Link>
-                <button
-                  type="button"
-                  disabled={dossierDownloading}
-                  onClick={async () => {
-                    // D03 (contre-audit 15 Sep): this button only checked
-                    // technical_memo_text existed, but the real package
-                    // endpoint's document is a DRAFT until a human "chargé
-                    // d'affaires" approves it (is_technical_memo_approved -
-                    // see BidWorkspacePage, which already correctly disables
-                    // its own download button on this same condition). This
-                    // button didn't have that guard, so a visitor with a
-                    // generated-but-unapproved draft got a click that
-                    // either downloaded an unapproved draft (inconsistent
-                    // with the workspace page) or, depending on backend
-                    // state, hung/failed with no clear reason ("no file
-                    // detected" in the audit). Route through the same
-                    // waiting-state explanation as the else branch below
-                    // instead of attempting the request at all.
-                    if (!bid?.id || !bid.technical_memo_text || !bid.is_technical_memo_approved) {
-                      navigate(`/opportunites/${id}/candidature`);
-                      return;
-                    }
-                    setDossierDownloading(true);
-                    try {
-                      const result = await tendersApi.downloadPackage(bid.id);
-                      if (result.url) {
-                        window.open(result.url, '_blank');
-                      } else if (result.blob) {
-                        const url = URL.createObjectURL(result.blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `dossier-candidature-${bid.id}.zip`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }
-                    } catch (err) {
-                      toast.error(await getBlobApiErrorMessage(err, 'Échec du téléchargement.'));
-                    } finally {
-                      setDossierDownloading(false);
-                    }
-                  }}
-                  className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline disabled:opacity-50"
-                >
-                  {/* 3rd client audit, point 9: "le libellé doit correspondre
-                      à l'action réelle" - this button always read
-                      "Télécharger" even while the onClick above (not
-                      dossierReady) actually just navigates to the
-                      candidature workspace with no file involved. Label it
-                      by what it's really about to do. */}
-                  {dossierDownloading
-                    ? <Loader2 size={13} className="animate-spin" />
-                    : dossierReady ? <Download size={13} /> : <FileText size={13} />}{' '}
-                  {dossierReady
-                    ? (t('dossierPrefilledDownload') || 'Télécharger')
-                    : (t('dossierPrefilledPrepare') || 'Préparer mon dossier')}
+            {!isAuthenticated && leadCaptured && (
+              <div className="flex justify-end mt-2">
+                <button type="button" disabled={prefilledResending || prefilledResent} onClick={resendPrefilled} className="text-[11px] font-bold text-[#B9BBC8] underline underline-offset-2 hover:text-orange disabled:opacity-60">
+                  {prefilledResending ? <Loader2 size={11} className="animate-spin inline" /> : null}
+                  {prefilledResent ? (t('dossierPrefilledResent') || 'Envoyé à nouveau') : (t('dv13ResendEmail') || 'Me le renvoyer par e-mail')}
                 </button>
               </div>
-            ) : leadCaptured ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                  <CheckCircle2 size={14} className="shrink-0" /> {t('dossierPrefilledSentConfirm') || 'Document envoyé - vérifiez votre boîte e-mail.'}
-                </div>
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    disabled={prefilledDownloading}
-                    onClick={async () => {
-                      if (!id) return;
-                      setPrefilledDownloading(true);
-                      try {
-                        const blob = await siretApi.downloadPrefilledDossier(getSessionId(), id);
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'dossier-pre-rempli.pdf';
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      } catch (err) {
-                        // 27 Sep audit, point 3: this is a blob-typed request, so
-                        // the real backend reason (e.g. "confirmez d'abord vos
-                        // coordonnées") needs the blob-aware unwrapper, not the
-                        // regular getApiErrorMessage which can't read a Blob body.
-                        toast.error(await getBlobApiErrorMessage(err, 'Échec du téléchargement.'));
-                      } finally {
-                        setPrefilledDownloading(false);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 text-sm text-orange font-semibold hover:underline disabled:opacity-50"
-                  >
-                    {prefilledDownloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} {t('dossierPrefilledDownloadOwn') || 'Télécharger mon exemplaire'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={prefilledResending || prefilledResent}
-                    onClick={async () => {
-                      if (!id) return;
-                      setPrefilledResending(true);
-                      try {
-                        const result = await siretApi.resendPrefilledDossier(getSessionId(), id);
-                        if (result.sent) {
-                          setPrefilledResent(true);
-                        } else {
-                          toast.error("Échec de l'envoi. Réessayez dans un instant.");
-                        }
-                      } catch (err) {
-                        toast.error(getApiErrorMessage(err, "Échec de l'envoi."));
-                      } finally {
-                        setPrefilledResending(false);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 text-sm text-[#B9BBC8] font-semibold hover:text-orange hover:underline disabled:opacity-50"
-                  >
-                    {prefilledResending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                    {prefilledResent ? (t('dossierPrefilledResent') || 'Envoyé à nouveau') : (t('dossierPrefilledResend') || 'Me le renvoyer')}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <Link
-                to="/inscription"
-                state={{ from: `/opportunites/${id}/candidature` }}
-                className="inline-flex items-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
-              >
-                <Lock size={13} /> {t('dossierPrefilledUnlock') || 'Créer mon accès gratuit'}
-              </Link>
             )}
           </div>
 
-          {/* "Préparer ma candidature" — client's reference screenshot (14
-              Sep, item 4 "interactive card") replaces the earlier 01-05
-              editable form with this simpler locked card: icon, one-line
-              description, a single full-width "Générer mon dossier" CTA
-              (locked padlock, same as the reference), and the
-              accompagnement note underneath. The 01-05 fields
-              (présentation, réponse, partenaires, pièces) stay collected
-              elsewhere on the page (Pièces de votre entreprise below,
-              CompanyVaultPage) rather than duplicated in this card; the
-              button still calls the same generate endpoint using whatever
-              is already on file, so no functionality is lost - only the
-              in-card manual-entry form is removed to match the reference. */}
-          {/* D13 (contre-audit 15 Sep): three of this hub's card titles
-              ("Préparer ma candidature", "Pondération des critères de
-              l'acheteur", "Continuer mes recherches") were left at text-sm
-              from an earlier pass while every other card title in this
-              same redesigned hub uses text-lg - unmeasured/inconsistent
-              typography, matching the audit's complaint. Normalized to the
-              size used throughout the rest of the hub. */}
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2"><Send size={15} className="text-orange" /> {t('dossierGenerateTitle') || 'Préparer ma candidature'}</h2>
-              {dossier?.status && dossier.status !== 'draft' && (
-                <span className="text-[10px] font-bold text-green-400 bg-green-400/10 border border-green-400/30 rounded-full px-2 py-0.5 uppercase">
-                  {dossier.status === 'requested' ? (t('dossierStatusRequested') || 'Demande envoyée')
-                    : dossier.status === 'in_review' ? (t('dossierStatusInReview') || "En cours d'examen")
-                    : dossier.status === 'ready' ? (t('dossierStatusReady') || 'Prêt')
-                    : (t('dossierStatusSubmitted') || 'Déposé')}
-                </span>
+          {/* 3. Official notice, framed separately (+ any ingested DCE files) */}
+          <div className={card}>
+            <div className="flex items-center gap-3">
+              <FileText size={16} className="text-[#B9BBC8] shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-white">{ref ? (t('dv13NoticeRef', { ref }) || `Avis du marché — réf. ${ref}`) : (t('dv13Notice') || 'Avis du marché')}</p>
+                <p className="text-[11px] text-[#B9BBC8] mt-0.5">{t('dv13NoticeSub') || "Document officiel, publié par l'acheteur public"}</p>
+              </div>
+              {opportunity.official_url ? (
+                <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} aria-label={t('dv13Notice') || 'Avis du marché'} className="shrink-0 text-orange hover:opacity-80">
+                  <ExternalLink size={14} />
+                </a>
+              ) : (
+                <span className="shrink-0 text-[11px] text-[#5B6B80]">{t('dv13NoticeNA') || 'Document pas encore disponible'}</span>
               )}
             </div>
-            <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierGenerateSub') || "Votre chargé d'affaires prépare et dépose votre candidature."}</p>
+            {usableDce.length > 0 && (
+              <div className="border-t border-[#17334D] mt-3 pt-3 space-y-2">
+                {usableDce.map(doc => (
+                  <div key={doc.id} className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-white">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || DCE_LABEL_NAMES.Autre}</p>
+                    <a href={doc.source_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="shrink-0 text-xs font-bold text-orange hover:underline">{t('dv13Consult') || 'Consulter'}</a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Accompagnement complet (position 3) */}
+          <div id="accompagnement-block" className="rounded-2xl border border-orange/70 bg-[#061D32] p-4">
+            {accompaniedToday != null && accompaniedToday > 0 && (
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold text-green-400 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                {accompaniedToday} {accompaniedToday > 1 ? 'entreprises accompagnées' : 'entreprise accompagnée'} aujourd'hui
+              </p>
+            )}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-orange/50 bg-orange/10 px-3 py-1.5 text-[11px] font-bold text-orange mb-3">
+              <Clock3 size={12} /> {t('dv13Pill') || 'Offert · 30 min · Spécialiste marchés publics'}
+            </span>
+            <h2 className="flex items-center gap-2 text-lg font-extrabold text-white mb-2"><Users size={16} className="text-orange" /> {t('dv13Support') || 'Accompagnement complet'}</h2>
+            <p className="text-xs text-[#B9BBC8] leading-relaxed mb-3">{t('dv13SupportIntro')}</p>
+            <div className="rounded-xl bg-[#0A1A2B] border border-[#17334D] p-3 mb-4 space-y-3">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-wide text-orange mb-2">{t('dv13OfferedTitle') || 'Pendant votre échange offert (30 min)'}</p>
+                <ul className="space-y-1.5">
+                  {[t('dv13Offered1'), t('dv13Offered2')].map(x => (
+                    <li key={x} className="flex items-start gap-2 text-xs text-white"><CheckCircle2 size={13} className="text-green-400 shrink-0 mt-0.5" /> {x}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#B9BBC8] mb-2">{t('dv13InScopeTitle') || "Dans le cadre de l'accompagnement"}</p>
+                <ul className="space-y-1.5">
+                  {[t('dv13InScope1'), t('dv13InScope2')].map(x => (
+                    <li key={x} className="flex items-start gap-2 text-xs text-white"><CheckCircle2 size={13} className="text-green-400 shrink-0 mt-0.5" /> {x}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
 
             {closedFiche ? (
-              <Link to={similarMarchesHref} className="w-full flex items-center justify-center gap-2 border border-orange/50 text-orange text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
+              <Link to={similarMarchesHref} className="w-full flex items-center justify-center gap-2 border border-orange/50 text-orange text-sm font-semibold py-3 rounded-xl hover:bg-orange/10 transition-colors">
                 Voir des marchés similaires
               </Link>
-            ) : dossier?.status && dossier.status !== 'draft' ? (
-              <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-2.5 rounded-xl justify-center">
+            ) : dossierRequested ? (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-green-400 bg-green-400/5 border border-green-400/20 px-4 py-3 rounded-xl">
                 <CheckCircle2 size={13} /> {t('dossierRequestSent') || "Demande envoyée à votre chargé d'affaires"}
               </div>
-            ) : !(isAuthenticated && company?.subscription_status === 'active') ? (
-              // 30 Sep audit, point 9: a logged-in account in its 14-day trial was
-              // treated like an accompanied client - the click recorded a real
-              // request ("Demande envoyée à votre chargé d'affaires") instead of
-              // opening the appointment flow. Being connected is not enough: only
-              // an active subscription (client with accompagnement) transmits the
-              // opportunity to its chargé d'affaires; a visitor or trial account
-              // books a rendez-vous.
-              // 20 Sep fix: this used to fire the authed /generate call (or,
-              // in an earlier pass, redirect straight to /connexion) for an
-              // anonymous visitor who has, in fact, already received their
-              // free dossier by email - "Générer mon dossier" implied a
-              // second, different document they still needed to unlock via
-              // login. The per-document "Générer" buttons further down
-              // already route to the appointment flow instead of login for
-              // exactly this reason (see AppointmentModal below);
-              // this main CTA now matches that same pattern rather than
-              // being the one holdout that still pointed at login.
-              <button
-                type="button"
-                onClick={() => setShowAccountManagerModal(true)}
-                className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors"
-              >
-                <Calendar size={14} /> {t('dossierGenerateCtaAnon') || 'Prendre rendez-vous avec mon chargé d\'affaires'}
+            ) : activeSubscriber ? (
+              <button type="button" disabled={dossierGenerating} onClick={generateForSubscriber} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-60">
+                {dossierGenerating ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} {t('dossierGenerateCta') || 'Générer mon dossier'}
               </button>
             ) : (
-              <button
-                type="button"
-                disabled={dossierGenerating}
-                onClick={async () => {
-                  if (!id) return;
-                  setDossierGenerating(true);
-                  try {
-                    const saved = await dossiersApi.generate(id, {
-                      response_text: dossierResponseText,
-                      partners: dossierPartners.filter(p => p.name.trim()),
-                      checklist: CHECKLIST_DOCS.map(item => ({ label: item.type, done: checklistDocs.some(d => d.document_type === item.type) })),
-                    });
-                    setDossier(saved);
-                    toast.success(t('dossierGenerateSuccess') || "Demande envoyée à votre chargé d'affaires.");
-                  } catch (err) {
-                    toast.error(getApiErrorMessage(err, t('dossierGenerateError') || "Impossible d'envoyer la demande."));
-                  } finally {
-                    setDossierGenerating(false);
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50"
-              >
-                {dossierGenerating ? <Loader2 size={14} className="animate-spin" /> : <Lock size={13} />} {t('dossierGenerateCta') || 'Générer mon dossier'}
-              </button>
-            )}
-            <p className="text-[11px] text-[#5B6B80] mt-2">
-              {t('dossierGenerateNote') || "Préparation complète incluse dans l'accompagnement."}
-            </p>
-          </div>
-
-          {matchScore && (
-            <div id="eligibility-analysis-block" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-              <h2 className="text-lg font-bold text-white mb-3">{t('scoreCriteriaWeight') || "Pondération des critères de l'acheteur"}</h2>
-              {matchScore.criteria.length > 0 ? (
-                <div className="space-y-2.5">
-                  {matchScore.criteria.map((c, i) => (
-                    <div key={i}>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-[#B9BBC8]">{c.label}</span>
-                        <span className="text-white font-semibold">{c.weight != null ? `${c.weight}%` : (t('scoreCriteriaNoWeight') || 'pondération non précisée')}</span>
-                      </div>
-                      {c.weight != null && (
-                        <div className="h-1.5 bg-[#031B30] rounded-full overflow-hidden">
-                          <div className="h-full bg-orange rounded-full" style={{ width: `${c.weight}%` }} />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-[#B9BBC8]">{t('scoreCriteriaUnknown') || 'Critères à vérifier dans le règlement de consultation.'}</p>
-              )}
-              
-              {matchScore.eligibility.length > 0 && (
-                <>
-                  <button type="button" onClick={() => setEligibilityOpen(o => !o)} className="flex items-center gap-1 text-xs font-semibold text-orange hover:underline mt-3">
-                    <ChevronRight size={12} className={`transition-transform ${eligibilityOpen ? 'rotate-90' : ''}`} /> {t('scoreEligibilityDocs') || 'Exigences de cette consultation'}
-                  </button>
-                  {eligibilityOpen && (
-                    <div className="mt-3 pt-3 border-t border-[#17334D] space-y-2.5">
-                      <p className="text-[11px] text-[#5B6B80]">{t('scoreEligibilityNote') || "Liste indicative de préparation, pas l'exigence de l'acheteur : à confirmer dans le règlement de consultation."}</p>
-                      {matchScore.eligibility.map((el, i) => (
-                        <div key={i} className="flex items-start gap-2.5 text-xs">
-                          {el.met === true ? <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-                            : el.met === false ? <XCircle size={15} className="text-red-400 shrink-0 mt-0.5" />
-                            : <HelpCircle size={15} className="text-[#5B6B80] shrink-0 mt-0.5" />}
-                          <div>
-                            <p className="text-white font-semibold">{el.label}</p>
-                            <p className="text-[#B9BBC8]">{el.note}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <FileText size={15} className="text-orange" />
-              <h2 className="text-lg font-bold text-white">{t('dossierDceTitle') || 'DCE — Dossier de consultation'}</h2>
-            </div>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceSub') || 'Les documents du marché et leurs versions.'}</p>
-            <div className="border-t border-[#17334D] pt-3 space-y-3">
-              {(() => {
-                // Every ingested DCE file gets its own row (RC, CCTP, CCAP, DPGF...),
-                // not just the RC: the card promises "Les documents du marché" but
-                // used to show the RC only, so the other downloaded files were
-                // unreachable (28 Sep user test). Failed/pending files are shown
-                // honestly as unavailable instead of being silently dropped.
-                // official_url is the BOAMP/DECP notice page, not a DCE file, so it
-                // is only used for the fallback "Avis du marché" row below.
-                const usable = dceDocuments.filter(d => (d.status === 'downloaded' || d.status === 'parsed') && d.source_url);
-                const unavailable = dceDocuments.filter(d => d.status === 'failed');
-                const ORDER = ['RC', 'AAPC', 'CCAP', 'CCTP', 'DPGF', 'BPU', 'Autre'];
-                const rank = (l?: string | null) => { const i = ORDER.indexOf(l || 'Autre'); return i === -1 ? ORDER.length : i; };
-                const sorted = [...usable].sort((a, b) => rank(a.document_label) - rank(b.document_label));
-                const sizeLabel = (n?: number | null) => n ? (n >= 1048576 ? `${(n / 1048576).toFixed(1)} Mo` : `${Math.max(1, Math.round(n / 1024))} Ko`) : '';
-                if (sorted.length > 0) {
-                  return (
-                    <>
-                      {sorted.map(doc => (
-                        <div key={doc.id} className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm text-white font-semibold">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || DCE_LABEL_NAMES.Autre}</p>
-                            <p className="text-[11px] text-[#5B6B80]">
-                              {[publicReference(opportunity) ? `${t('dossierDceRef') || 'Référence'} · ${publicReference(opportunity)}` : '', sizeLabel(doc.file_size_bytes)].filter(Boolean).join(' · ')}
-                            </p>
-                          </div>
-                          <a href={doc.source_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
-                            {t('dossierDceConsult') || 'Consulter'}
-                          </a>
-                        </div>
-                      ))}
-                      {unavailable.map(doc => (
-                        <div key={doc.id} className="flex items-center justify-between gap-3">
-                          <p className="text-sm text-[#B9BBC8]">{DCE_LABEL_NAMES[doc.document_label || 'Autre'] || DCE_LABEL_NAMES.Autre}</p>
-                          <span className="text-xs text-[#5B6B80] shrink-0">{t('dossierDceNotAvailable') || 'Document pas encore disponible'}</span>
-                        </div>
-                      ))}
-                    </>
-                  );
-                }
-                return (
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm text-white font-semibold">{t('dossierDceNoticeName') || "Avis du marché"}</p>
-                      <p className="text-[11px] text-[#5B6B80]">{publicReference(opportunity) ? `${t('dossierDceRef') || 'Référence'} · ${publicReference(opportunity)}` : ''}</p>
-                    </div>
-                    {opportunity.official_url ? (
-                      <a href={opportunity.official_url} target="_blank" rel="noopener noreferrer" onClick={() => markDceViewed('dce')} className="text-orange font-semibold text-sm hover:underline shrink-0">
-                        {t('dossierDceConsult') || 'Consulter'}
-                      </a>
-                    ) : (
-                      // D05 (15 Sep audit): no href = no live button, and never mark
-                      // "DCE consulté" for an action that showed nothing.
-                      <span className="text-xs text-[#5B6B80] shrink-0">{t('dossierDceNotAvailable') || 'Document pas encore disponible'}</span>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Search size={15} className="text-orange" />
-              <h2 className="text-lg font-bold text-white">{t('dossierDceAnalysisTitle') || 'Analyse du DCE'}</h2>
-            </div>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierDceAnalysisSub') || 'Les exigences, les points de vigilance et la préparation de votre réponse.'}</p>
-            <button
-              type="button"
-              onClick={() => {
-                // Was only setting state - the eligibility block it opens
-                // sits further up the page (in the criteria/weighting
-                // card), so the expanded content landed off-screen and
-                // looked like nothing happened, matching the client's
-                // "n'affiche pas l'analyse" complaint. Actually scroll to
-                // it once it's open. If there's genuinely nothing to show
-                // yet, say so instead of silently doing nothing.
-                // D05 (contre-audit 15 Sep): "l'avancement passe de 20 % à
-                // 40 %, sans analyse affichée." markDceViewed ran before
-                // the check below, so the pending branch still credited the
-                // step and returned - progress advanced on a click that
-                // showed nothing but a toast. Only mark the step once the
-                // analysis is actually on screen.
-                if (!matchScore || matchScore.eligibility.length === 0) {
-                  toast.info(t('dossierDceAnalysisPending') || "L'analyse de ce marché est en cours de préparation.");
-                  return;
-                }
-                markDceViewed('analysis');
-                setEligibilityOpen(true);
-                requestAnimationFrame(() => {
-                  document.getElementById('eligibility-analysis-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-              }}
-              className="flex items-center gap-2 border border-[#5b6d7d] text-white text-xs font-semibold px-3.5 py-2 rounded-lg hover:border-orange/50 transition-colors"
-            >
-              <Lock size={12} /> {t('dossierDceAnalysisCta') || "Voir l'analyse"}
-            </button>
-          </div>
-
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <FileText size={15} className="text-orange" />
-              <h2 className="text-lg font-bold text-white">{t('dossierCandidatureTitle') || 'Dossier de candidature'}</h2>
-            </div>
-            <p className="text-xs text-[#B9BBC8] mb-3 -mt-2">{t('dossierCandidatureSub') || "Les documents que votre chargé d'affaires prépare avec vous."}</p>
-            <p className="text-xs text-[#B9BBC8] bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 mb-3">
-              {t('dossierCandidatureExplain') || "Ces documents ne sont pas générés automatiquement : votre chargé d'affaires les prépare avec vous, sur rendez-vous, en fonction des informations de ce marché et de votre entreprise."}
-            </p>
-            <div className="divide-y divide-[#17334D]">
-              {[
-                { title: t('dossierCandidatureMemo') || 'Mémoire technique', desc: t('dossierCandidatureMemoDesc') || 'Organisation, moyens et méthode pour ce marché.' },
-                { title: t('dossierCandidatureDocs') || 'Documents de candidature', desc: t('dossierCandidatureDocsDesc') || 'Informations de candidature et formulaires applicables.' },
-                { title: t('dossierCandidatureFinance') || 'Réponse financière', desc: t('dossierCandidatureFinanceDesc') || 'Chiffrage et cadre financiers du marché.' },
-              ].map(item => (
-                <div key={item.title} className="py-4">
-                  <p className="text-sm text-white font-semibold">{item.title}</p>
-                  <p className="text-xs text-[#B9BBC8] mt-0.5">{item.desc}</p>
-                  <p className="text-[11px] text-[#5B6B80] mt-0.5 mb-3">{t('dossierCandidatureIncluded') || "Inclus dans l'accompagnement."}</p>
-                  {/* D11 (contre-audit 15 Sep): "Reprendre les libellés
-                      courts « Générer » ... alléger les répétitions." These
-                      per-document rows shared dossierGenerateCta with the
-                      page's main CTA, so each one rendered the full
-                      "Générer mon dossier" - repeating the long label down
-                      the list even though the row above already names the
-                      document. Own short key. */}
-                  <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-1.5 border border-[#5b6d7d] text-white text-xs font-semibold py-2.5 rounded-lg hover:border-orange/50 transition-colors">
-                    <Lock size={12} /> {t('dossierGenerateCtaShort') || 'Générer'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <button type="button" onClick={() => setCompanyPiecesOpen(o => !o)} className="w-full flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-sm font-bold text-white">
-                <ChevronRight size={14} className={`text-orange transition-transform ${companyPiecesOpen ? 'rotate-90' : ''}`} />
-                {(t('dossierPiecesTitle') || 'Pièces de votre entreprise')} · {CHECKLIST_DOCS.filter(item => checklistDocs.some(d => d.document_type === item.type)).length} / {CHECKLIST_DOCS.length} {t('dossierPiecesVerified') || 'vérifiées'}
-              </span>
-            </button>
-            {companyPiecesOpen && (
-              <div className="mt-3 pt-3 border-t border-[#17334D] space-y-2">
-                {CHECKLIST_DOCS.map(item => {
-                  const done = checklistDocs.some(d => d.document_type === item.type);
-                  return (
-                    <div key={item.type} className="flex items-center justify-between gap-3 text-xs">
-                      {/* 30 Sep audit, point 10: "Assurance décennale" was proposed on
-                          every marché, even an IT contract (Le Havre). The décennale
-                          only applies to construction works; other markets ask for the
-                          professional liability certificate. */}
-                      <span className="text-[#B9BBC8]">
-                        {item.type === 'insurance' && !['travaux', 'mixte'].includes(String(opportunity.nature_prestation || ''))
-                          ? (t('checklistInsuranceRc') || "Attestation d'assurance (responsabilité civile professionnelle)")
-                          : t(item.labelKey)}
-                      </span>
-                      {done ? (
-                        <span className="flex items-center gap-1 text-green-400 font-semibold shrink-0"><CheckCircle2 size={13} /> {t('checklistAdded')}</span>
-                      ) : (
-                        <Link to="/profil/dossier-entreprise" className="text-orange font-semibold hover:underline shrink-0">{t('checklistAdd')}</Link>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            {/* D07 (contre-audit 15 Sep): this accordion toggled
-                dossierStepsOpen but had no body of its own - the actual
-                step history lives in the "Avancement de votre dossier"
-                card near the top of the page, so clicking here looked
-                like nothing happened ("pas d'historique visible après
-                ouverture"), same off-screen-content class of bug as
-                dossierDceAnalysisCta above. Open it and scroll there
-                instead of duplicating the list in two places. */}
-            <button
-              type="button"
-              onClick={() => {
-                setDossierStepsOpen(true);
-                requestAnimationFrame(() => {
-                  document.getElementById('dossier-progress-block')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                });
-              }}
-              className="w-full flex items-center gap-2"
-            >
-              <ChevronRight size={14} className={`text-orange transition-transform ${dossierStepsOpen ? 'rotate-90' : ''}`} />
-              <span className="text-sm font-bold text-white">{t('dossierProgressAccordion') || "Suivi de l'avancement"}</span>
-            </button>
-          </div>
-
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Users size={15} className="text-orange" />
-              <h2 className="text-lg font-bold text-white">{t('dossierHubSupportTitle') || 'Votre accompagnement'}</h2>
-            </div>
-            <p className="text-xs text-[#B9BBC8] mb-4">{t('dossierSupportSub') || "Un chargé d'affaires vous aide à préparer votre candidature et réalise le dépôt."}</p>
-            <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors mb-3">
-              {t('dossierHubSlot') || 'Prendre rendez-vous'}
-            </button>
-            <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="block text-sm text-orange font-semibold hover:underline">
-              {t('dossierVerifyContact') || 'Demander à être rappelé'}
-            </button>
+              <>
+                <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors">
+                  <Calendar size={14} /> {t('dv13Cta') || 'Réserver mes 30 minutes offertes'}
+                </button>
+                <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="block mx-auto mt-3 text-xs font-semibold text-[#B9BBC8] underline underline-offset-2 hover:text-white">
+                  {t('dv13CallMe') || 'Être rappelé à la place'}
+                </button>
             {contactChoice === 'callback' && (
               <div className="mt-3 pt-3 border-t border-[#17334D]">
                 {callbackConfirmed ? (
@@ -3312,7 +2875,60 @@ export default function OpportunityDetailPage() {
                 {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
               </div>
             )}
+                <div className="border-t border-[#17334D] mt-4 pt-3 text-center">
+                  <p className="text-[11px] font-semibold text-green-400 inline-flex items-center gap-1.5"><CheckCircle2 size={12} /> {t('dv13Free') || 'Premier échange gratuit · Sans engagement'}</p>
+                  <p className="text-[10px] text-[#B9BBC8] mt-0.5">{t('dv13Phone') || 'Échange téléphonique'}</p>
+                  {reviewsRating != null && reviewsCount != null && (
+                    <p className="mt-3 text-[11px] font-semibold text-white"><Star size={11} className="inline text-orange fill-orange -mt-0.5" /> {fmtRating}/5 sur {reviewsCount} avis artisans</p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
+
+          {/* 5. Préparer mon dossier (position 4, collapsed by default) */}
+          <div className={card}>
+            <button type="button" onClick={() => setDossierStepsOpen(o => !o)} aria-expanded={dossierStepsOpen} className="w-full flex items-start justify-between gap-3 text-left">
+              <span className="min-w-0">
+                <span className="block text-base font-bold text-white">{t('dv13Prepare') || 'Préparer mon dossier'}</span>
+                <span className="block text-[11px] text-[#B9BBC8] mt-1">{t('dv13PrepareSub') || 'Formulaires, mémoire technique, pièces, réponse financière — le détail de qui fait quoi.'}</span>
+              </span>
+              <ChevronDown size={16} className={`text-[#B9BBC8] shrink-0 mt-1 transition-transform ${dossierStepsOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+          {dossierStepsOpen && (
+            <div className="ml-3 pl-4 border-l border-[#17334D] space-y-4">
+              <p className="text-xs text-[#B9BBC8] leading-relaxed">{t('dv13PrepareIntro')}</p>
+              {prepItems.map(item => (
+                <div key={item.title} className="flex items-start gap-3">
+                  <item.icon size={15} className="text-[#B9BBC8] shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-white">{item.title}</p>
+                    <p className="text-[11px] text-[#B9BBC8] mt-0.5 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 6. Prochaine étape (dynamic) */}
+          {nextIsDefault ? (
+            <button type="button" onClick={() => setShowAccountManagerModal(true)} className={`${card} w-full flex items-center justify-between gap-3 text-left`}>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-white">{t('dv13Next') || 'Prochaine étape'}</span>
+                <span className="block text-[11px] text-[#B9BBC8] mt-0.5">{nextLabel}</span>
+              </span>
+              <ChevronRight size={16} className="text-[#B9BBC8] shrink-0" />
+            </button>
+          ) : (
+            <Link to="/tableau-de-bord" className={`${card} w-full flex items-center justify-between gap-3`}>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-white">{t('dv13Next') || 'Prochaine étape'}</span>
+                <span className="block text-[11px] text-[#B9BBC8] mt-0.5">{nextLabel}</span>
+              </span>
+              <ChevronRight size={16} className="text-[#B9BBC8] shrink-0" />
+            </Link>
+          )}
 
           {!isAuthenticated && callbackConfirmed && !quickPasswordDismissed && (
             <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
@@ -3345,19 +2961,19 @@ export default function OpportunityDetailPage() {
             </div>
           )}
 
-          <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5">
-            <h2 className="text-lg font-bold text-white mb-3">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</h2>
-            <p className="text-xs text-[#B9BBC8] mb-3">{t('dossierHubMoreSub') || "Retrouvez vos opportunités enregistrées et choisissez les prochaines candidatures."}</p>
-            <Link to="/tableau-de-bord" className="text-sm text-orange font-semibold hover:underline">{t('dossierHubDashboard') || 'Voir mon tableau de bord'}</Link>
+          {/* 7. Light links instead of cards/buttons */}
+          <div className="pt-2">
+            <p className="text-xs font-bold text-[#B9BBC8]">{t('dossierHubMoreTitle') || 'Continuer mes recherches'}</p>
+            <Link to="/tableau-de-bord" className="text-[11px] text-[#5B6B80] hover:text-white">{t('dv13Dashboard') || 'Voir mon tableau de bord →'}</Link>
           </div>
-
-          <div className="flex gap-2.5">
-            <button type="button" onClick={() => setScreen(2)} className="flex-1 border border-orange/50 text-orange font-bold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
-              {t('compatibilityBack') || 'Retour'}
+          <div className="text-center pb-2">
+            <button type="button" onClick={() => setScreen(2)} className="text-xs font-bold text-[#B9BBC8] underline underline-offset-2 hover:text-white">
+              {t('dv13BackAnalysis') || 'Revenir à mon analyse'}
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       <AppointmentModal
         open={showAccountManagerModal}
