@@ -64,6 +64,7 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
           inside the card itself - kept as-is. */}
       <div className="border border-orange/40 rounded-2xl bg-[#061D32] p-3 md:p-6 orange-glow relative overflow-hidden">
         <div className="relative z-10">
+          <div className="min-h-[calc(100svh-9.25rem)] md:min-h-0">
           <span className="text-[11px] md:text-[11px] font-bold text-orange uppercase tracking-widest">
             Artisans · TPE · PME
           </span>
@@ -79,7 +80,12 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
               specific short viewport, that needs a fix that doesn't
               reorder the buttons - e.g. shrinking OpportunityPaths itself
               on mobile - not moving them again. */}
+          {/* 4 Oct (evening), client: on the first phone screen the two contact buttons
+              showed up half-cut by the bottom bar. The part above them now fills the
+              visible area (screen height minus header and bottom bar) on phones, so the
+              buttons start right below the first screen; desktop is unchanged. */}
           <div className="mb-3 md:mb-4"><OpportunityPaths /></div>
+          </div>
           {/* Contact buttons back below the tiles, side by side, as before
               (client, 4 Oct: "ces deux boutons comme avant, en bas"). Same
               modals (AppointmentModal / CallbackModal), nothing else changed. */}
@@ -212,15 +218,18 @@ function DemoWalkthroughSection() {
 
       <button
         onClick={() => setDemoOpen(true)}
-        className="w-full text-left rounded-2xl border border-[#17334D] bg-[#061D32] relative overflow-hidden hover:border-orange/50 transition-colors group"
+        className="w-full aspect-[3/2] md:aspect-auto text-left rounded-2xl border border-[#17334D] bg-[#061D32] relative overflow-hidden hover:border-orange/50 transition-colors group block"
       >
+        {/* 4 Oct (evening), client: a bit taller vertically (width was fine) - on
+            phones the 16:9 picture is shown at 3:2 (centered, edges trimmed a little);
+            on larger screens it keeps its own proportions. */}
         {/* Client (20 Sep): real thumbnail image for the demo video, click
             opens the actual demo (DemoVideoModal / public/demo.mp4) -
             replaces the hand-built div mockup that used to stand in for it. */}
         <img
           src="/testimonials/demo-plateforme.jpeg"
           alt="Démo interactive : découvrez comment ça marche, de la recherche au dossier pré-rempli (1 min 07)"
-          className="w-full h-auto block"
+          className="w-full h-full object-cover block md:h-auto"
         />
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
           <span className="w-14 h-14 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
@@ -276,19 +285,17 @@ function TestimonialsSection() {
           partie démo niveau taille". The portrait thumbnail is now capped in height
           (about the height of the demo thumbnail just above) and the arrows sit
           on each side of it instead of on a row of their own. */}
-      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-3">
-        <div className="flex items-center justify-center gap-3">
-          {slides.length > 1 && (
-            <button onClick={() => setI((i - 1 + slides.length) % slides.length)} className={arrow} aria-label="Témoignage précédent">
-              <ChevronLeft size={16} />
-            </button>
-          )}
+      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-3 md:p-4">
+        {/* 4 Oct (evening), client: the video block looked small, with empty space on
+            both sides. The thumbnail is larger (width-driven, portrait ratio kept) and
+            the arrows now sit over its left/right edges instead of taking room beside it. */}
+        <div className="relative mx-auto w-full max-w-[300px] md:max-w-[380px]">
           <button
             onClick={() => setVideoOpen(true)}
-            className="relative rounded-xl border border-[#17334D] overflow-hidden block group"
+            className="relative rounded-xl border border-[#17334D] overflow-hidden block group w-full"
             aria-label={`Lire la vidéo : ${slide.title}`}
           >
-            <img src={slide.image} alt={slide.alt} loading="lazy" className="h-[240px] md:h-[280px] w-auto block" />
+            <img src={slide.image} alt={slide.alt} loading="lazy" className="w-full h-auto block" />
             <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
               <span className="w-12 h-12 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                 <PlayCircle size={24} className="text-white" />
@@ -296,9 +303,14 @@ function TestimonialsSection() {
             </span>
           </button>
           {slides.length > 1 && (
-            <button onClick={() => setI((i + 1) % slides.length)} className={arrow} aria-label="Témoignage suivant">
-              <ChevronRight size={16} />
-            </button>
+            <>
+              <button onClick={() => setI((i - 1 + slides.length) % slides.length)} className={`${arrow} absolute left-2 top-1/2 -translate-y-1/2 bg-[#061D32]/85`} aria-label="Témoignage précédent">
+                <ChevronLeft size={16} />
+              </button>
+              <button onClick={() => setI((i + 1) % slides.length)} className={`${arrow} absolute right-2 top-1/2 -translate-y-1/2 bg-[#061D32]/85`} aria-label="Témoignage suivant">
+                <ChevronRight size={16} />
+              </button>
+            </>
           )}
         </div>
         {slides.length > 1 && (

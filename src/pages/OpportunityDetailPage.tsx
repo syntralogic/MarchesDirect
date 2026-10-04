@@ -2015,75 +2015,9 @@ export default function OpportunityDetailPage() {
               <p className="text-[11px] text-[#5B6B80] leading-relaxed mt-4 pt-3 border-t border-[#17334D]">{matchScore.scoreDisclaimer}</p>
             </div>
 
-            {/* 27 Sep audit, point 2: this table used to recompute its own
-                rows independently from the "Comment votre entreprise
-                correspond à ce marché" table above - same market, same
-                company, but two separate hand-rolled logics, and they could
-                (and did) disagree: CLIM+ read "ne correspond pas" up top
-                while this table said "Correspondance identifiée" for the
-                same métier, because its own metierRow only checked whether
-                siretCompany.activity was filled in at all, never whether it
-                actually matched. Also folded matchScore.eligibility (a
-                generic Kbis/assurance/référence checklist) into this row's
-                "Qualifications", which is why a notice's real requirement
-                (e.g. "qualification IRVE") could show as "aucune qualification
-                précisée" - eligibility never carried that text at all.
-                Fixed the only way that guarantees the two tables can never
-                contradict each other again: build every row straight from
-                matchScore.matchCriteria, the same array the table above
-                renders, instead of re-deriving anything here. */}
-            {(() => {
-              const STATUS_META: Record<string, { label: string; className: string }> = {
-                identified: { label: t('concordStatusIdentified') || 'Correspondance identifiée', className: 'bg-green-400/10 text-green-400' },
-                declared: { label: t('concordStatusDeclared') || "Déclaration de l'entreprise", className: 'bg-orange/10 text-orange' },
-                to_verify: { label: t('concordStatusToVerify') || 'Information à vérifier', className: 'bg-[#17334D] text-[#B9BBC8]' },
-                issue: { label: t('concordStatusIssue') || 'Difficulté détectée', className: 'bg-red-500/10 text-red-400' },
-              };
-              const CRIT_LABELS: Record<string, string> = {
-                metier: t('concordCritMetier') || 'Métier',
-                zone: t('concordCritLocalisation') || 'Localisation',
-                experience: t('concordCritExperience') || 'Expérience',
-                moyens: t('concordCritMoyens') || 'Moyens',
-                disponibilite: t('concordCritCalendrier') || 'Calendrier',
-                qualifications: t('concordCritQualifications') || 'Qualifications',
-              };
-              // match -> identified when the server itself established it
-              // (a real distance, a filed activity code...), declared when
-              // it only holds because the visitor answered 'oui' - never
-              // the stronger badge for a self-reported answer.
-              // mismatch -> issue either way (server-detected or the
-              // visitor's own 'non'): both are a real difficulty to flag.
-              // confirm -> to_verify, including partial (general
-              // contractor) cases: still open, not yet a difficulty.
-              const rows = matchScore.matchCriteria.map(c => ({
-                key: c.key,
-                label: CRIT_LABELS[c.key] || c.label,
-                status: (c.status === 'match' ? (c.answered ? 'declared' : 'identified')
-                  : c.status === 'mismatch' ? 'issue'
-                  : 'to_verify') as keyof typeof STATUS_META,
-                text: c.detail,
-              }));
-
-              return (
-                <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-                  <h2 className="text-sm font-extrabold text-white mb-1">{t('concordBreakdownTitle') || 'Sur quoi repose ce pourcentage'}</h2>
-                  <p className="text-xs text-[#B9BBC8] mb-4">{t('concordBreakdownSub') || 'Les six critères réellement comparés pour ce marché.'}</p>
-                  <div className="divide-y divide-[#17334D]">
-                    {rows.map(row => (
-                      <div key={row.key} className="py-3 first:pt-0 last:pb-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-xs font-bold text-white">{row.label}</p>
-                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${STATUS_META[row.status].className}`}>
-                            {STATUS_META[row.status].label}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#B9BBC8] leading-relaxed">{row.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Client (4 Oct): the "Sur quoi repose ce pourcentage" table repeated the
+                six criteria already shown in "Comment votre entreprise correspond à ce
+                marché" above and added nothing - removed. */}
 
             {/* "Affinez votre concordance" self-assessment accordion
                 (client's 12 Sep reference): purely a reflection prompt for
