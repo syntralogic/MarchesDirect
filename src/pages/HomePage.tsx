@@ -2,14 +2,7 @@ import { tradeDisplayName } from '@/data/tradeSuggestions';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/use-debounce';
-import {
-  Building2, Handshake, ChevronRight, Globe,
-  Building, ArrowRight,
-  Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X,
-  PlayCircle, ChevronLeft, ChevronUp, Plus,
-  Users, ArrowUpRight,
-  Euro, FileText, Clock, Lock, Shield, Calendar, Trophy,
-} from 'lucide-react';
+import { Building2, Handshake, ChevronRight, Globe, Building, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, ChevronLeft, ChevronUp, Plus, Users, ArrowUpRight, Euro, FileText, Clock, Lock, Shield, Calendar, Trophy, PhoneCall, Wrench } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid, geoMercator } from 'd3-geo';
 import { mockArticles } from '@/data/mockData';
@@ -41,11 +34,22 @@ function normalizeFr(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-'’]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+
+// 4 Oct client brief: page anchors. A click scrolls smoothly to the section
+// further down the same page (targets carry scroll-mt-16 to clear the sticky
+// header); the URL hash is updated without a jump so the back button still works.
+function scrollToSection(e: React.MouseEvent, id: string) {
+  const el = document.getElementById(id);
+  if (!el) return; // fall back to the plain #hash behaviour
+  e.preventDefault();
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try { window.history.replaceState(null, '', `#${id}`); } catch { /* non-fatal */ }
+}
+
 // ---------------------------------------------------------------------------
 // HERO
 // ---------------------------------------------------------------------------
 function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
-  const [demoOpen, setDemoOpen] = useState(false);
   return (
     <section className="px-3 md:px-6 pt-3 md:pt-10 pb-10 md:pb-10 max-w-3xl mx-auto w-full">
       {/* Card-internal padding/margins/gaps reverted to their pre-65360a3
@@ -75,23 +79,33 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
               specific short viewport, that needs a fix that doesn't
               reorder the buttons - e.g. shrinking OpportunityPaths itself
               on mobile - not moving them again. */}
-          <div className="mb-3 md:mb-4"><OpportunityPaths onDemoClick={() => setDemoOpen(true)} /></div>
-          <div className="flex flex-row gap-2 md:gap-3">
-            <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
+          {/* 4 Oct client brief: "mettre davantage en avant la prise de contact en
+              haut de la page". The existing contact flow (CallbackModal /
+              AppointmentModal) is unchanged - it just moves from the bottom of
+              this card to right under the title, with a big red "Être rappelé"
+              that gently grows to attract attention (see .md-grow-pulse). */}
+          <div className="mb-3 md:mb-4">
+            <button
+              onClick={onCallback}
+              className="md-grow-pulse w-full bg-red-600 hover:bg-red-700 text-white font-extrabold text-lg md:text-xl py-4 md:py-5 rounded-2xl shadow-lg shadow-red-900/40 flex items-center justify-center gap-2.5 transition-colors"
+            >
+              <PhoneCall size={22} aria-hidden="true" /> Être rappelé
+            </button>
+            <button
+              onClick={onAppt}
+              className="w-full mt-2 border border-orange text-orange font-semibold py-2.5 rounded-xl text-sm hover:bg-orange/10 transition-colors"
+            >
               Prendre rendez-vous
             </button>
-            <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/10 transition-colors">
-              Être rappelé
-            </button>
           </div>
+          <div className="mb-3 md:mb-4"><OpportunityPaths /></div>
         </div>
       </div>
-      <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
     </section>
   );
 }
 
-function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
+function OpportunityPaths() {
   // 27 Sep client decision (reverses the 26 Sep change below): these tiles
   // were switched to the active-only count so the number would never
   // promise more than /parcours (active-only by design) actually lists.
@@ -148,16 +162,38 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
           </Link>
         );
       })}
+      {/* 4 Oct client brief (mockup "proposition-accueil-v2"): two page anchors -
+          "Par métier" scrolls to the search engine further down, "Par zone
+          géographique" to the map - then "Démo vidéo" and "Témoignages vidéo",
+          each with direct access to its own section on this page. */}
       <div className="grid grid-cols-2 gap-1 md:gap-2">
-        <button onClick={onDemoClick} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
+        <a href="#mdh-metiers" onClick={e => scrollToSection(e, 'mdh-metiers')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
+          <Wrench size={18} className="text-orange md:hidden" />
+          <Wrench size={22} className="text-orange hidden md:block" />
+          <div className="min-w-0">
+            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Par métier</div>
+            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Votre activité, vos produits</div>
+          </div>
+        </a>
+        <a href="#mdh-zones" onClick={e => scrollToSection(e, 'mdh-zones')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
+          <MapPin size={18} className="text-orange md:hidden" />
+          <MapPin size={22} className="text-orange hidden md:block" />
+          <div className="min-w-0">
+            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Par zone géographique</div>
+            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Trouvez près de chez vous</div>
+          </div>
+        </a>
+      </div>
+      <div className="grid grid-cols-2 gap-1 md:gap-2">
+        <a href="#mdh-demo" onClick={e => scrollToSection(e, 'mdh-demo')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
           <PlayCircle size={18} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
           <div className="min-w-0">
             <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
             <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Le parcours en 1 min</div>
           </div>
-        </button>
-        <a href="#mdh-temoignages" className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all">
+        </a>
+        <a href="#mdh-temoignages" onClick={e => scrollToSection(e, 'mdh-temoignages')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
           <PlayCircle size={18} className="text-orange md:hidden" />
           <PlayCircle size={22} className="text-orange hidden md:block" />
           <div className="min-w-0">
@@ -179,7 +215,7 @@ function OpportunityPaths({ onDemoClick }: { onDemoClick?: () => void }) {
 function DemoWalkthroughSection() {
   const [demoOpen, setDemoOpen] = useState(false);
   return (
-    <section className="px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
+    <section id="mdh-demo" className="scroll-mt-16 px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
       <h2 className="text-xl md:text-2xl font-bold text-white leading-tight mb-3">
         De la recherche au dossier, en 1 minute.
       </h2>
@@ -238,7 +274,7 @@ function TestimonialsSection() {
   const slide = slides[i];
   const arrow = 'w-9 h-9 shrink-0 rounded-full border border-[#17334D] bg-[#061D32] flex items-center justify-center text-[#B9BBC8] hover:text-orange hover:border-orange/50 transition-colors';
   return (
-    <section id="mdh-temoignages" className="px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
+    <section id="mdh-temoignages" className="scroll-mt-16 px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">
         Leur expérience, avec leurs mots
       </span>
@@ -914,7 +950,7 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
   };
 
   return (
-    <section id="mdh-zones" className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
+    <section id="mdh-zones" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('nearYou')}</span>
       <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">
         Des opportunités partout en France.
@@ -1410,7 +1446,7 @@ function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionP
         : `${activeSelection.length} ${tab === 'departments' ? 'départements' : 'régions'}`;
 
   return (
-    <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
+    <section id="mdh-metiers" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
       <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('sectors') || "Secteurs d'activité"}</span>
       <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-1.5">Rechercher par métier <span className="text-orange">ou secteur d'activité</span></h2>
       <p className="text-sm text-[#B9BBC8] mb-5">Trouvez des opportunités dans votre activité.</p>

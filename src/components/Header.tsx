@@ -96,6 +96,11 @@ export function Header() {
             </div>
 
             <div className="flex md:hidden items-center gap-1">
+              {/* 4 Oct client mockup ("proposition-accueil-v2", marked AJOUT): a direct
+                  "Contactez-nous" link in the mobile header, next to the logo area. */}
+              <Link to="/contact" className="text-xs font-semibold text-white underline underline-offset-4 decoration-orange mr-1 whitespace-nowrap">
+                Contactez-nous
+              </Link>
               <NotificationBell />
               <button
                 onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
