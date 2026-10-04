@@ -2,7 +2,7 @@ import { tradeDisplayName } from '@/data/tradeSuggestions';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Building2, Handshake, ChevronRight, Globe, Building, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, ChevronLeft, ChevronUp, Plus, Users, ArrowUpRight, Euro, FileText, Clock, Lock, Shield, Calendar, Trophy, PhoneCall, Wrench } from 'lucide-react';
+import { Building2, Handshake, ChevronRight, Globe, Building, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, ChevronLeft, ChevronUp, Plus, Users, ArrowUpRight, Euro, FileText, Clock, Lock, Shield, Calendar, Trophy, Wrench } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid, geoMercator } from 'd3-geo';
 import { mockArticles } from '@/data/mockData';
@@ -79,26 +79,18 @@ function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: (
               specific short viewport, that needs a fix that doesn't
               reorder the buttons - e.g. shrinking OpportunityPaths itself
               on mobile - not moving them again. */}
-          {/* 4 Oct client brief: "mettre davantage en avant la prise de contact en
-              haut de la page". The existing contact flow (CallbackModal /
-              AppointmentModal) is unchanged - it just moves from the bottom of
-              this card to right under the title, with a big red "Être rappelé"
-              that gently grows to attract attention (see .md-grow-pulse). */}
-          <div className="mb-3 md:mb-4">
-            <button
-              onClick={onCallback}
-              className="md-grow-pulse w-full bg-red-600 hover:bg-red-700 text-white font-extrabold text-lg md:text-xl py-4 md:py-5 rounded-2xl shadow-lg shadow-red-900/40 flex items-center justify-center gap-2.5 transition-colors"
-            >
-              <PhoneCall size={22} aria-hidden="true" /> Être rappelé
-            </button>
-            <button
-              onClick={onAppt}
-              className="w-full mt-2 border border-orange text-orange font-semibold py-2.5 rounded-xl text-sm hover:bg-orange/10 transition-colors"
-            >
+          <div className="mb-3 md:mb-4"><OpportunityPaths /></div>
+          {/* Contact buttons back below the tiles, side by side, as before
+              (client, 4 Oct: "ces deux boutons comme avant, en bas"). Same
+              modals (AppointmentModal / CallbackModal), nothing else changed. */}
+          <div className="flex flex-row gap-2 md:gap-3">
+            <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
               Prendre rendez-vous
             </button>
+            <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/10 transition-colors">
+              Être rappelé
+            </button>
           </div>
-          <div className="mb-3 md:mb-4"><OpportunityPaths /></div>
         </div>
       </div>
     </section>
