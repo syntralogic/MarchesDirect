@@ -17,6 +17,7 @@ import { SaveButton } from '@/components/SaveButton';
 import { LoadMoreButton } from '@/components/LoadMoreButton';
 import { subcontractNeedsApi, getApiErrorMessage, type ApiSubcontractNeed } from '@/lib/apiClient';
 import team from '@/assets/team.jpg';
+import { useOpenOpportunity } from '@/contexts/OpportunityTransitionContext';
 import { useLang } from '@/contexts/LangContext';
 
 type OppType = 'Marchés publics' | "Appels d'offres" | 'Sous-traitance';
@@ -105,6 +106,7 @@ function loadPersistedJourneyState(currentTypeParam: string | null): PersistedJo
 export default function OpportunityJourneyPage() {
   const { t } = useLang();
   const navigate = useNavigate();
+  const openOpportunity = useOpenOpportunity();
   const [searchParams] = useSearchParams();
   const initialType = TYPE_SLUGS[searchParams.get('type') || ''] || 'Marchés publics';
   const hasTypeParam = searchParams.get('type');
@@ -1144,7 +1146,7 @@ export default function OpportunityJourneyPage() {
                       <p className="text-[11px] font-semibold text-white">{o.amount}</p>
                     </div>
                   </div>
-                  <button onClick={() => navigate(`/opportunites/${o.id}`)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors ml-auto w-fit">
+                  <button onClick={() => openOpportunity(`/opportunites/${o.id}`, o.title)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors ml-auto w-fit">
                     {t('searchView')} <ArrowRight size={10} />
                   </button>
                 </div>

@@ -8,6 +8,12 @@ import { Check, Search } from 'lucide-react';
 // search icon in an orange ring, the company name, "Analyse technique de votre
 // entreprise en cours...", a rolling list of checks and a progress bar.
 //
+// 5 Oct client brief, 2nd request: the SAME animation also plays when a visitor
+// clicks an opportunity, BEFORE its detail page opens (OpportunityTransition-
+// Context). There the company may not be identified yet, so a second wording
+// is used ('opportunity' variant) - it never claims to analyse a company the
+// visitor has not given.
+//
 // Notes:
 // - The match score is requested while this is on screen (the page effect
 //   starts it as soon as the company is confirmed), so the concordance is
@@ -33,13 +39,28 @@ export const ANALYSIS_STEPS = [
   'Historique marchés publics — 24 mois',
 ];
 
+// Steps that make sense with no company identified yet (about the opportunity).
+export const OPPORTUNITY_STEPS = [
+  'Indexation base BOAMP / JOUE',
+  'Lecture de l’avis et de ses lots',
+  'Extraction OCR du cahier des charges',
+  'Analyse sémantique des critères techniques',
+  'Détection marchés similaires remportés',
+  'Préparation de votre fiche',
+];
+
 interface Props {
   companyName: string | null | undefined;
   onDone: () => void;
   durationMs?: number;
+  /** 'company' (default): analysis of the visitor's company. 'opportunity': title of the opportunity being opened. */
+  variant?: 'company' | 'opportunity';
+  /** Heading for the 'opportunity' variant (the opportunity title). */
+  subject?: string | null;
 }
 
-export function CompanyAnalysisOverlay({ companyName, onDone, durationMs = 3000 }: Props) {
+export function CompanyAnalysisOverlay({ companyName, onDone, durationMs = 3000, variant = 'company', subject }: Props) {
+  const steps = variant === 'opportunity' ? OPPORTUNITY_STEPS : ANALYSIS_STEPS;
   const doneRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -55,8 +76,8 @@ export function CompanyAnalysisOverlay({ companyName, onDone, durationMs = 3000 
   useEffect(() => {
     const redirect = window.setTimeout(finish, durationMs);
     const stepTimer = window.setInterval(() => {
-      setStep(s => Math.min(s + 1, ANALYSIS_STEPS.length - 1));
-    }, Math.max(120, Math.floor(durationMs / ANALYSIS_STEPS.length)));
+      setStep(s => Math.min(s + 1, steps.length - 1));
+    }, Math.max(120, Math.floor(durationMs / steps.length)));
     // Start the bar on the next frame so the CSS transition actually runs.
     const raf = window.requestAnimationFrame(() => setProgress(100));
     return () => {
@@ -67,23 +88,29 @@ export function CompanyAnalysisOverlay({ companyName, onDone, durationMs = 3000 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durationMs]);
 
-  const visible = ANALYSIS_STEPS.slice(Math.max(0, step - 2), step + 1);
-  const name = (companyName || 'Votre entreprise').toUpperCase();
+  const visible = steps.slice(Math.max(0, step - 2), step + 1);
+  const isOpp = variant === 'opportunity';
+  const name = isOpp
+    ? (subject || 'Votre opportunité').slice(0, 110)
+    : (companyName || 'Votre entreprise').toUpperCase();
+  const subtitle = isOpp
+    ? 'Préparation de l’analyse de cette opportunité…'
+    : 'Analyse technique de votre entreprise en cours…';
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Analyse de votre entreprise en cours"
+      aria-label={isOpp ? 'Ouverture de l’opportunité en cours' : 'Analyse de votre entreprise en cours'}
       className="fixed inset-0 z-[60] flex items-center justify-center px-5 bg-[#001326]/90 backdrop-blur-sm"
     >
       <div className="w-full max-w-sm rounded-2xl border border-[#17334D] bg-[#0B2540] p-6 text-center shadow-2xl">
         <div className="mx-auto mb-4 w-14 h-14 rounded-full border-2 border-orange flex items-center justify-center motion-safe:animate-pulse">
           <Search size={24} className="text-orange" aria-hidden="true" />
         </div>
-        <h2 className="text-lg font-extrabold text-white tracking-wide leading-tight break-words">{name}</h2>
+        <h2 className={`font-extrabold text-white leading-tight break-words ${isOpp ? 'text-base line-clamp-3' : 'text-lg tracking-wide'}`}>{name}</h2>
         <p className="text-sm text-[#B9BBC8] mt-1.5 mb-4" role="status" aria-live="polite">
-          Analyse technique de votre entreprise en cours…
+          {subtitle}
         </p>
 
         <ul className="rounded-xl border border-[#17334D] bg-[#061D32] text-left overflow-hidden mb-4 min-h-[112px]">

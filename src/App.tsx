@@ -28,6 +28,7 @@ import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
 import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
+import { OpportunityTransitionProvider } from '@/contexts/OpportunityTransitionContext';
 import BidWorkspacePage from '@/pages/BidWorkspacePage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
 import ProfilPage from '@/pages/ProfilPage';
@@ -158,6 +159,7 @@ const App: React.FC = () => {
           <FavoritesProvider>
           <CompanyKnownProvider>
           <BrowserRouter>
+            <OpportunityTransitionProvider>
             <ScrollToTop />
             <AppLayout>
             <Routes>
@@ -234,6 +236,7 @@ const App: React.FC = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
             </AppLayout>
+            </OpportunityTransitionProvider>
             <Toaster />
           </BrowserRouter>
           </CompanyKnownProvider>

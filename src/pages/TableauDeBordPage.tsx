@@ -1,3 +1,4 @@
+import { OpportunityLink } from '@/contexts/OpportunityTransitionContext';
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -291,7 +292,7 @@ export default function TableauDeBordPage() {
               </Link>
             </div>
           ) : (
-            <Link
+            <OpportunityLink
               to={`/opportunites/${featured.id}`}
               className="block bg-[#061D32] border border-[#17334D] rounded-2xl p-4 hover:border-orange/40 transition-colors mb-6"
             >
@@ -316,7 +317,7 @@ export default function TableauDeBordPage() {
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange">
                 {t('dashViewOpportunity') || 'Consulter cette opportunité'} <ArrowRight size={12} />
               </span>
-            </Link>
+            </OpportunityLink>
           )}
 
           {/* FOLLOW-UP PANEL (tier-aware) */}
@@ -397,20 +398,20 @@ export default function TableauDeBordPage() {
             const locked = isPrivate && !m.identity_unlocked;
             return (
               <div key={m.id} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4">
-                <Link to={`/opportunites/${m.id}`} className="block mb-3">
+                <OpportunityLink to={`/opportunites/${m.id}`} className="block mb-3">
                   <p className="text-sm font-bold text-white truncate">{m.title}</p>
                   <p className="text-xs text-[#B9BBC8] mt-0.5">
                     {[m.location_city, m.estimated_value ? `${new Intl.NumberFormat('fr-FR').format(m.estimated_value)} €` : null, m.deadline ? new Date(m.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}
                   </p>
-                </Link>
+                </OpportunityLink>
                 <div className="flex flex-wrap items-center gap-2">
                   {locked ? (
-                    <Link
+                    <OpportunityLink
                       to={`/opportunites/${m.id}`}
                       className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
                     >
                       <PhoneCall size={12} /> {t('dashIdentityMaskedCta') || "Identité du donneur d'ordre masquée · Prendre rendez-vous pour déverrouiller"}
-                    </Link>
+                    </OpportunityLink>
                   ) : (
                     <Link
                       to={m.journey === 'public_procurement' ? `/opportunites/${m.id}` : `/opportunites/${m.id}/candidature`}
@@ -419,9 +420,9 @@ export default function TableauDeBordPage() {
                       <FolderCheck size={12} /> {m.journey === 'public_procurement' ? (t('dashPrepareFile') || 'Préparer mon dossier') : (t('dashViewPrivateFile') || 'Voir le dossier privé')}
                     </Link>
                   )}
-                  <Link to={`/opportunites/${m.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
+                  <OpportunityLink to={`/opportunites/${m.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
                     <Sparkles size={12} /> {t('dashReviewAnalysis') || "Revoir l'analyse"}
-                  </Link>
+                  </OpportunityLink>
                 </div>
               </div>
             );
@@ -471,10 +472,10 @@ export default function TableauDeBordPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <Link to={`/opportunites/${o.id}`} className="block min-w-0 flex-1">
+                    <OpportunityLink to={`/opportunites/${o.id}`} className="block min-w-0 flex-1">
                       <p className="text-sm font-bold text-white truncate">{o.title}</p>
                       <p className="text-xs text-[#B9BBC8] mt-0.5">{[o.location, o.amount, o.deadline ? new Date(o.deadline).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' · ')}</p>
-                    </Link>
+                    </OpportunityLink>
                     {!selectMode && (
                       <button
                         type="button"
@@ -488,12 +489,12 @@ export default function TableauDeBordPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {locked ? (
-                      <Link
+                      <OpportunityLink
                         to={`/opportunites/${o.id}`}
                         className="inline-flex items-center gap-1.5 bg-orange text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-orange/90 transition-colors"
                       >
                         <PhoneCall size={12} /> {t('dashIdentityMaskedCta') || "Identité du donneur d'ordre masquée · Prendre rendez-vous pour déverrouiller"}
-                      </Link>
+                      </OpportunityLink>
                     ) : (
                       <Link
                         to={o.type === 'public' ? `/opportunites/${o.id}` : `/opportunites/${o.id}/candidature`}
@@ -502,9 +503,9 @@ export default function TableauDeBordPage() {
                         <FolderCheck size={12} /> {o.type === 'public' ? (t('dashPrepareFile') || 'Préparer mon dossier') : (t('dashViewPrivateFile') || 'Voir le dossier privé')}
                       </Link>
                     )}
-                    <Link to={`/opportunites/${o.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
+                    <OpportunityLink to={`/opportunites/${o.id}`} className="inline-flex items-center gap-1.5 border border-[#17334D] text-white text-xs font-semibold px-3 py-2 rounded-lg hover:border-orange/50 transition-colors">
                       <Sparkles size={12} /> {t('dashReviewAnalysis') || "Revoir l'analyse"}
-                    </Link>
+                    </OpportunityLink>
                   </div>
                 </div>
               </div>
