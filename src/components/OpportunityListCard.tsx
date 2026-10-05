@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useOpenOpportunity } from '@/contexts/OpportunityTransitionContext';
 import { useLang } from '@/contexts/LangContext';
 import { SaveButton } from '@/components/SaveButton';
 import type { Opportunity } from '@/data/mockData';
@@ -78,7 +78,7 @@ function getDeadlineInfo(
 
 export function OpportunityListCard({ opportunity: o, matchScore, canScore, compatible, to, ctaLabel, loadedCount }: OpportunityListCardProps) {
   const { t } = useLang();
-  const navigate = useNavigate();
+  const openOpportunity = useOpenOpportunity();
   const destination = to ?? `/opportunites/${o.id}`;
   const deadlineInfo = getDeadlineInfo(o.deadline, o.lifecycleStatus, t);
 
@@ -140,7 +140,7 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
     <div
       data-opp-id={String(o.id)}
       className="relative bg-[#061D32] border border-[#17334D] rounded-2xl p-4 hover:border-orange/40 transition-colors duration-200 cursor-pointer"
-      onClick={() => { saveScrollForReturn(); navigate(destination); }}
+      onClick={() => { saveScrollForReturn(); openOpportunity(destination, o.title); }}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -193,7 +193,7 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
         onClick={e => {
           e.stopPropagation();
           saveScrollForReturn();
-          navigate(destination);
+          openOpportunity(destination, o.title);
         }}
         className="w-full bg-orange text-white font-semibold text-sm py-3 rounded-xl hover:brightness-110 transition-all"
       >

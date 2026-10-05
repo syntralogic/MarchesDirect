@@ -1,3 +1,4 @@
+import { OpportunityLink } from '@/contexts/OpportunityTransitionContext';
 import { tradeDisplayName } from '@/data/tradeSuggestions';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -1319,7 +1320,7 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
                 {cityOpportunities.map(opp => {
                   const isExpired = opp.status === 'expired' || opp.status === 'cancelled' || opp.status === 'awarded';
                   return (
-                    <Link key={opp.id} to={`/opportunites/${opp.id}`} className="block bg-[#031B30] border border-[#17334D] rounded-xl p-3 hover:border-orange/40 transition-colors">
+                    <OpportunityLink key={opp.id} to={`/opportunites/${opp.id}`} className="block bg-[#031B30] border border-[#17334D] rounded-xl p-3 hover:border-orange/40 transition-colors">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <p className="text-sm font-semibold text-white leading-snug">{opp.title}</p>
                         <span className={`shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${isExpired ? 'bg-[#17334D] text-[#B9BBC8]' : 'bg-orange/15 text-orange'}`}>
@@ -1330,7 +1331,7 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
                         {opp.location_city && <span className="flex items-center gap-1"><MapPin size={10} /> {opp.location_city}</span>}
                         {opp.deadline && <span>{new Date(opp.deadline).toLocaleDateString('fr-FR')}</span>}
                       </div>
-                    </Link>
+                    </OpportunityLink>
                   );
                 })}
               </div>
