@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { CompanyAnalysisOverlay } from '@/components/CompanyAnalysisOverlay';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
   CheckCircle2, XCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
@@ -258,6 +259,22 @@ export default function OpportunityDetailPage() {
   // gates moving on to the next screen, never the analysis itself.
   // FIX 1: Always start on screen 1, regardless of authentication status.
   const [screen, setScreen] = useState<1 | 2 | 3>(1);
+  // 5 Oct client brief: after the visitor selects his company (name or SIRET), a
+  // 3-second analysis animation plays, then the page goes on to the Concordance
+  // screen by itself. `analyzing` drives the overlay; screen 2 is entered when
+  // it ends (or when "Passer" is tapped).
+  const [analyzing, setAnalyzing] = useState(false);
+  const endAnalysis = () => {
+    setAnalyzing(false);
+    setScreen(2);
+    // Land on the start of the Concordance screen, not wherever the SIRET form
+    // had left the scroll position (the first thing there is the company card).
+    window.setTimeout(() => {
+      const el = document.getElementById('mdh-concordance');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 60);
+  };
   // DEV-14 funnel events (ids and journey family only - never contact data).
   const leadFormStartTracker = useMemo(() => createFormStartTracker('dossier_request', () => ({ opportunityId: id })), [id]);
   const concordanceShownFor = useRef<string | null>(null);
@@ -795,7 +812,7 @@ export default function OpportunityDetailPage() {
         setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité."));
       })
       .finally(() => setScoreLoading(false));
-  }, [id, screen, matchScore, scoreLoading, t, isAuthenticated]);
+  }, [id, screen, matchScore, scoreLoading, t, isAuthenticated, analyzing]);
 
   // Recompute (quietly, without swapping the card for a spinner) whenever an
   // answer to the four questions is added or changed. The counter drops
@@ -835,7 +852,7 @@ export default function OpportunityDetailPage() {
     else if (result.companyKnown) {
       markOpportunityConfirmed(id, result.siret);
       trackVisitorEvent('company_identified', 'Entreprise identifiée', undefined, { opportunityId: id });
-      setScreen(2);
+      setAnalyzing(true);
     }
     setSiretSubmitting(false);
   };
@@ -849,7 +866,7 @@ export default function OpportunityDetailPage() {
     else if (result.companyKnown) {
       markOpportunityConfirmed(id, result.siret);
       trackVisitorEvent('company_identified', 'Entreprise identifiée', undefined, { opportunityId: id });
-      setScreen(2);
+      setAnalyzing(true);
     }
     setConfirmingCandidate(null);
   };
@@ -1651,6 +1668,7 @@ export default function OpportunityDetailPage() {
           screens. Split into two mutually exclusive, single-screen blocks:
           the search form only ever belongs to screen 1, the company card /
           concordance / lead capture only ever belongs to screen 2. */}
+      {analyzing && <CompanyAnalysisOverlay companyName={siretCompany?.name} onDone={endAnalysis} />}
       {screen === 1 && !isAuthenticated && (
           <div className="space-y-4">
             {/* DEV-06 (plan de corrections, 3 Oct): after "Précédent" the visitor
@@ -1737,6 +1755,7 @@ export default function OpportunityDetailPage() {
           client's reference screenshot for this screen). */}
       {screen === 2 && (
           <>
+            <div id="mdh-concordance" className="scroll-mt-16" aria-hidden="true" />
             {/* 27 Sep audit, point 5: an explicit Précédent action, kept
                 separate from "Modifier" (which also resets the SIRET
                 search) and from "Recevoir mon dossier pré-rempli" further
