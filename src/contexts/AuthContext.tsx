@@ -149,6 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Revoke the session server-side too (best effort). Clearing localStorage
+    // alone would leave the refresh token valid until it expires.
+    const refreshToken = tokenStorage.getRefreshToken();
+    if (refreshToken) {
+      apiClient.post('/auth/logout', { refreshToken }).catch(() => {});
+    }
     tokenStorage.clear();
     setUser(null);
     setCompany(null);
