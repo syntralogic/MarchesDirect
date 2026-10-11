@@ -1829,6 +1829,14 @@ export default function OpportunityDetailPage() {
                     label="Avis Google"
                     value={siretCompany.googleRating ? `${siretCompany.googleRating}/5${siretCompany.googleReviewCount ? ` (${siretCompany.googleReviewCount} avis)` : ''}` : null}
                     empty="Non disponible"
+                    href={siretCompany.googleRating ? googleReviewsHref(siretCompany) : null}
+                  />
+                  <CompanyInfoRow
+                    icon={Facebook}
+                    label="Page Facebook"
+                    value={facebookLabel(siretCompany.facebook)}
+                    empty="Non disponible"
+                    href={facebookHref(siretCompany.facebook)}
                   />
                   <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.map(c => humanizeRawLabel(c) || c).filter((c, i, a) => a.indexOf(c) === i).join(', ') : null} empty="Aucune certification détectée dans notre recherche" />
                 </div>
@@ -1844,16 +1852,24 @@ export default function OpportunityDetailPage() {
                   <span className="text-xs text-[#8A9BB0] w-full -mb-0.5">{t('presenceDetectedTitle')}</span>
                   {([
                     { icon: Globe, label: t('presenceWebsite'), detected: Boolean(siretCompany.website), value: siretCompany.website },
-                    { icon: Facebook, label: t('presenceFacebook'), detected: Boolean(siretCompany.facebook), value: siretCompany.facebook },
-                    { icon: Star, label: t('presenceGoogleReviews'), detected: Boolean(siretCompany.googleRating), value: siretCompany.googleRating ? `${siretCompany.googleRating}/5 · ${siretCompany.googleReviewCount ?? 0} avis` : null },
-                    { icon: BadgeCheck, label: t('presenceRge'), detected: Boolean(siretCompany.rgeOrganisme), value: siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : null },
-                  ] as const).map((sig, i) => (
-                    <div key={i} className="flex items-center gap-1.5" title={sig.value || t('presenceNotDetected')}>
-                      {sig.detected ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <XCircle size={13} className="text-[#8A9BB0] shrink-0" />}
-                      <sig.icon size={12} className="text-[#8A9BB0] shrink-0" />
-                      <span className={sig.detected ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{sig.label}</span>
-                    </div>
-                  ))}
+                    { icon: Facebook, label: t('presenceFacebook'), detected: Boolean(siretCompany.facebook), value: facebookLabel(siretCompany.facebook), href: facebookHref(siretCompany.facebook) },
+                    { icon: Star, label: t('presenceGoogleReviews'), detected: Boolean(siretCompany.googleRating), value: siretCompany.googleRating ? `${siretCompany.googleRating}/5 · ${siretCompany.googleReviewCount ?? 0} avis` : null, href: siretCompany.googleRating ? googleReviewsHref(siretCompany) : null },
+                    { icon: BadgeCheck, label: t('presenceRge'), detected: Boolean(siretCompany.rgeOrganisme), value: siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : null, href: null },
+                  ] as { icon: typeof Globe; label: string; detected: boolean; value: string | null | undefined; href?: string | null }[]).map((sig, i) => {
+                    const inner = (
+                      <>
+                        {sig.detected ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <XCircle size={13} className="text-[#8A9BB0] shrink-0" />}
+                        <sig.icon size={12} className="text-[#8A9BB0] shrink-0" />
+                        <span className={sig.detected ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{sig.label}{sig.detected && sig.value && sig.label === t('presenceGoogleReviews') ? ` · ${sig.value}` : ''}</span>
+                      </>
+                    );
+                    const title = sig.value || t('presenceNotDetected');
+                    return sig.detected && sig.href ? (
+                      <a key={i} href={sig.href} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-1.5 hover:underline" title={title}>{inner}</a>
+                    ) : (
+                      <div key={i} className="flex items-center gap-1.5" title={title}>{inner}</div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -3090,7 +3106,7 @@ export default function OpportunityDetailPage() {
 // text instead (client's exact wording: "Chiffre d'affaires non
 // disponible", "Effectif non communiqué", etc.) so the grid never looks
 // broken or incomplete.
-function CompanyInfoRow({ icon: Icon, label, value, empty }: { icon: typeof MapPin; label: string; value: string | null | undefined; empty?: string }) {
+function CompanyInfoRow({ icon: Icon, label, value, empty, href }: { icon: typeof MapPin; label: string; value: string | null | undefined; empty?: string; href?: string | null }) {
   // 25 Sep audit, point 4: an estimated/unknown field ("Chiffre d'affaires
   // non disponible", "Effectif non communiqué"...) rendered identically to
   // real data (same white/bold text) reads as a fact rather than as "we
@@ -3102,9 +3118,33 @@ function CompanyInfoRow({ icon: Icon, label, value, empty }: { icon: typeof MapP
       <Icon size={14} className="text-[#8A9BB0] shrink-0 mt-0.5" />
       <div className="min-w-0">
         <p className="text-[11px] text-[#8A9BB0]">{label}</p>
-        <p className={isKnown ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{value || empty || '—'}</p>
+        {isKnown && href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-white font-medium underline decoration-[#8A9BB0]/50 underline-offset-2 hover:decoration-white break-all">{value}</a>
+        ) : (
+          <p className={isKnown ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{value || empty || '—'}</p>
+        )}
       </div>
     </div>
   );
+}
+
+// Client item 4: the backend now returns the Facebook page as a full URL.
+// Older cached/demo values can be a plain page name - shown as text, no link.
+function facebookHref(v: string | null | undefined): string | null {
+  return v && /^https?:\/\//i.test(v) ? v : null;
+}
+function facebookLabel(v: string | null | undefined): string | null {
+  if (!v) return null;
+  if (!facebookHref(v)) return v;
+  try {
+    const u = new URL(v);
+    const id = u.searchParams.get('id');
+    const path = u.pathname.replace(/^\/+|\/+$/g, '');
+    return id ? `facebook.com/profile.php?id=${id}` : `facebook.com/${path}`;
+  } catch { return v; }
+}
+function googleReviewsHref(c: { name?: string | null; city?: string | null }): string | null {
+  if (!c.name) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([c.name, c.city].filter(Boolean).join(' '))}`;
 }
 
