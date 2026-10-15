@@ -1259,7 +1259,18 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {hasAnalysisContent(opportunity.ai_analysis_sections) ? (
               <OpportunityAnalysisAccordions
-                sections={opportunity.ai_analysis_sections!}
+                sections={(() => {
+                  // Client (WhatsApp, 15 Oct): the lots list showed twice - once in
+                  // "Présentation du marché" and again as "Allotissement" in "Détails du
+                  // dossier". When the details block lists the lots, drop the repeated
+                  // "Lots indiqués dans l'avis : ..." list from the presentation text.
+                  const sec = opportunity.ai_analysis_sections!;
+                  const lotsShownBelow = Boolean(opportunity.ai_extracted_facts?.allotment?.available)
+                    || /(?:^|\n)\s*Lots\s*:\s*[\s\S]+$/.test(String(opportunity.description || ''));
+                  if (!lotsShownBelow) return sec;
+                  const presentation = String(sec.presentation || '').split(/\n\s*Lots indiqués dans l['’]avis\s*:/i)[0].trim();
+                  return presentation ? { ...sec, presentation } : sec;
+                })()}
                 sourceText={
                   opportunity.description && !isRedundantWithTitle(opportunity.description, opportunity.title)
                     ? opportunity.description
@@ -1409,7 +1420,10 @@ export default function OpportunityDetailPage() {
             // 20 Sep audit: with no facts at all this card used to promise
             // "Analyse en cours" whatever the status (including never-run and
             // failed). Only claim a run in progress while one actually is.
-            if (!facts && opportunity.ai_classification_status !== 'processing') return null;
+            // Client (WhatsApp, 15 Oct): while the analysis is pending this card repeated
+            // the exact pending sentence already shown in "Le marché en 30 secondes"
+            // just above. Show it only once a real risk list exists.
+            if (!facts) return null;
             return (
               <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
                 <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
