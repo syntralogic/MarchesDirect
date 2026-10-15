@@ -11,6 +11,7 @@ import { useLang } from '@/contexts/LangContext';
 import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import DemoVideoModal from '@/components/DemoVideoModal';
+import XhDemo from '@/components/xh/XhDemo';
 import { CallbackModal } from '@/components/CallbackModal';
 import { tradesApi, type ApiTradeSuggestion } from '@/lib/apiClient';
 import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
@@ -1795,6 +1796,7 @@ export default function HomePage() {
         description="Trouvez et candidatez aux marchés publics, appels d'offres privés et missions de sous-traitance partout en France. Analyse IA du DCE, scoring de compatibilité et génération de dossier."
       />
       <HeroSection onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
+      <XhDemo onReserve={() => setAppointmentOpen(true)} />
       <DemoWalkthroughSection />
       <TestimonialsSection />
       <TeamSection />
