@@ -1,8 +1,9 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Download, Search, ChevronDown, ChevronRight, Star, ExternalLink, Play, RefreshCw } from 'lucide-react';
+import { Loader2, Download, Search, ChevronDown, ChevronRight, Star, ExternalLink, Play, RefreshCw, PlugZap } from 'lucide-react';
 import { AdminLayout, showToast } from '@/pages/AdminLayout';
 import {
   adminApi, getApiErrorMessage, type ApiProspect, type ApiProspectFilters, type ApiProspectMeta, type ApiJobState,
+  type ApiProvider, type ApiGoogleTestResult,
 } from '@/lib/apiClient';
 
 // Part 6 - French company / artisan prospecting database. Every requested field is reachable here
@@ -157,6 +158,28 @@ export default function AdminProspects() {
     } catch (e) { showToast(getApiErrorMessage(e, 'Enrichissement impossible.'), 'error'); }
   };
 
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ApiGoogleTestResult | null>(null);
+  const [providers, setProviders] = useState<ApiProvider[] | null>(null);
+  const [showProviders, setShowProviders] = useState(false);
+
+  const testGoogle = async () => {
+    if (!window.confirm('Cette vérification envoie UNE requête Google réelle (facturée selon votre tarif, comptée dans le plafond quotidien). Continuer ?')) return;
+    setTesting(true); setTestResult(null);
+    try {
+      const r = await adminApi.testProspectGoogle(); setTestResult(r);
+      const m = await adminApi.prospectsMeta(); setMeta(m);
+    } catch (e) { showToast(getApiErrorMessage(e, 'Test impossible.'), 'error'); }
+    finally { setTesting(false); }
+  };
+  const toggleProviders = async () => {
+    const next = !showProviders; setShowProviders(next);
+    if (next && !providers) {
+      try { setProviders((await adminApi.prospectProviders()).providers); }
+      catch (e) { showToast(getApiErrorMessage(e, 'Sources indisponibles.'), 'error'); }
+    }
+  };
+
   const g = meta?.google;
   const cov = (k: string) => (stats && stats.total ? `${stats[k]} / ${stats.total}` : '—');
 
@@ -221,6 +244,49 @@ export default function AdminProspects() {
           {job && <span>{job.running ? <Loader2 size={12} className="inline animate-spin mr-1" /> : null}{job.message} · lues {job.rowsRead} · ajoutées {job.added} · mises à jour {job.updated}</span>}
         </div>
         <div className={g?.state === 'ready' ? 'text-green-400' : 'text-orange'}>Google : {g?.message || '…'}</div>
+        {g?.lastError && (
+          <div className="mt-1 text-red-400">
+            Dernière erreur Google ({new Date(g.lastError.at).toLocaleString('fr-FR')}) : {g.lastError.code} – {g.lastError.message}
+            {g.lastError.hint ? <div className="text-[#B9BBC8]">Que faire : {g.lastError.hint}</div> : null}
+          </div>
+        )}
+        {g?.circuitOpenUntil && new Date(g.circuitOpenUntil) > new Date() && <div className="mt-1 text-orange">Appels Google suspendus jusqu’à {new Date(g.circuitOpenUntil).toLocaleTimeString('fr-FR')} après cette erreur (aucun coût pendant la pause).</div>}
+        {g?.lastOkAt && <div className="mt-1">Dernier appel Google réussi : {new Date(g.lastOkAt).toLocaleString('fr-FR')}</div>}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button onClick={testGoogle} disabled={testing || g?.state !== 'ready'} className="flex items-center gap-1.5 border border-[#17334D] text-white font-bold px-3 py-2 rounded-lg disabled:opacity-40 hover:border-orange/60" title="Envoie une requête de test réelle (1 appel facturé) pour vérifier clé, API activée, facturation et champs">
+            {testing ? <Loader2 size={13} className="animate-spin" /> : <PlugZap size={13} />} Tester la connexion Google (1 appel)
+          </button>
+          <button onClick={toggleProviders} className="flex items-center gap-1.5 border border-[#17334D] text-white font-bold px-3 py-2 rounded-lg hover:border-orange/60">
+            {showProviders ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Sources des données
+          </button>
+        </div>
+        {testResult && (
+          <div className={`mt-2 ${testResult.ok ? 'text-green-400' : 'text-red-400'}`}>
+            {testResult.message}
+            {testResult.ok && testResult.sample && <span className="text-[#B9BBC8]"> · lien Maps : {testResult.sample.hasMapsUri ? 'oui' : 'non'} · note : {testResult.sample.hasRating ? 'oui' : 'non'} · nombre d’avis : {testResult.sample.hasReviewCount ? 'oui' : 'non'}</span>}
+            {!testResult.ok && testResult.hint && <div className="text-[#B9BBC8]">Que faire : {testResult.hint}</div>}
+          </div>
+        )}
+        {showProviders && (
+          <div className="mt-3 overflow-x-auto">
+            {!providers ? <Loader2 size={14} className="animate-spin" /> : (
+              <table className="w-full text-left min-w-[720px]">
+                <thead className="text-[#8996A8]"><tr><th className="py-1 pr-3">Champs</th><th className="py-1 pr-3">Source</th><th className="py-1 pr-3">Coût</th><th className="py-1 pr-3">État</th><th className="py-1">Remarque</th></tr></thead>
+                <tbody>
+                  {providers.map(p => (
+                    <tr key={p.key} className="border-t border-[#17334D] align-top">
+                      <td className="py-1.5 pr-3 text-white">{p.fields.join(', ')}</td>
+                      <td className="py-1.5 pr-3">{p.provider}</td>
+                      <td className="py-1.5 pr-3">{p.cost === 'free' ? 'Gratuit' : p.cost === 'paid' ? 'Payant' : '—'}</td>
+                      <td className={`py-1.5 pr-3 ${p.ready ? 'text-green-400' : 'text-orange'}`}>{p.readyMessage}{p.needs.length ? <div className="text-[#8996A8]">Requis : {p.needs.join(' ; ')}</div> : null}</td>
+                      <td className="py-1.5 text-[#B9BBC8]">{p.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
         {stats && <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-x-4 gap-y-1">
           {([['phone', 'Téléphone'], ['email', 'E-mail'], ['website', 'Site web'], ['facebook', 'Facebook'], ['google_maps', 'Fiche Google'], ['google_rating', 'Note'], ['google_review_count', 'Nb avis'], ['revenue', 'CA']] as const).map(([k, l]) => <div key={k}>{l} : <span className="text-white">{cov(k)}</span></div>)}
         </div>}

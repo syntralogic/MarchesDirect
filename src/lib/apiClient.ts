@@ -1216,7 +1216,19 @@ export type ApiProspectMeta = {
   professions: { key: string; label: string }[]; regions: string[]; departments: { code: string; region: string }[];
   columns: { key: string; header: string }[]; google: ApiGoogleStatus;
 };
-export type ApiGoogleStatus = { state: 'disabled_no_key' | 'disabled_not_approved' | 'cap_zero' | 'ready'; message: string; dailyCap: number; usedToday: number };
+export type ApiGoogleStatus = {
+  state: 'disabled_no_key' | 'disabled_not_approved' | 'cap_zero' | 'ready'; message: string; dailyCap: number; usedToday: number;
+  lastOkAt?: string | null; circuitOpenUntil?: string | null; lastError?: { code: string; message: string; hint: string | null; at: string } | null;
+};
+export type ApiProvider = {
+  key: string; provider: string; fields: string[]; state: 'integrated' | 'integrated_gated' | 'not_integrated' | 'not_possible';
+  cost: 'free' | 'paid' | 'n/a'; needs: string[]; note: string; ready: boolean; readyMessage: string;
+};
+export type ApiGoogleTestResult = {
+  ok: boolean; message: string; code?: string; hint?: string;
+  sample?: { name: string | null; hasMapsUri: boolean; hasRating: boolean; hasReviewCount: boolean };
+  google?: ApiGoogleStatus;
+};
 export type ApiJobState = { running: boolean; message: string; rowsRead: number; added: number; updated: number; kind?: string };
 
 const cleanParams = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false));
@@ -1235,6 +1247,12 @@ export const adminApi = {
   startProspectEnrich: async (kind: 'google' | 'website', body: ApiProspectFilters & { limit?: number }) =>
     (await apiClient.post(`/admin/prospects/enrich/${kind}`, cleanParams(body))).data as { started: boolean; state: ApiJobState },
   prospectEnrichStatus: async (): Promise<ApiJobState> => (await apiClient.get('/admin/prospects/enrich/status')).data,
+  prospectProviders: async () => (await apiClient.get('/admin/prospects/providers')).data as { providers: ApiProvider[]; google: ApiGoogleStatus },
+  // One real, billed Google request. The server answers 409 (not approved) / 502 (Google refused) with the same JSON shape.
+  testProspectGoogle: async (): Promise<ApiGoogleTestResult> => {
+    try { return (await apiClient.post('/admin/prospects/google/test')).data as ApiGoogleTestResult; }
+    catch (e: any) { const d = e?.response?.data; if (d && typeof d.message === 'string') return d as ApiGoogleTestResult; throw e; }
+  },
   // Authenticated download (the Bearer header cannot be sent by a plain <a href>).
   downloadProspects: async (format: 'csv' | 'xlsx', f: ApiProspectFilters) => {
     const res = await apiClient.get(`/admin/prospects/export.${format}`, { params: cleanParams(f), responseType: 'blob' });
