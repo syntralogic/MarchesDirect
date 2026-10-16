@@ -1191,7 +1191,58 @@ export type ApiAdminStats = {
   recentActivity: { user: string; action: string; target: string; time: string }[];
 };
 
+
+// ---- Part 6: French company / artisan prospecting database -----------------
+export type ApiProspectFilters = {
+  q?: string; profession?: string; region?: string; department?: string; city?: string; postalCode?: string;
+  status?: 'active' | 'closed' | 'all'; hasGoogle?: boolean; hasFacebook?: boolean; hasPhone?: boolean;
+  hasEmail?: boolean; hasWebsite?: boolean; minRating?: number; sort?: string;
+};
+export type ApiProspect = {
+  id: number; siret: string; siren: string; is_head_office: boolean; company_name: string; trading_name: string | null;
+  naf_code: string | null; activity_label: string | null; profession: string; legal_form_label: string | null;
+  is_artisan: boolean | null; status: 'active' | 'closed'; creation_date: string | null; employee_range: string | null;
+  revenue_eur: string | number | null; revenue_year: number | null; net_result_eur: string | number | null;
+  address_line: string | null; postal_code: string | null; city: string | null; department: string | null; region: string | null;
+  directors: { name: string; role: string | null }[]; certifications: string[]; history: { date: string | null; event: string }[];
+  phone: string | null; email: string | null; website: string | null; facebook_url: string | null; instagram_url: string | null; linkedin_url: string | null;
+  google_maps_url: string | null; google_rating: string | number | null; google_review_count: number | null;
+  google_positive_review_count: number | null; google_positive_review_pct: string | number | null;
+  google_match_confidence: string | number | null; google_fetched_at: string | null;
+  field_meta: Record<string, { status: string; source?: string; at?: string; note?: string }>;
+  field_status?: Record<string, string>;
+};
+export type ApiProspectMeta = {
+  professions: { key: string; label: string }[]; regions: string[]; departments: { code: string; region: string }[];
+  columns: { key: string; header: string }[]; google: ApiGoogleStatus;
+};
+export type ApiGoogleStatus = { state: 'disabled_no_key' | 'disabled_not_approved' | 'cap_zero' | 'ready'; message: string; dailyCap: number; usedToday: number };
+export type ApiJobState = { running: boolean; message: string; rowsRead: number; added: number; updated: number; kind?: string };
+
+const cleanParams = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== false));
+
 export const adminApi = {
+  prospectsMeta: async (): Promise<ApiProspectMeta> => (await apiClient.get('/admin/prospects/meta')).data,
+  prospectsStats: async (): Promise<Record<string, any>> => (await apiClient.get('/admin/prospects/stats')).data,
+  prospects: async (f: ApiProspectFilters, page = 1, limit = 50) => {
+    const { data } = await apiClient.get<{ results: ApiProspect[]; pagination: ApiPagination }>('/admin/prospects', { params: cleanParams({ ...f, page, limit }) });
+    return data;
+  },
+  prospectDetail: async (id: number): Promise<ApiProspect> => (await apiClient.get(`/admin/prospects/${id}`)).data,
+  startProspectImport: async (body: { profession?: string; region?: string; department?: string; maxPagesPerQuery?: number }) =>
+    (await apiClient.post('/admin/prospects/import', body)).data as { started: boolean; state: ApiJobState },
+  prospectImportStatus: async (): Promise<ApiJobState> => (await apiClient.get('/admin/prospects/import/status')).data,
+  startProspectEnrich: async (kind: 'google' | 'website', body: ApiProspectFilters & { limit?: number }) =>
+    (await apiClient.post(`/admin/prospects/enrich/${kind}`, cleanParams(body))).data as { started: boolean; state: ApiJobState },
+  prospectEnrichStatus: async (): Promise<ApiJobState> => (await apiClient.get('/admin/prospects/enrich/status')).data,
+  // Authenticated download (the Bearer header cannot be sent by a plain <a href>).
+  downloadProspects: async (format: 'csv' | 'xlsx', f: ApiProspectFilters) => {
+    const res = await apiClient.get(`/admin/prospects/export.${format}`, { params: cleanParams(f), responseType: 'blob' });
+    const url = URL.createObjectURL(res.data as Blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `entreprises-${new Date().toISOString().slice(0, 10)}.${format}`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  },
   stats: async (): Promise<ApiAdminStats> => {
     const { data } = await apiClient.get<ApiAdminStats>('/admin/stats');
     return data;
