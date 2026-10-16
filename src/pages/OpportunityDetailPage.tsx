@@ -26,7 +26,7 @@ import { publicReference } from '@/lib/publicReference';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { SOCIAL_PROOF } from '@/lib/socialProof';
 import { useLang } from '@/contexts/LangContext';
-import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle } from '@/components/OpportunityAnalysisAccordions';
+import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle, isCoveredBy, isCoveredByAny } from '@/components/OpportunityAnalysisAccordions';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
 // once logged in, regardless of subscription (only the AI-assisted mémoire
@@ -1260,6 +1260,7 @@ export default function OpportunityDetailPage() {
             {hasAnalysisContent(opportunity.ai_analysis_sections) ? (
               <OpportunityAnalysisAccordions
                 sections={opportunity.ai_analysis_sections!}
+                title={opportunity.title}
                 sourceText={
                   opportunity.description && !isRedundantWithTitle(opportunity.description, opportunity.title)
                     ? opportunity.description
@@ -1387,7 +1388,15 @@ export default function OpportunityDetailPage() {
                 )}
                 {facts?.contract_object?.available
                   && !isRedundantWithTitle(facts.contract_object.value, opportunity.title)
-                  && !isRedundantWithTitle(facts.contract_object.value, opportunity.ai_summary) && (
+                  && !isRedundantWithTitle(facts.contract_object.value, opportunity.ai_summary)
+                  // 16 Oct (part 1): also skip when the analysis accordions above
+                  // already say the same thing in other words.
+                  && !isCoveredByAny(facts.contract_object.value, [
+                    opportunity.title,
+                    opportunity.ai_summary,
+                    opportunity.ai_analysis_sections?.presentation,
+                    opportunity.ai_analysis_sections?.conditions,
+                  ]) && (
                   <div className="mt-3 pt-3 border-t border-[#17334D]">
                     <p className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide mb-1">{t('quickStatScope') || 'Travaux à réaliser'}</p>
                     <p className="text-xs text-[#B9BBC8] leading-relaxed">{facts.contract_object.value}</p>
@@ -1404,7 +1413,17 @@ export default function OpportunityDetailPage() {
               opportunity (client's ask: same flow on every opportunity). */}
           {(() => {
             const facts = opportunity.ai_extracted_facts;
-            const risks = Array.isArray(facts?.key_risks?.value) ? facts.key_risks.value : [];
+            const rawRisks = Array.isArray(facts?.key_risks?.value) ? facts.key_risks.value : [];
+            // 16 Oct (part 1): the same point could be listed twice (or reworded
+            // copy of an earlier one) - keep the first occurrence only.
+            const risks = rawRisks.filter((risk, i) => {
+              const label = typeof risk === 'object' && risk !== null ? risk.label : risk;
+              if (typeof label !== 'string' || !label.trim()) return false;
+              return !rawRisks.slice(0, i).some(prev => {
+                const prevLabel = typeof prev === 'object' && prev !== null ? prev.label : prev;
+                return typeof prevLabel === 'string' && (isRedundantWithTitle(label, prevLabel) || isCoveredBy(label, prevLabel));
+              });
+            });
             if (facts && (!facts.key_risks?.available || risks.length === 0)) return null; // analyzed, genuinely nothing to flag
             // 20 Sep audit: with no facts at all this card used to promise
             // "Analyse en cours" whatever the status (including never-run and
@@ -1494,6 +1513,32 @@ export default function OpportunityDetailPage() {
           {(() => {
             const facts = opportunity.ai_extracted_facts;
             const rows: { label: string; value: string }[] = [];
+            // 16 Oct (part 1, contenu dupliqué): "Le marché en 30 secondes" already
+            // shows montant / équipe / durée when they are known, so those rows
+            // are not repeated here; and free-text rows that only restate the
+            // analysis accordions, the summary or the vigilance points are
+            // dropped (the information stays where it is already displayed).
+            const inGrid = {
+              amount: opportunity.estimated_value != null,
+              team: Boolean(facts?.team_size_estimate?.available),
+              duration: Boolean(facts?.contract_duration?.available),
+            };
+            const sectionsText = [
+              opportunity.title,
+              opportunity.ai_summary,
+              opportunity.ai_analysis_sections?.presentation,
+              opportunity.ai_analysis_sections?.conditions,
+              opportunity.ai_analysis_sections?.entreprises,
+              facts?.contract_object?.available ? facts.contract_object.value : null,
+              ...(Array.isArray(facts?.key_risks?.value)
+                ? facts.key_risks.value.map(r => (typeof r === 'object' && r !== null ? r.label : r))
+                : []),
+            ];
+            const addFreeText = (label: string, value: unknown) => {
+              if (typeof value !== 'string' || !value.trim()) return;
+              if (isCoveredByAny(value, sectionsText)) return;
+              rows.push({ label, value });
+            };
             // contract_object is already shown prominently above as
             // "Travaux à réaliser" ("Le marché en 30 secondes" block) -
             // repeating the exact same string here under "Objet du marché"
@@ -1502,7 +1547,7 @@ export default function OpportunityDetailPage() {
 
             // Prestations et lots
             if (facts?.allotment?.available) {
-              rows.push({ label: t('dossierFactAllotment'), value: facts.allotment.value });
+              addFreeText(t('dossierFactAllotment'), facts.allotment.value);
             } else {
               // DEV-03: lots straight from the notice ("Lots : a ; b ; c") when the
               // analysis did not produce an allotment - they are source data.
@@ -1515,19 +1560,24 @@ export default function OpportunityDetailPage() {
             // private tender / sous-traitance listings without a
             // BOAMP-style "allotissement" still need to show what's
             // actually known about the scope of the work.
-            if (facts?.scope_details?.available) rows.push({ label: t('dossierFactScope') || 'Périmètre et quantités', value: facts.scope_details.value });
+            if (facts?.scope_details?.available) addFreeText(t('dossierFactScope') || 'Périmètre et quantités', facts.scope_details.value);
 
             // Lieu — raw, never depended on AI extraction; previously
             // absent from this list entirely.
-            const lieu = [opportunity.location_city, opportunity.location_department, opportunity.location_region].filter(Boolean).join(', ');
+            const lieu = Array.from(new Set(
+              [opportunity.location_city, opportunity.location_department, opportunity.location_region]
+                .map(x => (x || '').trim())
+                .filter(Boolean)
+                .filter((x, i, arr) => arr.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i),
+            )).join(', ');
             if (lieu) rows.push({ label: t('dossierFactLocation') || 'Lieu', value: lieu });
 
             // Montant — raw estimated_value/currency fallback so a failed
             // AI pass still shows the budget the source notice itself gave.
-            if (facts?.estimated_value?.available) {
-              rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
-            } else if (opportunity.estimated_value != null) {
-              rows.push({ label: t('dossierFactValue'), value: formatAmount(opportunity.estimated_value, opportunity.currency) });
+            if (!inGrid.amount) {
+              if (facts?.estimated_value?.available) {
+                rows.push({ label: t('dossierFactValue'), value: facts.estimated_value.value });
+              }
             }
 
             // Plafond de commande — client audit (27 Sep, "maintenance CVC
@@ -1547,7 +1597,7 @@ export default function OpportunityDetailPage() {
             // durée, équipe) - AI-only, no raw equivalent on the notice.
             if (facts?.procedure_type?.available) rows.push({ label: t('dossierFactProcedure'), value: humanizeRawLabel(facts.procedure_type.value) || facts.procedure_type.value });
             if (facts?.submission_method?.available) rows.push({ label: t('dossierFactSubmissionMethod'), value: humanizeRawLabel(facts.submission_method.value) || facts.submission_method.value });
-            if (facts?.required_qualifications?.available) rows.push({ label: t('dossierFactQualifications'), value: facts.required_qualifications.value });
+            if (facts?.required_qualifications?.available) addFreeText(t('dossierFactQualifications'), facts.required_qualifications.value);
             // DEV-03: a mandatory visit is highlighted by its own label; an unknown
             // one says "À vérifier" instead of silently disappearing (absent !=
             // "no visit").
@@ -1558,10 +1608,10 @@ export default function OpportunityDetailPage() {
             } else {
               rows.push({ label: t('dossierFactTechnicalVisit'), value: 'À vérifier dans le règlement de consultation' });
             }
-            if (facts?.contract_duration?.available) rows.push({ label: t('dossierFactDuration'), value: facts.contract_duration.value });
-            if (facts?.intervention_calendar?.available) rows.push({ label: t('dossierFactCalendar') || "Calendrier d'intervention", value: facts.intervention_calendar.value });
-            if (facts?.team_size_estimate?.available) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
-            if (facts?.constraints_expectations?.available) rows.push({ label: t('dossierFactConstraints') || 'Contraintes et attentes', value: facts.constraints_expectations.value });
+            if (facts?.contract_duration?.available && !inGrid.duration) rows.push({ label: t('dossierFactDuration'), value: facts.contract_duration.value });
+            if (facts?.intervention_calendar?.available) addFreeText(t('dossierFactCalendar') || "Calendrier d'intervention", facts.intervention_calendar.value);
+            if (facts?.team_size_estimate?.available && !inGrid.team) rows.push({ label: t('dossierFactTeam'), value: facts.team_size_estimate.value });
+            if (facts?.constraints_expectations?.available) addFreeText(t('dossierFactConstraints') || 'Contraintes et attentes', facts.constraints_expectations.value);
 
             // Attribution info only ever shows up once BOAMP/DECP actually
             // publishes an award notice - not available on an open call for
@@ -1632,7 +1682,9 @@ export default function OpportunityDetailPage() {
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                 <h2 className="text-sm font-bold text-white mb-3">{t('dossierFactsTitle')}</h2>
                 <div className="space-y-2.5">
-                  {rows.map((r, i) => (
+                  {rows
+                    .filter((r, i) => rows.findIndex(o => o.value.trim().toLowerCase() === r.value.trim().toLowerCase() && o.label === r.label) === i)
+                    .map((r, i) => (
                     <div key={i} className="flex justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
                       <span className="text-[#B9BBC8] shrink-0">{r.label}</span>
                       <span className="text-white text-right">{linkifyText(r.value)}</span>

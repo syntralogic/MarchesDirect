@@ -126,10 +126,35 @@ function OpportunityPaths() {
   const { counts: openCounts, loading: loadingOpen } = useOpportunityCounts('active');
   const loading = loadingAll || loadingOpen;
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
+  // 16 Oct client brief (part 2, "clarté de la recherche"): a first-time visitor
+  // must understand at a glance what each of the 3 categories is, what he
+  // will find in it, who publishes it and what the platform does for him.
+  // Same 3 tiles, same links/counts/search: only the wording is richer.
   const paths = [
-    { icon: Building, title: 'Marchés publics', sub: 'Travaux et prestations pour les organismes publics', href: '/parcours?type=marches-publics', key: 'public_procurement' as const },
-    { icon: Building2, title: "Appels d'offres privés", sub: 'Besoins des entreprises, promoteurs et bailleurs privés', href: '/parcours?type=appels-doffres', key: 'tender' as const },
-    { icon: Handshake, title: 'Sous-traitance', sub: "Une partie d'un chantier ou d'une prestation à réaliser", href: '/parcours?type=sous-traitance', key: 'subcontracting' as const },
+    {
+      icon: Building,
+      title: 'Marchés publics',
+      sub: 'Travaux, fournitures et services commandés par des acheteurs publics',
+      detail: "Publiés par les communes, départements, régions, hôpitaux, bailleurs sociaux et l'État, avec mise en concurrence officielle (BOAMP, TED…). Marchés Direct les rassemble, les classe par métier et par zone, et résume chaque avis.",
+      href: '/parcours?type=marches-publics',
+      key: 'public_procurement' as const,
+    },
+    {
+      icon: Building2,
+      title: "Appels d'offres privés",
+      sub: 'Consultations lancées par des entreprises, promoteurs et bailleurs privés',
+      detail: "Publiés par des acteurs privés qui cherchent un prestataire pour un chantier ou un besoin précis. Marchés Direct les regroupe au même endroit et vous montre ceux qui correspondent à votre métier et à votre zone.",
+      href: '/parcours?type=appels-doffres',
+      key: 'tender' as const,
+    },
+    {
+      icon: Handshake,
+      title: 'Sous-traitance',
+      sub: "Une partie d'un chantier ou d'une prestation confiée à un artisan",
+      detail: "Proposée par une entreprise titulaire d'un marché ou un maître d'œuvre qui a besoin de renfort sur un lot ou un corps de métier. Marchés Direct vous aide à repérer les missions adaptées à votre activité.",
+      href: '/parcours?type=sous-traitance',
+      key: 'subcontracting' as const,
+    },
   ];
   return (
     <div className="grid grid-cols-1 gap-1 md:gap-2">
@@ -144,7 +169,8 @@ function OpportunityPaths() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
-              <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0.5 leading-tight md:leading-snug">{p.sub}</div>
+              <div className="text-[10px] md:text-[11px] text-[#EAF0F6] mt-0 md:mt-0.5 leading-tight md:leading-snug">{p.sub}</div>
+              <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-tight md:leading-snug">{p.detail}</div>
             </div>
             <div className="text-right whitespace-nowrap shrink-0">
               {loading
