@@ -27,7 +27,7 @@ import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { cleanAllotmentValue, cleanPresentationLots, splitLots } from '@/lib/lotsClean';
 import { SOCIAL_PROOF } from '@/lib/socialProof';
 import { useLang } from '@/contexts/LangContext';
-import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle, isCoveredBy, isCoveredByAny } from '@/components/OpportunityAnalysisAccordions';
+import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle, isCoveredBy, isCoveredByAny, safeHttpUrl } from '@/components/OpportunityAnalysisAccordions';
 
 // Spec 3.7: "Fin du parcours" company-document checklist - always addable
 // once logged in, regardless of subscription (only the AI-assisted mémoire
@@ -1319,12 +1319,12 @@ export default function OpportunityDetailPage() {
                       // climatisations obsolètes" pointed at a link that was
                       // never actually there. Only promise "ci-dessous" when
                       // that link will really render.
-                      ? (opportunity.official_url
+                      ? (safeHttpUrl(opportunity.official_url)
                           ? (t('detailAnalysisFailed') || "L'analyse automatique a échoué pour ce marché. Consultez l'annonce officielle ci-dessous.")
                           : (t('detailAnalysisFailedNoLink') || "L'analyse automatique a échoué pour ce marché."))
                       : opportunity.ai_classification_status === 'processing'
                         ? (t('detailAnalysisPending') || 'Les informations de la source sont affichées ci-dessous ; l’analyse détaillée n’est pas encore disponible.')
-                        : (opportunity.official_url
+                        : (safeHttpUrl(opportunity.official_url)
                             ? (t('detailNoDescription') || "Aucune description détaillée n'est disponible pour cette annonce. Consultez l'annonce officielle ci-dessous.")
                             : (t('detailNoDescriptionNoLink') || "Aucune description détaillée n'est disponible pour cette annonce."))}
                   </p>
@@ -1337,9 +1337,9 @@ export default function OpportunityDetailPage() {
                 buildOfficialUrl in the backend, which returns null rather
                 than guess one for sources without a stable public scheme
                 (e.g. DECP). */}
-            {opportunity.official_url && (
+            {safeHttpUrl(opportunity.official_url) && (
               <a
-                href={opportunity.official_url}
+                href={safeHttpUrl(opportunity.official_url) as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#4EA1FF] hover:underline"
@@ -1498,9 +1498,41 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             <h2 className="text-sm font-bold text-white mb-3">{t('accessBuyerTitle')}</h2>
             {identityUnlocked ? (
-              <div className="flex items-center gap-2 text-sm text-white">
-                <ShieldCheck size={15} className="text-green-400 shrink-0" />
-                {opportunity.buyer_name || (isPublic ? t('accessPublicBuyer') : t('accessUnlockedGeneric'))}
+              <div>
+                <div className="flex items-start gap-2 text-sm text-white">
+                  <ShieldCheck size={15} className="text-green-400 shrink-0 mt-0.5" />
+                  <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                    {opportunity.buyer_name || (isPublic ? t('accessPublicBuyer') : t('accessUnlockedGeneric'))}
+                  </span>
+                </div>
+                {!opportunity.buyer_name && (
+                  <p className="text-[11px] text-[#B9BBC8] mt-1 ml-[23px]">
+                    {t('accessBuyerNotInSource') || "Le nom de l'acheteur n'est pas indiqué dans la source."}
+                  </p>
+                )}
+                {(() => {
+                  const bf = opportunity.ai_extracted_facts;
+                  const buyerRows: { label: string; value: string }[] = [];
+                  if (bf?.buyer_phone?.available) buyerRows.push({ label: t('dossierFactBuyerPhone'), value: bf.buyer_phone.value });
+                  if (bf?.buyer_website?.available) buyerRows.push({ label: t('dossierFactBuyerWebsite'), value: bf.buyer_website.value });
+                  if (opportunity.buyer_history_count != null) buyerRows.push({
+                    label: t('dossierFactBuyerHistory'),
+                    value: opportunity.buyer_history_count === 0
+                      ? (t('dossierBuyerHistoryNone') || 'Aucun marché similaire publié')
+                      : t('dossierBuyerHistoryValue').replace('{n}', String(opportunity.buyer_history_count)),
+                  });
+                  if (buyerRows.length === 0) return null;
+                  return (
+                    <div className="mt-3 space-y-2 border-t border-[#17334D] pt-3">
+                      {buyerRows.map((r, i) => (
+                        <div key={i} className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-3 text-xs">
+                          <span className="text-[#B9BBC8] sm:shrink-0">{r.label}</span>
+                          <span className="text-white sm:text-right min-w-0 break-words [overflow-wrap:anywhere]">{linkifyText(r.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             ) : accessLoading ? (
               <div className="h-5 w-40 bg-[#17334D] rounded animate-pulse" />
@@ -1650,14 +1682,8 @@ export default function OpportunityDetailPage() {
             if (facts?.attribution_winner?.available) rows.push({ label: t('dossierFactAttributionWinner'), value: facts.attribution_winner.value });
             if (facts?.attribution_amount?.available) rows.push({ label: t('dossierFactAttributionAmount'), value: facts.attribution_amount.value });
             if (facts?.attribution_date?.available) rows.push({ label: t('dossierFactAttributionDate'), value: facts.attribution_date.value });
-            if (facts?.buyer_phone?.available) rows.push({ label: t('dossierFactBuyerPhone'), value: facts.buyer_phone.value });
-            if (facts?.buyer_website?.available) rows.push({ label: t('dossierFactBuyerWebsite'), value: facts.buyer_website.value });
-            if (opportunity.buyer_history_count != null) rows.push({
-              label: t('dossierFactBuyerHistory'),
-              value: opportunity.buyer_history_count === 0
-                ? (t('dossierBuyerHistoryNone') || 'Aucun marché similaire publié')
-                : t('dossierBuyerHistoryValue').replace('{n}', String(opportunity.buyer_history_count)),
-            });
+            // 16 Oct (part 3): buyer phone / website / history now belong to the
+            // "Donneur d'ordre" card above, not to this list.
             if (Array.isArray(facts?.selection_criteria?.value) && facts.selection_criteria.available && facts.selection_criteria.value.length > 0) {
               rows.push({
                 label: t('dossierFactCriteria') || 'Critères de notation',
@@ -1681,7 +1707,7 @@ export default function OpportunityDetailPage() {
             // official-looking identifier that isn't one.
             if (publicReference(opportunity)) {
               rows.push({
-                label: opportunity.official_url ? t('dossierFactReference') : (t('dossierFactReferenceInternal') || 'Référence'),
+                label: safeHttpUrl(opportunity.official_url) ? t('dossierFactReference') : (t('dossierFactReferenceInternal') || 'Référence'),
                 value: publicReference(opportunity) as string,
               });
             }
@@ -1700,7 +1726,7 @@ export default function OpportunityDetailPage() {
                           other "ci-dessous"/"ci-dessus" mention above: only
                           claim there's a link above when official_url (and
                           therefore that link block) actually exists. */}
-                      {opportunity.official_url
+                      {safeHttpUrl(opportunity.official_url)
                         ? (t('dossierFactsFailed') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant. Consultez l'annonce officielle ci-dessus.")
                         : (t('dossierFactsFailedNoLink') || "L'analyse automatique a échoué pour ce marché et aucune information de la source n'est disponible pour l'instant.")}
                     </p>
@@ -1716,9 +1742,9 @@ export default function OpportunityDetailPage() {
                   {rows
                     .filter((r, i) => rows.findIndex(o => o.value.trim().toLowerCase() === r.value.trim().toLowerCase() && o.label === r.label) === i)
                     .map((r, i) => (
-                    <div key={i} className="flex justify-between gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
-                      <span className="text-[#B9BBC8] shrink-0">{r.label}</span>
-                      <span className="text-white text-right">{linkifyText(r.value)}</span>
+                    <div key={i} className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-3 text-xs border-b border-[#17334D] last:border-0 pb-2.5 last:pb-0">
+                      <span className="text-[#B9BBC8] sm:shrink-0 sm:max-w-[40%]">{r.label}</span>
+                      <span className="text-white sm:text-right min-w-0 whitespace-pre-line break-words [overflow-wrap:anywhere]">{linkifyText(r.value)}</span>
                     </div>
                   ))}
                 </div>

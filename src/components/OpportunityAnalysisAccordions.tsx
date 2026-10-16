@@ -63,6 +63,33 @@ export function isCoveredByAny(text: string | null | undefined, containers: Arra
   return containers.some(c => isCoveredBy(text, c));
 }
 
+/**
+ * 16 Oct client brief (part 3, lisibilité mobile): the raw notice text is one
+ * long block ("Lots : a ; b ; c ; ..."). Only whitespace and separators are
+ * changed so it reads as short lines - no word is added, removed or reworded.
+ */
+export function formatSourceExtract(text: string): string {
+  return stripMarkdownArtifacts(text)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    // lot lists: one lot per line
+    .replace(/(Lots?\s*:)\s*/gi, '\n$1\n• ')
+    .replace(/\s;\s/g, '\n• ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Only real http(s) links are ever rendered as "Voir l'annonce officielle". */
+export function safeHttpUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url.trim());
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function OpportunityAnalysisAccordions({
   sections,
   sourceText,
@@ -130,7 +157,7 @@ export function OpportunityAnalysisAccordions({
               <ChevronDown size={14} className={`text-[#B9BBC8] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-              <div className="px-3.5 pb-4 text-sm text-[#EAF0F6] leading-relaxed whitespace-pre-line">
+              <div className="px-3.5 pb-4 text-sm text-[#EAF0F6] leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">
                 {stripMarkdownArtifacts(item.text)}
               </div>
             )}
@@ -152,8 +179,8 @@ export function OpportunityAnalysisAccordions({
             <ChevronDown size={13} className={`text-[#5B6B80] shrink-0 transition-transform ${sourceOpen ? 'rotate-180' : ''}`} />
           </button>
           {sourceOpen && (
-            <div className="px-3.5 pb-4 text-xs text-[#B9BBC8] leading-relaxed whitespace-pre-line">
-              {stripMarkdownArtifacts(sourceText)}
+            <div className="px-3.5 pb-4 text-xs text-[#B9BBC8] leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] max-h-[60vh] overflow-y-auto">
+              {formatSourceExtract(sourceText)}
             </div>
           )}
         </div>
