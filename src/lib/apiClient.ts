@@ -377,10 +377,13 @@ export type ApiMatchScore = {
 };
 
 export const opportunitiesApi = {
-  search: async (params: OpportunitySearchParams) => {
+  // `signal` lets the caller cancel a superseded search (Part 4, search
+  // performance): without it every keystroke/filter change left the previous
+  // request running server-side even though its answer was already discarded.
+  search: async (params: OpportunitySearchParams, signal?: AbortSignal) => {
     const { data } = await apiClient.get<{ results: ApiOpportunity[]; pagination: ApiPagination }>(
       '/opportunities',
-      { params }
+      { params, signal }
     );
     return data;
   },

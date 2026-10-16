@@ -13,6 +13,14 @@ import type { Opportunity } from '@/data/mockData';
 // hasMore/loadMore so pages can page through everything.
 const DEFAULT_PAGE_SIZE = 100;
 
+// Offset pagination can return the same row on two pages when the data shifts
+// between requests (a connector run lands mid-scroll); keep one card per id.
+// Distinct tenders have distinct ids so nothing is ever merged here.
+function dedupeById<T extends { id: string | number }>(items: T[]): T[] {
+  const seen = new Set<string | number>();
+  return items.filter((item) => (seen.has(item.id) ? false : (seen.add(item.id), true)));
+}
+
 export function useOpportunities(params: OpportunitySearchParams['journey'] | OpportunitySearchParams) {
   // Accepts either a bare journey (existing call sites: useOpportunities('tender'))
   // or a full filter object (region/trade_id/city/department/q) for pages that
@@ -39,6 +47,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const thisRequest = ++requestId.current;
 
     setLoading(true);
@@ -79,7 +88,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
 
     (async () => {
       try {
-        const first = await opportunitiesApi.search({ ...baseParams, page: 1, limit: PAGE_SIZE });
+        const first = await opportunitiesApi.search({ ...baseParams, page: 1, limit: PAGE_SIZE }, controller.signal);
         if (cancelled || thisRequest !== requestId.current) return;
         let allResults = first.results;
         let currentPage = 1;
@@ -88,7 +97,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
 
         while (currentPage < targetPages) {
           currentPage += 1;
-          const more = await opportunitiesApi.search({ ...baseParams, page: currentPage, limit: PAGE_SIZE });
+          const more = await opportunitiesApi.search({ ...baseParams, page: currentPage, limit: PAGE_SIZE }, controller.signal);
           if (cancelled || thisRequest !== requestId.current) return;
           allResults = [...allResults, ...more.results];
           totalPagesResolved = more.pagination?.totalPages ?? totalPagesResolved;
@@ -101,7 +110,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
           try { sessionStorage.removeItem(`loadedCount:${location.pathname}${location.search}`); } catch { /* non-fatal */ }
         }
 
-        setOpportunities(allResults.map(apiOpportunityToDisplay));
+        setOpportunities(dedupeById(allResults.map(apiOpportunityToDisplay)));
         setPage(currentPage);
         setTotal(first.pagination?.total ?? allResults.length);
         setTotalPages(totalPagesResolved);
@@ -121,6 +130,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature, PAGE_SIZE]);
@@ -135,7 +145,7 @@ export function useOpportunities(params: OpportunitySearchParams['journey'] | Op
       .search({ journey, region, city, lat, lng, radius_km, department, trade_id, q, status, min_value, max_value, recent_days, sort, nature, page: nextPage, limit: PAGE_SIZE })
       .then((data) => {
         if (thisRequest !== requestId.current) return; // filters changed underneath us
-        setOpportunities((prev) => [...prev, ...data.results.map(apiOpportunityToDisplay)]);
+        setOpportunities((prev) => dedupeById([...prev, ...data.results.map(apiOpportunityToDisplay)]));
         setPage(nextPage);
         setTotalPages(data.pagination?.totalPages ?? totalPages);
       })
