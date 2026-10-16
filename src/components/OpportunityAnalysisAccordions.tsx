@@ -26,23 +26,76 @@ export function isRedundantWithTitle(text: string | null | undefined, title: str
   return normalize(text) === normalize(title);
 }
 
+// 16 Oct client brief (part 1, "contenu dupliqué"): the same sentence kept
+// showing up in several blocks of a fiche (summary, "Travaux à réaliser",
+// "Détails du dossier", accordions, extrait de l'avis). An exact-string
+// comparison against the title was not enough: the extracted facts are
+// reworded copies of each other, so overlap is measured on normalised words.
+const normalizeForCompare = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+const significantWords = (s: string) =>
+  normalizeForCompare(s).split(' ').filter(w => w.length > 2);
+
+/**
+ * True when `text` brings nothing that `container` does not already say:
+ * either it is contained verbatim (once normalised) or, for texts of at
+ * least 6 significant words, 90 % of its words are already in `container`.
+ * Short values (amounts, dates, short labels) are never reported as covered,
+ * so structured data is not dropped by accident.
+ */
+export function isCoveredBy(text: string | null | undefined, container: string | null | undefined): boolean {
+  if (!text || !container) return false;
+  const nt = normalizeForCompare(text);
+  const nc = normalizeForCompare(container);
+  if (!nt || !nc) return false;
+  if (nt === nc) return true;
+  if (nt.length >= 25 && nc.includes(nt)) return true;
+  const words = significantWords(text);
+  if (words.length < 6) return false;
+  const pool = new Set(significantWords(container));
+  const hit = words.filter(w => pool.has(w)).length;
+  return hit / words.length >= 0.9;
+}
+
+/** Same as isCoveredBy, against any of several containers. */
+export function isCoveredByAny(text: string | null | undefined, containers: Array<string | null | undefined>): boolean {
+  return containers.some(c => isCoveredBy(text, c));
+}
+
 export function OpportunityAnalysisAccordions({
   sections,
   sourceText,
+  title,
   t,
 }: {
   sections: { presentation: string; conditions: string; entreprises: string };
+  // Opportunity title, already displayed in the page header: a section that
+  // only repeats it is left out.
+  title?: string | null;
   // Full, un-summarized source text (raw `description` field) - kept one
   // click away so nothing from the source is ever lost, per the client's
   // "ne pas perdre d'information" clarification.
   sourceText?: string | null;
   t: (key: string) => string;
 }) {
-  const items = [
+  const rawItems = [
     { key: 'presentation', icon: FileText, title: t('detailAccordionPresentation') || 'Présentation du marché', text: sections.presentation },
     { key: 'conditions', icon: Search, title: t('detailAccordionConditions') || 'Conditions et points à vérifier', text: sections.conditions },
     { key: 'entreprises', icon: Users, title: t('detailAccordionEntreprises') || 'Entreprises concernées', text: sections.entreprises },
   ].filter(item => item.text && item.text.trim().length > 0);
+  // A section that only restates the title or an earlier section is dropped
+  // (the earlier one keeps the information), so each accordion carries its own.
+  const dedupedItems = rawItems.filter((item, i) => {
+    if (isRedundantWithTitle(item.text, title)) return false;
+    return !rawItems.slice(0, i).some(prev => isCoveredBy(item.text, prev.text));
+  });
+  // Never end up with an empty list when the analysis does exist (that would
+  // read as "analyse en cours"): keep the first section in that case.
+  const items = dedupedItems.length > 0 ? dedupedItems : rawItems.slice(0, 1);
+  // The raw extract stays available one click away, unless the analysis
+  // above already reproduces it as is.
+  const showSource = Boolean(sourceText) && !items.some(it => isCoveredBy(sourceText, it.text));
 
   const [openKey, setOpenKey] = useState<string | null>(items[0]?.key ?? null);
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -84,7 +137,7 @@ export function OpportunityAnalysisAccordions({
           </div>
         );
       })}
-      {sourceText && (
+      {showSource && sourceText && (
         <div className="border border-[#17334D] rounded-xl bg-[#031B30] overflow-hidden">
           <button
             type="button"
