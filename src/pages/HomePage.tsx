@@ -381,6 +381,97 @@ function TeamSection() {
 }
 
 // ---------------------------------------------------------------------------
+// SITUATION ("Quelle est votre situation ?") - added 16 Oct from the client's
+// home preview (Marches-Direct-accueil-avec-analyse.html). One of the two
+// blocks that were missing from the live home; nothing else on the page moved.
+// ---------------------------------------------------------------------------
+function SituationSection({ onAppt }: { onAppt: () => void }) {
+  const [sit, setSit] = useState(-1);
+  const navigate = useNavigate();
+  const items = [
+    { q: 'Je n’ai jamais répondu à un marché', a: 'Commencez par une opportunité : nous vous aidons à comprendre les critères, les documents demandés et les étapes de candidature.', cta: 'Voir comment ça marche', go: () => navigate('/how-it-works') },
+    { q: 'Je manque de temps pour les dossiers', a: 'Votre chargé d’affaires prépare le dossier avec vous : vous apportez vos documents et vos prix, il structure le reste.', cta: 'Parler à un chargé d’affaires', go: onAppt },
+    { q: 'Je veux trouver de nouvelles opportunités', a: 'Marchés publics, appels d’offres privés et sous-traitance au même endroit, et les projets professionnels à suivre dans votre zone.', cta: 'Voir les marchés', go: () => navigate('/parcours') },
+  ];
+  const cur = sit >= 0 ? items[sit] : null;
+  return (
+    <section className="px-4 md:px-6 py-3 md:py-6 max-w-3xl md:max-w-5xl mx-auto w-full" aria-label="Votre situation">
+      <div className="rounded-2xl bg-[#0E2747] border border-[#17334D] p-4 md:p-6">
+        <h2 className="text-xl md:text-2xl font-extrabold text-white leading-tight mb-3">Quelle est votre situation ?</h2>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Votre situation">
+          {items.map((x, i) => (
+            <button
+              key={x.q}
+              type="button"
+              role="radio"
+              aria-checked={sit === i}
+              onClick={() => setSit(sit === i ? -1 : i)}
+              className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-left text-[15px] font-bold transition-colors ${sit === i ? 'border-orange bg-orange/15 text-white' : 'border-[#93C5FD]/30 text-[#E2E8F0] hover:border-orange/50'}`}
+            >
+              {x.q}
+            </button>
+          ))}
+        </div>
+        {cur && (
+          <div className="mt-3 pt-3 border-t border-[#93C5FD]/15">
+            <p className="text-[15px] md:text-base leading-snug text-[#CBD5E1] mb-1">{cur.a}</p>
+            <button type="button" onClick={cur.go} className="text-[15px] font-bold text-orange hover:underline min-h-[44px]">{cur.cta} →</button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TARIFS ("Un abonnement pour l'accompagnement...") - second block added 16 Oct
+// from the same client preview. Figures are the client's own, copied as-is.
+// ---------------------------------------------------------------------------
+function PricingSection() {
+  return (
+    <section id="mdh-tarifs" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
+      <div className="text-[15px] font-bold text-[#9DB8DE]">Tarifs</div>
+      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-4 leading-tight">Un abonnement pour l'accompagnement. Une commission seulement si vous signez.</h2>
+      <div className="rounded-2xl bg-[#0B1A31] border border-[#1E2E4A] p-4">
+        <div className="flex justify-between gap-2.5 py-2 border-b border-[#1E2E4A] text-[15px]">
+          <span className="text-[#9DB8DE]">Consulter les marchés publics</span>
+          <strong className="text-white">Libre</strong>
+        </div>
+        <div className="py-2.5 border-b border-[#1E2E4A]">
+          <div className="flex justify-between gap-2.5 flex-wrap text-[15px]">
+            <span className="text-white font-bold">Accompagnement</span>
+            <strong className="text-white">169 € HT/mois · 12 mois</strong>
+          </div>
+          <div className="text-sm text-[#9DB8DE]">ou 1 800 € HT, payable en 4 fois. Dû même sans marché signé.</div>
+          <div className="mt-2">
+            <div className="text-sm font-bold text-[#9DB8DE]">Ce que nous préparons avec vous</div>
+            <ul className="mt-1.5 grid gap-1.5">
+              {[
+                'Choisir les bons marchés, selon votre activité, votre zone et vos moyens',
+                'Comprendre les exigences : pièces, critères et délais',
+                'Préparer votre candidature : pièces, mémoire technique, dépôt',
+              ].map(li => (
+                <li key={li} className="relative pl-[22px] text-[14.5px] leading-snug text-[#E2E8F0]">
+                  <span className="absolute left-0.5 top-0 text-[13px] font-extrabold text-[#4ADE80]" aria-hidden="true">✓</span>{li}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-sm text-slate-400">Vous gardez la main : vos prix, vos engagements et la validation finale.</p>
+          </div>
+        </div>
+        <div className="pt-2.5">
+          <div className="flex justify-between gap-2.5 flex-wrap text-[15px]">
+            <span className="text-white font-bold">Commission de succès</span>
+            <strong className="text-orange">5 % à 0,5 %</strong>
+          </div>
+          <div className="text-sm text-[#9DB8DE]">Uniquement si vous signez un marché, selon votre contrat.</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // GEOGRAPHIC ("Des opportunités partout en France.")
 // ---------------------------------------------------------------------------
 interface GeographicSectionProps {
@@ -1797,6 +1888,7 @@ export default function HomePage() {
       />
       <HeroSection onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
       <XhDemo onReserve={() => setAppointmentOpen(true)} />
+      <SituationSection onAppt={() => setAppointmentOpen(true)} />
       <DemoWalkthroughSection />
       <TestimonialsSection />
       <TeamSection />
@@ -1807,6 +1899,7 @@ export default function HomePage() {
       />
       <SectorsSection tab={geoTab} selectedRegions={selectedRegions} selectedDepts={selectedDepts} />
       <BlogSection />
+      <PricingSection />
       <HomeFaqSection />
       <FinalCTA onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
       <AppointmentModal open={appointmentOpen} onClose={() => setAppointmentOpen(false)} />
