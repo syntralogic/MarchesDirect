@@ -191,11 +191,11 @@ export default function AdminProspects() {
           <p className="text-sm text-[#B9BBC8]">Registre SIRENE, coordonnées, réseaux, fiche Google. {stats ? `${stats.total.toLocaleString('fr-FR')} établissements en base.` : ''}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => doExport('csv')} disabled={!!exporting || total === 0} className="flex items-center gap-1.5 border border-orange text-orange font-bold text-xs px-4 py-2.5 rounded-lg disabled:opacity-50">
+          <button onClick={() => doExport('csv')} disabled={!!exporting || total === 0} title="Toutes les colonnes, UTF-8 (accents OK dans Excel), séparateur « ; »" className="flex items-center gap-1.5 border border-orange text-orange font-bold text-xs px-4 py-2.5 rounded-lg disabled:opacity-50">
             {exporting === 'csv' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} CSV ({total.toLocaleString('fr-FR')})
           </button>
-          <button onClick={() => doExport('xlsx')} disabled={!!exporting || total === 0} className="flex items-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg disabled:opacity-50">
-            {exporting === 'xlsx' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Excel (.xlsx)
+          <button onClick={() => doExport('xlsx')} disabled={!!exporting || total === 0} title="Toutes les colonnes + feuille « Légende » (filtres, sources, limites des données)" className="flex items-center gap-1.5 bg-orange text-white font-bold text-xs px-4 py-2.5 rounded-lg disabled:opacity-50">
+            {exporting === 'xlsx' ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Excel ({total.toLocaleString('fr-FR')})
           </button>
         </div>
       </div>
