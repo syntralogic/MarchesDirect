@@ -24,6 +24,7 @@ import {
 import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from '@/lib/utils';
 import { publicReference } from '@/lib/publicReference';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
+import { cleanAllotmentValue, cleanPresentationLots, splitLots } from '@/lib/lotsClean';
 import { SOCIAL_PROOF } from '@/lib/socialProof';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle, isCoveredBy, isCoveredByAny } from '@/components/OpportunityAnalysisAccordions';
@@ -1259,7 +1260,21 @@ export default function OpportunityDetailPage() {
           <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
             {hasAnalysisContent(opportunity.ai_analysis_sections) ? (
               <OpportunityAnalysisAccordions
-                sections={opportunity.ai_analysis_sections!}
+                sections={(() => {
+                  // Client (WhatsApp, 15 Oct): the lots list showed twice - once in
+                  // "Présentation du marché" and again as "Allotissement" in "Détails du
+                  // dossier". When the details block lists the lots, drop the repeated
+                  // "Lots indiqués dans l'avis : ..." list from the presentation text.
+                  const sec0 = opportunity.ai_analysis_sections!;
+                  // Junk "lots" (code-list tokens, appeal body, org names) stored by earlier ingestions are scrubbed here.
+                  const sec = { ...sec0, presentation: cleanPresentationLots(sec0.presentation) };
+                  const descLots = (/(?:^|\n)\s*Lots\s*:\s*([\s\S]+)$/.exec(String(opportunity.description || ''))?.[1]) || '';
+                  const lotsShownBelow = Boolean(cleanAllotmentValue(opportunity.ai_extracted_facts?.allotment?.available ? opportunity.ai_extracted_facts.allotment.value : ''))
+                    || splitLots(descLots).length > 0;
+                  if (!lotsShownBelow) return sec;
+                  const presentation = String(sec.presentation || '').split(/\n\s*Lots indiqués dans l['’]avis\s*:/i)[0].trim();
+                  return presentation ? { ...sec, presentation } : sec;
+                })()}
                 title={opportunity.title}
                 sourceText={
                   opportunity.description && !isRedundantWithTitle(opportunity.description, opportunity.title)
@@ -1360,6 +1375,18 @@ export default function OpportunityDetailPage() {
             if (facts?.team_size_estimate?.available) cells.push({ label: t('quickStatTeam') || 'Équipe', value: facts.team_size_estimate.value });
             if (opportunity.estimated_start_date) cells.push({ label: t('quickStatStart') || 'Démarrage', value: formatDate(opportunity.estimated_start_date) });
             if (facts?.contract_duration?.available) cells.push({ label: t('quickStatDuration') || 'Durée', value: facts.contract_duration.value });
+            // Client (15 Oct): "je vois rien" - this card showed only the pending sentence.
+            // Fill it from what the notice itself states (never invented): deadline, place, nature, lots.
+            const srcDeadline = formatDeadlineExact(opportunity.deadline as any);
+            if (srcDeadline) cells.push({ label: t('quickStatDeadline') || 'Date limite', value: srcDeadline });
+            const srcPlace = [opportunity.location_city, opportunity.location_department && `(${opportunity.location_department})`].filter(Boolean).join(' ');
+            if (srcPlace) cells.push({ label: t('quickStatPlace') || "Lieu d'exécution", value: srcPlace });
+            const NATURE: Record<string, string> = { travaux: 'Travaux', fournitures: 'Fournitures', etudes: 'Études / prestations', mixte: 'Prestations mixtes' };
+            const srcNature = NATURE[String((opportunity as any).nature_prestation || '')];
+            if (srcNature) cells.push({ label: t('quickStatNature') || 'Nature', value: srcNature });
+            const srcLotsRaw = (/(?:^|\n)\s*Lots\s*:\s*([\s\S]+)$/.exec(String(opportunity.description || ''))?.[1]) || '';
+            const srcLots = splitLots(srcLotsRaw);
+            if (srcLots.length > 1) cells.push({ label: t('quickStatLots') || 'Lots', value: String(srcLots.length) });
             return (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                 <div className="flex items-center justify-between gap-2 mb-3">
@@ -1428,7 +1455,10 @@ export default function OpportunityDetailPage() {
             // 20 Sep audit: with no facts at all this card used to promise
             // "Analyse en cours" whatever the status (including never-run and
             // failed). Only claim a run in progress while one actually is.
-            if (!facts && opportunity.ai_classification_status !== 'processing') return null;
+            // Client (WhatsApp, 15 Oct): while the analysis is pending this card repeated
+            // the exact pending sentence already shown in "Le marché en 30 secondes"
+            // just above. Show it only once a real risk list exists.
+            if (!facts) return null;
             return (
               <div className="bg-orange/5 border border-orange/20 rounded-2xl p-5 md:p-6">
                 <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><AlertTriangle size={15} className="text-orange" /> {t('dossierRisksTitle')}</h2>
@@ -1546,13 +1576,14 @@ export default function OpportunityDetailPage() {
             // description" complaint, so it's intentionally left out.
 
             // Prestations et lots
-            if (facts?.allotment?.available) {
-              addFreeText(t('dossierFactAllotment'), facts.allotment.value);
+            const cleanAllot = facts?.allotment?.available ? cleanAllotmentValue(facts.allotment.value) : '';
+            if (cleanAllot) {
+              rows.push({ label: t('dossierFactAllotment'), value: cleanAllot });
             } else {
               // DEV-03: lots straight from the notice ("Lots : a ; b ; c") when the
               // analysis did not produce an allotment - they are source data.
               const m = /(?:^|\n)\s*Lots\s*:\s*([\s\S]+)$/.exec(String(opportunity.description || ''));
-              const lotList = m ? m[1].split(/\s;\s/).map(x => x.replace(/\s+/g, ' ').trim()).filter(x => x.length >= 4) : [];
+              const lotList = m ? splitLots(m[1]) : [];
               if (lotList.length) rows.push({ label: t('dossierFactAllotment'), value: lotList.join(' · ') });
             }
 
