@@ -839,6 +839,7 @@ export default function OpportunityDetailPage() {
       .then(setMatchScore)
       .catch(err => {
         scoreFailedKeyRef.current = `${id}|${isAuthenticated}`;
+        console.warn('[concordance] analysis failed', getApiErrorCode(err), getApiErrorMessage(err, ''));
         setScoreErrorCode(getApiErrorCode(err) || null);
         setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité."));
       })
@@ -2039,9 +2040,17 @@ export default function OpportunityDetailPage() {
               : scoreErrorCode === 'company_not_identified'
                 ? `Nous n'avons pas pu rattacher ${siretCompany?.name || 'votre entreprise'}${siretCompany?.siret ? ` (SIRET ${siretCompany.siret})` : ''} à cette analyse. Confirmez votre établissement pour poursuivre.`
                 : scoreError;
+            // Shown when the real cause is something other than the two messages above, so a network or server
+            // problem is never hidden behind the "cessé" notice.
+            const realCause = scoreErrorCode !== 'company_not_identified' && scoreError !== blockedMessage ? scoreError : null;
+            const blockedAdvice = closedCompany
+              ? "Votre compatibilité s'affichera dès que votre établissement actif sera sélectionné. Vous pouvez dès maintenant parcourir un extrait de votre dossier et nous indiquer votre situation : nous la clarifierons ensemble."
+              : "Votre compatibilité n'a pas pu s'afficher pour le moment. Ce n'est pas bloquant : vous pouvez découvrir un extrait de votre dossier et nous indiquer votre situation, nous ferons le point ensemble.";
             return (
+              <div className="space-y-4">
               <div role="alert" className="bg-[#061D32] border border-orange/40 rounded-2xl p-4">
                 <p className="text-sm text-white leading-relaxed">{blockedMessage}</p>
+                {realCause && <p className="mt-1.5 text-xs text-[#8A9BB0] leading-snug">{realCause}</p>}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -2060,6 +2069,16 @@ export default function OpportunityDetailPage() {
                     </button>
                   )}
                 </div>
+              </div>
+              {!closedFiche && (
+                <AdvisorInsight
+                  id="advisor-concordance"
+                  advice={blockedAdvice}
+                  journey={opportunity.journey}
+                  ctaLabel="Découvrir mon dossier prérempli"
+                  onNext={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                />
+              )}
               </div>
             );
           })()
