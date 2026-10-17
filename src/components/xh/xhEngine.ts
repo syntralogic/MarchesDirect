@@ -19,6 +19,11 @@ export function xhEngine(root, opts) {
   var pz = Q('.xh-pz'), again = Q('.xh-again');
   var SIRET = root.getAttribute('data-siret') || '', SCORE = +(root.getAttribute('data-score') || 72);
   var N = secN.reduce(function (a, b) { return a + b; }, 0), HOLD = 8, LOOP = opts.loop !== false, C = 326.73;
+  // Personalised analysis (client brief 17 Oct): opts.intro = extra seconds the recognised company stays on screen,
+  // opts.speed = multiplier on the per-line and per-step pauses (< 1 = faster), opts.calcHold = length of the
+  // "Calcul de l'indice" pause, opts.onResult = called when the result would appear: the sequence then stops (no
+  // illustrative score is ever shown in the real journey).
+  var INTRO = opts.intro || 0, SPEED = opts.speed || 1, CALC = opts.calcHold == null ? 1.0 : opts.calcHold;
   var ST = ['s-type', 's-found', 's-ready', 's-press', 's-ov', 's-calc', 's-out', 's-res'];
   var MSG = { start: 'Analyse en cours', run: 'Croisement en cours', calc: "Calcul de l'indice" };
   var tl = [], raf = 0, t0 = 0, state = 'idle', paused = false, pauseAt = 0, restart = false;
@@ -72,6 +77,7 @@ export function xhEngine(root, opts) {
     t += SIRET.length * 0.07 + 0.3;
     at(t, function () { on('s-found'); inp.classList.remove('is-focus'); });
     t += 0.45; at(t, function () { on('s-ready'); });
+    t += INTRO;                       // le visiteur a le temps de reconnaître sa société
     // 2. il valide
     t += 0.6; at(t, function () { on('s-press'); });
     t += 0.35; at(t, function () { setFlow(2); on('s-ov'); });
@@ -81,19 +87,20 @@ export function xhEngine(root, opts) {
     secs.forEach(function (sc, si) {
       var n = secN[si];
       at(t, function () { sc.classList.add('is-open'); rollTo(si, 0, 0); });
-      t += 0.26;
+      t += 0.26 * SPEED;
       for (var j = 0; j < n; j++) (function (j) {
-        var per = j < 2 ? 0.13 : (j < 4 ? 0.08 : 0.04), kk = ++k;
+        var per = (j < 2 ? 0.13 : (j < 4 ? 0.08 : 0.04)) * SPEED, kk = ++k;
         at(t, function () { rollTo(si, j, Math.min(per * 0.8, 0.12)); setSec(si, j + 1); setProg(kk); });
         t += per;
       })(j);
-      t += 0.14;
+      t += 0.14 * SPEED;
       at(t, function () { sc.classList.remove('is-open'); sc.classList.add('is-done'); });
-      t += 0.08;
+      t += 0.08 * SPEED;
     });
     t += 0.25; at(t, function () { on('s-calc'); ps.textContent = MSG.calc; });
-    t += 1.0; at(t, function () { on('s-out'); });
+    t += CALC; at(t, function () { on('s-out'); });
     // 4. le pourcentage, puis le résultat aux couleurs du site
+    if (opts.onResult) { t += 0.3; at(t, function () { setFlow(3); setProg(N); opts.onResult(); }); tl.sort(function (a, b) { return a.t - b.t; }); return; }
     t += 0.3; at(t, function () { root.classList.remove('s-ov', 's-out', 's-calc'); on('s-res'); setFlow(3); });
     t += 0.25;
     var dur = 0.9;

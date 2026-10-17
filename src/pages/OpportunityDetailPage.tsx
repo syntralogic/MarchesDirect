@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { CompanyAnalysisOverlay } from '@/components/CompanyAnalysisOverlay';
+import { PersonalizedAnalysis } from '@/components/xh/PersonalizedAnalysis';
+import { AdvisorFrame } from '@/components/AdvisorFrame';
+import elenaPortrait from '@/assets/1.jpeg';
+import { CallbackModal } from '@/components/CallbackModal';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
   CheckCircle2, XCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
@@ -386,6 +389,7 @@ export default function OpportunityDetailPage() {
   const [quickPasswordDone, setQuickPasswordDone] = useState(false);
   const [quickPasswordDismissed, setQuickPasswordDismissed] = useState(false);
   const [showAccountManagerModal, setShowAccountManagerModal] = useState(false);
+  const [callbackOpen, setCallbackOpen] = useState(false);
   // "Votre dossier" 5-section aperçu (client's 12 Sep dossier-demo
   // reference, Écran "3. Dossier") - replaces the old locked
   // "Préparer ma candidature" card below. Backed by dossier_requests
@@ -1494,6 +1498,10 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
+          {/* Client brief 17 Oct, point 1: the human support is the most important block. It comes right after the
+              summary and the points of attention, before the technical details (buyer, dossier facts). */}
+          {!closedFiche && <AdvisorFrame id="advisor-fiche" onAppointment={() => setShowAccountManagerModal(true)} onCallback={() => setCallbackOpen(true)} />}
+
           {/* DONNEUR D'ORDRE — info only here (public markets show it
               outright, private ones show the locked placeholder); the
               actual booking form lives in the "suivi & rappel" block at the
@@ -1780,7 +1788,15 @@ export default function OpportunityDetailPage() {
           screens. Split into two mutually exclusive, single-screen blocks:
           the search form only ever belongs to screen 1, the company card /
           concordance / lead capture only ever belongs to screen 2. */}
-      {analyzing && <CompanyAnalysisOverlay companyName={siretCompany?.name} subject={opportunity?.title} onDone={endAnalysis} />}
+      {analyzing && (
+        <PersonalizedAnalysis
+          company={{ name: siretCompany?.name, siret: siretCompany?.siret, city: siretCompany?.city, postal: siretCompany?.postal, activity: siretCompany?.activity, ape: siretCompany?.ape }}
+          market={{ title: opportunity?.title, city: opportunity?.location_city, department: opportunity?.location_department, value: opportunity?.estimated_value, deadline: opportunity?.deadline as string | null }}
+          ready={Boolean(matchScore) || Boolean(scoreError)}
+          onDone={endAnalysis}
+          onCancel={() => setAnalyzing(false)}
+        />
+      )}
       {screen === 1 && !isAuthenticated && (
           <div className="space-y-4">
             {/* DEV-06 (plan de corrections, 3 Oct): after "Précédent" the visitor
@@ -2112,6 +2128,9 @@ export default function OpportunityDetailPage() {
                     )}
 
                   </div>
+
+                  {/* Client brief 17 Oct, point 1: right after the result, before the detailed explanations. */}
+                  {!closedFiche && <AdvisorFrame id="advisor-concordance" onAppointment={() => setShowAccountManagerModal(true)} onCallback={() => setCallbackOpen(true)} />}
 
                   {/* Compact synthesis + ONE closed accordion holding the full six-criteria analysis. */}
                   {total > 0 && (
@@ -3017,7 +3036,14 @@ export default function OpportunityDetailPage() {
           </div>
 
           {/* 4. Accompagnement complet (position 3) */}
-          <div id="accompagnement-block" className="rounded-2xl border border-orange/70 bg-[#061D32] p-4">
+          <div id="accompagnement-block" className="rounded-2xl p-4 md:p-5" style={{ background: 'linear-gradient(180deg, rgba(255,101,0,.13) 0%, rgba(255,101,0,.04) 100%), #0A2236', border: '1.5px solid rgba(255,101,0,.62)', boxShadow: '0 12px 30px -16px rgba(255,101,0,.45)' }}>
+            <div className="flex items-center gap-3 mb-3">
+              <img src={elenaPortrait} alt="Elena" width={48} height={48} loading="lazy" decoding="async" className="w-12 h-12 shrink-0 grow-0 rounded-full object-cover border-2 border-orange" />
+              <div className="min-w-0">
+                <p className="text-[12px] font-bold uppercase tracking-wide text-[#FDBA74]">Votre accompagnement</p>
+                <p className="text-sm text-[#B9BBC8]">Elena · Votre premier contact</p>
+              </div>
+            </div>
             {accompaniedToday != null && accompaniedToday > 0 && (
               <p className="flex items-center gap-1.5 text-[11px] font-semibold text-green-400 mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
@@ -3062,10 +3088,10 @@ export default function OpportunityDetailPage() {
               </button>
             ) : (
               <>
-                <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors">
+                <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-2 bg-[#c24e00] text-white text-[15px] font-bold min-h-[48px] rounded-xl hover:bg-[#d65600] transition-colors">
                   <Calendar size={14} /> {t('dv13Cta') || 'Réserver mes 30 minutes offertes'}
                 </button>
-                <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="block mx-auto mt-3 text-xs font-semibold text-[#B9BBC8] underline underline-offset-2 hover:text-white">
+                <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} aria-expanded={contactChoice === 'callback'} className="w-full mt-2.5 min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl border border-orange text-[#FDBA74] hover:bg-orange/10 text-[15px] font-semibold px-4 transition-colors">
                   {t('dv13CallMe') || 'Être rappelé'}
                 </button>
             {contactChoice === 'callback' && (
@@ -3209,6 +3235,7 @@ export default function OpportunityDetailPage() {
         );
       })()}
 
+      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
       <AppointmentModal
         open={showAccountManagerModal}
         onClose={() => setShowAccountManagerModal(false)}

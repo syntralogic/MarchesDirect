@@ -1,0 +1,11 @@
+/* Analyse personnalisée (retour client 17 oct.) : mêmes styles que l'animation de l'accueil (xh.css), seulement
+   deux ajouts : le libellé « Entreprise retrouvée » et le nom de l'entreprise qui reste visible pendant l'analyse. */
+.xh-pers .xh-rf{display:block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#FDBA74;margin-bottom:2px}
+.xh-pers .xh-osub{color:#fff;font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.xh-pers .xh-osub small{display:block;font-weight:500;font-size:12.5px;color:#B9BBC8;margin-top:1px}
+.xh-pers .xh-found b{overflow-wrap:anywhere}
+.xh-pers-actions{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:14px}
+.xh-pers-actions .xh-pers-go{min-height:48px;padding:0 22px;border-radius:12px;border:0;background:#c24e00;color:#fff;font:700 16px/1 inherit;font-family:inherit;cursor:pointer}
+.xh-pers-actions .xh-pers-go[disabled]{opacity:.55;cursor:default}
+.xh-pers-actions .xh-pers-back{min-height:44px;background:none;border:0;color:#B9BBC8;font:500 14px inherit;font-family:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.xh-pers-status{margin:10px 0 0;text-align:center;font-size:14px;color:#B9BBC8}
