@@ -2609,6 +2609,10 @@ export default function OpportunityDetailPage() {
                   {!(isAuthenticated || leadCaptured || pendingOtpVerification) && (
                     <form onSubmit={handleLeadSubmit} onFocusCapture={leadFormStartTracker} className="space-y-3">
                       <div>
+                        <h3 className="text-base font-extrabold text-white">{t('leadFormTitle')}</h3>
+                        <p className="text-xs text-[#B9BBC8] leading-relaxed mt-1">{t('leadFormExplain')}</p>
+                      </div>
+                      <div>
                         <label className="block text-sm font-semibold text-white mb-1.5">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
                         <input
                           value={leadEmail}
@@ -2625,8 +2629,10 @@ export default function OpportunityDetailPage() {
                           onChange={e => setLeadPhone(normalizeFrPhoneDigits(e.target.value))}
                           inputMode="numeric"
                           placeholder={t('leadPhonePlaceholder') || '06 12 34 56 78'}
+                          aria-describedby="lead-phone-help"
                           className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#8A9BB0] focus:outline-none focus:border-orange/50"
                         />
+                        <p id="lead-phone-help" className="text-xs text-[#B9BBC8] mt-1">{t('leadPhoneHelp')}</p>
                       </div>
                       {leadError && <p className="text-xs text-red-400">{leadError}</p>}
                       {/* Client's 12 Sep ask (with reference screenshot): keep
@@ -2709,9 +2715,10 @@ export default function OpportunityDetailPage() {
                           leadError message, inputs never cleared on
                           failure); this only changes the copy. */}
                       <button type="submit" disabled={leadSubmitting} className="w-full flex items-center justify-between gap-2 bg-orange text-white font-bold px-5 py-3.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                        <span>{t('leadSubmit') || 'Recevoir mon dossier et continuer'}</span>
+                        <span>{t('leadSubmit') || 'Recevoir mon dossier prérempli'}</span>
                         {leadSubmitting ? <Loader2 size={16} className="animate-spin" /> : <ChevronRight size={18} />}
                       </button>
+                      <p className="text-xs text-[#B9BBC8] text-center">{t('leadFormFree')}</p>
                     </form>
                   )}
 
