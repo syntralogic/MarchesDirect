@@ -355,7 +355,10 @@ export default function OpportunityDetailPage() {
   // reload) remounted the page with every "Affinez votre concordance"
   // answer wiped. Same per-opportunity sessionStorage pattern already used
   // for getConsultationsCount above.
-  const refineAnswersStorageKey = id ? `md_refine_answers_${id}` : null;
+  // Answers belong to ONE market and ONE company (guide v24 s.2): another market, or the
+  // same market looked at for another company, never inherits them automatically.
+  const refineCompanyKey = String((siretCompany as any)?.siret || (siretCompany as any)?.siren || (siretCompany as any)?.name || 'anon').replace(/\s+/g, '').slice(0, 40);
+  const refineAnswersStorageKey = id ? `md_refine_answers_${id}_${refineCompanyKey}` : null;
   const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>(() => {
     if (!refineAnswersStorageKey) return {};
     try {
@@ -1777,7 +1780,7 @@ export default function OpportunityDetailPage() {
           screens. Split into two mutually exclusive, single-screen blocks:
           the search form only ever belongs to screen 1, the company card /
           concordance / lead capture only ever belongs to screen 2. */}
-      {analyzing && <CompanyAnalysisOverlay companyName={siretCompany?.name} onDone={endAnalysis} />}
+      {analyzing && <CompanyAnalysisOverlay companyName={siretCompany?.name} subject={opportunity?.title} onDone={endAnalysis} />}
       {screen === 1 && !isAuthenticated && (
           <div className="space-y-4">
             {/* DEV-06 (plan de corrections, 3 Oct): after "Précédent" the visitor

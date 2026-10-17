@@ -21,31 +21,25 @@ import { Check, Search } from 'lucide-react';
 // - Purely a transition: it never blocks data and has a discreet "Passer" link.
 // - Motion is switched off for visitors who ask for reduced motion (the three
 //   seconds and the redirect stay).
-// - The client's recording also shows a hard figure ("taux de réussite 68 %")
-//   in one step. That is a statistic nobody computes for this visitor, so the
-//   step is kept without the number.
+// - Guide v24 (s.12, "aucune donnée fictive"): every line shown here must be work the
+//   site really does. The client's recording listed steps nobody runs for the visitor
+//   (financial solvency scoring, "probabilité d'attribution", success-rate comparables,
+//   OCR, 24-month history, "(IA)" scoring), so they are gone. The steps below are the
+//   real comparison: the six criteria of the concordance and nothing else.
 
 export const ANALYSIS_STEPS = [
-  'Vérification SIRENE / INSEE',
-  'Indexation base BOAMP / JOUE',
-  'Croisement RGE / Qualibat',
-  'Scoring de compatibilité métier (IA)',
-  'Analyse sémantique des critères techniques',
-  'Analyse de solvabilité (scoring financier)',
-  'Calcul de la probabilité d’attribution',
-  'Extraction OCR du cahier des charges',
-  'Comparables sectoriels — taux de réussite',
-  'Détection marchés similaires remportés',
-  'Historique marchés publics — 24 mois',
+  'Identification de l’entreprise (registre SIRENE)',
+  'Lecture de l’avis et de ses lots',
+  'Comparaison de l’activité avec les prestations demandées',
+  'Comparaison de la zone d’intervention',
+  'Rapprochement des moyens, références et qualifications',
+  'Calcul de l’indice de concordance',
 ];
 
 // Steps that make sense with no company identified yet (about the opportunity).
 export const OPPORTUNITY_STEPS = [
-  'Indexation base BOAMP / JOUE',
   'Lecture de l’avis et de ses lots',
-  'Extraction OCR du cahier des charges',
-  'Analyse sémantique des critères techniques',
-  'Détection marchés similaires remportés',
+  'Repérage des prestations demandées',
   'Préparation de votre fiche',
 ];
 
@@ -55,7 +49,7 @@ interface Props {
   durationMs?: number;
   /** 'company' (default): analysis of the visitor's company. 'opportunity': title of the opportunity being opened. */
   variant?: 'company' | 'opportunity';
-  /** Heading for the 'opportunity' variant (the opportunity title). */
+  /** The market: heading of the 'opportunity' variant, and shown under the company name in the 'company' variant so both screens name the same company and the same market. */
   subject?: string | null;
 }
 
@@ -109,6 +103,7 @@ export function CompanyAnalysisOverlay({ companyName, onDone, durationMs = 3000,
           <Search size={24} className="text-orange" aria-hidden="true" />
         </div>
         <h2 className={`font-extrabold text-white leading-tight break-words ${isOpp ? 'text-base line-clamp-3' : 'text-lg tracking-wide'}`}>{name}</h2>
+        {!isOpp && subject ? <p className="text-xs text-[#B9BBC8] mt-1 line-clamp-2">{`Marché : ${subject.slice(0, 110)}`}</p> : null}
         <p className="text-sm text-[#B9BBC8] mt-1.5 mb-4" role="status" aria-live="polite">
           {subtitle}
         </p>

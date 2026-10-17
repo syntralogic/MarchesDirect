@@ -12,7 +12,9 @@ export default function MiseEnRelationPage() {
   const oid = searchParams.get('oid');
   const orgParam = searchParams.get('org'); // legacy links from before `oid` existed
 
-  const fallback = mockSubcontractingOpportunities[0];
+  // No invented organisation (guide v24: no fictional data): when the real name is unknown the
+  // page says so in neutral words instead of naming a demo company.
+  const fallback = { organization: 'l’organisation concernée', category: undefined as string | undefined };
   const [company, setCompany] = useState<{ organization: string; category?: string }>(() => {
     const mockMatch = orgParam ? mockSubcontractingOpportunities.find(o => o.organization === orgParam) : undefined;
     return mockMatch ?? fallback;
