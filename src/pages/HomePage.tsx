@@ -237,7 +237,7 @@ function SituationSection({ onAppt }: { onAppt: () => void }) {
   const cur = sit >= 0 ? items[sit] : null;
   return (
     <section className="px-4 md:px-6 py-3 md:py-6 max-w-3xl md:max-w-5xl mx-auto w-full" aria-label="Votre situation">
-      <div className="rounded-2xl bg-[#0E2747] border border-[#17334D] p-4 md:p-6">
+      <div className="rounded-2xl bg-[#061D32] border border-[#17334D] p-4 md:p-6">
         <h2 className="text-xl md:text-2xl font-extrabold text-white leading-tight mb-3">Quelle est votre situation ?</h2>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Votre situation">
           {items.map((x, i) => (
@@ -247,14 +247,14 @@ function SituationSection({ onAppt }: { onAppt: () => void }) {
               role="radio"
               aria-checked={sit === i}
               onClick={() => setSit(sit === i ? -1 : i)}
-              className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-left text-[15px] font-bold transition-colors ${sit === i ? 'border-orange bg-orange/15 text-white' : 'border-[#93C5FD]/30 text-[#E2E8F0] hover:border-orange/50'}`}
+              className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-left text-[15px] font-bold transition-colors ${sit === i ? 'border-orange bg-orange/15 text-white' : 'border-[#17334D] bg-[#031B30] text-[#E2E8F0] hover:border-orange/50'}`}
             >
               {x.q}
             </button>
           ))}
         </div>
         {cur && (
-          <div className="mt-3 pt-3 border-t border-[#93C5FD]/15">
+          <div className="mt-3 pt-3 border-t border-[#17334D]">
             <p className="text-[15px] md:text-base leading-snug text-[#CBD5E1] mb-1">{cur.a}</p>
             <button type="button" onClick={cur.go} className="text-[15px] font-bold text-orange hover:underline min-h-[44px]">{cur.cta} →</button>
           </div>

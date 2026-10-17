@@ -720,3 +720,20 @@
   .mdhero.hx-tight.origin-app .hx .hx-sub.hx-promise{font-size:14px!important;line-height:19px!important;margin-bottom:6px!important}
   .mdhero.hx-tight.origin-app .hx-main{padding:12px!important}
 }
+
+/* Accueil mobile : la place libre est répartie dans la taille des éléments (retour client 17 oct. : « supprimer le vide
+   sous l'introduction, agrandir onglets, libellés, champs et bouton »). --hx-u est calculé dans MdHero.tsx (0 = aucune
+   place libre, 1 = 100 px à répartir). Total à u = 1 : onglets 28 + marge haute 8 + libellé 4 + champ 14 + 2 espaces 14
+   + libellé zone 3 + liste 14 + bouton 14 = 99 px. */
+@media (max-width:640px){
+  .mdhero.origin-app .hx-tab{min-height:calc(50px + 28px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-tab-l{font-size:calc(14px + 2px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-tab-d{font-size:calc(12px + 1px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-body{padding-top:calc(12px + 8px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-qlab2{font-size:calc(14px + 2px * var(--hx-u,0))!important;margin-bottom:calc(6px + 4px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-body .qfield{min-height:calc(46px + 14px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-body > div[style*="flex-wrap"]:not([role=radiogroup]){row-gap:calc(8px + 7px * var(--hx-u,0))!important}
+  .mdhero.origin-app .mf-zone .lbl{font-size:calc(14px + 2px * var(--hx-u,0))!important;margin-bottom:calc(4px + 3px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-body .field{min-height:calc(46px + 14px * var(--hx-u,0))!important}
+  .mdhero.origin-app .hx-body .btn-o{min-height:calc(52px + 14px * var(--hx-u,0))!important;font-size:calc(16px + 2px * var(--hx-u,0))!important}
+}

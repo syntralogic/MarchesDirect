@@ -66,13 +66,16 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
   const btnRef = useRef<HTMLButtonElement>(null);
 
   // Téléphone : le bouton orange « Rechercher » se place juste au-dessus de la barre de navigation fixe, quelle que soit
-  // la hauteur de l'écran, et le texte qui le suit passe sous la première vue (retour client 17 oct.). L'espace est ajouté
-  // entre la phrase d'introduction et le moteur ; il vaut 0 si l'écran est trop petit (le bouton reste alors visible).
+  // la hauteur de l'écran, et le texte qui le suit passe sous la première vue (retour client 17 oct.). La place disponible
+  // n'est plus laissée vide entre l'introduction et le moteur : elle est répartie dans la taille des onglets, des
+  // libellés, des champs et du bouton (--hx-u, voir mdHero.css). Au-delà de 1,4 unité, le reste devient un espace (--hx-gap).
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root || mode !== 'open') return;
     let lastW = -1;
+    const MAX_U = 1.4;
     const fit = () => {
+      root.style.setProperty('--hx-u', '0');
       root.style.setProperty('--hx-gap', '0px');
       root.style.setProperty('--hx-free-gap', '12px');
       root.classList.remove('hx-tight');
@@ -81,21 +84,27 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
       if (!btn) return;
       const nav = document.querySelector<HTMLElement>('.fixed.bottom-0.md\\:hidden');
       const navTop = nav ? nav.getBoundingClientRect().top : window.innerHeight - 65;
-      const bottom = btn.getBoundingClientRect().bottom + window.scrollY;
-      const room = Math.round(navTop - 20 - bottom);
+      const target = navTop - 20;
+      const bottomNow = () => btn.getBoundingClientRect().bottom + window.scrollY;
+      let room = Math.round(target - bottomNow());
       // Écran trop court : on masque les sous-titres des onglets pour que le bouton reste visible.
       if (room < 0) {
         root.classList.add('hx-tight');
-        const b2 = btn.getBoundingClientRect().bottom + window.scrollY;
-        const room2 = Math.round(navTop - 20 - b2);
-        if (room2 <= 0) return;
-        root.style.setProperty('--hx-gap', `${Math.min(320, room2)}px`);
-        root.style.setProperty('--hx-free-gap', '32px');
-        return;
+        room = Math.round(target - bottomNow());
+        if (room <= 0) return;
       }
-      const gap = Math.min(320, room);
-      root.style.setProperty('--hx-gap', `${gap}px`);
-      if (gap > 0) root.style.setProperty('--hx-free-gap', '32px');
+      // Répartition : 1 unité = 100 px répartis dans les éléments du moteur. Deux passes de correction (les polices
+      // agrandies modifient un peu la hauteur réelle).
+      let u = Math.min(MAX_U, room / 100);
+      for (let i = 0; i < 3; i++) {
+        root.style.setProperty('--hx-u', u.toFixed(3));
+        const diff = target - bottomNow();
+        if (Math.abs(diff) < 1.5) break;
+        u = Math.max(0, Math.min(MAX_U, u + diff / 100));
+      }
+      const left = Math.round(target - bottomNow());
+      if (left > 1) root.style.setProperty('--hx-gap', `${Math.min(320, left)}px`);
+      root.style.setProperty('--hx-free-gap', '32px');
     };
     const onResize = () => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; fit(); } };
     lastW = window.innerWidth;
