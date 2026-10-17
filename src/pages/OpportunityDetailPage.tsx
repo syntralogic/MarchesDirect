@@ -18,7 +18,7 @@ import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { SaveButton } from '@/components/SaveButton';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
-import { trackVisitorEvent, getSessionId, getConsultationsToday, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
+import { trackVisitorEvent, getSessionId, getConsultationIndicator, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getApiErrorCode, getBlobApiErrorMessage,
   dossiersApi, siretApi, analysesApi,
@@ -123,17 +123,6 @@ function compactOpportunityLabel(title: string, city: string | null, value: numb
   const shortTitle = title.length > titleBudget ? `${title.slice(0, titleBudget - 1).trimEnd()}…` : title;
   return suffix ? `${shortTitle} — ${suffix}` : shortTitle;
 }
-// Client's follow-up (11 Sep, dossier-demo message): the red dot on the two
-// social-proof cards must scale in size with the number it's next to
-// ("dont la taille augmente ou diminue selon les données affichées") - not
-// a fixed dot. Maps each counter's known range to a px size range; kept as
-// a plain linear map since the client described this as already
-// calculated/fixed, not something to make configurable.
-function socialProofDotSizePx(value: number, min: number, max: number, minPx: number, maxPx: number): number {
-  if (max === min) return (minPx + maxPx) / 2;
-  const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  return Math.round(minPx + t * (maxPx - minPx));
-}
 // Client's brief (5 Sep, "Votre concordance" page): "l'ancienneté calculée
 // automatiquement" - derived from the company's creation date, never a
 // separate field to fetch/store.
@@ -213,7 +202,7 @@ function isClosedStatut(s: string | null | undefined): boolean {
 }
 
 export default function OpportunityDetailPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, company, user, completeSignup } = useAuth();
@@ -801,7 +790,8 @@ export default function OpportunityDetailPage() {
   // "X entreprises ont consulté cette annonce aujourd'hui" card, replacing
   // the seeded-random placeholder (getConsultationsCount below stays as
   // the fallback while this loads / if it fails).
-  const [realConsultations, setRealConsultations] = useState<number | null>(null);
+  // Consultation indicator sentence (real tracking of THIS announcement, null = hidden).
+  const [consultationLabel, setConsultationLabel] = useState<string | null>(null);
 
   // 27 Sep audit, point 6: reloading the fiche could show "Failed to fetch
   // opportunity" with no way forward but leaving the page - the only action
@@ -831,8 +821,9 @@ export default function OpportunityDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    getConsultationsToday(id).then(setRealConsultations);
-  }, [id]);
+    setConsultationLabel(null);
+    getConsultationIndicator(id, lang === 'en' ? 'en' : 'fr').then(setConsultationLabel);
+  }, [id, lang]);
 
   useEffect(() => {
     if (!id) return;
@@ -1309,26 +1300,17 @@ export default function OpportunityDetailPage() {
             visibles." The "N entreprises intéressées" card (a number seeded
             from the opportunity id, captioned "Exemple illustratif —
             statistique à vérifier") is gone: a placeholder figure has no
-            place on a fiche whatever its caption says. Only the real
-            distinct-session consultation count (realConsultations, from
-            /api/visitor-events/consultations/:id) remains, and it stays
-            hidden while loading, on a fetch failure, or when it is 0 -
-            never a fabricated number. */}
-        {realConsultations != null && realConsultations > 0 && (
-          <div className="space-y-2.5 mt-4">
-            <div className="bg-[#031B30] border border-[#17334D] border-l-2 border-l-orange rounded-xl p-4">
-              <p className="flex items-center gap-2 text-xs text-[#EAF0F6] leading-relaxed">
-                <span
-                  className="rounded-full bg-red-500 shrink-0 animate-pulse"
-                  style={{ width: socialProofDotSizePx(realConsultations, 2, 5, 6, 11), height: socialProofDotSizePx(realConsultations, 2, 5, 6, 11) }}
-                />
-                <span>
-                  <span className="font-bold text-white">{realConsultations} {t('consultationsLabel') || 'consultations récentes'}.</span>{' '}
-                  {t('consultationsBody') || "D'autres entreprises s'intéressent à ce marché en ce moment."}
-                </span>
-              </p>
-            </div>
-          </div>
+            place on a fiche whatever its caption says. Client brief 18 Oct:
+            the indicator is specific to each announcement and built from its
+            real tracking (/api/visitor-events/consultations/:id), worded as
+            « consultations » unless the visitors are identified companies,
+            small and discreet, wording stable while reading, hidden while
+            loading, on failure or when no reliable data exists. */}
+        {consultationLabel && (
+          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#17334D] bg-[#031B30] px-3 py-1 text-[11px] leading-tight text-[#B9BBC8]">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange shrink-0" aria-hidden="true" />
+            <span>{consultationLabel}</span>
+          </p>
         )}
       </div>
       )}
@@ -2584,16 +2566,11 @@ export default function OpportunityDetailPage() {
                       <button type="button" onClick={() => setExcerptOpen(o => !o)} aria-expanded={excerptOpen} className="w-full flex items-center justify-center gap-2 border border-[#17334D] bg-[#031B30] rounded-xl py-3 text-sm text-orange font-bold hover:border-orange/50 transition-colors">
                         <Search size={15} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
                       </button>
-                      {realConsultations != null && realConsultations > 0 && (
-                        <div className="flex items-start gap-2 mt-3">
-                          <span className="relative flex w-1.5 h-1.5 shrink-0 mt-1">
-                            <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
-                            <span className="relative inline-flex rounded-full w-1.5 h-1.5 bg-red-500" />
-                          </span>
-                          <p className="text-sm text-red-200">
-                            {realConsultations} {t('consultationsLabel') || 'consultations récentes'}
-                          </p>
-                        </div>
+                      {consultationLabel && (
+                        <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#17334D] bg-[#031B30] px-3 py-1 text-[11px] leading-tight text-[#B9BBC8]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange shrink-0" aria-hidden="true" />
+                          <span>{consultationLabel}</span>
+                        </p>
                       )}
                     </div>
                     {excerptOpen && (() => {
