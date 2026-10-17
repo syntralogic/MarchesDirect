@@ -1821,6 +1821,7 @@ export default function OpportunityDetailPage() {
                   </button>
                 </div>
               </form>
+              <p className="text-xs text-[#B9BBC8] mt-2">{t('siretFreeNote')}</p>
               {siretError && <p className="text-xs text-red-400 mt-2">{siretError}</p>}
               {/* Client's 5 Sep brief: a name search returns a results list
                   to pick from and confirm, not an auto-resolved best guess. */}
