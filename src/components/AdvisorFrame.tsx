@@ -37,7 +37,7 @@ export function AdvisorFrame({ onAppointment, onCallback, advice, id, className 
         {/* fixed size + object-cover: the face is never squashed (guide v24, images) */}
         <img
           src={elena}
-          alt="Elena"
+          alt="Elena Popescu"
           width={48}
           height={48}
           loading="lazy"
@@ -46,7 +46,7 @@ export function AdvisorFrame({ onAppointment, onCallback, advice, id, className 
         />
         <div className="min-w-0">
           <p className="text-[12px] font-bold uppercase tracking-wide text-[#FDBA74]">Votre accompagnement</p>
-          <p className="text-sm text-[#B9BBC8]">Elena · Votre premier contact</p>
+          <p className="text-sm text-[#B9BBC8]">Elena Popescu · Votre premier contact</p>
         </div>
       </div>
 

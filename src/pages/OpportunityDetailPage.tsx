@@ -3038,10 +3038,10 @@ export default function OpportunityDetailPage() {
           {/* 4. Accompagnement complet (position 3) */}
           <div id="accompagnement-block" className="rounded-2xl p-4 md:p-5" style={{ background: 'linear-gradient(180deg, rgba(255,101,0,.13) 0%, rgba(255,101,0,.04) 100%), #0A2236', border: '1.5px solid rgba(255,101,0,.62)', boxShadow: '0 12px 30px -16px rgba(255,101,0,.45)' }}>
             <div className="flex items-center gap-3 mb-3">
-              <img src={elenaPortrait} alt="Elena" width={48} height={48} loading="lazy" decoding="async" className="w-12 h-12 shrink-0 grow-0 rounded-full object-cover border-2 border-orange" />
+              <img src={elenaPortrait} alt="Elena Popescu" width={48} height={48} loading="lazy" decoding="async" className="w-12 h-12 shrink-0 grow-0 rounded-full object-cover border-2 border-orange" />
               <div className="min-w-0">
                 <p className="text-[12px] font-bold uppercase tracking-wide text-[#FDBA74]">Votre accompagnement</p>
-                <p className="text-sm text-[#B9BBC8]">Elena · Votre premier contact</p>
+                <p className="text-sm text-[#B9BBC8]">Elena Popescu · Votre premier contact</p>
               </div>
             </div>
             {accompaniedToday != null && accompaniedToday > 0 && (
