@@ -1907,34 +1907,34 @@ export default function OpportunityDetailPage() {
                 4 stacked rows into one row of small status chips - same
                 underlying signals (never fabricated), just denser. */}
             {siretCompany && (
-              <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-3.5 md:p-4 mb-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
-                      <Building2 size={16} className="text-orange" />
+              <div className="bg-[#061D32] border border-[#17334D] rounded-xl p-2.5 md:p-3 mb-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-6 h-6 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
+                      <Building2 size={13} className="text-orange" />
                     </span>
-                    <p className="text-sm font-bold text-white">{t('siretYourCompany') || 'Votre entreprise'}</p>
+                    <p className="text-xs font-bold text-white">{t('siretYourCompany') || 'Votre entreprise'}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => { setScreen(1); setSiretInput(''); }}
-                    className="flex items-center gap-1.5 text-xs font-bold text-orange border border-orange/40 rounded-lg px-3 py-1.5 hover:bg-orange/10 transition-colors shrink-0"
+                    className="flex items-center gap-1 text-[11px] font-bold text-orange border border-orange/40 rounded-md px-2 py-1 hover:bg-orange/10 transition-colors shrink-0"
                   >
-                    <Pencil size={12} /> {t('siretModify') || 'Modifier'}
+                    <Pencil size={11} /> {t('siretModify') || 'Modifier'}
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <p className="text-base font-extrabold text-white">{siretCompany.name || '—'}</p>
+                  <p className="text-sm font-extrabold text-white">{siretCompany.name || '—'}</p>
                   {siretCompany.statut && (
                     <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${siretCompany.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
                       {siretCompany.statut}
                     </span>
                   )}
                 </div>
-                {siretCompany.siret && <p className="text-xs text-[#8A9BB0] mb-2">SIRET {siretCompany.siret}</p>}
+                {siretCompany.siret && <p className="text-[11px] text-[#8A9BB0] mb-1.5">SIRET {siretCompany.siret}</p>}
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs pt-2 border-t border-[#17334D]">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] leading-tight pt-1.5 border-t border-[#17334D]">
                   <CompanyInfoRow icon={MapPin} label="Localisation" value={[siretCompany.city, siretCompany.postal].filter(Boolean).join(' ') || siretCompany.address || null} />
                   <CompanyInfoRow
                     icon={User}
@@ -3260,10 +3260,10 @@ function CompanyInfoRow({ icon: Icon, label, value, empty, href }: { icon: typeo
   // treatment - a real value keeps its normal weight.
   const isKnown = Boolean(value);
   return (
-    <div className="flex items-start gap-2">
-      <Icon size={14} className="text-[#8A9BB0] shrink-0 mt-0.5" />
+    <div className="flex items-start gap-1.5">
+      <Icon size={12} className="text-[#8A9BB0] shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <p className="text-[11px] text-[#8A9BB0]">{label}</p>
+        <p className="text-[10px] text-[#8A9BB0]">{label}</p>
         {isKnown && href ? (
           <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="text-white font-medium underline decoration-[#8A9BB0]/50 underline-offset-2 hover:decoration-white break-all">{value}</a>
         ) : (
