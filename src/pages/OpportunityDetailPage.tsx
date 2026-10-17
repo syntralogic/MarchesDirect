@@ -2338,69 +2338,6 @@ export default function OpportunityDetailPage() {
                 leaking into the visitor-facing UI as if real - removed;
                 answers are just acknowledged and passed along with the
                 dossier request, nothing folded into matchScore.score. */}
-            <div id="refine-questions" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              {(() => {
-                const refineKeys = ['experience', 'capacity', 'location', 'calendar'] as const;
-                const answeredCount = refineKeys.filter(k => refineAnswers[k] === 'oui' || refineAnswers[k] === 'non').length;
-                return (
-                  <>
-                    <h2 className="text-lg md:text-xl font-extrabold text-white leading-snug">{t('refineBlockTitle') || 'Répondez à 4 questions pour compléter votre analyse'}</h2>
-                    <p className="text-sm text-[#B9BBC8] mt-1">{t('refineBlockSub') || '1 minute · facultatif'}</p>
-                    <div className="mt-4 h-1 w-full rounded-full bg-[#17334D] overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answeredCount}>
-                      <div className="h-full bg-orange transition-all" style={{ width: `${(answeredCount / 4) * 100}%` }} />
-                    </div>
-                    <p className="text-sm text-[#B9BBC8] mt-3 pb-3 border-b border-[#17334D]">{answeredCount} / 4 {t('refineBlockCount') || 'réponses'}</p>
-                    <div className="space-y-4 mt-4">
-                      {[
-                        { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
-                        { key: 'capacity', q: t('concordRefineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires ?' },
-                        { key: 'location', q: t('concordRefineQ3') || 'Pouvez-vous intervenir dans la zone indiquée ?' },
-                        { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?' },
-                      ].map(row => (
-                        <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
-                          <p className="text-base text-white mb-3">{row.q}</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            {(['oui', 'non'] as const).map(opt => (
-                              <button
-                                key={opt}
-                                type="button"
-                                aria-pressed={refineAnswers[row.key] === opt}
-                                onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: a[row.key] === opt ? undefined : opt }))}
-                                className={`min-h-[48px] rounded-xl border text-base font-semibold transition-colors ${
-                                  refineAnswers[row.key] === opt
-                                    ? 'bg-orange border-orange text-white'
-                                    : 'border-[#17334D] text-[#B9BBC8] hover:border-orange/40'
-                                }`}
-                              >
-                                {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : (t('concordRefineNo') || 'Non')}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-[#B9BBC8] mt-3">{t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}</p>
-                  </>
-                );
-              })()}
-            </div>
-
-            {!(isAuthenticated || leadCaptured) && !leadGateVisible && (
-              <>
-                <div className="h-24 md:hidden" aria-hidden="true" />
-                <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#041B30]/95 backdrop-blur border-t border-[#17334D] px-4 pt-3 pb-3">
-                  <button
-                    type="button"
-                    onClick={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="w-full bg-orange text-white font-bold py-3.5 rounded-xl"
-                  >
-                    {t('leadSubmit') || 'Recevoir mon dossier prérempli'}
-                  </button>
-                  <p className="text-xs text-[#B9BBC8] text-center mt-2">{t('leadStickyFree') || 'Gratuit · votre dossier à votre nom'}</p>
-                </div>
-              </>
-            )}
-
             {/* "Les points forts de cette opportunité pour vous" (client's
                 12 Sep reference): derived straight from real opportunity/
                 matchScore fields already on this page - never a separate
@@ -2483,6 +2420,75 @@ export default function OpportunityDetailPage() {
             })()}
             </div>
           ) : null}
+
+            {/* 4 questions: shown whenever the analysis is not loading, including the blocked state (closed establishment, company not identified). */}
+            {!scoreLoading && (
+              <div className="space-y-4 mt-4">
+            <div id="refine-questions" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+              {(() => {
+                const refineKeys = ['experience', 'capacity', 'location', 'calendar'] as const;
+                const answeredCount = refineKeys.filter(k => refineAnswers[k] === 'oui' || refineAnswers[k] === 'non').length;
+                return (
+                  <>
+                    <h2 className="text-lg md:text-xl font-extrabold text-white leading-snug">{t('refineBlockTitle') || 'Répondez à 4 questions pour compléter votre analyse'}</h2>
+                    <p className="text-sm text-[#B9BBC8] mt-1">{t('refineBlockSub') || '1 minute · facultatif'}</p>
+                    <div className="mt-4 h-1 w-full rounded-full bg-[#17334D] overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answeredCount}>
+                      <div className="h-full bg-orange transition-all" style={{ width: `${(answeredCount / 4) * 100}%` }} />
+                    </div>
+                    <p className="text-sm text-[#B9BBC8] mt-3 pb-3 border-b border-[#17334D]">{answeredCount} / 4 {t('refineBlockCount') || 'réponses'}</p>
+                    <div className="space-y-4 mt-4">
+                      {[
+                        { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
+                        { key: 'capacity', q: t('concordRefineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires ?' },
+                        { key: 'location', q: t('concordRefineQ3') || 'Pouvez-vous intervenir dans la zone indiquée ?' },
+                        { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?' },
+                      ].map(row => (
+                        <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
+                          <p className="text-base text-white mb-3">{row.q}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {(['oui', 'non'] as const).map(opt => (
+                              <button
+                                key={opt}
+                                type="button"
+                                aria-pressed={refineAnswers[row.key] === opt}
+                                onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: a[row.key] === opt ? undefined : opt }))}
+                                className={`min-h-[48px] rounded-xl border text-base font-semibold transition-colors ${
+                                  refineAnswers[row.key] === opt
+                                    ? 'bg-orange border-orange text-white'
+                                    : 'border-[#17334D] text-[#B9BBC8] hover:border-orange/40'
+                                }`}
+                              >
+                                {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : (t('concordRefineNo') || 'Non')}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[#B9BBC8] mt-3">{t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}</p>
+                  </>
+                );
+              })()}
+            </div>
+
+            {!(isAuthenticated || leadCaptured) && !leadGateVisible && (
+              <>
+                <div className="h-24 md:hidden" aria-hidden="true" />
+                <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#041B30]/95 backdrop-blur border-t border-[#17334D] px-4 pt-3 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="w-full bg-orange text-white font-bold py-3.5 rounded-xl"
+                  >
+                    {t('leadSubmit') || 'Recevoir mon dossier prérempli'}
+                  </button>
+                  <p className="text-xs text-[#B9BBC8] text-center mt-2">{t('leadStickyFree') || 'Gratuit · votre dossier à votre nom'}</p>
+                </div>
+              </>
+            )}
+
+              </div>
+            )}
 
                 {/* 4 Oct brief (concordance_v3): the former orange "Échanger avec un
                     chargé d'affaires" button is now a discreet link, so the dossier
