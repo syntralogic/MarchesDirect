@@ -23,20 +23,31 @@ interface Props {
 
 const DEBOUNCE_MS = 400;
 
+// Brief: "same text when the visitor comes back without changing his answers". The server caches too, but a
+// restart or a cache expiry could rephrase it, so the text shown is also kept for the browser session.
+const storageKey = (k: string) => `md_advisor_text_${k}`;
+const readStored = (k: string): string | null => { try { return sessionStorage.getItem(storageKey(k)); } catch { return null; } };
+const writeStored = (k: string, text: string) => { try { sessionStorage.setItem(storageKey(k), text); } catch { /* storage unavailable */ } };
+
 export function AiAdvisorInsight({ id, kind, opportunityId, sessionId, answers, fallbackAdvice, ctaLabel, onNext, className }: Props) {
   const answersKey = kind === 'compatibility'
     ? ['experience', 'capacity', 'location', 'calendar'].map(k => `${k}:${answers?.[k] || ''}`).join(',')
     : '';
   const requestKey = `${kind}|${opportunityId || ''}|${answersKey}`;
-  const [generated, setGenerated] = useState<{ key: string; text: string } | null>(null);
+  const [generated, setGenerated] = useState<{ key: string; text: string } | null>(() => {
+    const stored = opportunityId ? readStored(requestKey) : null;
+    return stored ? { key: requestKey, text: stored } : null;
+  });
 
   useEffect(() => {
     if (!opportunityId) return;
+    const stored = readStored(requestKey);
+    if (stored) { setGenerated({ key: requestKey, text: stored }); return; }
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       advisorApi
         .advice({ kind, opportunityId, sessionId, answers: kind === 'compatibility' ? answers : undefined }, controller.signal)
-        .then(text => { if (!controller.signal.aborted && text) setGenerated({ key: requestKey, text }); });
+        .then(text => { if (!controller.signal.aborted && text) { writeStored(requestKey, text); setGenerated({ key: requestKey, text }); } });
     }, DEBOUNCE_MS);
     return () => { window.clearTimeout(timer); controller.abort(); };
     // requestKey already covers kind/opportunityId/answers
