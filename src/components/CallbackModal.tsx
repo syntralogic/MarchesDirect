@@ -10,6 +10,7 @@ import { FormRetryError } from '@/components/FormRetryError';
 import { getSessionId, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { normalizeFrPhoneDigits, isValidFrPhone } from '@/lib/utils';
 import RequiredLegend from '@/components/RequiredLegend';
+import { AppointmentModal } from '@/components/AppointmentModal';
 
 interface CallbackModalProps {
   open: boolean;
@@ -41,6 +42,8 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const { brandId } = useBrand();
   const [submitted, setSubmitted] = useState(false);
   const [recordedLabel, setRecordedLabel] = useState<string | null>(null);
+  // Optional follow-up (guide v24 s.2): after a saved callback request, the visitor may pick a precise slot.
+  const [slotOpen, setSlotOpen] = useState(false);
   const startTracker = useMemo(() => createFormStartTracker('callback'), []);
   const [submitting, setSubmitting] = useState(false);
   const idem = useIdempotency();
@@ -48,9 +51,11 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: '' });
 
-  if (!open) return null;
+  if (!open && !slotOpen) return null;
 
   const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setRecordedLabel(null); setError(null); setFieldErrors({}); }, 300); };
+
+  const chooseSlot = () => { setSlotOpen(true); handleClose(); };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -93,6 +98,8 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
     }
   };
 
+  if (!open) return <AppointmentModal open={slotOpen} onClose={() => setSlotOpen(false)} />;
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
@@ -101,7 +108,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
         <div className="flex items-center justify-between p-5 border-b border-[#17334D]">
           <div>
             <h2 className="text-lg font-bold text-brand-primary">{t('callbackTitle')}</h2>
-            <p className="text-xs text-brand-muted mt-0.5">Un conseiller vous rappelle.</p>
+            <p className="text-xs text-brand-muted mt-0.5">{t('callbackHelp')}</p>
           </div>
           <button onClick={handleClose} aria-label={t('close')} className="p-2 rounded-lg hover:bg-white/10 text-brand-muted hover:text-brand-primary transition-colors">
             <X size={18} />
@@ -176,10 +183,13 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
               <div className="w-14 h-14 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
                 <Check size={24} className="text-green-400" />
               </div>
-              <h3 className="text-lg font-bold text-brand-primary mb-2">Demande envoyée !</h3>
-              <p className="text-sm text-brand-muted">{t('callbackConfirm')}</p>
+              <h3 className="text-lg font-bold text-brand-primary mb-2">{t('callbackSavedTitle')}</h3>
+              <p className="text-sm text-brand-muted">{t('callbackSavedAsk')}</p>
               {recordedLabel && <p className="text-xs text-brand-muted mt-2">{recordedLabel}</p>}
-              <button onClick={handleClose} className="mt-5 w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors">
+              <button onClick={chooseSlot} className="mt-5 w-full border border-orange text-orange font-semibold py-3 rounded-xl hover:bg-orange/10 transition-colors">
+                {t('callbackSlotCta')}
+              </button>
+              <button onClick={handleClose} className="mt-3 w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors">
                 Fermer
               </button>
             </div>
