@@ -702,6 +702,76 @@ export default function OpportunityDetailPage() {
   // zone, calendrier) and recomputes the comparison, so the number, the
   // criteria and their explanations can never disagree.
   const displayScore: number | null = matchScore ? matchScore.score : null;
+
+  // The four optional questions (closed accordion). Rendered right after the advisor's advice when a result exists
+  // (client audit 18 Oct: verdict → conseil → questions → dossier), or on its own in the blocked states.
+  const renderRefineQuestions = () => (
+            <div id="refine-questions" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+              {(() => {
+                const refineKeys = ['experience', 'capacity', 'location', 'calendar'] as const;
+                const answeredCount = refineKeys.filter(k => refineAnswers[k] === 'oui' || refineAnswers[k] === 'non').length;
+                return (
+                  <>
+                    {/* Optional, closed by default (client audit 18 Oct): the first result stays visible without any obligation to answer. */}
+                    <button
+                      type="button"
+                      onClick={() => setRefineOpen(o => !o)}
+                      aria-expanded={refineOpen}
+                      aria-controls="refine-panel"
+                      className="w-full flex items-center justify-between gap-3 text-left min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBA74] rounded-lg"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-lg md:text-xl font-extrabold text-white leading-snug">Affiner mon analyse</span>
+                        <span className="block text-sm text-[#B9BBC8] mt-0.5">4 questions · 1 minute · facultatif{answeredCount > 0 ? ` · ${answeredCount}/4 réponses` : ''}</span>
+                      </span>
+                      <ChevronDown size={20} aria-hidden="true" className={`shrink-0 text-[#B9BBC8] transition-transform ${refineOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {refineOpen && (
+                    <div id="refine-panel" className="mt-4">
+                    {matchScore && displayScore !== null && (
+                      <p className="text-sm text-white pb-3 border-b border-[#17334D]">Indice de concordance : <span className="font-extrabold">{displayScore} %</span> <span className="text-[#B9BBC8]">· {answeredCount}/4 réponses</span></p>
+                    )}
+                    <div className="mt-3 h-1 w-full rounded-full bg-[#17334D] overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answeredCount}>
+                      <div className="h-full bg-[#FDBA74] transition-all" style={{ width: `${(answeredCount / 4) * 100}%` }} />
+                    </div>
+                    <div className="space-y-4 mt-4">
+                      {[
+                        { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
+                        { key: 'capacity', q: t('concordRefineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires ?' },
+                        { key: 'location', q: t('concordRefineQ3') || 'Pouvez-vous intervenir dans la zone indiquée ?' },
+                        { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?' },
+                      ].map(row => (
+                        <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
+                          <p className="text-base text-white mb-3">{row.q}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {(['oui', 'non'] as const).map(opt => (
+                              <button
+                                key={opt}
+                                type="button"
+                                aria-pressed={refineAnswers[row.key] === opt}
+                                onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: a[row.key] === opt ? undefined : opt }))}
+                                className={`min-h-[48px] rounded-xl border text-base font-semibold transition-colors inline-flex items-center justify-center gap-2 ${
+                                  refineAnswers[row.key] === opt
+                                    ? 'bg-white/10 border-[#FDBA74] text-white'
+                                    : 'border-[#17334D] text-[#B9BBC8] hover:border-[#FDBA74]/50'
+                                }`}
+                              >
+                                {refineAnswers[row.key] === opt && <CheckCircle2 size={16} aria-hidden="true" className="text-[#FDBA74]" />}
+                                {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : (t('concordRefineNo') || 'Non')}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[#B9BBC8] mt-3">{t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}</p>
+                    </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+  );
   const refineAnswersParam = Object.entries(refineAnswers).filter(([, v]) => !!v).map(([k, v]) => `${k}:${v}`).join(',');
   // 20 Sep audit (Marssac): Concordance said "Le métier n'est pas précisé"
   // while the notice is plainly about isolation thermique extérieure. The
@@ -1406,22 +1476,20 @@ export default function OpportunityDetailPage() {
             const factsPending = !facts && status === 'processing';
             const factsFailed = !facts && status === 'failed';
             const cells: { label: string; value: string }[] = [];
-            if (opportunity.estimated_value != null) cells.push({ label: t('quickStatAmount') || 'Montant', value: formatAmount(opportunity.estimated_value, opportunity.currency) });
             if (facts?.team_size_estimate?.available) cells.push({ label: t('quickStatTeam') || 'Équipe', value: facts.team_size_estimate.value });
             if (opportunity.estimated_start_date) cells.push({ label: t('quickStatStart') || 'Démarrage', value: formatDate(opportunity.estimated_start_date) });
             if (facts?.contract_duration?.available) cells.push({ label: t('quickStatDuration') || 'Durée', value: facts.contract_duration.value });
             // Client (15 Oct): "je vois rien" - this card showed only the pending sentence.
             // Fill it from what the notice itself states (never invented): deadline, place, nature, lots.
-            const srcDeadline = formatDeadlineExact(opportunity.deadline as any);
-            if (srcDeadline) cells.push({ label: t('quickStatDeadline') || 'Date limite', value: srcDeadline });
-            const srcPlace = [opportunity.location_city, opportunity.location_department && `(${opportunity.location_department})`].filter(Boolean).join(' ');
-            if (srcPlace) cells.push({ label: t('quickStatPlace') || "Lieu d'exécution", value: srcPlace });
+            // 18 Oct audit: montant, lieu and échéance live ONCE, in the header (repères essentiels) - not repeated in this card.
             const NATURE: Record<string, string> = { travaux: 'Travaux', fournitures: 'Fournitures', etudes: 'Études / prestations', mixte: 'Prestations mixtes' };
             const srcNature = NATURE[String((opportunity as any).nature_prestation || '')];
             if (srcNature) cells.push({ label: t('quickStatNature') || 'Nature', value: srcNature });
             const srcLotsRaw = (/(?:^|\n)\s*Lots\s*:\s*([\s\S]+)$/.exec(String(opportunity.description || ''))?.[1]) || '';
             const srcLots = splitLots(srcLotsRaw);
             if (srcLots.length > 1) cells.push({ label: t('quickStatLots') || 'Lots', value: String(srcLots.length) });
+            // Nothing to add beyond the header: no empty card.
+            if (cells.length === 0 && !factsPending && !factsFailed && !facts?.contract_object?.available) return null;
             return (
               <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
                 <div className="flex items-center justify-between gap-2 mb-3">
@@ -1547,6 +1615,129 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
+          {/* FIX 2: "Continuer" button for logged-in users on screen 1 */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setScreen(2)}
+              className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
+            >
+              {t('compatibilityContinue') || 'Continuer'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
+          after "Détails du dossier" above (client's brief: no tab switch
+          between the fiche and the identification/score flow). */}
+      {/* Client's repeated complaint (screenshots, "same data shows on
+          multiple cards/pages"): this used to be one `screen < 3` block
+          with an if/else inside, so once a company was confirmed the
+          company/score/lead-capture content rendered on screen 1 too
+          (e.g. after using "Modifier" or the lead form's "Retour" button
+          to navigate back) - the exact same card duplicated across two
+          screens. Split into two mutually exclusive, single-screen blocks:
+          the search form only ever belongs to screen 1, the company card /
+          concordance / lead capture only ever belongs to screen 2. */}
+      {analyzing && (
+        <PersonalizedAnalysis
+          company={{ name: siretCompany?.name, siret: siretCompany?.siret, city: siretCompany?.city, postal: siretCompany?.postal, activity: siretCompany?.activity, ape: siretCompany?.ape }}
+          market={{ title: opportunity?.title, city: opportunity?.location_city, department: opportunity?.location_department, value: opportunity?.estimated_value, deadline: opportunity?.deadline as string | null }}
+          ready={Boolean(matchScore) || Boolean(scoreError)}
+          onDone={endAnalysis}
+          onCancel={() => setAnalyzing(false)}
+        />
+      )}
+      {screen === 1 && !isAuthenticated && (
+          <div className="space-y-4">
+            {/* DEV-06 (plan de corrections, 3 Oct): after "Précédent" the visitor
+                lands back on the SIRET form with the company already identified.
+                He gets a direct way back to his concordance (company and answers
+                kept); a new search is reserved for "Modifier mon entreprise". */}
+            {siretCompany && (
+              <button
+                type="button"
+                onClick={() => setScreen(2)}
+                className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors"
+              >
+                {t('backToConcordance') || 'Revenir à mon analyse'}
+                <span className="text-xs font-normal opacity-90">— {siretCompany.name || 'votre entreprise'}</span>
+              </button>
+            )}
+            <div id="siret-gate" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
+                  <Gauge size={16} className="text-orange" />
+                </div>
+                <div>
+                  <p className="text-sm text-white font-semibold mb-1">{t('siretGateTitle')}</p>
+                  <p className="text-xs text-[#B9BBC8]">{t('siretGateSub')}</p>
+                </div>
+              </div>
+              <form onSubmit={handleSiretSubmit} className="flex flex-col gap-2.5">
+                <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide">{t('siretGateLabel')}</label>
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <input
+                    value={siretInput}
+                    onChange={e => setSiretInput(e.target.value)}
+                    placeholder={t('siretPlaceholder')}
+                    className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50 tracking-wide"
+                  />
+                  <button type="submit" disabled={siretSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
+                    {siretSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('siretSubmit')}
+                  </button>
+                </div>
+              </form>
+              <p className="text-xs text-[#B9BBC8] mt-2">{t('siretFreeNote')}</p>
+              {siretError && <p className="text-xs text-red-400 mt-2">{siretError}</p>}
+              {/* Client's 5 Sep brief: a name search returns a results list
+                  to pick from and confirm, not an auto-resolved best guess. */}
+              {candidates.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[11px] text-[#B9BBC8]">{candidates.length > 1 ? 'Plusieurs entreprises correspondent — sélectionnez la vôtre :' : 'Confirmez votre entreprise :'}</p>
+                  {candidates.map(c => (
+                    <button
+                      key={c.siret}
+                      type="button"
+                      onClick={() => handleConfirmCandidate(c.siret)}
+                      disabled={confirmingCandidate !== null}
+                      className="w-full flex items-center justify-between gap-3 text-left bg-[#031B30] border border-[#17334D] rounded-lg px-3.5 py-3 hover:border-orange/50 transition-colors disabled:opacity-60"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
+                          {c.statut && (
+                            <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${!isClosedStatut(c.statut) ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                              {c.statut}
+                            </span>
+                          )}
+                        </div>
+                        {/* Client priority #6: raison sociale / ville / activité /
+                            SIREN ou SIRET / statut - all five, not just name+address+ape code. */}
+                        <p className="text-[10px] text-[#B9BBC8] truncate">
+                          {[c.city, c.activity || c.ape].filter(Boolean).join(' — ') || c.address}
+                        </p>
+                        <p className="text-[10px] text-[#5B6B80] truncate">SIRET {c.siret}{c.siren ? ` · SIREN ${c.siren}` : ''}</p>
+                      </div>
+                      {confirmingCandidate === c.siret ? <Loader2 size={14} className="animate-spin text-orange shrink-0" /> : <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+      )}
+
+      {/* Technical information (buyer, dossier facts): kept accessible but folded away (client audit 18 Oct), after the
+          identification of the company. Order: titre et repères → résumé unique → conseil → identification → détails. */}
+      {screen === 1 && (
+        <details className="group mt-4 bg-[#061D32] border border-[#17334D] rounded-2xl">
+          <summary className="flex items-center justify-between gap-3 cursor-pointer list-none px-5 py-4 min-h-[56px] text-white font-bold text-base [&::-webkit-details-marker]:hidden">
+            <span>Informations techniques et donneur d’ordre</span>
+            <ChevronDown size={20} aria-hidden="true" className="shrink-0 text-[#B9BBC8] transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="space-y-4 px-3 pb-4 md:px-4">
           {/* DONNEUR D'ORDRE — info only here (public markets show it
               outright, private ones show the locked placeholder); the
               actual booking form lives in the "suivi & rappel" block at the
@@ -1689,7 +1880,7 @@ export default function OpportunityDetailPage() {
                 .filter(Boolean)
                 .filter((x, i, arr) => arr.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i),
             )).join(', ');
-            if (lieu) rows.push({ label: t('dossierFactLocation') || 'Lieu', value: lieu });
+            if (lieu && !(opportunity.location_city || opportunity.location_region)) rows.push({ label: t('dossierFactLocation') || 'Lieu', value: lieu });
 
             // Montant — raw estimated_value/currency fallback so a failed
             // AI pass still shows the budget the source notice itself gave.
@@ -1708,9 +1899,8 @@ export default function OpportunityDetailPage() {
             // Échéance — raw deadline/deadline_time fallback, same logic.
             // One source for every date shown (client audit 18 Oct: header 20 Oct vs details 28 Aug): the official
             // opportunity.deadline always wins; the AI-extracted text is only a fallback when no deadline exists.
-            if (opportunity.deadline) {
-              rows.push({ label: t('dossierFactDeadline'), value: formatDeadlineWithTime(opportunity.deadline, opportunity.deadline_time) });
-            } else if (facts?.submission_deadline?.available) {
+            // The header already shows it: only a missing official deadline lets the extracted text appear here.
+            if (!opportunity.deadline && facts?.submission_deadline?.available) {
               rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
             }
 
@@ -1810,118 +2000,8 @@ export default function OpportunityDetailPage() {
             );
           })()}
 
-          {/* FIX 2: "Continuer" button for logged-in users on screen 1 */}
-          {isAuthenticated && (
-            <button
-              type="button"
-              onClick={() => setScreen(2)}
-              className="w-full bg-orange text-white font-bold py-3 rounded-xl hover:bg-orange/90 transition-colors"
-            >
-              {t('compatibilityContinue') || 'Continuer'}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* IDENTIFICATION / ANALYSE — continues the same "main" scroll right
-          after "Détails du dossier" above (client's brief: no tab switch
-          between the fiche and the identification/score flow). */}
-      {/* Client's repeated complaint (screenshots, "same data shows on
-          multiple cards/pages"): this used to be one `screen < 3` block
-          with an if/else inside, so once a company was confirmed the
-          company/score/lead-capture content rendered on screen 1 too
-          (e.g. after using "Modifier" or the lead form's "Retour" button
-          to navigate back) - the exact same card duplicated across two
-          screens. Split into two mutually exclusive, single-screen blocks:
-          the search form only ever belongs to screen 1, the company card /
-          concordance / lead capture only ever belongs to screen 2. */}
-      {analyzing && (
-        <PersonalizedAnalysis
-          company={{ name: siretCompany?.name, siret: siretCompany?.siret, city: siretCompany?.city, postal: siretCompany?.postal, activity: siretCompany?.activity, ape: siretCompany?.ape }}
-          market={{ title: opportunity?.title, city: opportunity?.location_city, department: opportunity?.location_department, value: opportunity?.estimated_value, deadline: opportunity?.deadline as string | null }}
-          ready={Boolean(matchScore) || Boolean(scoreError)}
-          onDone={endAnalysis}
-          onCancel={() => setAnalyzing(false)}
-        />
-      )}
-      {screen === 1 && !isAuthenticated && (
-          <div className="space-y-4">
-            {/* DEV-06 (plan de corrections, 3 Oct): after "Précédent" the visitor
-                lands back on the SIRET form with the company already identified.
-                He gets a direct way back to his concordance (company and answers
-                kept); a new search is reserved for "Modifier mon entreprise". */}
-            {siretCompany && (
-              <button
-                type="button"
-                onClick={() => setScreen(2)}
-                className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors"
-              >
-                {t('backToConcordance') || 'Revenir à mon analyse'}
-                <span className="text-xs font-normal opacity-90">— {siretCompany.name || 'votre entreprise'}</span>
-              </button>
-            )}
-            <div id="siret-gate" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
-                  <Gauge size={16} className="text-orange" />
-                </div>
-                <div>
-                  <p className="text-sm text-white font-semibold mb-1">{t('siretGateTitle')}</p>
-                  <p className="text-xs text-[#B9BBC8]">{t('siretGateSub')}</p>
-                </div>
-              </div>
-              <form onSubmit={handleSiretSubmit} className="flex flex-col gap-2.5">
-                <label className="text-[10px] font-bold text-[#5B6B80] uppercase tracking-wide">{t('siretGateLabel')}</label>
-                <div className="flex flex-col sm:flex-row gap-2.5">
-                  <input
-                    value={siretInput}
-                    onChange={e => setSiretInput(e.target.value)}
-                    placeholder={t('siretPlaceholder')}
-                    className="flex-1 bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#5B6B80] focus:outline-none focus:border-orange/50 tracking-wide"
-                  />
-                  <button type="submit" disabled={siretSubmitting} className="flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 shrink-0">
-                    {siretSubmitting ? <Loader2 size={14} className="animate-spin" /> : null} {t('siretSubmit')}
-                  </button>
-                </div>
-              </form>
-              <p className="text-xs text-[#B9BBC8] mt-2">{t('siretFreeNote')}</p>
-              {siretError && <p className="text-xs text-red-400 mt-2">{siretError}</p>}
-              {/* Client's 5 Sep brief: a name search returns a results list
-                  to pick from and confirm, not an auto-resolved best guess. */}
-              {candidates.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-[11px] text-[#B9BBC8]">{candidates.length > 1 ? 'Plusieurs entreprises correspondent — sélectionnez la vôtre :' : 'Confirmez votre entreprise :'}</p>
-                  {candidates.map(c => (
-                    <button
-                      key={c.siret}
-                      type="button"
-                      onClick={() => handleConfirmCandidate(c.siret)}
-                      disabled={confirmingCandidate !== null}
-                      className="w-full flex items-center justify-between gap-3 text-left bg-[#031B30] border border-[#17334D] rounded-lg px-3.5 py-3 hover:border-orange/50 transition-colors disabled:opacity-60"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
-                          {c.statut && (
-                            <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${!isClosedStatut(c.statut) ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-                              {c.statut}
-                            </span>
-                          )}
-                        </div>
-                        {/* Client priority #6: raison sociale / ville / activité /
-                            SIREN ou SIRET / statut - all five, not just name+address+ape code. */}
-                        <p className="text-[10px] text-[#B9BBC8] truncate">
-                          {[c.city, c.activity || c.ape].filter(Boolean).join(' — ') || c.address}
-                        </p>
-                        <p className="text-[10px] text-[#5B6B80] truncate">SIRET {c.siret}{c.siren ? ` · SIREN ${c.siren}` : ''}</p>
-                      </div>
-                      {confirmingCandidate === c.siret ? <Loader2 size={14} className="animate-spin text-orange shrink-0" /> : <ChevronRight size={14} className="text-[#5B6B80] shrink-0" />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
+        </details>
       )}
 
       {/* Page 2 ("Votre entreprise et votre concordance", client's exact
@@ -2216,6 +2296,8 @@ export default function OpportunityDetailPage() {
                     );
                   })()}
 
+                  {renderRefineQuestions()}
+
                   {/* Compact synthesis + ONE closed accordion holding the full six-criteria analysis. */}
                   {total > 0 && (
                     <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-4 md:p-5">
@@ -2421,71 +2503,7 @@ export default function OpportunityDetailPage() {
             {/* 4 questions: shown whenever the analysis is not loading, including the blocked state (closed establishment, company not identified). */}
             {!scoreLoading && (
               <div className="space-y-4 mt-4">
-            <div id="refine-questions" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              {(() => {
-                const refineKeys = ['experience', 'capacity', 'location', 'calendar'] as const;
-                const answeredCount = refineKeys.filter(k => refineAnswers[k] === 'oui' || refineAnswers[k] === 'non').length;
-                return (
-                  <>
-                    {/* Optional, closed by default (client audit 18 Oct): the first result stays visible without any obligation to answer. */}
-                    <button
-                      type="button"
-                      onClick={() => setRefineOpen(o => !o)}
-                      aria-expanded={refineOpen}
-                      aria-controls="refine-panel"
-                      className="w-full flex items-center justify-between gap-3 text-left min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBA74] rounded-lg"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-lg md:text-xl font-extrabold text-white leading-snug">Affiner mon analyse</span>
-                        <span className="block text-sm text-[#B9BBC8] mt-0.5">4 questions · 1 minute · facultatif{answeredCount > 0 ? ` · ${answeredCount}/4 réponses` : ''}</span>
-                      </span>
-                      <ChevronDown size={20} aria-hidden="true" className={`shrink-0 text-[#B9BBC8] transition-transform ${refineOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {refineOpen && (
-                    <div id="refine-panel" className="mt-4">
-                    {matchScore && displayScore !== null && (
-                      <p className="text-sm text-white pb-3 border-b border-[#17334D]">Indice de concordance : <span className="font-extrabold">{displayScore} %</span> <span className="text-[#B9BBC8]">· {answeredCount}/4 réponses</span></p>
-                    )}
-                    <div className="mt-3 h-1 w-full rounded-full bg-[#17334D] overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answeredCount}>
-                      <div className="h-full bg-[#FDBA74] transition-all" style={{ width: `${(answeredCount / 4) * 100}%` }} />
-                    </div>
-                    <div className="space-y-4 mt-4">
-                      {[
-                        { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
-                        { key: 'capacity', q: t('concordRefineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires ?' },
-                        { key: 'location', q: t('concordRefineQ3') || 'Pouvez-vous intervenir dans la zone indiquée ?' },
-                        { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?' },
-                      ].map(row => (
-                        <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
-                          <p className="text-base text-white mb-3">{row.q}</p>
-                          <div className="grid grid-cols-2 gap-3">
-                            {(['oui', 'non'] as const).map(opt => (
-                              <button
-                                key={opt}
-                                type="button"
-                                aria-pressed={refineAnswers[row.key] === opt}
-                                onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: a[row.key] === opt ? undefined : opt }))}
-                                className={`min-h-[48px] rounded-xl border text-base font-semibold transition-colors inline-flex items-center justify-center gap-2 ${
-                                  refineAnswers[row.key] === opt
-                                    ? 'bg-white/10 border-[#FDBA74] text-white'
-                                    : 'border-[#17334D] text-[#B9BBC8] hover:border-[#FDBA74]/50'
-                                }`}
-                              >
-                                {refineAnswers[row.key] === opt && <CheckCircle2 size={16} aria-hidden="true" className="text-[#FDBA74]" />}
-                                {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : (t('concordRefineNo') || 'Non')}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-[#B9BBC8] mt-3">{t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}</p>
-                    </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+            {!matchScore && renderRefineQuestions()}
 
             {!(isAuthenticated || leadCaptured) && !leadGateVisible && (
               <>
