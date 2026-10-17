@@ -7,7 +7,7 @@ import { CallbackModal } from '@/components/CallbackModal';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
   CheckCircle2, XCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, Download, ExternalLink, Clock3,
+  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, ExternalLink, Clock3,
   Building2, Users, TrendingUp, Pencil, Award, User, Search, Copy, Send, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -322,8 +322,8 @@ export default function OpportunityDetailPage() {
   const [contactChoice, setContactChoice] = useState<'slot' | 'callback' | 'none' | null>(null);
   // "Votre dossier" hub state (client's 10 Sep card spec, free-visitor view).
   const [dossierStepsOpen, setDossierStepsOpen] = useState(false);
-  const [dceViewed, setDceViewed] = useState(false);
-  const [dceAnalysisViewed, setDceAnalysisViewed] = useState(false);
+  const [, setDceViewed] = useState(false);
+  const [, setDceAnalysisViewed] = useState(false);
   // Updates local state immediately (instant UI feedback) and persists to
   // bid_responses in the background (see backend's POST
   // /:tenderId/dce-viewed) - was local-state-only before, resetting the
@@ -399,7 +399,6 @@ export default function OpportunityDetailPage() {
   const [dossierResponseText, setDossierResponseText] = useState('');
   const [dossierPartners, setDossierPartners] = useState<{ name: string; role: string }[]>([]);
   const [dossierGenerating, setDossierGenerating] = useState(false);
-  const [dossierDownloading, setDossierDownloading] = useState(false);
   // 25 Sep audit, point 5: standalone "Télécharger mon exemplaire" / "Me le
   // renvoyer" for the anonymous pré-dossier flow (previously only present
   // in AppointmentModal's recap).
@@ -718,7 +717,7 @@ export default function OpportunityDetailPage() {
   const [siretError, setSiretError] = useState<string | null>(null);
 
   const [tender, setTender] = useState<ApiTender | null>(null);
-  const [bid, setBid] = useState<ApiBidResponse | null>(null);
+  const [, setBid] = useState<ApiBidResponse | null>(null);
   const [checklistDocs, setChecklistDocs] = useState<ApiCompanyDocument[]>([]);
 
   // C06 (contre-audit 15 Sep): real distinct-session view count for the
@@ -934,7 +933,6 @@ export default function OpportunityDetailPage() {
   // D03: the "Offert · disponible" promise only actually holds once the
   // chargé d'affaires has approved the memo - see BidWorkspacePage's own
   // download button, gated on this same field.
-  const dossierReady = isAuthenticated && !!bid?.is_technical_memo_approved;
 
   // Checklist fetch is independent of isPaid on purpose - spec 3.7 keeps
   // the company-document checklist addable regardless of subscription,
@@ -3088,11 +3086,8 @@ export default function OpportunityDetailPage() {
               </button>
             ) : (
               <>
-                <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-2 bg-[#c24e00] text-white text-[15px] font-bold min-h-[48px] rounded-xl hover:bg-[#d65600] transition-colors">
-                  <Calendar size={14} /> {t('dv13Cta') || 'Réserver mes 30 minutes offertes'}
-                </button>
-                <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} aria-expanded={contactChoice === 'callback'} className="w-full mt-2.5 min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl border border-orange text-[#FDBA74] hover:bg-orange/10 text-[15px] font-semibold px-4 transition-colors">
-                  {t('dv13CallMe') || 'Être rappelé'}
+                <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} aria-expanded={contactChoice === 'callback'} className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#c24e00] hover:bg-[#d65600] text-white text-[15px] font-bold px-4 transition-colors">
+                  <PhoneCall size={16} aria-hidden="true" /> {t('dv13CallMe') || 'Être rappelé'}
                 </button>
             {contactChoice === 'callback' && (
               <div className="mt-3 pt-3 border-t border-[#17334D]">
@@ -3136,6 +3131,9 @@ export default function OpportunityDetailPage() {
                 {slotError && <p className="text-xs text-red-400 mt-2">{slotError}</p>}
               </div>
             )}
+                <button type="button" onClick={() => setShowAccountManagerModal(true)} className="mx-auto mt-2 min-h-[44px] flex items-center justify-center gap-2 text-[15px] font-semibold text-[#FDBA74] underline underline-offset-4 hover:text-white px-2 rounded-md">
+                  <Calendar size={16} aria-hidden="true" /> {t('dv13Cta') || 'Réserver mes 30 minutes offertes'}
+                </button>
                 <div className="border-t border-[#17334D] mt-4 pt-3 text-center">
                   <p className="text-xs font-semibold text-green-400 inline-flex items-center gap-1.5"><CheckCircle2 size={12} /> {t('dv13Free') || 'Par téléphone · Gratuit · Sans engagement'}</p>
                   {reviewsRating != null && reviewsCount != null && (
