@@ -46,47 +46,6 @@ function normalizeFr(s: string): string {
 // HERO
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
-// DEMO WALKTHROUGH ("De la recherche au dossier, en 1 minute.")
-// ---------------------------------------------------------------------------
-// 30 Sep, client on WhatsApp (screenshot, yellow circle): remove the 3-step
-// walkthrough (tabs + detail card + step nav) that used to sit under the
-// demo thumbnail. The thumbnail/button that opens the real demo video stays.
-function DemoWalkthroughSection() {
-  const [demoOpen, setDemoOpen] = useState(false);
-  return (
-    <section id="mdh-demo" className="scroll-mt-16 px-4 md:px-6 py-5 md:py-10 max-w-3xl md:max-w-5xl mx-auto w-full">
-      <h2 className="text-xl md:text-2xl font-bold text-white leading-tight mb-3">
-        De la recherche au dossier, en 1 minute.
-      </h2>
-
-      <button
-        onClick={() => setDemoOpen(true)}
-        className="w-full text-left rounded-2xl border border-[#17334D] bg-[#061D32] relative overflow-hidden hover:border-orange/50 transition-colors group block"
-      >
-        {/* 4 Oct (evening), client: a bit taller, and nothing cut on the sides. The
-            picture is no longer cropped by CSS: it is rebuilt from the client's Thumb-A5
-            file at 16:10 (dead margins trimmed, background extended top/bottom), shown whole. */}
-        {/* Client (20 Sep): real thumbnail image for the demo video, click
-            opens the actual demo (DemoVideoModal / public/demo.mp4) -
-            replaces the hand-built div mockup that used to stand in for it. */}
-        <img
-          src="/testimonials/demo-plateforme.jpeg"
-          alt="Démo interactive : découvrez comment ça marche, de la recherche au dossier pré-rempli (1 min 07)"
-          className="w-full h-auto block"
-        />
-        <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-          <span className="w-14 h-14 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-            <PlayCircle size={28} className="text-white" />
-          </span>
-        </span>
-      </button>
-
-      <DemoVideoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // TESTIMONIALS ("Des entrepreneurs racontent leur candidature.")
 // ---------------------------------------------------------------------------
 function TestimonialsSection() {
@@ -1730,7 +1689,6 @@ export default function HomePage() {
       <MdHero onAppt={() => setAppointmentOpen(true)} />
       <XhDemo onReserve={() => setAppointmentOpen(true)} />
       <SituationSection onAppt={() => setAppointmentOpen(true)} />
-      <DemoWalkthroughSection />
       <TestimonialsSection />
       <TeamSection />
       <GeographicSection
