@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { PersonalizedAnalysis } from '@/components/xh/PersonalizedAnalysis';
 import { AdvisorInsight } from '@/components/AdvisorInsight';
 import { AiAdvisorInsight } from '@/components/AiAdvisorInsight';
+import { opportunityAdviceFallback, compatibilityAdviceFallback } from '@/lib/advisorFallback';
 import elenaPortrait from '@/assets/1.jpeg';
 import { CallbackModal } from '@/components/CallbackModal';
 import {
@@ -370,6 +371,8 @@ export default function OpportunityDetailPage() {
   // same market looked at for another company, never inherits them automatically.
   const refineCompanyKey = String((siretCompany as any)?.siret || (siretCompany as any)?.siren || (siretCompany as any)?.name || 'anon').replace(/\s+/g, '').slice(0, 40);
   const refineAnswersStorageKey = id ? `md_refine_answers_${id}_${refineCompanyKey}` : null;
+  // Optional questions accordion: closed by default; answers live in refineAnswers so closing/going back keeps them.
+  const [refineOpen, setRefineOpen] = useState(false);
   const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>(() => {
     if (!refineAnswersStorageKey) return {};
     try {
@@ -1526,30 +1529,15 @@ export default function OpportunityDetailPage() {
           {/* Client brief 17 Oct, point 1: the human support is the most important block. It comes right after the
               summary and the points of attention, before the technical details (buyer, dossier facts). */}
           {!closedFiche && (() => {
-            // Market-only advice: the company is not known yet, so nothing here claims the market suits it.
-            const deadlineMs = opportunity.deadline ? new Date(opportunity.deadline as string).getTime() : NaN;
-            const upcoming = !Number.isNaN(deadlineMs) && deadlineMs > Date.now();
-            const rawRisks = Array.isArray(opportunity.ai_extracted_facts?.key_risks?.value) ? opportunity.ai_extracted_facts.key_risks.value : [];
-            const riskLabel = (r: unknown): string => (typeof r === 'object' && r !== null ? String((r as { label?: unknown }).label || '') : typeof r === 'string' ? r : '').trim();
-            const mandatory = rawRisks.find(r => typeof r === 'object' && r !== null && (r as { severity?: unknown }).severity === 'obligatoire' && riskLabel(r));
-            const firstRisk = mandatory || rawRisks.find(r => riskLabel(r));
-            const clip = (x: string) => (x.length > 110 ? `${x.slice(0, 107).trimEnd()}…` : x);
-            const parts: string[] = [];
-            const where = opportunity.location_city ? ` à ${opportunity.location_city}` : '';
-            const amount = opportunity.estimated_value ? `, d'un montant estimé à ${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(opportunity.estimated_value as number)} €` : '';
-            const when = upcoming ? `, à étudier avant le ${formatDate(opportunity.deadline as string)}` : '';
-            parts.push(tradeLabel
-              ? `Un marché de ${tradeLabel.toLowerCase()}${where}${amount}${when}.`
-              : `Un marché${where}${amount}${when}.`);
-            if (firstRisk) parts.push(`Point important : ${clip(riskLabel(firstRisk)).replace(/[.\s]+$/, '')}.`);
-            parts.push('Vérifiez maintenant s’il correspond à votre entreprise.');
+            // Market-only advice: the company is not known yet, so nothing here claims the market suits it. It must not
+            // repeat what the summary already shows (amount, place, deadline, risks): it interprets and points to the next step.
             return (
               <AiAdvisorInsight
                 id="advisor-fiche"
                 kind="opportunity"
                 opportunityId={id}
                 sessionId={getSessionId()}
-                fallbackAdvice={parts.join(' ')}
+                fallbackAdvice={opportunityAdviceFallback(tradeLabel)}
                 ctaLabel={isAuthenticated ? 'Vérifier si ce marché correspond à mon entreprise' : 'Vérifier si ce marché me correspond'}
                 onNext={() => {
                   if (isAuthenticated) { setScreen(2); return; }
@@ -1718,10 +1706,12 @@ export default function OpportunityDetailPage() {
             if (facts?.order_caps?.available) rows.push({ label: t('dossierFactOrderCaps') || 'Plafond de commande', value: facts.order_caps.value });
 
             // Échéance — raw deadline/deadline_time fallback, same logic.
-            if (facts?.submission_deadline?.available) {
-              rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
-            } else if (opportunity.deadline) {
+            // One source for every date shown (client audit 18 Oct: header 20 Oct vs details 28 Aug): the official
+            // opportunity.deadline always wins; the AI-extracted text is only a fallback when no deadline exists.
+            if (opportunity.deadline) {
               rows.push({ label: t('dossierFactDeadline'), value: formatDeadlineWithTime(opportunity.deadline, opportunity.deadline_time) });
+            } else if (facts?.submission_deadline?.available) {
+              rows.push({ label: t('dossierFactDeadline'), value: formatFactDeadline(facts.submission_deadline.value) });
             }
 
             // Conditions (procédure, modalités, qualifications, visite,
@@ -2210,15 +2200,8 @@ export default function OpportunityDetailPage() {
 
                   {/* Client brief 17 Oct, point 1: right after the result, before the detailed explanations. */}
                   {!closedFiche && (() => {
-                    // Crosses market, company and the visitor's answers (all from the server-computed criteria): one
-                    // concrete strength, one point to prepare, the next step. No promise of success.
-                    const parts: string[] = [];
-                    const who = siretCompany?.name ? `Pour ${siretCompany.name}` : 'Pour votre entreprise';
-                    parts.push(displayScore !== null ? `${who}, l’indice de concordance est de ${displayScore} %.` : `${who}, le résultat est encore à préciser.`);
-                    if (ok.length) parts.push(sentence(ok.slice(0, 1), 'correspond', 'correspondent', ' à ce marché : c’est un vrai atout.'));
-                    if (mism.length) parts.push(sentence(mism.slice(0, 1), 'est à vérifier', 'sont à vérifier', ' avant de candidater.'));
-                    else if (conf.length) parts.push(sentence(conf.slice(0, 1), 'reste', 'restent', ' à compléter : quelques précisions suffisent.'));
-                    parts.push('Découvrez votre dossier prérempli, puis échangez avec un chargé d’affaires pour avancer.');
+                    // Interprets the result for THIS company and follows the visitor's answers (declared as such); never
+                    // recites the index shown right above, and never keeps praising a point answered « non ».
                     return (
                       <AiAdvisorInsight
                         id="advisor-concordance"
@@ -2226,8 +2209,8 @@ export default function OpportunityDetailPage() {
                         opportunityId={id}
                         sessionId={getSessionId()}
                         answers={refineAnswers}
-                        fallbackAdvice={parts.join(' ')}
-                                ctaLabel="Découvrir mon dossier prérempli"
+                        fallbackAdvice={compatibilityAdviceFallback({ companyName: siretCompany?.name, activityMatches: ok.some(c => c.key === 'metier'), answers: refineAnswers })}
+                        ctaLabel="Découvrir mon dossier prérempli"
                         onNext={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                       />
                     );
@@ -2444,12 +2427,28 @@ export default function OpportunityDetailPage() {
                 const answeredCount = refineKeys.filter(k => refineAnswers[k] === 'oui' || refineAnswers[k] === 'non').length;
                 return (
                   <>
-                    <h2 className="text-lg md:text-xl font-extrabold text-white leading-snug">{t('refineBlockTitle') || 'Répondez à 4 questions pour compléter votre analyse'}</h2>
-                    <p className="text-sm text-[#B9BBC8] mt-1">{t('refineBlockSub') || '1 minute · facultatif'}</p>
-                    <div className="mt-4 h-1 w-full rounded-full bg-[#17334D] overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answeredCount}>
-                      <div className="h-full bg-orange transition-all" style={{ width: `${(answeredCount / 4) * 100}%` }} />
+                    {/* Optional, closed by default (client audit 18 Oct): the first result stays visible without any obligation to answer. */}
+                    <button
+                      type="button"
+                      onClick={() => setRefineOpen(o => !o)}
+                      aria-expanded={refineOpen}
+                      aria-controls="refine-panel"
+                      className="w-full flex items-center justify-between gap-3 text-left min-h-[48px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBA74] rounded-lg"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-lg md:text-xl font-extrabold text-white leading-snug">Affiner mon analyse</span>
+                        <span className="block text-sm text-[#B9BBC8] mt-0.5">4 questions · 1 minute · facultatif{answeredCount > 0 ? ` · ${answeredCount}/4 réponses` : ''}</span>
+                      </span>
+                      <ChevronDown size={20} aria-hidden="true" className={`shrink-0 text-[#B9BBC8] transition-transform ${refineOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {refineOpen && (
+                    <div id="refine-panel" className="mt-4">
+                    {matchScore && displayScore !== null && (
+                      <p className="text-sm text-white pb-3 border-b border-[#17334D]">Indice de concordance : <span className="font-extrabold">{displayScore} %</span> <span className="text-[#B9BBC8]">· {answeredCount}/4 réponses</span></p>
+                    )}
+                    <div className="mt-3 h-1 w-full rounded-full bg-[#17334D] overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answeredCount}>
+                      <div className="h-full bg-[#FDBA74] transition-all" style={{ width: `${(answeredCount / 4) * 100}%` }} />
                     </div>
-                    <p className="text-sm text-[#B9BBC8] mt-3 pb-3 border-b border-[#17334D]">{answeredCount} / 4 {t('refineBlockCount') || 'réponses'}</p>
                     <div className="space-y-4 mt-4">
                       {[
                         { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
@@ -2466,12 +2465,13 @@ export default function OpportunityDetailPage() {
                                 type="button"
                                 aria-pressed={refineAnswers[row.key] === opt}
                                 onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: a[row.key] === opt ? undefined : opt }))}
-                                className={`min-h-[48px] rounded-xl border text-base font-semibold transition-colors ${
+                                className={`min-h-[48px] rounded-xl border text-base font-semibold transition-colors inline-flex items-center justify-center gap-2 ${
                                   refineAnswers[row.key] === opt
-                                    ? 'bg-orange border-orange text-white'
-                                    : 'border-[#17334D] text-[#B9BBC8] hover:border-orange/40'
+                                    ? 'bg-white/10 border-[#FDBA74] text-white'
+                                    : 'border-[#17334D] text-[#B9BBC8] hover:border-[#FDBA74]/50'
                                 }`}
                               >
+                                {refineAnswers[row.key] === opt && <CheckCircle2 size={16} aria-hidden="true" className="text-[#FDBA74]" />}
                                 {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : (t('concordRefineNo') || 'Non')}
                               </button>
                             ))}
@@ -2480,6 +2480,8 @@ export default function OpportunityDetailPage() {
                       ))}
                     </div>
                     <p className="text-xs text-[#B9BBC8] mt-3">{t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}</p>
+                    </div>
+                    )}
                   </>
                 );
               })()}

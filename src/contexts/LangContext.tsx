@@ -419,7 +419,7 @@ const frTranslations: Translations = {
   legalResponsibility: 'Responsabilité',
   legalPublisherContent: ['Marchés Direct SAS', 'Capital social : 50 000 €', 'RCS Paris B 987 654 321', 'Siège social : 15 rue de la Paix, 75001 Paris, France', 'Directeur de la publication : Jean Dupont'],
   legalHostContent: ['Supabase Inc.', '970 Toa Payoh North, Singapore 318992', 'https://supabase.com'],
-  legalContactContent: ['Email : contact@marchesdirect.fr', 'Téléphone : +33 1 23 45 67 89', 'Horaires : Lundi – Vendredi, 9h – 18h'],
+  legalContactContent: ['Email : contact@marchesdirect.fr', 'Horaires : Lundi – Vendredi, 9h – 18h'],
   legalIPContent: ["L'ensemble du contenu de ce site (textes, images, logos, structure) est protégé par le droit d'auteur et appartient à Marchés Direct SAS ou à ses partenaires.", 'Toute reproduction, même partielle, est interdite sans autorisation préalable écrite.'],
   legalResponsibilityContent: ["Marchés Direct s'efforce de maintenir les informations disponibles à jour et exactes. Toutefois, la société ne saurait être tenue responsable des erreurs ou omissions dans les contenus publiés.", "L'utilisation des informations disponibles sur ce site se fait sous la responsabilité exclusive de l'utilisateur."],
 
@@ -2125,7 +2125,7 @@ const enTranslations: Translations = {
   legalResponsibility: 'Responsibility',
   legalPublisherContent: ['Marchés Direct SAS', 'Share capital: €50,000', 'RCS Paris B 987 654 321', 'Head office: 15 rue de la Paix, 75001 Paris, France', 'Publication Director: Jean Dupont'],
   legalHostContent: ['Supabase Inc.', '970 Toa Payoh North, Singapore 318992', 'https://supabase.com'],
-  legalContactContent: ['Email: contact@marchesdirect.fr', 'Phone: +33 1 23 45 67 89', 'Hours: Monday – Friday, 9am – 6pm'],
+  legalContactContent: ['Email: contact@marchesdirect.fr', 'Hours: Monday – Friday, 9am – 6pm'],
   legalIPContent: ["The entire content of this site (texts, images, logos, structure) is protected by copyright and belongs to Marchés Direct SAS or its partners.", "Any reproduction, even partial, is prohibited without prior written authorization."],
   legalResponsibilityContent: ["Marchés Direct strives to keep the information available up to date and accurate. However, the company cannot be held responsible for errors or omissions in published content.", "The use of information available on this site is under the sole responsibility of the user."],
 
