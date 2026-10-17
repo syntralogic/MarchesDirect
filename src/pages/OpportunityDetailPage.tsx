@@ -1999,7 +1999,8 @@ export default function OpportunityDetailPage() {
                 (matchScoreService.ts) and are never derived independently. */}
             {(() => {
               type Crit = ApiMatchScore['matchCriteria'][number];
-              const crits = matchScore.matchCriteria;
+              // "Non applicable" criteria are out of the calculation and out of the list.
+              const crits = matchScore.matchCriteria.filter(c => c.evidence !== 'not_applicable');
               const total = crits.length;
               const ORDER = ['metier', 'zone', 'disponibilite', 'moyens', 'experience', 'qualifications'];
               const NOUN: Record<string, { txt: string; plural: boolean }> = {
@@ -2033,15 +2034,10 @@ export default function OpportunityDetailPage() {
                 if (conf.length) parts.push(sentence(conf.slice(0, 2), 'reste', 'restent', ' à confirmer.'));
               }
               const conclusion = parts.length ? parts.slice(0, 2).join(' ') : (matchScore.whyRespond || '');
-              const TIER_TITLES: { min: number; title: string }[] = [
-                { min: 100, title: t('scoreTier100Title') || 'Concordance totale sur les critères évalués' },
-                { min: 90, title: t('scoreTier90Title') || 'Concordance quasi totale' },
-                { min: 75, title: t('scoreTier75Title') || 'Excellente concordance' },
-                { min: 50, title: t('scoreTier50Title') || 'Très bonne concordance' },
-                { min: 25, title: t('scoreTier25Title') || 'Des atouts pour répondre' },
-                { min: 0, title: t('scoreTier0Title') || 'Des possibilités à étudier' },
-              ];
-              const tierTitle = displayScore !== null ? TIER_TITLES.find(x => displayScore >= x.min)?.title : null;
+              // Guide v24 s.5: the verdict is one of five fixed sentences computed by the server
+              // (clôturé / condition à vérifier / à étudier de près / activité correspond / précisons votre activité).
+              // It is never derived from a percentage band.
+              const tierTitle = matchScore.verdict?.label || null;
               const ConclusionIcon = mism.length ? AlertTriangle : (total > 0 && ok.length === total) ? CheckCircle2 : AlertCircle;
               const conclusionIconClass = mism.length ? 'text-orange' : 'text-green-400';
 
@@ -2096,6 +2092,8 @@ export default function OpportunityDetailPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-base font-bold text-white">{t('scoreIndexTitle') || 'Indice de concordance'}</p>
                         <p className="text-sm text-[#B9BBC8] mt-1 leading-relaxed">{t('scoreIndexDesc') || 'Compare le profil de votre entreprise aux exigences du marché. Vos réponses précisent cette évaluation.'}</p>
+                        {/* Guide v24 s.5: this line stays next to the figure. */}
+                        <p className="text-sm font-semibold text-white mt-1.5 leading-snug">{matchScore.scoreDisclaimer}</p>
                       </div>
                     </div>
 
@@ -2109,8 +2107,6 @@ export default function OpportunityDetailPage() {
                       </div>
                     )}
 
-                    {/* Fixed disclaimer: a fit measurement, never an odds-of-winning estimate. */}
-                    <p className="text-xs text-[#8A9BB0] leading-relaxed mt-3">{matchScore.scoreDisclaimer}</p>
                   </div>
 
                   {/* Compact synthesis + ONE closed accordion holding the full six-criteria analysis. */}

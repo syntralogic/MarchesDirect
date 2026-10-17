@@ -357,6 +357,17 @@ export type ApiMatchCriterion = {
   weight: number;
   factor: number;
   answered: boolean;
+  // Guide v24 s.5: verified = 1, declared ("Oui") = 0.5, mismatch / unknown = 0, not_applicable = left out.
+  evidence?: 'verified_match' | 'declared_match' | 'mismatch' | 'unknown' | 'not_applicable';
+  mandatory?: boolean;
+  conflict?: boolean;
+};
+
+export type ApiMatchVerdict = {
+  code: 'MARKET_CLOSED' | 'MANDATORY_UNMET' | 'REVIEW_REQUIRED' | 'ACTIVITY_MATCH' | 'ACTIVITY_UNCLEAR';
+  label: string;
+  tone: 'neutral' | 'amber' | 'green';
+  priorityIssue: string | null;
 };
 
 export type ApiMatchScore = {
@@ -367,6 +378,9 @@ export type ApiMatchScore = {
   scoreNote: string;
   scoreDisclaimer: string;
   matchLabel: string | null;
+  verdict?: ApiMatchVerdict | null;
+  criteriaDocumented?: number;
+  criteriaToConfirm?: number;
   // Company-vs-market comparison, one entry per criterion.
   matchCriteria: ApiMatchCriterion[];
   warning: string | null;
