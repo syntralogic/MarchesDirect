@@ -340,7 +340,6 @@ export default function OpportunityDetailPage() {
   // now, client-side only - it doesn't feed back into the server-computed
   // matchScore (that stays 100% derived from real company/opportunity data,
   // never from unverified self-reported answers).
-  const [refineOpen, setRefineOpen] = useState(false);
   // "Les points forts de cette opportunité pour vous" (client's 13 Sep
   // concordance-apercu screenshots): a collapsed-by-default accordion,
   // matching "Affinez votre concordance" right above it - was previously
@@ -701,18 +700,6 @@ export default function OpportunityDetailPage() {
   const tradeLabel = opportunity?.trade_name
     || opportunity?.ai_matched_trades?.find(m => m.trade_name)?.trade_name
     || null;
-  // Client (20 Sep): "dès que les quatre questions sont renseignées, le bloc
-  // se ferme automatiquement... Lorsqu'on le rouvre pour corriger ses
-  // réponses, il doit rester ouvert pendant les modifications." So this only
-  // fires the auto-close on the transition into "all 4 answered" - not on
-  // every render while already complete, or reopening to edit an answer
-  // would immediately snap shut again.
-  const allRefineAnswered = ['experience', 'capacity', 'location', 'calendar'].every(k => !!refineAnswers[k]);
-  const wasAllRefineAnsweredRef = useRef(false);
-  useEffect(() => {
-    if (allRefineAnswered && !wasAllRefineAnsweredRef.current) setRefineOpen(false);
-    wasAllRefineAnsweredRef.current = allRefineAnswered;
-  }, [allRefineAnswered]);
   const [siretInput, setSiretInput] = useState('');
   const [siretSubmitting, setSiretSubmitting] = useState(false);
   const [siretError, setSiretError] = useState<string | null>(null);
@@ -2342,62 +2329,51 @@ export default function OpportunityDetailPage() {
                 leaking into the visitor-facing UI as if real - removed;
                 answers are just acknowledged and passed along with the
                 dossier request, nothing folded into matchScore.score. */}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
-              <button type="button" onClick={() => setRefineOpen(o => !o)} className="w-full flex items-center justify-between text-left">
-                <span className="text-sm font-extrabold text-white">{t('concordRefineTitle') || 'Affinez votre concordance'}</span>
-                <ChevronDown size={16} className={`text-orange shrink-0 transition-transform ${refineOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {!refineOpen && (
-                <p className="text-xs mt-1">
-                  {allRefineAnswered
-                    ? <span className="text-orange font-semibold">{t('refineEditAnswers') || 'Modifier mes réponses'}</span>
-                    : <span className="text-[#B9BBC8]">{t('concordRefineSub') || '4 réponses facultatives · expérience, moyens, zone et calendrier'}</span>}
-                </p>
-              )}
-              {refineOpen && (
-                <div className="mt-4 space-y-4">
-                  <p className="text-xs text-[#B9BBC8]">{t('refineHelp') || 'Vos réponses seront jointes à votre demande de dossier. Vous pouvez aussi le demander sans répondre.'}</p>
-                  {[
-                    { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
-                    { key: 'capacity', q: t('concordRefineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires pour cette prestation ?', help: t('refineQ2Help') || 'Vous-même, votre équipe ou vos partenaires.' },
-                    { key: 'location', q: t('concordRefineQ3') || 'Pouvez-vous intervenir ou livrer dans la zone indiquée ?' },
-                    { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?', help: t('refineQ4Help') || 'Si le calendrier manque ou reste incertain, choisissez « À confirmer ».' },
-                  ].map(row => (
-                    <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
-                      <p className="text-xs font-bold text-white mb-1">{row.q}</p>
-                      {row.help && <p className="text-xs text-[#B9BBC8] mb-2">{row.help}</p>}
-                      <div className="flex gap-2">
-                        {(['oui', 'non', 'a_confirmer'] as const).map(opt => (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: opt }))}
-                            className={`flex-1 text-xs font-semibold py-2 rounded-lg border transition-colors ${
-                              refineAnswers[row.key] === opt
-                                ? 'bg-orange border-orange text-white'
-                                : 'border-[#17334D] text-[#B9BBC8] hover:border-orange/40'
-                            }`}
-                          >
-                            {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : opt === 'non' ? (t('concordRefineNo') || 'Non') : (t('concordRefineUnsure') || 'À confirmer')}
-                          </button>
-                        ))}
-                      </div>
-                      {refineAnswers[row.key] && (() => {
-                        const crit = matchScore.matchCriteria.find(c => c.key === CRITERION_FOR_ANSWER[row.key]);
-                        if (!crit) return null;
-                        return (
-                          <p className={`text-xs mt-2 font-semibold ${crit.status === 'match' ? 'text-green-400' : crit.status === 'mismatch' ? 'text-red-400' : 'text-[#B9BBC8]'}`}>
-                            {crit.label} : {crit.status === 'match' ? (t('matchStatusMatch') || 'Correspond') : crit.status === 'mismatch' ? (t('matchStatusMismatch') || 'Ne correspond pas') : (t('matchStatusConfirm') || 'À confirmer')}
-                          </p>
-                        );
-                      })()}
+            <div id="refine-questions" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-6">
+              {(() => {
+                const refineKeys = ['experience', 'capacity', 'location', 'calendar'] as const;
+                const answeredCount = refineKeys.filter(k => refineAnswers[k] === 'oui' || refineAnswers[k] === 'non').length;
+                return (
+                  <>
+                    <h2 className="text-lg md:text-xl font-extrabold text-white leading-snug">{t('refineBlockTitle') || 'Répondez à 4 questions pour compléter votre analyse'}</h2>
+                    <p className="text-sm text-[#B9BBC8] mt-1">{t('refineBlockSub') || '1 minute · facultatif'}</p>
+                    <div className="mt-4 h-1 w-full rounded-full bg-[#17334D] overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={4} aria-valuenow={answeredCount}>
+                      <div className="h-full bg-orange transition-all" style={{ width: `${(answeredCount / 4) * 100}%` }} />
                     </div>
-                  ))}
-                  <p className="text-xs text-[#B9BBC8]">
-                    {t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}
-                  </p>
-                </div>
-              )}
+                    <p className="text-sm text-[#B9BBC8] mt-3 pb-3 border-b border-[#17334D]">{answeredCount} / 4 {t('refineBlockCount') || 'réponses'}</p>
+                    <div className="space-y-4 mt-4">
+                      {[
+                        { key: 'experience', q: t('concordRefineQ1') || 'Avez-vous déjà réalisé une prestation similaire ?' },
+                        { key: 'capacity', q: t('concordRefineQ2') || 'Pouvez-vous mobiliser les moyens nécessaires ?' },
+                        { key: 'location', q: t('concordRefineQ3') || 'Pouvez-vous intervenir dans la zone indiquée ?' },
+                        { key: 'calendar', q: t('refineQ4') || 'Pouvez-vous respecter le calendrier indiqué ?' },
+                      ].map(row => (
+                        <div key={row.key} className="pb-4 border-b border-[#17334D] last:border-0 last:pb-0">
+                          <p className="text-base text-white mb-3">{row.q}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {(['oui', 'non'] as const).map(opt => (
+                              <button
+                                key={opt}
+                                type="button"
+                                aria-pressed={refineAnswers[row.key] === opt}
+                                onClick={() => setRefineAnswers(a => ({ ...a, [row.key]: a[row.key] === opt ? undefined : opt }))}
+                                className={`min-h-[48px] rounded-xl border text-base font-semibold transition-colors ${
+                                  refineAnswers[row.key] === opt
+                                    ? 'bg-orange border-orange text-white'
+                                    : 'border-[#17334D] text-[#B9BBC8] hover:border-orange/40'
+                                }`}
+                              >
+                                {opt === 'oui' ? (t('concordRefineYes') || 'Oui') : (t('concordRefineNo') || 'Non')}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[#B9BBC8] mt-3">{t('refineNote') || 'Réponses déclaratives, transmises avec votre demande de dossier.'}</p>
+                  </>
+                );
+              })()}
             </div>
 
             {/* "Les points forts de cette opportunité pour vous" (client's
