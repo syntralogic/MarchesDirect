@@ -32,6 +32,21 @@ function ErrorFallback() {
   );
 }
 
+// Browser auto-translate (Google Translate) wraps/replaces text nodes behind React's back, which makes React throw
+// "removeChild ... not a child of this node" and blank the page. Tolerate that instead of crashing.
+if (typeof Node === 'function' && Node.prototype) {
+  const origRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function <T extends Node>(this: Node, child: T): T {
+    if (child.parentNode !== this) return child;
+    return origRemoveChild.call(this, child) as T;
+  };
+  const origInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(this: Node, newNode: T, ref: Node | null): T {
+    if (ref && ref.parentNode !== this) return newNode;
+    return origInsertBefore.call(this, newNode, ref) as T;
+  };
+}
+
 createRoot(document.getElementById("root")!).render(
   <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
     <AppWrapper>

@@ -204,6 +204,12 @@ function markOpportunityConfirmed(oppId: string | undefined, siret: string | nul
   }
 }
 
+// Only a clearly closed/ceased/struck-off status blocks the analysis. Values like "active", "Active", "Inscrit"
+// (RCS) or an unknown one must never be read as "closed".
+function isClosedStatut(s: string | null | undefined): boolean {
+  return !!s && /cess|clos|radi|ferm/i.test(s);
+}
+
 export default function OpportunityDetailPage() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
@@ -242,7 +248,7 @@ export default function OpportunityDetailPage() {
     activity: (company as any).industry_sector || null,
     siren: null,
     siret: company.siret || null,
-    statut: company.status || null,
+    statut: (company.status === 'active' ? 'Active' : company.status === 'closed' ? 'Cessée' : null),
     revenue: (company as any).annual_revenue != null ? String((company as any).annual_revenue) : null,
     revenueYear: null,
     website: (company as any).website_url || null,
@@ -1903,7 +1909,7 @@ export default function OpportunityDetailPage() {
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-semibold text-white truncate">{c.name || c.siret}</p>
                           {c.statut && (
-                            <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${c.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                            <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${!isClosedStatut(c.statut) ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
                               {c.statut}
                             </span>
                           )}
@@ -1976,7 +1982,7 @@ export default function OpportunityDetailPage() {
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                   <p className="text-sm font-extrabold text-white">{siretCompany.name || '—'}</p>
                   {siretCompany.statut && (
-                    <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${siretCompany.statut === 'Active' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                    <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${!isClosedStatut(siretCompany.statut) ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
                       {siretCompany.statut}
                     </span>
                   )}
@@ -2028,7 +2034,7 @@ export default function OpportunityDetailPage() {
           (() => {
             // Client brief 17 Oct (follow-up): never a silent jump from the company card to the dossier, and never
             // "Identifiez votre entreprise" while a company is displayed. Say precisely what blocks, and offer the action.
-            const closedCompany = !!(siretCompany?.statut && siretCompany.statut !== 'Active');
+            const closedCompany = !!(siretCompany?.statut && isClosedStatut(siretCompany.statut));
             const modifyCompany = () => { setScreen(1); setSiretInput(''); };
             const blockedMessage = closedCompany
               ? "Cet établissement est indiqué comme cessé. Sélectionnez votre établissement actif pour poursuivre l'analyse."
@@ -2153,7 +2159,7 @@ export default function OpportunityDetailPage() {
                 { label: t('annonceAmount') || 'Montant', value: hasBudget ? `${new Intl.NumberFormat('fr-FR').format(opportunity.estimated_value as number)} € HT` : (t('annonceAmountMissing') || 'Non communiqué'), accent: false },
                 { label: t('annonceDeadline') || 'Échéance', value: hasDeadline ? `${formatDate(opportunity.deadline as string)}${dayBadge}` : (t('annonceDeadlineMissing') || 'Non communiquée'), accent: hasDeadline },
               ];
-              const statusAlert = !!(siretCompany?.statut && siretCompany.statut !== 'Active');
+              const statusAlert = !!(siretCompany?.statut && isClosedStatut(siretCompany.statut));
 
               return (
                 <>
@@ -2624,7 +2630,7 @@ export default function OpportunityDetailPage() {
                               <dt className="text-[#4f6474]">{t('scorePreviewLocation') || 'Implantation'}</dt><dd>{[siretCompany?.city, siretCompany?.postal].filter(Boolean).join(' · ') || '—'}</dd>
                               <dt className="text-[#4f6474]">{t('scorePreviewDeclaredActivity') || 'Activité déclarée'}</dt><dd>{siretCompany?.activity || siretCompany?.ape || '—'}</dd>
                             </dl>
-                            {siretCompany?.statut && siretCompany.statut !== 'Active' && (
+                            {siretCompany?.statut && isClosedStatut(siretCompany.statut) && (
                               <p className="border-l-2 border-[#bd7027] pl-2.5 text-[#664320] mt-2">
                                 {t('scorePreviewStatusNotice', { status: siretCompany.statut }) || `Statut « ${siretCompany.statut} » : l'identité et la situation de l'entreprise doivent être clarifiées avant d'utiliser ce dossier.`}
                               </p>
