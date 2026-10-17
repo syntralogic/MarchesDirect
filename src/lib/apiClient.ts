@@ -1612,11 +1612,11 @@ export const tendersApi = {
     const { data } = await apiClient.post(`/tenders/bid/${bidId}/generate-forms`);
     return data;
   },
-  getAppointment: async (bidId: string): Promise<{ appointment: ApiBidAppointment | null; availableSlots: string[] }> => {
+  getAppointment: async (bidId: string): Promise<{ appointment: ApiBidAppointment | null; availableSlots: { slotAt: string; label: string }[] }> => {
     const { data } = await apiClient.get(`/tenders/bid/${bidId}/appointments`);
     return data;
   },
-  requestAppointment: async (bidId: string, payload: { mode: 'slot' | 'callback'; slotLabel?: string }): Promise<{ appointment: ApiBidAppointment }> => {
+  requestAppointment: async (bidId: string, payload: { mode: 'slot' | 'callback'; slotAt?: string }): Promise<{ appointment: ApiBidAppointment }> => {
     const { data } = await apiClient.post(`/tenders/bid/${bidId}/appointments`, payload);
     return data;
   },

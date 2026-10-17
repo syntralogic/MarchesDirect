@@ -66,7 +66,7 @@ export default function BidWorkspacePage() {
   const [opportunity, setOpportunity] = useState<ApiOpportunityDetail | null>(null);
   const [bid, setBid] = useState<ApiBidResponse | null>(null);
   const [appointment, setAppointment] = useState<ApiBidAppointment | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<{ slotAt: string; label: string }[]>([]);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [memoText, setMemoText] = useState('');
   const [pricing, setPricing] = useState<ApiPricingItem[]>([]);
@@ -169,15 +169,19 @@ export default function BidWorkspacePage() {
     }
   };
 
-  const handleBookSlot = async (slotLabel: string) => {
+  const handleBookSlot = async (slotAt: string) => {
     if (!bid) return;
-    setBookingSlot(slotLabel);
+    setBookingSlot(slotAt);
     try {
-      const result = await tendersApi.requestAppointment(bid.id, { mode: 'slot', slotLabel });
+      const result = await tendersApi.requestAppointment(bid.id, { mode: 'slot', slotAt });
       setAppointment(result.appointment);
       setShowSlotPicker(false);
       toast.success('Rendez-vous confirmé.');
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        // slot just taken: refresh the list, nothing typed is lost
+        tendersApi.getAppointment(bid.id).then(r => setAvailableSlots(r.availableSlots)).catch(() => {});
+      }
       toast.error(getApiErrorMessage(err, 'Échec de la prise de rendez-vous.'));
     } finally {
       setBookingSlot(null);
@@ -422,12 +426,12 @@ export default function BidWorkspacePage() {
                 <div className="grid grid-cols-2 gap-2">
                   {availableSlots.map(slot => (
                     <button
-                      key={slot}
-                      onClick={() => handleBookSlot(slot)}
+                      key={slot.slotAt}
+                      onClick={() => handleBookSlot(slot.slotAt)}
                       disabled={bookingSlot !== null}
                       className="flex items-center justify-center gap-1 text-[11px] font-semibold text-white bg-[#061D32] border border-[#17334D] rounded-lg py-2 hover:border-orange/50 transition-colors disabled:opacity-40"
                     >
-                      {bookingSlot === slot ? <Loader2 size={11} className="animate-spin" /> : null} {slot}
+                      {bookingSlot === slot.slotAt ? <Loader2 size={11} className="animate-spin" /> : null} {slot.label}
                     </button>
                   ))}
                 </div>
