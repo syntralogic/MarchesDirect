@@ -310,6 +310,7 @@ export default function OpportunityDetailPage() {
   // card ("Ceci n'est qu'un aperçu") rather than duplicating that form's
   // logic here.
   const leadGateRef = useRef<HTMLDivElement>(null);
+  const [leadGateVisible, setLeadGateVisible] = useState(false);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -700,6 +701,14 @@ export default function OpportunityDetailPage() {
   const tradeLabel = opportunity?.trade_name
     || opportunity?.ai_matched_trades?.find(m => m.trade_name)?.trade_name
     || null;
+  // Sticky "Recevoir mon dossier prérempli" bar (client example): shown on mobile until the lead form itself is on screen.
+  useEffect(() => {
+    const el = leadGateRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(([e]) => setLeadGateVisible(e.isIntersecting), { threshold: 0.15 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [matchScore, screen, isAuthenticated]);
   const [siretInput, setSiretInput] = useState('');
   const [siretSubmitting, setSiretSubmitting] = useState(false);
   const [siretError, setSiretError] = useState<string | null>(null);
@@ -2375,6 +2384,22 @@ export default function OpportunityDetailPage() {
                 );
               })()}
             </div>
+
+            {!(isAuthenticated || leadCaptured) && !leadGateVisible && (
+              <>
+                <div className="h-24 md:hidden" aria-hidden="true" />
+                <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#041B30]/95 backdrop-blur border-t border-[#17334D] px-4 pt-3 pb-3">
+                  <button
+                    type="button"
+                    onClick={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="w-full bg-orange text-white font-bold py-3.5 rounded-xl"
+                  >
+                    {t('leadSubmit') || 'Recevoir mon dossier prérempli'}
+                  </button>
+                  <p className="text-xs text-[#B9BBC8] text-center mt-2">{t('leadStickyFree') || 'Gratuit · votre dossier à votre nom'}</p>
+                </div>
+              </>
+            )}
 
             {/* "Les points forts de cette opportunité pour vous" (client's
                 12 Sep reference): derived straight from real opportunity/
