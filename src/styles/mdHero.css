@@ -704,3 +704,19 @@
   .mdhero.origin-app .mf-zone .lbl{font-size:14px!important;line-height:20px!important;white-space:nowrap;margin-bottom:4px}
   .mdhero.origin-app .hx-body .btn-o{min-height:52px!important;font-size:16px!important;box-shadow:0 2px 14px rgba(255,101,0,.35)}
 }
+
+/* Accueil mobile : l'espace --hx-gap (calculé dans MdHero) descend le moteur pour que le bouton orange se place
+   juste au-dessus de la barre du bas ; le texte « gratuit » qui suit passe sous la première vue. */
+@media (max-width:640px){
+  .mdhero.origin-app .hx-promise+.hx-search{margin-top:calc(12px + var(--hx-gap,0px))!important}
+  .mdhero.origin-app .hx-free{margin-top:var(--hx-free-gap,12px)!important}
+}
+@media (max-width:640px){
+  .mdhero.hx-tight .hx-tab-d{display:none!important}
+  .mdhero.hx-tight.origin-app .hx-tab{min-height:44px!important}
+  .mdhero.hx-tight.origin-app .hx .hx-title{font-size:24px!important;line-height:28px!important}
+}
+@media (max-width:640px){
+  .mdhero.hx-tight.origin-app .hx .hx-sub.hx-promise{font-size:14px!important;line-height:19px!important;margin-bottom:6px!important}
+  .mdhero.hx-tight.origin-app .hx-main{padding:12px!important}
+}

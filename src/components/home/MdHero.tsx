@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
 import { DEPARTMENTS } from '@/data/departments';
@@ -62,6 +62,49 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
   const [tab, setTab] = useState<TypeTab>('all');
   const [showRefine, setShowRefine] = useState(false);
   const [nature, setNature] = useState<Nature | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  // Téléphone : le bouton orange « Rechercher » se place juste au-dessus de la barre de navigation fixe, quelle que soit
+  // la hauteur de l'écran, et le texte qui le suit passe sous la première vue (retour client 17 oct.). L'espace est ajouté
+  // entre la phrase d'introduction et le moteur ; il vaut 0 si l'écran est trop petit (le bouton reste alors visible).
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || mode !== 'open') return;
+    let lastW = -1;
+    const fit = () => {
+      root.style.setProperty('--hx-gap', '0px');
+      root.style.setProperty('--hx-free-gap', '12px');
+      root.classList.remove('hx-tight');
+      if (window.innerWidth > 640) return;
+      const btn = btnRef.current;
+      if (!btn) return;
+      const nav = document.querySelector<HTMLElement>('.fixed.bottom-0.md\\:hidden');
+      const navTop = nav ? nav.getBoundingClientRect().top : window.innerHeight - 65;
+      const bottom = btn.getBoundingClientRect().bottom + window.scrollY;
+      const room = Math.round(navTop - 20 - bottom);
+      // Écran trop court : on masque les sous-titres des onglets pour que le bouton reste visible.
+      if (room < 0) {
+        root.classList.add('hx-tight');
+        const b2 = btn.getBoundingClientRect().bottom + window.scrollY;
+        const room2 = Math.round(navTop - 20 - b2);
+        if (room2 <= 0) return;
+        root.style.setProperty('--hx-gap', `${Math.min(320, room2)}px`);
+        root.style.setProperty('--hx-free-gap', '32px');
+        return;
+      }
+      const gap = Math.min(320, room);
+      root.style.setProperty('--hx-gap', `${gap}px`);
+      if (gap > 0) root.style.setProperty('--hx-free-gap', '32px');
+    };
+    const onResize = () => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; fit(); } };
+    lastW = window.innerWidth;
+    fit();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', fit);
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => { window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', fit); };
+  }, [mode, lang]);
 
   const doSearch = () => {
     const p = new URLSearchParams();
@@ -84,7 +127,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
   );
 
   return (
-    <div className="mdhero origin-app">
+    <div className="mdhero origin-app" ref={rootRef}>
       <section className="hx hx-top">
         <div className="wrap">
           <div className="hx-grid">
@@ -93,7 +136,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                 {T.title1}<span>{T.title2}</span>
               </h1>
               <p className="hx-sub hx-promise">
-                {T.sub}
+                {T.sub} {T.more}
               </p>
               <div className="hx-search">
                 <div role="tablist" aria-label={T.tablist} className="hx-tabs">
@@ -124,13 +167,12 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                           <label htmlFor="mdhero-zone" className="lbl">{T.zone}</label>
                           {zoneSelect('mdhero-zone')}
                         </div>
-                        <button className="btn btn-o" onClick={doSearch} style={{ flex: '1 0 200px', maxWidth: '100%', minHeight: 60, fontSize: 18, borderRadius: 12, whiteSpace: 'nowrap' }}>
+                        <button ref={btnRef} className="btn btn-o" onClick={doSearch} style={{ flex: '1 0 200px', maxWidth: '100%', minHeight: 60, fontSize: 18, borderRadius: 12, whiteSpace: 'nowrap' }}>
                           {T.search}
                         </button>
                       </div>
                       <p className="hx-free">{T.free}</p>
                       <p className="hx-small">{T.small}</p>
-                      <p className="hx-more">{T.more}</p>
                       <div role="radiogroup" aria-label={T.kind} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, alignItems: 'center' }}>
                         {TYPE_TABS.map(t => {
                           const on = tab === t.key;
