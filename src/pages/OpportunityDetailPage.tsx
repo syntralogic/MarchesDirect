@@ -3019,7 +3019,7 @@ export default function OpportunityDetailPage() {
             <span className="inline-flex items-center gap-1.5 rounded-full border border-orange/50 bg-orange/10 px-3 py-1.5 text-[11px] font-bold text-orange mb-3">
               <Clock3 size={12} /> {t('dv13Pill') || 'Offert · 30 min · Spécialiste marchés publics'}
             </span>
-            <h2 className="flex items-center gap-2 text-lg font-extrabold text-white mb-2"><Users size={16} className="text-orange" /> {t('dv13Support') || 'Accompagnement complet'}</h2>
+            <h2 className="flex items-center gap-2 text-lg font-extrabold text-white mb-2"><Users size={16} className="text-orange" /> {t('dv13Support') || 'Votre premier échange avec un chargé d’affaires'}</h2>
             <p className="text-xs text-[#B9BBC8] leading-relaxed mb-3">{t('dv13SupportIntro')}</p>
             <div className="rounded-xl bg-[#0A1A2B] border border-[#17334D] p-3 mb-4 space-y-3">
               <div>
@@ -3058,13 +3058,18 @@ export default function OpportunityDetailPage() {
                   <Calendar size={14} /> {t('dv13Cta') || 'Réserver mes 30 minutes offertes'}
                 </button>
                 <button type="button" onClick={() => setContactChoice(c => c === 'callback' ? null : 'callback')} className="block mx-auto mt-3 text-xs font-semibold text-[#B9BBC8] underline underline-offset-2 hover:text-white">
-                  {t('dv13CallMe') || 'Être rappelé à la place'}
+                  {t('dv13CallMe') || 'Être rappelé'}
                 </button>
             {contactChoice === 'callback' && (
               <div className="mt-3 pt-3 border-t border-[#17334D]">
                 {callbackConfirmed ? (
-                  <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
-                    <CheckCircle2 size={14} className="shrink-0" /> {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : (t('accessCallbackConfirmed') || 'Rappel demandé')}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs text-green-400 bg-green-400/5 border border-green-400/20 rounded-xl px-3 py-2.5">
+                      <CheckCircle2 size={14} className="shrink-0" /> {slotSubmitting === 'callback' ? <Loader2 size={13} className="animate-spin" /> : `${t('callbackSavedTitle')} ${t('callbackSavedAsk')}`}
+                    </div>
+                    <button type="button" onClick={() => setShowAccountManagerModal(true)} className="w-full flex items-center justify-center gap-2 border border-orange text-orange text-sm font-semibold py-2.5 rounded-xl hover:bg-orange/10 transition-colors">
+                      <Calendar size={14} /> {t('callbackSlotCta')}
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-2.5">
@@ -3090,7 +3095,7 @@ export default function OpportunityDetailPage() {
                       </div>
                     )}
                     <button type="button" disabled={!!slotSubmitting} onClick={handleCallback} className="w-full flex items-center justify-center gap-2 bg-orange text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50">
-                      {slotSubmitting === 'callback' ? <Loader2 size={14} className="animate-spin" /> : <PhoneCall size={14} />} {t('accessCallbackNoSlot') || 'Confirmer la demande de rappel'}
+                      {slotSubmitting === 'callback' ? <Loader2 size={14} className="animate-spin" /> : <PhoneCall size={14} />} {t('accessCallbackNoSlot') || 'Confirmer ma demande de rappel'}
                     </button>
                   </div>
                 )}
@@ -3098,8 +3103,7 @@ export default function OpportunityDetailPage() {
               </div>
             )}
                 <div className="border-t border-[#17334D] mt-4 pt-3 text-center">
-                  <p className="text-[11px] font-semibold text-green-400 inline-flex items-center gap-1.5"><CheckCircle2 size={12} /> {t('dv13Free') || 'Premier échange gratuit · Sans engagement'}</p>
-                  <p className="text-[10px] text-[#B9BBC8] mt-0.5">{t('dv13Phone') || 'Échange téléphonique'}</p>
+                  <p className="text-[11px] font-semibold text-green-400 inline-flex items-center gap-1.5"><CheckCircle2 size={12} /> {t('dv13Free') || 'Par téléphone · Gratuit · Sans engagement'}</p>
                   {reviewsRating != null && reviewsCount != null && (
                     <p className="mt-3 text-[11px] font-semibold text-white"><Star size={11} className="inline text-orange fill-orange -mt-0.5" /> {fmtRating}/5 sur {reviewsCount} avis artisans</p>
                   )}
