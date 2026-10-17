@@ -5,7 +5,7 @@ import { DEPARTMENTS } from '@/data/departments';
 import '@/styles/mdHero.css';
 
 // Hero de l'accueil, aligné sur la maquette client (Marches-Direct-conversion-v24) :
-// carte « Artisans · Indépendants · TPE », 2 onglets, champ métier, zone, bouton orange,
+// carte, 2 onglets, champ métier, zone, bouton orange,
 // filtres par type de marché et « Affiner ma recherche ». La recherche ouvre /recherche
 // avec les mêmes paramètres que le reste du site (q, department, journey, nature).
 
@@ -23,7 +23,7 @@ const NATURE_KEYS: Nature[] = ['travaux', 'services', 'fournitures'];
 
 const TXT = {
   fr: {
-    eyebrow: 'Artisans · Indépendants · TPE', title1: 'Trouvez votre prochain marché.', title2: 'Nous vous aidons à y répondre.',
+    title1: 'Trouvez votre prochain marché.', title2: 'Nous vous aidons à y répondre.',
     sub: 'Marchés publics, appels d’offres privés et sous-traitance entre professionnels.',
     more: 'Un chargé d’affaires vous aide à préparer votre candidature.',
     tablist: 'Type de recherche', tabOpen: 'Marchés ouverts', tabOpenD: 'Consultations en cours', tabProj: 'Futurs chantiers', tabProjD: 'Avant les appels d’offres',
@@ -37,7 +37,7 @@ const TXT = {
     s1: 'Un marché', s2: 'Votre entreprise', s3: 'Votre analyse gratuite',
   },
   en: {
-    eyebrow: 'Craftspeople · Self-employed · Small businesses', title1: 'Find your next contract.', title2: 'We help you win it.',
+    title1: 'Find your next contract.', title2: 'We help you win it.',
     sub: 'Public contracts, private tenders and subcontracting between professionals.',
     more: 'A business advisor helps you prepare your bid.',
     tablist: 'Search type', tabOpen: 'Open contracts', tabOpenD: 'Bids currently open', tabProj: 'Upcoming projects', tabProjD: 'Before tenders are published',
@@ -89,7 +89,6 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
         <div className="wrap">
           <div className="hx-grid">
             <div className="hx-main">
-              <div className="origin-eyebrow">{T.eyebrow}</div>
               <h1 className="hx-title">
                 {T.title1}<span>{T.title2}</span>
               </h1>

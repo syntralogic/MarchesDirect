@@ -689,3 +689,18 @@
   .mdhero .hx-qlab2{margin-bottom:6px}
   .mdhero .hx-body > div[style*="flex-wrap"]{gap:8px !important}
 }
+
+/* --- Accueil mobile : le bouton orange « Rechercher » doit être visible sans défiler (retour client 17 oct.) ---
+   Sur un téléphone ~665 px de haut, la barre de navigation fixe (65 px) masquait le bouton. On récupère de la hauteur
+   sans réduire la taille du champ ni du bouton : marges internes, titre, étiquette de zone sur une seule ligne. */
+@media (max-width:640px){
+  .mdhero.origin-app .hx{padding-top:12px!important;padding-bottom:16px!important}
+  .mdhero.origin-app .hx-main{padding:14px!important}
+  .mdhero.origin-app .hx .hx-title{font-size:26px!important;line-height:30px!important;margin:0 0 8px!important}
+  .mdhero.origin-app .hx .hx-sub.hx-promise{font-size:15px!important;line-height:21px!important;margin:0 0 10px!important}
+  .mdhero.origin-app .hx-tab{min-height:50px!important;padding:6px 10px!important}
+  .mdhero.origin-app .hx-body{padding:12px!important}
+  .mdhero.origin-app .hx-qlab2{margin-bottom:6px!important}
+  .mdhero.origin-app .mf-zone .lbl{font-size:14px!important;line-height:20px!important;white-space:nowrap;margin-bottom:4px}
+  .mdhero.origin-app .hx-body .btn-o{min-height:52px!important;font-size:16px!important;box-shadow:0 2px 14px rgba(255,101,0,.35)}
+}
