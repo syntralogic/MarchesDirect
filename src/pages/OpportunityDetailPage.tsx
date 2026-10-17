@@ -907,7 +907,7 @@ export default function OpportunityDetailPage() {
   useEffect(() => {
     if (!id || !isAuthenticated) return;
     tendersApi.getDocuments(id)
-      .then(({ documents }) => setDceDocuments(documents))
+      .then(({ documents }) => setDceDocuments(Array.isArray(documents) ? documents : []))
       .catch(() => {});
   }, [id, isAuthenticated]);
 
@@ -921,7 +921,7 @@ export default function OpportunityDetailPage() {
       if (!d) return;
       setDossier(d);
       setDossierResponseText(d.response_text || '');
-      setDossierPartners(d.partners || []);
+      setDossierPartners(Array.isArray(d.partners) ? d.partners : []);
     }).catch(() => {});
   }, [id, isAuthenticated]);
 
@@ -960,7 +960,7 @@ export default function OpportunityDetailPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     companyVaultApi.documents.list()
-      .then(setChecklistDocs)
+      .then(docs => setChecklistDocs(Array.isArray(docs) ? docs : []))
       .catch(() => {});
   }, [isAuthenticated]);
 
@@ -2487,6 +2487,15 @@ export default function OpportunityDetailPage() {
               </>
             )}
 
+                {(isAuthenticated || leadCaptured) && (
+                  <button
+                    type="button"
+                    onClick={() => { setScreen(3); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="w-full flex items-center justify-center gap-2 bg-orange text-white font-bold py-3.5 rounded-xl hover:bg-orange/90"
+                  >
+                    {t('continueCta') || 'Continuer'} <ChevronRight size={18} />
+                  </button>
+                )}
               </div>
             )}
 
@@ -2925,7 +2934,7 @@ export default function OpportunityDetailPage() {
             ? (t('dv13NextRequested') || "Votre chargé d'affaires prépare votre dossier")
             : (t('dv13NextDefault') || "Votre échange avec un chargé d'affaires");
         const nextIsDefault = !callbackConfirmed && !dossierRequested;
-        const usableDce = dceDocuments.filter(d => (d.status === 'downloaded' || d.status === 'parsed') && d.source_url);
+        const usableDce = (Array.isArray(dceDocuments) ? dceDocuments : []).filter(d => (d.status === 'downloaded' || d.status === 'parsed') && d.source_url);
         const { accompaniedToday, reviewsRating, reviewsCount } = SOCIAL_PROOF;
         const fmtRating = reviewsRating != null ? String(reviewsRating).replace('.', ',') : '';
 
@@ -2968,7 +2977,7 @@ export default function OpportunityDetailPage() {
           try {
             const saved = await dossiersApi.generate(id, {
               response_text: dossierResponseText,
-              partners: dossierPartners.filter(p => p.name.trim()),
+              partners: (Array.isArray(dossierPartners) ? dossierPartners : []).filter(p => p?.name?.trim()),
               checklist: CHECKLIST_DOCS.map(item => ({ label: item.type, done: checklistDocs.some(d => d.document_type === item.type) })),
               analysis_id: analysesApi.currentId(id), // same snapshot as the concordance
             });

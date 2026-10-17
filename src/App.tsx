@@ -1,3 +1,4 @@
+import { PageErrorBoundary } from '@/components/PageErrorBoundary';
 import NotFound from '@/pages/NotFound';
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom';
@@ -196,7 +197,7 @@ const App: React.FC = () => {
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
               <Route path="/parcours" element={<OpportunityJourneyPage />} />
-              <Route path="/opportunites/:id" element={<OpportunityDetailPage />} />
+              <Route path="/opportunites/:id" element={<PageErrorBoundary><OpportunityDetailPage /></PageErrorBoundary>} />
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
