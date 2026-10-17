@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { ArrowRight } from 'lucide-react';
 import elena from '@/assets/1.jpeg';
-import { advisorSupportLabel, type OpportunityJourney } from '@/lib/advisor';
 
 // "Le regard de votre chargé d'affaires" (client brief 17 Oct, follow-up and complement): the frame that accompanies
 // the visitor through the journey, styled close to the support block of the dossier page (same background, discreet
@@ -15,13 +14,12 @@ import { advisorSupportLabel, type OpportunityJourney } from '@/lib/advisor';
 interface Props {
   id?: string;
   advice: ReactNode;
-  journey?: OpportunityJourney;
   ctaLabel: string;
   onNext: () => void;
   className?: string;
 }
 
-export function AdvisorInsight({ id, advice, journey, ctaLabel, onNext, className = '' }: Props) {
+export function AdvisorInsight({ id, advice, ctaLabel, onNext, className = '' }: Props) {
   const titleId = `${id || 'advisor-insight'}-title`;
   return (
     <section
@@ -47,7 +45,7 @@ export function AdvisorInsight({ id, advice, journey, ctaLabel, onNext, classNam
         />
         <div className="min-w-0">
           <p className="text-[12px] font-bold uppercase tracking-wide text-[#FDBA74]">Votre accompagnement</p>
-          <p className="text-sm text-[#B9BBC8]">Elena Popescu · {advisorSupportLabel(journey)}</p>
+          <p className="text-sm text-[#B9BBC8]">Elena Popescu · Votre premier contact</p>
         </div>
       </div>
 

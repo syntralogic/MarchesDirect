@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { PersonalizedAnalysis } from '@/components/xh/PersonalizedAnalysis';
 import { AdvisorInsight } from '@/components/AdvisorInsight';
-import { advisorSupportLabel } from '@/lib/advisor';
 import elenaPortrait from '@/assets/1.jpeg';
 import { CallbackModal } from '@/components/CallbackModal';
 import {
@@ -1531,20 +1530,20 @@ export default function OpportunityDetailPage() {
             const riskLabel = (r: unknown): string => (typeof r === 'object' && r !== null ? String((r as { label?: unknown }).label || '') : typeof r === 'string' ? r : '').trim();
             const mandatory = rawRisks.find(r => typeof r === 'object' && r !== null && (r as { severity?: unknown }).severity === 'obligatoire' && riskLabel(r));
             const firstRisk = mandatory || rawRisks.find(r => riskLabel(r));
-            const clip = (x: string) => (x.length > 140 ? `${x.slice(0, 137).trimEnd()}…` : x);
+            const clip = (x: string) => (x.length > 110 ? `${x.slice(0, 107).trimEnd()}…` : x);
             const parts: string[] = [];
+            const where = opportunity.location_city ? ` à ${opportunity.location_city}` : '';
+            const amount = opportunity.estimated_value ? `, d'un montant estimé à ${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(opportunity.estimated_value as number)} €` : '';
+            const when = upcoming ? `, à étudier avant le ${formatDate(opportunity.deadline as string)}` : '';
             parts.push(tradeLabel
-              ? `Ce marché porte sur ${tradeLabel.toLowerCase()}${upcoming ? `, avec une échéance au ${formatDate(opportunity.deadline as string)}` : ''}.`
-              : `Lisez d'abord l'objet du marché${upcoming ? ` et gardez en tête l'échéance du ${formatDate(opportunity.deadline as string)}` : ''}.`);
-            parts.push(firstRisk
-              ? `Point à regarder en priorité : ${clip(riskLabel(firstRisk)).replace(/[.\s]+$/, '')}.`
-              : 'Repérez les pièces demandées et les conditions de participation avant de décider.');
-            parts.push('Vérifiez ensuite si ce marché correspond à votre entreprise.');
+              ? `Un marché de ${tradeLabel.toLowerCase()}${where}${amount}${when}.`
+              : `Un marché${where}${amount}${when}.`);
+            if (firstRisk) parts.push(`Point important : ${clip(riskLabel(firstRisk)).replace(/[.\s]+$/, '')}.`);
+            parts.push('Vérifiez maintenant s’il correspond à votre entreprise.');
             return (
               <AdvisorInsight
                 id="advisor-fiche"
                 advice={parts.join(' ')}
-                journey={opportunity.journey}
                 ctaLabel={isAuthenticated ? 'Vérifier si ce marché correspond à mon entreprise' : 'Vérifier si ce marché me correspond'}
                 onNext={() => {
                   if (isAuthenticated) { setScreen(2); return; }
@@ -2074,8 +2073,7 @@ export default function OpportunityDetailPage() {
                 <AdvisorInsight
                   id="advisor-concordance"
                   advice={blockedAdvice}
-                  journey={opportunity.journey}
-                  ctaLabel="Découvrir mon dossier prérempli"
+                    ctaLabel="Découvrir mon dossier prérempli"
                   onNext={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 />
               )}
@@ -2209,17 +2207,17 @@ export default function OpportunityDetailPage() {
                     // Crosses market, company and the visitor's answers (all from the server-computed criteria): one
                     // concrete strength, one point to prepare, the next step. No promise of success.
                     const parts: string[] = [];
-                    if (ok.length) parts.push(sentence(ok.slice(0, 1), 'correspond', 'correspondent', ' à ce marché.'));
+                    const who = siretCompany?.name ? `Pour ${siretCompany.name}` : 'Pour votre entreprise';
+                    parts.push(displayScore !== null ? `${who}, l’indice de concordance est de ${displayScore} %.` : `${who}, le résultat est encore à préciser.`);
+                    if (ok.length) parts.push(sentence(ok.slice(0, 1), 'correspond', 'correspondent', ' à ce marché : c’est un vrai atout.'));
                     if (mism.length) parts.push(sentence(mism.slice(0, 1), 'est à vérifier', 'sont à vérifier', ' avant de candidater.'));
-                    else if (conf.length) parts.push(sentence(conf.slice(0, 1), 'reste', 'restent', ' à confirmer : une réponse de votre part suffit à préciser.'));
-                    else parts.push('Aucun écart n’apparaît à ce stade ; gardez de quoi justifier vos réponses.');
-                    parts.push('Prochaine étape : découvrez votre dossier prérempli, puis échangez avec un chargé d’affaires.');
+                    else if (conf.length) parts.push(sentence(conf.slice(0, 1), 'reste', 'restent', ' à compléter : quelques précisions suffisent.'));
+                    parts.push('Découvrez votre dossier prérempli, puis échangez avec un chargé d’affaires pour avancer.');
                     return (
                       <AdvisorInsight
                         id="advisor-concordance"
                         advice={parts.join(' ')}
-                        journey={opportunity.journey}
-                        ctaLabel="Découvrir mon dossier prérempli"
+                                ctaLabel="Découvrir mon dossier prérempli"
                         onNext={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                       />
                     );
@@ -3134,7 +3132,7 @@ export default function OpportunityDetailPage() {
               <img src={elenaPortrait} alt="Elena Popescu" width={48} height={48} loading="lazy" decoding="async" className="w-12 h-12 shrink-0 grow-0 rounded-full object-cover border-2 border-orange" />
               <div className="min-w-0">
                 <p className="text-[12px] font-bold uppercase tracking-wide text-[#FDBA74]">Votre accompagnement</p>
-                <p className="text-sm text-[#B9BBC8]">Elena · {advisorSupportLabel(opportunity.journey)}</p>
+                <p className="text-sm text-[#B9BBC8]">Elena Popescu · Votre premier contact</p>
               </div>
             </div>
             {accompaniedToday != null && accompaniedToday > 0 && (
@@ -3144,7 +3142,7 @@ export default function OpportunityDetailPage() {
               </p>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-orange/50 bg-orange/10 px-3 py-1.5 text-xs font-bold text-orange mb-3">
-              <Clock3 size={12} /> {t('dv13Pill') || '30 min offertes'}
+              <Clock3 size={12} /> {t('dv13Pill') || 'Offert · 30 min · Spécialiste marchés publics'}
             </span>
             <h2 className="flex items-center gap-2 text-lg font-extrabold text-white mb-2"><Users size={16} className="text-orange" /> {t('dv13Support') || 'Votre premier échange avec un chargé d’affaires'}</h2>
             <p className="text-xs text-[#B9BBC8] leading-relaxed mb-3">{t('dv13SupportIntro')}</p>
