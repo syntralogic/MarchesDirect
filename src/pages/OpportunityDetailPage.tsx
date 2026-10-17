@@ -3045,19 +3045,19 @@ export default function OpportunityDetailPage() {
               </div>
             </div>
             {accompaniedToday != null && accompaniedToday > 0 && (
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold text-green-400 mb-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-green-400 mb-3">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
                 {accompaniedToday} {accompaniedToday > 1 ? 'entreprises accompagnées' : 'entreprise accompagnée'} aujourd'hui
               </p>
             )}
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-orange/50 bg-orange/10 px-3 py-1.5 text-[11px] font-bold text-orange mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-orange/50 bg-orange/10 px-3 py-1.5 text-xs font-bold text-orange mb-3">
               <Clock3 size={12} /> {t('dv13Pill') || 'Offert · 30 min · Spécialiste marchés publics'}
             </span>
             <h2 className="flex items-center gap-2 text-lg font-extrabold text-white mb-2"><Users size={16} className="text-orange" /> {t('dv13Support') || 'Votre premier échange avec un chargé d’affaires'}</h2>
             <p className="text-xs text-[#B9BBC8] leading-relaxed mb-3">{t('dv13SupportIntro')}</p>
             <div className="rounded-xl bg-[#0A1A2B] border border-[#17334D] p-3 mb-4 space-y-3">
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-wide text-orange mb-2">{t('dv13OfferedTitle') || 'Pendant votre échange offert (30 min)'}</p>
+                <p className="text-xs font-extrabold uppercase tracking-wide text-orange mb-2">{t('dv13OfferedTitle') || 'Pendant votre échange offert (30 min)'}</p>
                 <ul className="space-y-1.5">
                   {[t('dv13Offered1'), t('dv13Offered2')].map(x => (
                     <li key={x} className="flex items-start gap-2 text-xs text-white"><CheckCircle2 size={13} className="text-green-400 shrink-0 mt-0.5" /> {x}</li>
@@ -3065,7 +3065,7 @@ export default function OpportunityDetailPage() {
                 </ul>
               </div>
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#B9BBC8] mb-2">{t('dv13InScopeTitle') || "Dans le cadre de l'accompagnement"}</p>
+                <p className="text-xs font-extrabold uppercase tracking-wide text-[#B9BBC8] mb-2">{t('dv13InScopeTitle') || "Dans le cadre de l'accompagnement"}</p>
                 <ul className="space-y-1.5">
                   {[t('dv13InScope1'), t('dv13InScope2')].map(x => (
                     <li key={x} className="flex items-start gap-2 text-xs text-white"><CheckCircle2 size={13} className="text-green-400 shrink-0 mt-0.5" /> {x}</li>
@@ -3137,9 +3137,9 @@ export default function OpportunityDetailPage() {
               </div>
             )}
                 <div className="border-t border-[#17334D] mt-4 pt-3 text-center">
-                  <p className="text-[11px] font-semibold text-green-400 inline-flex items-center gap-1.5"><CheckCircle2 size={12} /> {t('dv13Free') || 'Par téléphone · Gratuit · Sans engagement'}</p>
+                  <p className="text-xs font-semibold text-green-400 inline-flex items-center gap-1.5"><CheckCircle2 size={12} /> {t('dv13Free') || 'Par téléphone · Gratuit · Sans engagement'}</p>
                   {reviewsRating != null && reviewsCount != null && (
-                    <p className="mt-3 text-[11px] font-semibold text-white"><Star size={11} className="inline text-orange fill-orange -mt-0.5" /> {fmtRating}/5 sur {reviewsCount} avis artisans</p>
+                    <p className="mt-3 text-xs font-semibold text-white"><Star size={11} className="inline text-orange fill-orange -mt-0.5" /> {fmtRating}/5 sur {reviewsCount} avis artisans</p>
                   )}
                 </div>
               </>
@@ -3151,7 +3151,7 @@ export default function OpportunityDetailPage() {
             <button type="button" onClick={() => setDossierStepsOpen(o => !o)} aria-expanded={dossierStepsOpen} className="w-full flex items-start justify-between gap-3 text-left">
               <span className="min-w-0">
                 <span className="block text-base font-bold text-white">{t('dv13Prepare') || 'Préparer mon dossier'}</span>
-                <span className="block text-[11px] text-[#B9BBC8] mt-1">{t('dv13PrepareSub') || 'Formulaires, mémoire technique, pièces, réponse financière — le détail de qui fait quoi.'}</span>
+                <span className="block text-xs text-[#B9BBC8] mt-1">{t('dv13PrepareSub') || 'Formulaires, mémoire technique, pièces, réponse financière — le détail de qui fait quoi.'}</span>
               </span>
               <ChevronDown size={16} className={`text-[#B9BBC8] shrink-0 mt-1 transition-transform ${dossierStepsOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -3164,7 +3164,7 @@ export default function OpportunityDetailPage() {
                   <item.icon size={15} className="text-[#B9BBC8] shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-bold text-white">{item.title}</p>
-                    <p className="text-[11px] text-[#B9BBC8] mt-0.5 leading-relaxed">{item.desc}</p>
+                    <p className="text-xs text-[#B9BBC8] mt-0.5 leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               ))}
@@ -3176,7 +3176,7 @@ export default function OpportunityDetailPage() {
             <button type="button" onClick={() => setShowAccountManagerModal(true)} className={`${card} w-full flex items-center justify-between gap-3 text-left`}>
               <span className="min-w-0">
                 <span className="block text-sm font-bold text-white">{t('dv13Next') || 'Prochaine étape'}</span>
-                <span className="block text-[11px] text-[#B9BBC8] mt-0.5">{nextLabel}</span>
+                <span className="block text-xs text-[#B9BBC8] mt-0.5">{nextLabel}</span>
               </span>
               <ChevronRight size={16} className="text-[#B9BBC8] shrink-0" />
             </button>
@@ -3184,7 +3184,7 @@ export default function OpportunityDetailPage() {
             <Link to="/tableau-de-bord" className={`${card} w-full flex items-center justify-between gap-3`}>
               <span className="min-w-0">
                 <span className="block text-sm font-bold text-white">{t('dv13Next') || 'Prochaine étape'}</span>
-                <span className="block text-[11px] text-[#B9BBC8] mt-0.5">{nextLabel}</span>
+                <span className="block text-xs text-[#B9BBC8] mt-0.5">{nextLabel}</span>
               </span>
               <ChevronRight size={16} className="text-[#B9BBC8] shrink-0" />
             </Link>
