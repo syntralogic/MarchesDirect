@@ -1,7 +1,7 @@
 import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronRight, ChevronLeft, Check, Calendar, Clock, User, Phone, Mail, Building2, Loader2, AlertTriangle, Download } from 'lucide-react';
+import { X, Check, Calendar, Loader2, AlertTriangle, Download } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -53,7 +53,10 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   // email/phone on the dossier flow have no AuthContext account - their
   // details live here instead.
   const { company: anonCompany, leadEmail, leadPhone } = useCompanyKnown();
+  // Client request (17 Oct): the whole rendez-vous fits on ONE page (motif, date,
+  // hour, contact) to shorten the funnel. step is now only 1 (form) or 5 (confirmation).
   const [step, setStep] = useState(1);
+  const [motifOpen, setMotifOpen] = useState(false);
   const [motif, setMotif] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
@@ -65,12 +68,11 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   const idem = useIdempotency();
   // DEV-14: the contact-details step is the real start of the form.
   const formStartedRef = useRef(false);
-  useEffect(() => {
-    if (step === 4 && !formStartedRef.current) {
-      formStartedRef.current = true;
-      trackVisitorEvent('form_started', 'Formulaire commencé : appointment', undefined, { kind: 'appointment' });
-    }
-  }, [step]);
+  const markFormStarted = () => {
+    if (formStartedRef.current) return;
+    formStartedRef.current = true;
+    trackVisitorEvent('form_started', 'Formulaire commencé : appointment', undefined, { kind: 'appointment' });
+  };
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -101,12 +103,12 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
     });
   }, [open, user, company, anonCompany, leadEmail, leadPhone]);
 
-  // Motif already implied by the page that opened the modal: pre-select it
-  // and start at the date step instead of asking again.
+  // Motif already implied by the page that opened the modal: pre-select it;
+  // otherwise a sensible default is used so the visitor never has to pick one
+  // (it stays editable through "Modifier").
   useEffect(() => {
-    if (!open || !defaultMotif) return;
-    setMotif(m => m || defaultMotif);
-    setStep(s => (s === 1 ? 2 : s));
+    if (!open) return;
+    setMotif(m => m || defaultMotif || MOTIFS[0]);
   }, [open, defaultMotif]);
 
   // Client's 12 Sep report: opening this modal (now reachable from several
@@ -180,10 +182,14 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
     document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   };
 
-  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setConfirmed(null); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); setFieldErrors({}); };
+  const reset = () => { setStep(1); setMotifOpen(false); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setConfirmed(null); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); setFieldErrors({}); };
   const handleClose = () => { onClose(); setTimeout(reset, 300); };
 
-  const stepLabels = ['Motif', 'Date', 'Heure', 'Contact', 'Confirmation'];
+  const shortDay = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const quickDays = days.slice(0, 4);
+  const moreDays = days.slice(4);
+  const dayObj = days.find(d => d.date === selectedDate);
+  const slotObj = dayObj?.slots.find(sl => sl.slotAt === selectedSlot);
 
   const handleConfirm = async () => {
     if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
@@ -193,7 +199,9 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
     if (!form.nom.trim()) errs.nom = t('requestErrRequired');
     if (!form.email.trim()) errs.email = t('requestErrRequired');
     else if (!isValidEmail(form.email)) errs.email = t('requestErrEmail');
-    if (form.telephone && !isValidFrPhone(form.telephone)) errs.telephone = t('requestErrPhone');
+    if (!form.telephone.trim()) errs.telephone = t('requestErrRequired');
+    else if (!isValidFrPhone(form.telephone)) errs.telephone = t('requestErrPhone');
+    if (!selectedSlot) errs.slot = 'Choisissez une date et une heure.';
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) { setError(null); return; }
 
@@ -224,7 +232,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
         // slot lost to someone else: keep every field, offer the alternatives
         idem.reset();
         setDays(err.response.data.alternatives || []);
-        setSelectedSlot(''); setSelectedDate(''); setStep(2);
+        setSelectedSlot(''); setSelectedDate(''); setStep(1);
         setError(err.response.data.error);
         return;
       }
@@ -243,29 +251,11 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
         <div className="flex items-center justify-between p-5 border-b border-[#17334D]">
           <div>
             <h2 className="text-lg font-bold text-brand-primary">{t('appointmentTitle')}</h2>
-            <p className="text-xs text-brand-muted mt-0.5">Étape {step} sur 5</p>
+            <p className="text-xs text-brand-muted mt-0.5">30 min par téléphone · offert · sans engagement</p>
           </div>
           <button onClick={handleClose} aria-label={t('close')} className="p-2 rounded-lg hover:bg-white/10 text-brand-muted hover:text-brand-primary transition-colors">
             <X size={18} />
           </button>
-        </div>
-
-        {/* Step indicator */}
-        <div className="flex items-center px-5 py-3 gap-1">
-          {stepLabels.map((_label, i) => (
-            <div key={i} className="flex items-center gap-1 flex-1">
-              <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold shrink-0 ${
-                i + 1 < step ? 'bg-orange text-white' :
-                i + 1 === step ? 'bg-orange text-white ring-2 ring-orange/30' :
-                'bg-[#17334D] text-muted-foreground'
-              }`}>
-                {i + 1 < step ? <Check size={12} /> : i + 1}
-              </div>
-              {i < stepLabels.length - 1 && (
-                <div className={`h-px flex-1 ${i + 1 < step ? 'bg-orange' : 'bg-[#17334D]'}`} />
-              )}
-            </div>
-          ))}
         </div>
 
         <div className="p-5">
@@ -283,152 +273,128 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
               {motif && step > 1 && <> · Motif : <span className="text-brand-primary font-medium">{motif}</span></>}
             </p>
           )}
-          {/* Step 1: Motif */}
-          {step === 1 && (
-            <div>
-              <h3 className="font-semibold text-brand-primary mb-4">Quel est le motif de votre rendez-vous ?</h3>
-              <div className="space-y-2">
-                {MOTIFS.map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setMotif(m)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all text-sm ${
-                      motif === m
-                        ? 'border-orange bg-orange/10 text-brand-primary'
-                        : 'border-[#17334D] text-brand-muted hover:border-orange/40 hover:text-brand-primary'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
+          {step !== 5 && (
+            <div onFocusCapture={markFormStarted}>
+              {/* Motif: preselected, editable on demand (keeps the form short) */}
+              <div className="flex items-center justify-between gap-2 bg-[#10233f] rounded-lg px-3 py-2 mb-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-brand-muted">Votre échange · 30 min par téléphone</p>
+                  <p className="text-sm font-semibold text-brand-primary truncate">{motif}</p>
+                </div>
+                <button type="button" aria-expanded={motifOpen} onClick={() => setMotifOpen(o => !o)} className="shrink-0 text-xs font-semibold text-orange px-2 py-2">
+                  Modifier
+                </button>
               </div>
-              <button
-                disabled={!motif}
-                onClick={() => setStep(2)}
-                className="mt-5 w-full bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors"
-              >
-                Continuer <ChevronRight size={16} className="inline ml-1" />
-              </button>
-            </div>
-          )}
+              {motifOpen && (
+                <div className="space-y-1.5 mb-3">
+                  {MOTIFS.map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => { setMotif(m); setMotifOpen(false); }}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${motif === m ? 'border-orange bg-orange/10 text-brand-primary' : 'border-[#17334D] text-brand-muted hover:border-orange/40'}`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-          {/* Step 2: Date */}
-          {step === 2 && (
-            <div>
-              <h3 className="font-semibold text-brand-primary mb-4">Choisissez une date</h3>
+              {/* Date */}
+              <p className="text-sm font-semibold text-brand-primary mb-1.5">Quand pouvons-nous vous appeler ?</p>
               {slotsState === 'loading' && <p className="text-sm text-brand-muted">Chargement des créneaux…</p>}
               {slotsState === 'error' && <p className="text-sm text-amber-200">Créneaux indisponibles pour le moment. <button type="button" onClick={loadSlots} className="underline">Réessayer</button></p>}
-              <div className="grid grid-cols-1 gap-2">
-                {days.map(d => (
+              <div className="grid grid-cols-4 gap-1.5">
+                {quickDays.map(d => (
                   <button
                     key={d.date}
-                    onClick={() => { setSelectedDate(d.date); setSelectedSlot(''); }}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-sm ${
-                      selectedDate === d.date
-                        ? 'border-orange bg-orange/10 text-brand-primary'
-                        : 'border-[#17334D] text-brand-muted hover:border-orange/40'
-                    }`}
+                    type="button"
+                    aria-pressed={selectedDate === d.date}
+                    onClick={() => { setSelectedDate(d.date); setSelectedSlot(''); setFieldErrors(fe => ({ ...fe, slot: '' })); }}
+                    className={`min-h-[52px] px-1 py-1.5 rounded-lg border text-xs font-semibold leading-tight transition-all ${selectedDate === d.date ? 'border-orange bg-orange/15 text-orange' : 'border-[#17334D] text-brand-muted hover:border-orange/40'}`}
                   >
-                    <Calendar size={16} className="text-orange shrink-0" />
-                    <span>{d.label}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{d.slots.length} créneaux</span>
+                    {shortDay(d.date)}
                   </button>
                 ))}
               </div>
-              <div className="flex gap-3 mt-5">
-                <button onClick={() => setStep(1)} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 transition-colors text-sm">
-                  <ChevronLeft size={14} className="inline mr-1" /> Retour
-                </button>
-                <button disabled={!selectedDate} onClick={() => setStep(3)} className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm">
-                  Continuer <ChevronRight size={14} className="inline ml-1" />
-                </button>
-              </div>
-            </div>
-          )}
+              {moreDays.length > 0 && (
+                <select
+                  aria-label="Une autre date"
+                  value={moreDays.some(d => d.date === selectedDate) ? selectedDate : ''}
+                  onChange={e => { setSelectedDate(e.target.value); setSelectedSlot(''); setFieldErrors(fe => ({ ...fe, slot: '' })); }}
+                  className="mt-1.5 w-full bg-[#061D32] border border-[#17334D] rounded-lg px-3 py-2 text-xs text-brand-muted"
+                >
+                  <option value="">Une autre date</option>
+                  {moreDays.map(d => <option key={d.date} value={d.date}>{d.label}</option>)}
+                </select>
+              )}
 
-          {/* Step 3: Heure */}
-          {step === 3 && (
-            <div>
-              <h3 className="font-semibold text-brand-primary mb-1">Choisissez un créneau</h3>
-              <p className="text-xs text-brand-muted mb-4">{days.find(d => d.date === selectedDate)?.label} · heure de Paris</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(days.find(d => d.date === selectedDate)?.slots || []).map(sl => (
-                  <button
-                    key={sl.slotAt}
-                    onClick={() => setSelectedSlot(sl.slotAt)}
-                    className={`flex items-center justify-center gap-1.5 p-3 rounded-xl border transition-all text-sm font-medium ${
-                      selectedSlot === sl.slotAt
-                        ? 'border-orange bg-orange/10 text-orange'
-                        : 'border-[#17334D] text-brand-muted hover:border-orange/40'
-                    }`}
-                  >
-                    <Clock size={13} className="shrink-0" /> {sl.time}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-3 mt-5">
-                <button onClick={() => setStep(2)} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 transition-colors text-sm">
-                  <ChevronLeft size={14} className="inline mr-1" /> Retour
-                </button>
-                <button disabled={!selectedSlot} onClick={() => setStep(4)} className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm">
-                  Continuer <ChevronRight size={14} className="inline ml-1" />
-                </button>
-              </div>
-            </div>
-          )}
+              {/* Heure */}
+              <p className="text-sm font-semibold text-brand-primary mt-3 mb-1.5">Heure · heure de Paris</p>
+              {dayObj ? (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {dayObj.slots.map(sl => (
+                    <button
+                      key={sl.slotAt}
+                      type="button"
+                      aria-pressed={selectedSlot === sl.slotAt}
+                      onClick={() => { setSelectedSlot(sl.slotAt); setFieldErrors(fe => ({ ...fe, slot: '' })); }}
+                      className={`min-h-[44px] rounded-lg border text-sm font-medium transition-all ${selectedSlot === sl.slotAt ? 'border-orange bg-orange/15 text-orange' : 'border-[#17334D] text-brand-muted hover:border-orange/40'}`}
+                    >
+                      {sl.time}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-brand-muted">Choisissez d'abord une date.</p>
+              )}
+              {fieldErrors.slot && <p role="alert" className="text-[11px] text-red-400 mt-1">{fieldErrors.slot}</p>}
 
-          {/* Step 4: Contact */}
-          {step === 4 && (
-            <div>
-              <h3 className="font-semibold text-brand-primary mb-1">Vos coordonnées</h3>
-              <RequiredLegend className="mb-4" />
-              <div className="space-y-3">
+              {/* Contact (company is taken from the visitor's identified company, not asked again) */}
+              <RequiredLegend className="mt-3 mb-1" />
+              <div className="space-y-2">
                 {[
-                  { key: 'nom', label: 'Nom complet', icon: User, placeholder: 'Jean Dupont', required: true },
-                  { key: 'entreprise', label: 'Entreprise', icon: Building2, placeholder: 'Ma Société SAS', required: false },
-                  { key: 'email', label: 'Email', icon: Mail, placeholder: 'jean@exemple.fr', required: true },
-                  { key: 'telephone', label: 'Téléphone', icon: Phone, placeholder: '06 00 00 00 00', required: false },
+                  { key: 'nom', label: 'Votre nom', placeholder: 'Jean Dupont', required: true, autoComplete: 'name' },
+                  { key: 'telephone', label: 'Téléphone', placeholder: '06 12 34 56 78', required: true, autoComplete: 'tel' },
+                  { key: 'email', label: 'Email', placeholder: 'jean@exemple.fr', required: true, autoComplete: 'email' },
                 ].map(field => (
                   <div key={field.key}>
                     <label className="text-xs text-brand-muted mb-1 block">{field.label}{field.required && <span aria-hidden="true" className="text-orange"> *</span>}</label>
-                    <div className="relative">
-                      <field.icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type={field.key === 'email' ? 'email' : field.key === 'telephone' ? 'tel' : 'text'}
-                        placeholder={field.placeholder}
-                        aria-required={field.required}
-                        aria-invalid={!!fieldErrors[field.key]}
-                        value={form[field.key as keyof typeof form]}
-                        onChange={e => { setFieldErrors(fe => ({ ...fe, [field.key]: '' })); setForm(f => ({
-                          ...f,
-                          // 27 Sep audit, point 5: this free-text field had no
-                          // phone normalization at all, so "+33 6 ..." got
-                          // truncated/rejected the same way editPhone did on
-                          // the dossier page - reuse the same helper here.
-                          [field.key]: field.key === 'telephone' ? normalizeFrPhoneDigits(e.target.value) : e.target.value,
-                        })); }}
-                        className={`w-full bg-[#061D32] border rounded-xl pl-9 pr-4 py-3 text-sm text-brand-primary placeholder:text-muted-foreground focus:outline-none focus:border-orange transition-colors ${fieldErrors[field.key] ? 'border-red-500/60' : 'border-[#17334D]'}`}
-                      />
-                    </div>
+                    <input
+                      type={field.key === 'email' ? 'email' : field.key === 'telephone' ? 'tel' : 'text'}
+                      inputMode={field.key === 'telephone' ? 'tel' : undefined}
+                      autoComplete={field.autoComplete}
+                      placeholder={field.placeholder}
+                      aria-required={field.required}
+                      aria-invalid={!!fieldErrors[field.key]}
+                      value={form[field.key as keyof typeof form]}
+                      onChange={e => { setFieldErrors(fe => ({ ...fe, [field.key]: '' })); setForm(f => ({
+                        ...f,
+                        // 27 Sep audit, point 5: normalize +33 / spaces for the phone.
+                        [field.key]: field.key === 'telephone' ? normalizeFrPhoneDigits(e.target.value) : e.target.value,
+                      })); }}
+                      className={`w-full bg-[#061D32] border rounded-xl px-3 py-2.5 text-base md:text-sm text-brand-primary placeholder:text-muted-foreground focus:outline-none focus:border-orange transition-colors ${fieldErrors[field.key] ? 'border-red-500/60' : 'border-[#17334D]'}`}
+                    />
                     {fieldErrors[field.key] && <p role="alert" className="text-[11px] text-red-400 mt-1">{fieldErrors[field.key]}</p>}
                   </div>
                 ))}
               </div>
               {error && <FormRetryError className="mt-3" message={error} onRetry={() => handleConfirm()} busy={submitting} />}
-              <div className="flex gap-3 mt-5">
-                <button onClick={() => setStep(3)} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 transition-colors text-sm">
-                  <ChevronLeft size={14} className="inline mr-1" /> Retour
-                </button>
-                <button
-                  disabled={submitting}
-                  onClick={handleConfirm}
-                  className="flex-1 bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2"
-                >
+              <button
+                disabled={submitting}
+                onClick={handleConfirm}
+                className="mt-4 w-full bg-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 hover:bg-orange/90 transition-colors text-sm flex flex-col items-center justify-center"
+              >
+                <span className="flex items-center gap-2">
                   {submitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  {submitting ? t('requestSending') : 'Confirmer'}
-                </button>
-              </div>
-              <RequestPrivacyNote className="mt-3 text-center" />
+                  {submitting ? t('requestSending') : 'Confirmer mon rendez-vous'}
+                </span>
+                <span className="text-[11px] font-normal opacity-90">
+                  {dayObj && slotObj ? `${shortDay(dayObj.date)} à ${slotObj.time}` : 'Choisissez votre date et votre heure'}
+                </span>
+              </button>
+              <p className="text-center text-[11px] text-brand-muted mt-2">Sans engagement · Nous vous appelons</p>
+              <RequestPrivacyNote className="mt-2 text-center" />
             </div>
           )}
 
