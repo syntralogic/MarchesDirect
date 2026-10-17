@@ -27,9 +27,10 @@ const SOCIAL_LINKS: { key: string; label: string; url: string | null; Icon: type
 ];
 
 // Contact information
-const CONTACT_INFO = {
-  address: '123 Rue de l\'Exemple, 75001 Paris, France',
-  phone: '+33 1 23 45 67 89',
+// Placeholder address and phone number removed (client audit 18 Oct): set the real ones here and they reappear.
+const CONTACT_INFO: { address: string | null; phone: string | null; email: string } = {
+  address: null,
+  phone: null,
   email: 'contact@marchesdirect.fr',
 };
 
@@ -57,14 +58,18 @@ function SocialLinks() {
 function ContactInfo() {
   return (
     <div className="space-y-2 mt-4">
-      <div className="flex items-start gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
-        <MapPin size={16} className="text-orange flex-shrink-0 mt-0.5" />
-        <span className="text-xs">{CONTACT_INFO.address}</span>
-      </div>
-      <a href={`tel:${CONTACT_INFO.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
-        <Phone size={16} className="text-orange flex-shrink-0" />
-        <span className="text-xs">{CONTACT_INFO.phone}</span>
-      </a>
+      {CONTACT_INFO.address && (
+        <div className="flex items-start gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
+          <MapPin size={16} className="text-orange flex-shrink-0 mt-0.5" />
+          <span className="text-xs">{CONTACT_INFO.address}</span>
+        </div>
+      )}
+      {CONTACT_INFO.phone && (
+        <a href={`tel:${CONTACT_INFO.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
+          <Phone size={16} className="text-orange flex-shrink-0" />
+          <span className="text-xs">{CONTACT_INFO.phone}</span>
+        </a>
+      )}
       <a href={`mailto:${CONTACT_INFO.email}`} className="flex items-center gap-2 text-[#B9BBC8] hover:text-orange transition-colors">
         <Mail size={16} className="text-orange flex-shrink-0" />
         <span className="text-xs">{CONTACT_INFO.email}</span>
