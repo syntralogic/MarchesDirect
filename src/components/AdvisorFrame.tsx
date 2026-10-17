@@ -55,23 +55,42 @@ export function AdvisorFrame({ onAppointment, onCallback, advice, id, className 
       </h2>
       <p className="mt-2 text-base md:text-[17px] leading-relaxed text-white">{advice ?? ADVISOR_REFERENCE_ADVICE}</p>
 
-      <div className="mt-4 flex flex-col sm:flex-row gap-2.5">
-        <button
-          type="button"
-          onClick={onAppointment}
-          className="flex-1 min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#c24e00] hover:bg-[#d65600] text-white text-[15px] font-bold px-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBA74]"
-        >
-          <CalendarCheck size={16} aria-hidden="true" /> Réserver mes 30 minutes offertes
-        </button>
+      {/* Guide v24 s.2: the free first call and the full support are two separate things, each with its own title. */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-[#031B30] border border-[#17334D] p-3">
+          <h3 className="text-sm font-bold text-white">Pendant vos 30 minutes offertes</h3>
+          <ul className="mt-1.5 space-y-1 text-sm leading-snug text-[#B9BBC8] list-disc pl-4">
+            <li>Faire le point sur vos atouts et les exigences à vérifier.</li>
+            <li>Identifier les pièces manquantes et les prochaines étapes.</li>
+          </ul>
+        </div>
+        <div className="rounded-xl bg-[#031B30] border border-[#17334D] p-3">
+          <h3 className="text-sm font-bold text-white">Pour préparer votre candidature avec nous</h3>
+          <ul className="mt-1.5 space-y-1 text-sm leading-snug text-[#B9BBC8] list-disc pl-4">
+            <li>Préparer les formulaires et votre réponse technique avec vous.</li>
+            <li>Vous validez votre candidature ; nous vous accompagnons jusqu’au dépôt selon les modalités convenues.</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* One main action (guide v24 s.3, maquette): the callback, inside the frame. The appointment is the alternative. */}
+      <div className="mt-4 flex flex-col items-stretch gap-1">
         <button
           type="button"
           onClick={onCallback}
-          className="flex-1 min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl border border-orange text-[#FDBA74] hover:bg-orange/10 text-[15px] font-semibold px-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBA74]"
+          className="w-full min-h-[48px] inline-flex items-center justify-center gap-2 rounded-xl bg-[#c24e00] hover:bg-[#d65600] text-white text-[15px] font-bold px-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBA74]"
         >
           <Phone size={16} aria-hidden="true" /> Être rappelé
         </button>
+        <p className="text-center text-xs text-[#B9BBC8]">Par téléphone · Gratuit · Sans engagement</p>
+        <button
+          type="button"
+          onClick={onAppointment}
+          className="mx-auto min-h-[44px] inline-flex items-center justify-center gap-2 text-[15px] font-semibold text-[#FDBA74] underline underline-offset-4 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FDBA74] rounded-md px-2"
+        >
+          <CalendarCheck size={16} aria-hidden="true" /> Je préfère réserver mes 30 minutes offertes
+        </button>
       </div>
-      <p className="mt-2.5 text-center text-xs text-[#B9BBC8]">Par téléphone · Gratuit · Sans engagement</p>
     </section>
   );
 }
