@@ -311,6 +311,7 @@ export default function OpportunityDetailPage() {
   // logic here.
   const leadGateRef = useRef<HTMLDivElement>(null);
   const [leadGateVisible, setLeadGateVisible] = useState(false);
+  const [testimonialVideoOpen, setTestimonialVideoOpen] = useState(false);
 
   const [access, setAccess] = useState<ApiOpportunityAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -692,7 +693,6 @@ export default function OpportunityDetailPage() {
   // criteria and their explanations can never disagree.
   const displayScore: number | null = matchScore ? matchScore.score : null;
   const refineAnswersParam = Object.entries(refineAnswers).filter(([, v]) => !!v).map(([k, v]) => `${k}:${v}`).join(',');
-  const CRITERION_FOR_ANSWER: Record<string, string> = { experience: 'experience', capacity: 'moyens', location: 'zone', calendar: 'disponibilite' };
   // 20 Sep audit (Marssac): Concordance said "Le métier n'est pas précisé"
   // while the notice is plainly about isolation thermique extérieure. The
   // backend now links/infers the trade itself; if it still has none, the AI's
@@ -2734,10 +2734,29 @@ export default function OpportunityDetailPage() {
                     })()}
 
                   {!(isAuthenticated || leadCaptured || pendingOtpVerification) && (
+                    <>
+                    {/* Client example: one real testimonial right above the dossier form. */}
+                    <blockquote className="border-l-2 border-[#17334D] pl-4 mb-5">
+                      <p className="text-lg font-bold text-white leading-snug">{t('leadTestimonialQuote') || '« 10 mois de planning rempli. »'}</p>
+                      <p className="text-sm text-[#B9BBC8] mt-1">— Didier Bourdon, Bordeaux Élec</p>
+                      <button type="button" onClick={() => setTestimonialVideoOpen(o => !o)} aria-expanded={testimonialVideoOpen} className="mt-3 text-sm font-semibold text-orange hover:underline">
+                        {testimonialVideoOpen ? '▼' : '▶'} {t('leadTestimonialVideo') || 'Voir sa vidéo (1 min 27)'}
+                      </button>
+                      {testimonialVideoOpen && (
+                        <video src="/testimonials/temoignage-didier-bourdon.mp4" poster="/testimonials/temoignage-didier-bourdon.jpeg" controls autoPlay playsInline preload="metadata" className="mt-3 w-full rounded-xl bg-black" />
+                      )}
+                    </blockquote>
                     <form onSubmit={handleLeadSubmit} onFocusCapture={leadFormStartTracker} className="space-y-3">
                       <div>
-                        <h3 className="text-base font-extrabold text-white">{t('leadFormTitle')}</h3>
-                        <p className="text-xs text-[#B9BBC8] leading-relaxed mt-1">{t('leadFormExplain')}</p>
+                        <h3 className="text-lg font-extrabold text-white">{t('leadFormTitle')}</h3>
+                        <p className="text-sm text-[#B9BBC8] leading-relaxed mt-1">{t('leadFormExplain')}</p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <img src={elenaPortrait} alt="Elena Popescu" width={56} height={56} loading="lazy" decoding="async" className="w-14 h-14 shrink-0 rounded-full object-cover border-2 border-orange" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white">Elena Popescu</p>
+                          <p className="text-sm text-[#B9BBC8] leading-relaxed">{t('leadElenaRole') || 'Votre premier contact. Elena accueille votre demande et vous oriente vers votre chargé d’affaires.'}</p>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-white mb-1.5">{t('leadEmailFieldLabel') || 'Votre e-mail'}</label>
@@ -2847,6 +2866,7 @@ export default function OpportunityDetailPage() {
                       </button>
                       <p className="text-xs text-[#B9BBC8] text-center">{t('leadFormFree')}</p>
                     </form>
+                    </>
                   )}
 
                   {/* C08 (contre-audit 15 Sep 2026): "Le téléphone réel
