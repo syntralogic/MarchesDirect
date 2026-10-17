@@ -2480,7 +2480,10 @@ export default function OpportunityDetailPage() {
             {!(isAuthenticated || leadCaptured) && !leadGateVisible && (
               <>
                 <div className="h-24 md:hidden" aria-hidden="true" />
-                <div className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[#041B30]/95 backdrop-blur border-t border-[#17334D] px-4 pt-3 pb-3">
+                {/* 17 Oct: this bar and the mobile BottomNav (h-16 + 1px border = 65px, z-40) were both
+                    pinned to bottom-0 at z-40, so the nav covered the lower half of the button
+                    while scrolling. The bar now sits right above the nav. */}
+                <div className="md:hidden fixed bottom-[65px] inset-x-0 z-30 bg-[#041B30]/95 backdrop-blur border-t border-[#17334D] px-4 pt-3 pb-3">
                   <button
                     type="button"
                     onClick={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
