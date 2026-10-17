@@ -92,17 +92,24 @@ export function trackVisitorEvent(eventType: VisitorEventType, eventLabel?: stri
   }
 }
 
-// C06 (contre-audit 15 Sep): replaces the old seeded-random "X entreprises
-// ont consulté cette annonce aujourd'hui" with a real count of distinct
-// visitor sessions that actually fired a view_opportunity event for this
-// id (see routes/visitorEvents.ts). Returns null on any failure so the
-// caller can hide the block entirely rather than show a stale/fake number.
-export async function getConsultationsToday(opportunityId: string): Promise<number | null> {
+// Consultation indicator of a fiche (client brief 18 Oct): the sentence comes from the REAL tracking of THIS
+// announcement (routes/visitorEvents.ts: distinct visitor sessions, the caller excluded) and is null when no reliable
+// data exists - the caller then hides the indicator. The wording is chosen server-side from the announcement id and
+// kept for the browser session, so it never changes while the visitor reads or comes back.
+export async function getConsultationIndicator(opportunityId: string, lang: 'fr' | 'en' = 'fr'): Promise<string | null> {
+  const key = `md_consult_${opportunityId}_${lang}`;
   try {
-    const res = await fetch(`${API_URL}/api/visitor-events/consultations/${opportunityId}`);
+    const stored = sessionStorage.getItem(key);
+    if (stored !== null) return stored || null;
+  } catch { /* storage unavailable */ }
+  try {
+    const qs = new URLSearchParams({ sessionId: getSessionId(), lang });
+    const res = await fetch(`${API_URL}/api/visitor-events/consultations/${opportunityId}?${qs.toString()}`);
     if (!res.ok) return null;
     const data = await res.json();
-    return typeof data.count === 'number' ? data.count : null;
+    const label = typeof data?.indicator?.label === 'string' && data.indicator.label.trim() ? data.indicator.label.trim() : null;
+    try { sessionStorage.setItem(key, label || ''); } catch { /* storage unavailable */ }
+    return label;
   } catch {
     return null;
   }
