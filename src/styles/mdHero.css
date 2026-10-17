@@ -665,3 +665,11 @@
 @media(max-width:700px){
   .mdhero.origin-app .hx-body .origin-refine.cdc04-refine{display:none!important}
 }
+
+/* --- Correctifs mobile (retour client) : rien ne doit dépasser de la carte, quelle que soit la langue --- */
+.mdhero .hx-search, .mdhero .hx-body, .mdhero .hx-main, .mdhero .hx-grid, .mdhero .hx-anim, .mdhero .hx-ai { min-width: 0; max-width: 100%; }
+.mdhero .hx-tab { min-width: 0; overflow: hidden; }
+.mdhero .hx-tab-l, .mdhero .hx-tab-d { white-space: normal !important; overflow-wrap: anywhere; }
+.mdhero .hx-st3 li span { min-width: 0; overflow-wrap: anywhere; }
+.mdhero .hx-ai-t, .mdhero .hx-ai p { overflow-wrap: anywhere; }
+.mdhero { overflow-x: clip; }
