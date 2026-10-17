@@ -889,6 +889,10 @@ export const accountApi = {
 // was silently dropped (landed as NULL) since Express never reads a body key
 // that doesn't match what the route destructures.
 export const crmApi = {
+  getAppointmentSlots: async (): Promise<{ timezone: string; days: { date: string; label: string; slots: { slotAt: string; time: string }[] }[] }> => {
+    const { data } = await axios.get(`${API_URL}/api/opportunities/appointment-slots`, { timeout: 15000 });
+    return data;
+  },
   submitLead: async (payload: {
     brandId: string;
     firstName?: string;
@@ -903,6 +907,7 @@ export const crmApi = {
     message?: string;
     sessionId?: string;
     idempotencyKey?: string;
+    slotAt?: string;
   }) => {
     const { data } = await axios.post(`${API_URL}/api/crm/leads`, payload, {
       headers: payload.idempotencyKey ? { 'Idempotency-Key': payload.idempotencyKey } : undefined,

@@ -39,47 +39,11 @@ const MOTIFS = [
   'Autre demande',
 ];
 
-// NOTE: there is no real calendar/availability backend (no appointments or
-// staff-scheduling table/route exists in marchesdirect-backend). These slots
-// are a preference picker, not live availability - the submission itself
-// (below) creates a real CRM lead so a human can actually schedule the call;
-// nothing here is presented to the user as a confirmed booking beyond that.
-// Flag for the client: real calendar integration (e.g. Cal.com/Google
-// Calendar) is needed if slots must reflect true staff availability.
-//
-// Was a hardcoded "Lun 25 août" .. "Ven 29 août" week that just sat there
-// going stale (client's 15 Sep audit: still showing 25-29 August as
-// bookable). Generate the next 5 business days from today instead, keeping
-// the same per-weekday time patterns.
-const SLOT_TIMES_BY_WEEKDAY: string[][] = [
-  [], // Sunday - unused, business days only below
-  ['09:00', '10:00', '14:00', '15:00'], // Monday
-  ['09:30', '11:00', '14:30', '16:00'], // Tuesday
-  ['10:00', '11:30', '15:00'], // Wednesday
-  ['09:00', '10:30', '14:00', '16:30'], // Thursday
-  ['09:00', '10:00', '11:00'], // Friday
-  [], // Saturday - unused
-];
-
-function nextBusinessDaySlots(count: number): { date: string; slots: string[] }[] {
-  const result: { date: string; slots: string[] }[] = [];
-  const cursor = new Date();
-  cursor.setDate(cursor.getDate() + 1); // start from tomorrow, not today
-  while (result.length < count) {
-    const day = cursor.getDay(); // 0 = Sunday, 6 = Saturday
-    if (day !== 0 && day !== 6) {
-      const label = cursor
-        .toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' })
-        .replace(/^./, c => c.toUpperCase())
-        .replace('.', '');
-      result.push({ date: label, slots: SLOT_TIMES_BY_WEEKDAY[day] });
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return result;
-}
-
-const AVAILABLE_SLOTS = nextBusinessDaySlots(5);
+// Slots are owned by the SERVER (Europe/Paris, one booking per slot, guide v24 s.12):
+// they are fetched when the modal opens and a slot is confirmed only after the server reserved it.
+type SlotDay = { date: string; label: string; slots: { slotAt: string; time: string }[] };
+const icsEscape = (v: string) => v.replace(/[\\,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
+const icsStamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
 export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, deadline }: AppointmentModalProps) {
   const { t } = useLang();
@@ -95,6 +59,9 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   const [selectedSlot, setSelectedSlot] = useState('');
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [days, setDays] = useState<SlotDay[]>([]);
+  const [slotsState, setSlotsState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [confirmed, setConfirmed] = useState<{ slotAt: string; slotLabel: string; already?: boolean } | null>(null);
   const idem = useIdempotency();
   // DEV-14: the contact-details step is the real start of the form.
   const formStartedRef = useRef(false);
@@ -106,6 +73,12 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   }, [step]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const loadSlots = () => {
+    setSlotsState('loading');
+    crmApi.getAppointmentSlots().then(r => { setDays(r.days); setSlotsState('ready'); }).catch(() => setSlotsState('error'));
+  };
+  useEffect(() => { if (open) loadSlots(); }, [open]);
 
   // Point 5 (20 Sep client audit): "Le rendez-vous demandé depuis le
   // dossier réclame à nouveau entreprise, email et téléphone, alors que
@@ -175,28 +148,39 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
       '',
       `Motif : ${motif}`,
       marketLabel ? `Marché : ${marketLabel}` : null,
-      `Date souhaitée : ${selectedDate}`,
-      `Créneau : ${selectedSlot}`,
+      `Rendez-vous : ${confirmed?.slotLabel || ''}`,
       '',
       `Contact : ${form.nom}`,
       form.entreprise ? `Entreprise : ${form.entreprise}` : null,
       `Email : ${form.email}`,
       form.telephone ? `Téléphone : ${form.telephone}` : null,
       '',
-      'Un conseiller Marchés Direct vous recontactera sur ce créneau pour confirmer.',
+      'Un conseiller Marchés Direct vous contactera à ce créneau (heure de Paris).',
     ].filter((l): l is string => l !== null);
     const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rendez-vous-marches-direct-${selectedDate.replace(/\s+/g, '-')}.txt`;
+    a.download = 'rendez-vous-marches-direct.txt';
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
   };
 
-  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); setFieldErrors({}); };
+  const downloadIcs = () => {
+    if (!confirmed) return;
+    const end = new Date(new Date(confirmed.slotAt).getTime() + 30 * 60000).toISOString();
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Marches Direct//RDV//FR', 'BEGIN:VEVENT',
+      `UID:${icsStamp(confirmed.slotAt)}-${Math.random().toString(36).slice(2)}@marches-direct`, `DTSTAMP:${icsStamp(new Date().toISOString())}`,
+      `DTSTART:${icsStamp(confirmed.slotAt)}`, `DTEND:${icsStamp(end)}`, `SUMMARY:${icsEscape('Rendez-vous Marchés Direct')}`,
+      `DESCRIPTION:${icsEscape(`Motif : ${motif}${marketLabel ? ` - Marché : ${marketLabel}` : ''}`)}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+    const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'rendez-vous-marches-direct.ics';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+
+  const reset = () => { setStep(1); setMotif(''); setSelectedDate(''); setSelectedSlot(''); setConfirmed(null); setForm({ nom: '', entreprise: '', email: '', telephone: '' }); setError(null); setFieldErrors({}); };
   const handleClose = () => { onClose(); setTimeout(reset, 300); };
 
   const stepLabels = ['Motif', 'Date', 'Heure', 'Contact', 'Confirmation'];
@@ -218,7 +202,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
     setError(null);
     try {
       const [firstName, ...rest] = form.nom.trim().split(' ');
-      await crmApi.submitLead({
+      const data = await crmApi.submitLead({
         brandId,
         firstName: firstName || form.nom,
         lastName: rest.join(' ') || undefined,
@@ -226,14 +210,24 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
         phone: form.telephone || undefined,
         companyName: form.entreprise || undefined,
         leadSource: 'appointment_modal',
-        message: `Motif : ${motif}${marketLabel ? `\nMarché : ${marketLabel}` : ''}\nCréneau souhaité : ${selectedDate} à ${selectedSlot}`,
+        message: `Motif : ${motif}${marketLabel ? `\nMarché : ${marketLabel}` : ''}`,
+        slotAt: selectedSlot,
         sessionId: getSessionId(),
         idempotencyKey: idem.key(),
       });
       idem.reset();
       trackRequestSubmitted('appointment');
+      setConfirmed({ slotAt: data.slotAt, slotLabel: data.slotLabel, already: !!data.alreadyBooked });
       setStep(5);
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.response?.status === 409 && err.response.data?.code === 'slot_taken') {
+        // slot lost to someone else: keep every field, offer the alternatives
+        idem.reset();
+        setDays(err.response.data.alternatives || []);
+        setSelectedSlot(''); setSelectedDate(''); setStep(2);
+        setError(err.response.data.error);
+        return;
+      }
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
     } finally {
       idem.end();
@@ -322,11 +316,13 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
           {step === 2 && (
             <div>
               <h3 className="font-semibold text-brand-primary mb-4">Choisissez une date</h3>
+              {slotsState === 'loading' && <p className="text-sm text-brand-muted">Chargement des créneaux…</p>}
+              {slotsState === 'error' && <p className="text-sm text-amber-200">Créneaux indisponibles pour le moment. <button type="button" onClick={loadSlots} className="underline">Réessayer</button></p>}
               <div className="grid grid-cols-1 gap-2">
-                {AVAILABLE_SLOTS.map(d => (
+                {days.map(d => (
                   <button
                     key={d.date}
-                    onClick={() => setSelectedDate(d.date)}
+                    onClick={() => { setSelectedDate(d.date); setSelectedSlot(''); }}
                     className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-sm ${
                       selectedDate === d.date
                         ? 'border-orange bg-orange/10 text-brand-primary'
@@ -334,7 +330,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
                     }`}
                   >
                     <Calendar size={16} className="text-orange shrink-0" />
-                    <span>{d.date}</span>
+                    <span>{d.label}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{d.slots.length} créneaux</span>
                   </button>
                 ))}
@@ -354,19 +350,19 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
           {step === 3 && (
             <div>
               <h3 className="font-semibold text-brand-primary mb-1">Choisissez un créneau</h3>
-              <p className="text-xs text-brand-muted mb-4">{selectedDate}</p>
+              <p className="text-xs text-brand-muted mb-4">{days.find(d => d.date === selectedDate)?.label} · heure de Paris</p>
               <div className="grid grid-cols-3 gap-2">
-                {(AVAILABLE_SLOTS.find(d => d.date === selectedDate)?.slots || []).map(slot => (
+                {(days.find(d => d.date === selectedDate)?.slots || []).map(sl => (
                   <button
-                    key={slot}
-                    onClick={() => setSelectedSlot(slot)}
+                    key={sl.slotAt}
+                    onClick={() => setSelectedSlot(sl.slotAt)}
                     className={`flex items-center justify-center gap-1.5 p-3 rounded-xl border transition-all text-sm font-medium ${
-                      selectedSlot === slot
+                      selectedSlot === sl.slotAt
                         ? 'border-orange bg-orange/10 text-orange'
                         : 'border-[#17334D] text-brand-muted hover:border-orange/40'
                     }`}
                   >
-                    <Clock size={13} className="shrink-0" /> {slot}
+                    <Clock size={13} className="shrink-0" /> {sl.time}
                   </button>
                 ))}
               </div>
@@ -442,9 +438,9 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
               <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
                 <Check size={28} className="text-green-400" />
               </div>
-              <h3 className="text-xl font-bold text-brand-primary mb-2">Rendez-vous confirmé !</h3>
+              <h3 className="text-xl font-bold text-brand-primary mb-2">{confirmed?.already ? 'Vous avez déjà un rendez-vous' : 'Rendez-vous confirmé !'}</h3>
               <p className="text-brand-muted text-sm mb-4">
-                Un conseiller Marchés Direct vous contactera le <strong className="text-brand-primary">{selectedDate}</strong> à <strong className="text-orange">{selectedSlot}</strong>.
+                Un conseiller Marchés Direct vous contactera le <strong className="text-orange">{confirmed?.slotLabel}</strong>.
               </p>
               <div className="brand-card rounded-xl p-4 text-left mb-5 border border-[#17334D]">
                 <div className="text-xs text-brand-muted space-y-1">
@@ -454,6 +450,9 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
                 </div>
               </div>
               <div className="flex gap-3">
+                <button onClick={downloadIcs} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 hover:text-brand-primary transition-colors text-sm flex items-center justify-center gap-1.5">
+                  <Calendar size={14} /> Ajouter à mon agenda
+                </button>
                 <button onClick={downloadRecap} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 hover:text-brand-primary transition-colors text-sm flex items-center justify-center gap-1.5">
                   <Download size={14} /> Télécharger mon exemplaire
                 </button>
