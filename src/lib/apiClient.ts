@@ -1122,7 +1122,7 @@ export const dossiersApi = {
   ): Promise<ApiDossierRequest> => (await apiClient.put(`/dossiers/${opportunityId}`, payload)).data,
   generate: async (
     opportunityId: string,
-    payload: { response_text?: string; partners?: { name: string; role: string }[]; checklist?: { label: string; done: boolean }[] }
+    payload: { response_text?: string; partners?: { name: string; role: string }[]; checklist?: { label: string; done: boolean }[]; analysis_id?: string }
   ): Promise<ApiDossierRequest> => (await apiClient.post(`/dossiers/${opportunityId}/generate`, payload)).data,
 };
 
@@ -1655,6 +1655,7 @@ export interface ApiAnalysisSnapshot {
   market_id: string; lot_id: string; market_version: string; answers: Record<string, string>; answers_version: number; rules_version: string;
 }
 export const analysesApi = {
+  currentId: (opportunityId: string): string | undefined => { try { return sessionStorage.getItem(`md_analysis_${opportunityId}`) || undefined; } catch { return undefined; } },
   sync: async (opportunityId: string, sessionId: string, answers?: Record<string, string | undefined>, lotId?: string): Promise<ApiAnalysisSnapshot> => {
     const { data } = await apiClient.put('/analyses', { sessionId, opportunityId, lotId, answers });
     try { sessionStorage.setItem(`md_analysis_${opportunityId}`, data.analysis_id); } catch { /* storage unavailable */ }

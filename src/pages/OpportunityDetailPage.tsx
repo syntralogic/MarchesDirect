@@ -2845,6 +2845,7 @@ export default function OpportunityDetailPage() {
               response_text: dossierResponseText,
               partners: dossierPartners.filter(p => p.name.trim()),
               checklist: CHECKLIST_DOCS.map(item => ({ label: item.type, done: checklistDocs.some(d => d.document_type === item.type) })),
+              analysis_id: analysesApi.currentId(id), // same snapshot as the concordance
             });
             setDossier(saved);
             toast.success(t('dossierGenerateSuccess') || "Demande envoyée à votre chargé d'affaires.");
