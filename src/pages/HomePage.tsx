@@ -3,7 +3,7 @@ import { tradeDisplayName } from '@/data/tradeSuggestions';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Building2, Handshake, ChevronRight, Globe, Building, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, ChevronLeft, ChevronUp, Plus, Users, ArrowUpRight, Euro, FileText, Clock, Lock, Shield, Calendar, Trophy, Wrench } from 'lucide-react';
+import { Building2, Handshake, ChevronRight, Globe, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, ChevronLeft, ChevronUp, Plus, Users, ArrowUpRight, Euro, FileText, Clock, Lock, Shield, Calendar, Trophy } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid, geoMercator } from 'd3-geo';
 import { mockArticles } from '@/data/mockData';
@@ -12,6 +12,7 @@ import PageMeta from '@/components/common/PageMeta';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import DemoVideoModal from '@/components/DemoVideoModal';
 import XhDemo from '@/components/xh/XhDemo';
+import MdHero from '@/components/home/MdHero';
 import { CallbackModal } from '@/components/CallbackModal';
 import { tradesApi, type ApiTradeSuggestion } from '@/lib/apiClient';
 import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
@@ -40,196 +41,10 @@ function normalizeFr(s: string): string {
 // 4 Oct client brief: page anchors. A click scrolls smoothly to the section
 // further down the same page (targets carry scroll-mt-16 to clear the sticky
 // header); the URL hash is updated without a jump so the back button still works.
-function scrollToSection(e: React.MouseEvent, id: string) {
-  const el = document.getElementById(id);
-  if (!el) return; // fall back to the plain #hash behaviour
-  e.preventDefault();
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  try { window.history.replaceState(null, '', `#${id}`); } catch { /* non-fatal */ }
-}
 
 // ---------------------------------------------------------------------------
 // HERO
 // ---------------------------------------------------------------------------
-function HeroSection({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
-  return (
-    <section className="px-3 md:px-6 pt-3 md:pt-10 pb-10 md:pb-10 max-w-3xl mx-auto w-full">
-      {/* Card-internal padding/margins/gaps reverted to their pre-65360a3
-          sizes (12 Sep bug, found live 12 Sep 7:57pm): that commit grew
-          these to make the whole card taller so the *next* heading ("De la
-          recherche...") would sit further below the fold - but the CTA
-          buttons are the last thing INSIDE this same card, so a taller
-          card pushed them past the fold too, off-screen on this device.
-          Only the outer <section>'s pb-10 (added by that same commit)
-          actually does what was wanted: it adds space AFTER the card,
-          pushing later content down without touching what's visible
-          inside the card itself - kept as-is. */}
-      <div className="border border-orange/40 rounded-2xl bg-[#061D32] p-3 md:p-6 orange-glow relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="min-h-[calc(100svh-7.5rem)] md:min-h-0">
-          <span className="text-[11px] md:text-[11px] font-bold text-orange uppercase tracking-widest">
-            Artisans · TPE · PME
-          </span>
-          <h1 className="text-2xl md:text-3xl font-extrabold leading-tight mt-2 md:mt-2 mb-3 md:mb-3">
-            <span className="text-white">Trouvez des marchés adaptés</span>{' '}
-            <span className="text-orange">à votre entreprise.</span>
-          </h1>
-          {/* Reverted back to below OpportunityPaths (13 Sep, client's
-              follow-up screenshot: explicitly wants the original
-              cards-then-buttons order, like the "video" reference
-              screenshot - the 13 Sep move to above OpportunityPaths is
-              undone). If the below-the-fold complaint resurfaces on a
-              specific short viewport, that needs a fix that doesn't
-              reorder the buttons - e.g. shrinking OpportunityPaths itself
-              on mobile - not moving them again. */}
-          {/* 4 Oct (evening), client: on the first phone screen the two contact buttons
-              showed up half-cut by the bottom bar. The part above them now fills the
-              visible area (screen height minus header and bottom bar) on phones, so the
-              buttons start right below the first screen; desktop is unchanged. */}
-          <div className="mb-3 md:mb-4"><OpportunityPaths /></div>
-          </div>
-          {/* Contact buttons back below the tiles, side by side, as before
-              (client, 4 Oct: "ces deux boutons comme avant, en bas"). Same
-              modals (AppointmentModal / CallbackModal), nothing else changed. */}
-          <div className="flex flex-row gap-2 md:gap-3">
-            <button onClick={onAppt} className="flex-1 bg-orange text-white font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/90 transition-colors">
-              Prendre rendez-vous
-            </button>
-            <button onClick={onCallback} className="flex-1 border border-orange text-orange font-semibold py-3 md:py-3 rounded-xl text-sm md:text-sm hover:bg-orange/10 transition-colors">
-              Être rappelé
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function OpportunityPaths() {
-  // 27 Sep client decision (reverses the 26 Sep change below): these tiles
-  // were switched to the active-only count so the number would never
-  // promise more than /parcours (active-only by design) actually lists.
-  // But the client's real complaint was the opposite direction - the
-  // catalogue has 70k+ opportunities (most of it DECP's historical/awarded
-  // contracts, only ~10k of which are currently active/open-to-candidature)
-  // and the homepage tile showing only the ~10k active slice read as "the
-  // count is way too low, where's the rest of the data". Client explicitly
-  // chose to show the full all-statuses total here (matching HeroCounters
-  // just above) even though /parcours itself still only lists the
-  // active-only subset once you click through - the bigger catalogue-size
-  // number is what this tile is meant to communicate now, not a promise
-  // that /parcours will list exactly that many.
-  // 1 Oct client decision: show the two numbers separately and never mix
-  // them - OPEN markets first (what an artisan can still answer, and exactly
-  // what /parcours lists), then the whole catalogue (archives included) as a
-  // secondary figure.
-  const { counts, loading: loadingAll } = useOpportunityCounts();
-  const { counts: openCounts, loading: loadingOpen } = useOpportunityCounts('active');
-  const loading = loadingAll || loadingOpen;
-  const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
-  // 16 Oct client brief (part 2, "clarté de la recherche"): a first-time visitor
-  // must understand at a glance what each of the 3 categories is, what he
-  // will find in it, who publishes it and what the platform does for him.
-  // Same 3 tiles, same links/counts/search: only the wording is richer.
-  const paths = [
-    {
-      icon: Building,
-      title: 'Marchés publics',
-      sub: 'Travaux, fournitures et services commandés par des acheteurs publics',
-      detail: "Publiés par les communes, départements, régions, hôpitaux, bailleurs sociaux et l'État, avec mise en concurrence officielle (BOAMP, TED…). Marchés Direct les rassemble, les classe par métier et par zone, et résume chaque avis.",
-      href: '/parcours?type=marches-publics',
-      key: 'public_procurement' as const,
-    },
-    {
-      icon: Building2,
-      title: "Appels d'offres privés",
-      sub: 'Consultations lancées par des entreprises, promoteurs et bailleurs privés',
-      detail: "Publiés par des acteurs privés qui cherchent un prestataire pour un chantier ou un besoin précis. Marchés Direct les regroupe au même endroit et vous montre ceux qui correspondent à votre métier et à votre zone.",
-      href: '/parcours?type=appels-doffres',
-      key: 'tender' as const,
-    },
-    {
-      icon: Handshake,
-      title: 'Sous-traitance',
-      sub: "Une partie d'un chantier ou d'une prestation confiée à un artisan",
-      detail: "Proposée par une entreprise titulaire d'un marché ou un maître d'œuvre qui a besoin de renfort sur un lot ou un corps de métier. Marchés Direct vous aide à repérer les missions adaptées à votre activité.",
-      href: '/parcours?type=sous-traitance',
-      key: 'subcontracting' as const,
-    },
-  ];
-  return (
-    <div className="grid grid-cols-1 gap-1 md:gap-2">
-      {paths.map(p => {
-        const count = counts[p.key];
-        const openCount = openCounts[p.key];
-        return (
-          <Link key={p.href} to={p.href} className="flex items-center gap-2 md:gap-3 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all">
-            <div className="w-9 h-9 md:w-11 md:h-11 rounded-lg bg-orange/10 flex items-center justify-center shrink-0">
-              <p.icon size={18} className="text-orange md:hidden" />
-              <p.icon size={22} className="text-orange hidden md:block" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">{p.title}</div>
-              <div className="text-[10px] md:text-[11px] text-[#EAF0F6] mt-0 md:mt-0.5 leading-tight md:leading-snug">{p.sub}</div>
-              <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0.5 leading-tight md:leading-snug">{p.detail}</div>
-            </div>
-            <div className="text-right whitespace-nowrap shrink-0">
-              {loading
-                ? <div className="h-3 w-16 rounded bg-orange/20 animate-pulse" aria-hidden="true" />
-                : (
-                  <>
-                    <div className="text-[11px] text-orange font-semibold">{`${fmt(openCount)} ouverte${openCount > 1 ? 's' : ''}`}</div>
-                    <div className="text-[9px] text-[#B9BBC8]">{`${fmt(count)} au catalogue`}</div>
-                  </>
-                )}
-            </div>
-            <ChevronRight size={16} className="text-orange shrink-0 md:hidden" />
-            <ChevronRight size={16} className="text-orange shrink-0 hidden md:block" />
-          </Link>
-        );
-      })}
-      {/* 4 Oct client brief (mockup "proposition-accueil-v2"): two page anchors -
-          "Par métier" scrolls to the search engine further down, "Par zone
-          géographique" to the map - then "Démo vidéo" and "Témoignages vidéo",
-          each with direct access to its own section on this page. */}
-      <div className="grid grid-cols-2 gap-1 md:gap-2">
-        <a href="#mdh-metiers" onClick={e => scrollToSection(e, 'mdh-metiers')} className="flex flex-col items-start gap-1.5 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3 md:p-4 hover:border-orange/50 transition-colors text-left">
-          <Wrench size={22} className="text-orange" aria-hidden="true" />
-          <div className="min-w-0">
-            <div className="text-sm md:text-base font-bold text-white leading-tight">Par métier</div>
-            <div className="text-[11px] md:text-xs text-[#B9BBC8] mt-0.5 leading-snug">Votre activité, vos produits</div>
-          </div>
-        </a>
-        <a href="#mdh-zones" onClick={e => scrollToSection(e, 'mdh-zones')} className="flex flex-col items-start gap-1.5 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-3 md:p-4 hover:border-orange/50 transition-colors text-left">
-          <MapPin size={22} className="text-orange" aria-hidden="true" />
-          <div className="min-w-0">
-            <div className="text-sm md:text-base font-bold text-white leading-tight">Par zone géographique</div>
-            <div className="text-[11px] md:text-xs text-[#B9BBC8] mt-0.5 leading-snug">Trouvez près de chez vous</div>
-          </div>
-        </a>
-      </div>
-      <div className="grid grid-cols-2 gap-1 md:gap-2">
-        <a href="#mdh-demo" onClick={e => scrollToSection(e, 'mdh-demo')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
-          <PlayCircle size={18} className="text-orange md:hidden" />
-          <PlayCircle size={22} className="text-orange hidden md:block" />
-          <div className="min-w-0">
-            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Démo vidéo</div>
-            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Le parcours en 1 min</div>
-          </div>
-        </a>
-        <a href="#mdh-temoignages" onClick={e => scrollToSection(e, 'mdh-temoignages')} className="flex flex-row md:flex-col items-center md:items-start gap-2 md:gap-2 bg-[#061D32]/80 border border-[#17334D] rounded-xl p-1.5 md:p-3 hover:border-orange/50 group transition-all text-left">
-          <PlayCircle size={18} className="text-orange md:hidden" />
-          <PlayCircle size={22} className="text-orange hidden md:block" />
-          <div className="min-w-0">
-            <div className="text-sm md:text-sm font-semibold text-white group-hover:text-orange transition-colors">Témoignages vidéo</div>
-            <div className="text-[9px] md:text-[11px] text-[#B9BBC8] mt-0 md:mt-0 leading-tight md:leading-snug">Leurs retours d'expérience</div>
-          </div>
-        </a>
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // DEMO WALKTHROUGH ("De la recherche au dossier, en 1 minute.")
 // ---------------------------------------------------------------------------
@@ -1912,7 +1727,7 @@ export default function HomePage() {
         title="Marchés Direct — Marchés publics, appels d'offres privés et sous-traitance"
         description="Trouvez et candidatez aux marchés publics, appels d'offres privés et missions de sous-traitance partout en France. Analyse IA du DCE, scoring de compatibilité et génération de dossier."
       />
-      <HeroSection onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
+      <MdHero onAppt={() => setAppointmentOpen(true)} />
       <XhDemo onReserve={() => setAppointmentOpen(true)} />
       <SituationSection onAppt={() => setAppointmentOpen(true)} />
       <DemoWalkthroughSection />
