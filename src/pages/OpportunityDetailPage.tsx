@@ -1538,8 +1538,19 @@ export default function OpportunityDetailPage() {
             parts.push(firstRisk
               ? `Point à regarder en priorité : ${clip(riskLabel(firstRisk)).replace(/[.\s]+$/, '')}.`
               : 'Repérez les pièces demandées et les conditions de participation avant de décider.');
-            parts.push('Faites le point avec un chargé d’affaires pour savoir comment avancer.');
-            return <AdvisorInsight id="advisor-fiche" advice={parts.join(' ')} />;
+            parts.push('Vérifiez ensuite si ce marché correspond à votre entreprise.');
+            return (
+              <AdvisorInsight
+                id="advisor-fiche"
+                advice={parts.join(' ')}
+                journey={opportunity.journey}
+                ctaLabel={isAuthenticated ? 'Vérifier si ce marché correspond à mon entreprise' : 'Vérifier si ce marché me correspond'}
+                onNext={() => {
+                  if (isAuthenticated) { setScreen(2); return; }
+                  document.getElementById('siret-gate')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+              />
+            );
           })()}
 
           {/* DONNEUR D'ORDRE — info only here (public markets show it
@@ -1853,7 +1864,7 @@ export default function OpportunityDetailPage() {
                 <span className="text-xs font-normal opacity-90">— {siretCompany.name || 'votre entreprise'}</span>
               </button>
             )}
-            <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
+            <div id="siret-gate" className="bg-[#061D32] border border-[#17334D] rounded-2xl p-6">
               <div className="flex items-start gap-3 mb-4">
                 <div className="shrink-0 w-9 h-9 rounded-full bg-orange/10 border border-orange/30 flex items-center justify-center">
                   <Gauge size={16} className="text-orange" />
@@ -2183,8 +2194,16 @@ export default function OpportunityDetailPage() {
                     if (mism.length) parts.push(sentence(mism.slice(0, 1), 'est à vérifier', 'sont à vérifier', ' avant de candidater.'));
                     else if (conf.length) parts.push(sentence(conf.slice(0, 1), 'reste', 'restent', ' à confirmer : une réponse de votre part suffit à préciser.'));
                     else parts.push('Aucun écart n’apparaît à ce stade ; gardez de quoi justifier vos réponses.');
-                    parts.push('Prochaine étape : recevez votre dossier pré-rempli, puis faites le point avec un chargé d’affaires.');
-                    return <AdvisorInsight id="advisor-concordance" advice={parts.join(' ')} />;
+                    parts.push('Prochaine étape : découvrez votre dossier prérempli, puis échangez avec un chargé d’affaires.');
+                    return (
+                      <AdvisorInsight
+                        id="advisor-concordance"
+                        advice={parts.join(' ')}
+                        journey={opportunity.journey}
+                        ctaLabel="Découvrir mon dossier prérempli"
+                        onNext={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      />
+                    );
                   })()}
 
                   {/* Compact synthesis + ONE closed accordion holding the full six-criteria analysis. */}
