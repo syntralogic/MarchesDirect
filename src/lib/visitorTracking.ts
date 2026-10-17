@@ -96,20 +96,22 @@ export function trackVisitorEvent(eventType: VisitorEventType, eventLabel?: stri
 // announcement (routes/visitorEvents.ts: distinct visitor sessions, the caller excluded) and is null when no reliable
 // data exists - the caller then hides the indicator. The wording is chosen server-side from the announcement id and
 // kept for the browser session, so it never changes while the visitor reads or comes back.
-export async function getConsultationIndicator(opportunityId: string, lang: 'fr' | 'en' = 'fr'): Promise<string | null> {
+export interface ConsultationIndicatorView { label: string; value: number | null }
+export async function getConsultationIndicator(opportunityId: string, lang: 'fr' | 'en' = 'fr'): Promise<ConsultationIndicatorView | null> {
   const key = `md_consult_${opportunityId}_${lang}`;
   try {
     const stored = sessionStorage.getItem(key);
-    if (stored !== null) return stored || null;
-  } catch { /* storage unavailable */ }
+    if (stored !== null) return stored ? (JSON.parse(stored) as ConsultationIndicatorView) : null;
+  } catch { /* storage unavailable or unreadable: fetch again */ }
   try {
     const qs = new URLSearchParams({ sessionId: getSessionId(), lang });
     const res = await fetch(`${API_URL}/api/visitor-events/consultations/${opportunityId}?${qs.toString()}`);
     if (!res.ok) return null;
     const data = await res.json();
     const label = typeof data?.indicator?.label === 'string' && data.indicator.label.trim() ? data.indicator.label.trim() : null;
-    try { sessionStorage.setItem(key, label || ''); } catch { /* storage unavailable */ }
-    return label;
+    const view = label ? { label, value: typeof data.indicator.value === 'number' ? data.indicator.value : null } : null;
+    try { sessionStorage.setItem(key, view ? JSON.stringify(view) : ''); } catch { /* storage unavailable */ }
+    return view;
   } catch {
     return null;
   }

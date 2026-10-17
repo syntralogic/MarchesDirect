@@ -791,7 +791,9 @@ export default function OpportunityDetailPage() {
   // the seeded-random placeholder (getConsultationsCount below stays as
   // the fallback while this loads / if it fails).
   // Consultation indicator sentence (real tracking of THIS announcement, null = hidden).
-  const [consultationLabel, setConsultationLabel] = useState<string | null>(null);
+  const [consultation, setConsultation] = useState<{ label: string; value: number | null } | null>(null);
+  // Small dot, scaled with the tracked figure (client brief 11 Sep) but kept discreet (18 Oct): 6 to 9 px, no animation.
+  const consultationDotPx = consultation?.value == null ? 6 : Math.round(6 + Math.max(0, Math.min(1, (consultation.value - 2) / 10)) * 3);
 
   // 27 Sep audit, point 6: reloading the fiche could show "Failed to fetch
   // opportunity" with no way forward but leaving the page - the only action
@@ -821,8 +823,8 @@ export default function OpportunityDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    setConsultationLabel(null);
-    getConsultationIndicator(id, lang === 'en' ? 'en' : 'fr').then(setConsultationLabel);
+    setConsultation(null);
+    getConsultationIndicator(id, lang === 'en' ? 'en' : 'fr').then(setConsultation);
   }, [id, lang]);
 
   useEffect(() => {
@@ -1306,10 +1308,10 @@ export default function OpportunityDetailPage() {
             « consultations » unless the visitors are identified companies,
             small and discreet, wording stable while reading, hidden while
             loading, on failure or when no reliable data exists. */}
-        {consultationLabel && (
+        {consultation && (
           <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#17334D] bg-[#031B30] px-3 py-1 text-[11px] leading-tight text-[#B9BBC8]">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange shrink-0" aria-hidden="true" />
-            <span>{consultationLabel}</span>
+            <span className="rounded-full bg-orange shrink-0" style={{ width: consultationDotPx, height: consultationDotPx }} aria-hidden="true" />
+            <span>{consultation.label}</span>
           </p>
         )}
       </div>
@@ -2566,10 +2568,10 @@ export default function OpportunityDetailPage() {
                       <button type="button" onClick={() => setExcerptOpen(o => !o)} aria-expanded={excerptOpen} className="w-full flex items-center justify-center gap-2 border border-[#17334D] bg-[#031B30] rounded-xl py-3 text-sm text-orange font-bold hover:border-orange/50 transition-colors">
                         <Search size={15} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
                       </button>
-                      {consultationLabel && (
+                      {consultation && (
                         <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#17334D] bg-[#031B30] px-3 py-1 text-[11px] leading-tight text-[#B9BBC8]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange shrink-0" aria-hidden="true" />
-                          <span>{consultationLabel}</span>
+                          <span className="rounded-full bg-orange shrink-0" style={{ width: consultationDotPx, height: consultationDotPx }} aria-hidden="true" />
+                          <span>{consultation.label}</span>
                         </p>
                       )}
                     </div>
