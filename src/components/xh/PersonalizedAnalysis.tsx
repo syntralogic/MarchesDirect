@@ -43,6 +43,8 @@ export function personalizeXh(host: HTMLElement, company: AnalysisCompany, marke
   const sr = root.querySelector('.xh-sr'); if (sr) sr.textContent = `Analyse en cours pour ${name}${market.title ? `, marché : ${market.title}` : ''}.`;
   const ex = root.querySelector('.xh-ex'); if (ex) ex.textContent = 'Votre analyse';
   const sim = root.querySelector('.xh-sim'); if (sim) sim.textContent = 'Analyse';
+  // The demo footer says « 117 points illustratifs, données fictives »: wrong for a real analysis.
+  const np = root.querySelector('.xh-np'); if (np) np.textContent = 'Analyse de votre entreprise pour ce marché';
   const sv = root.querySelector('.xh-sv'); if (sv) sv.textContent = '';
   // Company recognised: label, real name, then place and activity when we have them.
   const found = root.querySelector('.xh-found');
