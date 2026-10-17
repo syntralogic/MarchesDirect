@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { PersonalizedAnalysis } from '@/components/xh/PersonalizedAnalysis';
-import { AdvisorFrame } from '@/components/AdvisorFrame';
+import { AdvisorInsight } from '@/components/AdvisorInsight';
+import { advisorSupportLabel } from '@/lib/advisor';
 import elenaPortrait from '@/assets/1.jpeg';
 import { CallbackModal } from '@/components/CallbackModal';
 import {
   ArrowLeft, MapPin, Calendar, Euro, Loader2, FileText, AlertTriangle,
   CheckCircle2, XCircle, Lock, Gauge, Landmark, Briefcase, Handshake, ShieldCheck, PhoneCall,
-  ChevronDown, ChevronRight, Globe, Facebook, Star, BadgeCheck, ExternalLink, Clock3,
+  ChevronDown, ChevronRight, Facebook, Star, ExternalLink, Clock3,
   Building2, Users, TrendingUp, Pencil, Award, User, Search, Copy, Send, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +19,7 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId, getConsultationsToday, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import {
-  opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getBlobApiErrorMessage,
+  opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getApiErrorCode, getBlobApiErrorMessage,
   dossiersApi, siretApi, analysesApi,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
@@ -671,6 +672,7 @@ export default function OpportunityDetailPage() {
   const [matchScore, setMatchScore] = useState<ApiMatchScore | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
+  const [scoreErrorCode, setScoreErrorCode] = useState<string | null>(null);
   // Client (19 Sep): "reproduire le fonctionnement de la carte interactive:
   // les réponses aux quatre questions doivent afficher les points ajoutés
   // et actualiser immédiatement le score, selon le barème prévu. Exemple:
@@ -802,6 +804,13 @@ export default function OpportunityDetailPage() {
   // effect re-fired immediately and hammered the API in an endless loop (seen in
   // the Render logs: the same match-score 404 several times per second).
   const scoreFailedKeyRef = useRef<string | null>(null);
+  // Client brief 17 Oct (follow-up): a company that is displayed must never be answered with "Identifiez votre
+  // entreprise (SIRET)". The displayed company can come from the account (logged-in visitor) or an earlier session
+  // without the server having a lookup row for THIS session, so the analysis answers 403 company_not_identified.
+  // The displayed SIRET is re-confirmed once (same call as picking the company) and the analysis is retried;
+  // only if that still fails does the visitor get a precise message with the "Modifier mon entreprise" action.
+  const reconfirmedForRef = useRef<string | null>(null);
+  const displayedSiret = siretCompany?.siret || null;
   useEffect(() => {
     if (!id || screen === 3 || matchScore || scoreLoading) return;
     if (scoreFailedKeyRef.current === `${id}|${isAuthenticated}`) return;
@@ -812,14 +821,29 @@ export default function OpportunityDetailPage() {
     if (!isOpportunityConfirmed(id) && !isAuthenticated) return;
     setScoreLoading(true);
     setScoreError(null);
-    analysesApi.score(id, getSessionId(), refineAnswers)
+    setScoreErrorCode(null);
+    const runScore = async (): Promise<ApiMatchScore> => {
+      try {
+        return await analysesApi.score(id, getSessionId(), refineAnswers);
+      } catch (err) {
+        const reconfirmKey = `${id}|${displayedSiret}`;
+        if (getApiErrorCode(err) === 'company_not_identified' && displayedSiret && /^\d{14}$/.test(displayedSiret) && reconfirmedForRef.current !== reconfirmKey) {
+          reconfirmedForRef.current = reconfirmKey;
+          const confirmed = await confirmCandidate(displayedSiret);
+          if (!confirmed.error) return await analysesApi.score(id, getSessionId(), refineAnswers);
+        }
+        throw err;
+      }
+    };
+    runScore()
       .then(setMatchScore)
       .catch(err => {
         scoreFailedKeyRef.current = `${id}|${isAuthenticated}`;
+        setScoreErrorCode(getApiErrorCode(err) || null);
         setScoreError(getApiErrorMessage(err, t('scoreLoadError') || "Impossible de calculer le score pour cette opportunité."));
       })
       .finally(() => setScoreLoading(false));
-  }, [id, screen, matchScore, scoreLoading, t, isAuthenticated, analyzing]);
+  }, [id, screen, matchScore, scoreLoading, scoreError, t, isAuthenticated, analyzing, displayedSiret]);
 
   // Recompute (quietly, without swapping the card for a spinner) whenever an
   // answer to the four questions is added or changed. The counter drops
@@ -1498,7 +1522,25 @@ export default function OpportunityDetailPage() {
 
           {/* Client brief 17 Oct, point 1: the human support is the most important block. It comes right after the
               summary and the points of attention, before the technical details (buyer, dossier facts). */}
-          {!closedFiche && <AdvisorFrame id="advisor-fiche" onAppointment={() => setShowAccountManagerModal(true)} onCallback={() => setCallbackOpen(true)} />}
+          {!closedFiche && (() => {
+            // Market-only advice: the company is not known yet, so nothing here claims the market suits it.
+            const deadlineMs = opportunity.deadline ? new Date(opportunity.deadline as string).getTime() : NaN;
+            const upcoming = !Number.isNaN(deadlineMs) && deadlineMs > Date.now();
+            const rawRisks = Array.isArray(opportunity.ai_extracted_facts?.key_risks?.value) ? opportunity.ai_extracted_facts.key_risks.value : [];
+            const riskLabel = (r: unknown): string => (typeof r === 'object' && r !== null ? String((r as { label?: unknown }).label || '') : typeof r === 'string' ? r : '').trim();
+            const mandatory = rawRisks.find(r => typeof r === 'object' && r !== null && (r as { severity?: unknown }).severity === 'obligatoire' && riskLabel(r));
+            const firstRisk = mandatory || rawRisks.find(r => riskLabel(r));
+            const clip = (x: string) => (x.length > 140 ? `${x.slice(0, 137).trimEnd()}…` : x);
+            const parts: string[] = [];
+            parts.push(tradeLabel
+              ? `Ce marché porte sur ${tradeLabel.toLowerCase()}${upcoming ? `, avec une échéance au ${formatDate(opportunity.deadline as string)}` : ''}.`
+              : `Lisez d'abord l'objet du marché${upcoming ? ` et gardez en tête l'échéance du ${formatDate(opportunity.deadline as string)}` : ''}.`);
+            parts.push(firstRisk
+              ? `Point à regarder en priorité : ${clip(riskLabel(firstRisk)).replace(/[.\s]+$/, '')}.`
+              : 'Repérez les pièces demandées et les conditions de participation avant de décider.');
+            parts.push('Faites le point avec un chargé d’affaires pour savoir comment avancer.');
+            return <AdvisorInsight id="advisor-fiche" advice={parts.join(' ')} />;
+          })()}
 
           {/* DONNEUR D'ORDRE — info only here (public markets show it
               outright, private ones show the locked placeholder); the
@@ -1956,6 +1998,7 @@ export default function OpportunityDetailPage() {
                     label="Avis Google"
                     value={siretCompany.googleRating ? `${siretCompany.googleRating}/5${siretCompany.googleReviewCount ? ` (${siretCompany.googleReviewCount} avis)` : ''}` : null}
                     empty="Non disponible"
+                    hideWhenEmpty
                     href={siretCompany.googleRating ? googleReviewsHref(siretCompany) : null}
                   />
                   <CompanyInfoRow
@@ -1963,48 +2006,52 @@ export default function OpportunityDetailPage() {
                     label="Page Facebook"
                     value={facebookLabel(siretCompany.facebook)}
                     empty="Non disponible"
+                    hideWhenEmpty
                     href={facebookHref(siretCompany.facebook)}
                   />
-                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.map(c => humanizeRawLabel(c) || c).filter((c, i, a) => a.indexOf(c) === i).join(', ') : null} empty="Aucune certification détectée dans notre recherche" />
+                  <CompanyInfoRow icon={Award} label="Certifications" value={siretCompany.certifications?.length ? siretCompany.certifications.map(c => humanizeRawLabel(c) || c).filter((c, i, a) => a.indexOf(c) === i).join(', ') : null} empty="Aucune certification détectée dans notre recherche" hideWhenEmpty />
                 </div>
 
-                {/* "Présence détectée" (client reference screens 5-6),
-                    compacted into a single row of chips: icon + label,
-                    green check or dim cross, real signal in white when
-                    found vs. dimmed italic "Non détecté" when not - matching
-                    the same known/unknown distinction as CompanyInfoRow
-                    above (25 Sep audit, point 4). Title kept as a tooltip on
-                    the row rather than a repeated H2+sub. */}
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] pt-1.5 mt-1.5 border-t border-[#17334D]">
-                  <span className="text-[10px] text-[#8A9BB0] w-full -mb-0.5">{t('presenceDetectedTitle')}</span>
-                  {([
-                    { icon: Globe, label: t('presenceWebsite'), detected: Boolean(siretCompany.website), value: siretCompany.website },
-                    { icon: Facebook, label: t('presenceFacebook'), detected: Boolean(siretCompany.facebook), value: facebookLabel(siretCompany.facebook), href: facebookHref(siretCompany.facebook) },
-                    { icon: Star, label: t('presenceGoogleReviews'), detected: Boolean(siretCompany.googleRating), value: siretCompany.googleRating ? `${siretCompany.googleRating}/5 · ${siretCompany.googleReviewCount ?? 0} avis` : null, href: siretCompany.googleRating ? googleReviewsHref(siretCompany) : null },
-                    { icon: BadgeCheck, label: t('presenceRge'), detected: Boolean(siretCompany.rgeOrganisme), value: siretCompany.rgeOrganisme ? `${t('presenceRgeDetected')} — ${siretCompany.rgeOrganisme}` : null, href: null },
-                  ] as { icon: typeof Globe; label: string; detected: boolean; value: string | null | undefined; href?: string | null }[]).map((sig, i) => {
-                    const inner = (
-                      <>
-                        {sig.detected ? <CheckCircle2 size={12} className="text-green-400 shrink-0" /> : <XCircle size={12} className="text-[#8A9BB0] shrink-0" />}
-                        <sig.icon size={11} className="text-[#8A9BB0] shrink-0" />
-                        <span className={sig.detected ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{sig.label}{sig.detected && sig.value && sig.label === t('presenceGoogleReviews') ? ` · ${sig.value}` : ''}</span>
-                      </>
-                    );
-                    const title = sig.value || t('presenceNotDetected');
-                    return sig.detected && sig.href ? (
-                      <a key={i} href={sig.href} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-1.5 hover:underline" title={title}>{inner}</a>
-                    ) : (
-                      <div key={i} className="flex items-center gap-1.5" title={title}>{inner}</div>
-                    );
-                  })}
-                </div>
               </div>
             )}
 
             {scoreLoading ? (
           <div className="flex items-center justify-center py-16 text-[#B9BBC8] text-sm gap-2"><Loader2 size={18} className="animate-spin" /> {t('scoreCalculating')}</div>
         ) : scoreError ? (
-          <div className="bg-[#061D32] border border-red-500/30 rounded-2xl p-4 text-xs text-red-400">{scoreError}</div>
+          (() => {
+            // Client brief 17 Oct (follow-up): never a silent jump from the company card to the dossier, and never
+            // "Identifiez votre entreprise" while a company is displayed. Say precisely what blocks, and offer the action.
+            const closedCompany = !!(siretCompany?.statut && siretCompany.statut !== 'Active');
+            const modifyCompany = () => { setScreen(1); setSiretInput(''); };
+            const blockedMessage = closedCompany
+              ? "Cet établissement est indiqué comme cessé. Sélectionnez votre établissement actif pour poursuivre l'analyse."
+              : scoreErrorCode === 'company_not_identified'
+                ? `Nous n'avons pas pu rattacher ${siretCompany?.name || 'votre entreprise'}${siretCompany?.siret ? ` (SIRET ${siretCompany.siret})` : ''} à cette analyse. Confirmez votre établissement pour poursuivre.`
+                : scoreError;
+            return (
+              <div role="alert" className="bg-[#061D32] border border-orange/40 rounded-2xl p-4">
+                <p className="text-sm text-white leading-relaxed">{blockedMessage}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={modifyCompany}
+                    className="inline-flex items-center gap-1.5 min-h-[40px] text-xs font-bold text-orange border border-orange/40 rounded-md px-3 hover:bg-orange/10 transition-colors"
+                  >
+                    <Pencil size={12} /> {t('siretModify') || 'Modifier mon entreprise'}
+                  </button>
+                  {!closedCompany && (
+                    <button
+                      type="button"
+                      onClick={() => { scoreFailedKeyRef.current = null; reconfirmedForRef.current = null; setScoreError(null); setScoreErrorCode(null); }}
+                      className="inline-flex items-center gap-1.5 min-h-[40px] text-xs font-semibold text-[#B9BBC8] border border-[#17334D] rounded-md px-3 hover:text-white transition-colors"
+                    >
+                      Réessayer l'analyse
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()
         ) : matchScore ? (
             <div className="space-y-4">
             {/* 4 Oct brief (mockup concordance_v3): the score and ONE short,
@@ -2128,7 +2175,17 @@ export default function OpportunityDetailPage() {
                   </div>
 
                   {/* Client brief 17 Oct, point 1: right after the result, before the detailed explanations. */}
-                  {!closedFiche && <AdvisorFrame id="advisor-concordance" onAppointment={() => setShowAccountManagerModal(true)} onCallback={() => setCallbackOpen(true)} />}
+                  {!closedFiche && (() => {
+                    // Crosses market, company and the visitor's answers (all from the server-computed criteria): one
+                    // concrete strength, one point to prepare, the next step. No promise of success.
+                    const parts: string[] = [];
+                    if (ok.length) parts.push(sentence(ok.slice(0, 1), 'correspond', 'correspondent', ' à ce marché.'));
+                    if (mism.length) parts.push(sentence(mism.slice(0, 1), 'est à vérifier', 'sont à vérifier', ' avant de candidater.'));
+                    else if (conf.length) parts.push(sentence(conf.slice(0, 1), 'reste', 'restent', ' à confirmer : une réponse de votre part suffit à préciser.'));
+                    else parts.push('Aucun écart n’apparaît à ce stade ; gardez de quoi justifier vos réponses.');
+                    parts.push('Prochaine étape : recevez votre dossier pré-rempli, puis faites le point avec un chargé d’affaires.');
+                    return <AdvisorInsight id="advisor-concordance" advice={parts.join(' ')} />;
+                  })()}
 
                   {/* Compact synthesis + ONE closed accordion holding the full six-criteria analysis. */}
                   {total > 0 && (
@@ -3039,7 +3096,7 @@ export default function OpportunityDetailPage() {
               <img src={elenaPortrait} alt="Elena Popescu" width={48} height={48} loading="lazy" decoding="async" className="w-12 h-12 shrink-0 grow-0 rounded-full object-cover border-2 border-orange" />
               <div className="min-w-0">
                 <p className="text-[12px] font-bold uppercase tracking-wide text-[#FDBA74]">Votre accompagnement</p>
-                <p className="text-sm text-[#B9BBC8]">Elena Popescu · Votre premier contact</p>
+                <p className="text-sm text-[#B9BBC8]">Elena · {advisorSupportLabel(opportunity.journey)}</p>
               </div>
             </div>
             {accompaniedToday != null && accompaniedToday > 0 && (
@@ -3049,7 +3106,7 @@ export default function OpportunityDetailPage() {
               </p>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-orange/50 bg-orange/10 px-3 py-1.5 text-xs font-bold text-orange mb-3">
-              <Clock3 size={12} /> {t('dv13Pill') || 'Offert · 30 min · Spécialiste marchés publics'}
+              <Clock3 size={12} /> {t('dv13Pill') || '30 min offertes'}
             </span>
             <h2 className="flex items-center gap-2 text-lg font-extrabold text-white mb-2"><Users size={16} className="text-orange" /> {t('dv13Support') || 'Votre premier échange avec un chargé d’affaires'}</h2>
             <p className="text-xs text-[#B9BBC8] leading-relaxed mb-3">{t('dv13SupportIntro')}</p>
@@ -3252,7 +3309,10 @@ export default function OpportunityDetailPage() {
 // text instead (client's exact wording: "Chiffre d'affaires non
 // disponible", "Effectif non communiqué", etc.) so the grid never looks
 // broken or incomplete.
-function CompanyInfoRow({ icon: Icon, label, value, empty, href }: { icon: typeof MapPin; label: string; value: string | null | undefined; empty?: string; href?: string | null }) {
+function CompanyInfoRow({ icon: Icon, label, value, empty, href, hideWhenEmpty }: { icon: typeof MapPin; label: string; value: string | null | undefined; empty?: string; href?: string | null; hideWhenEmpty?: boolean }) {
+  // Client brief 17 Oct (follow-up): secondary rows (Avis Google, Page Facebook, Certifications) are simply not
+  // shown when nothing was found, instead of listing "Non disponible" lines.
+  if (hideWhenEmpty && !value) return null;
   // 25 Sep audit, point 4: an estimated/unknown field ("Chiffre d'affaires
   // non disponible", "Effectif non communiqué"...) rendered identically to
   // real data (same white/bold text) reads as a fact rather than as "we
