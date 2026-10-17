@@ -673,3 +673,19 @@
 .mdhero .hx-st3 li span { min-width: 0; overflow-wrap: anywhere; }
 .mdhero .hx-ai-t, .mdhero .hx-ai p { overflow-wrap: anywhere; }
 .mdhero { overflow-x: clip; }
+
+/* --- Accueil : moteur visible dès l'arrivée sur téléphone (retour client 17 oct.) ---
+   Titre et promesse conservés, introduction réduite à une phrase, l'explication complémentaire est sous le moteur
+   (.hx-more). Les champs et le bouton gardent leur taille (60 px, 18 px) : on retire de l'espace, pas de la lisibilité. */
+.mdhero .hx-top{padding:40px 0 28px}
+.mdhero .hx-more{margin:6px 0 0;font-size:15px;line-height:1.45;color:#C3CFDE}
+@media (max-width:640px){
+  .mdhero .hx-top{padding:12px 0 16px}
+  .mdhero .origin-eyebrow{display:none}
+  .mdhero .hx .hx-title{font-size:30px;line-height:1.1;margin:0}
+  .mdhero .hx-sub.hx-promise{font-size:16px;line-height:1.4;margin-top:6px}
+  .mdhero .hx-promise+.hx-search{margin-top:12px}
+  .mdhero .hx-body{padding:12px}
+  .mdhero .hx-qlab2{margin-bottom:6px}
+  .mdhero .hx-body > div[style*="flex-wrap"]{gap:8px !important}
+}

@@ -24,7 +24,8 @@ const NATURE_KEYS: Nature[] = ['travaux', 'services', 'fournitures'];
 const TXT = {
   fr: {
     eyebrow: 'Artisans · Indépendants · TPE', title1: 'Trouvez votre prochain marché.', title2: 'Nous vous aidons à y répondre.',
-    sub: 'Marchés publics, appels d’offres privés et sous-traitance entre professionnels. Un chargé d’affaires vous aide à préparer votre candidature.',
+    sub: 'Marchés publics, appels d’offres privés et sous-traitance entre professionnels.',
+    more: 'Un chargé d’affaires vous aide à préparer votre candidature.',
     tablist: 'Type de recherche', tabOpen: 'Marchés ouverts', tabOpenD: 'Consultations en cours', tabProj: 'Futurs chantiers', tabProjD: 'Avant les appels d’offres',
     job: 'Quel est votre métier ?', placeholder: 'Ex. : électricien, nettoyage…', zone: 'Dans quelle zone recherchez-vous ?', france: 'Toute la France',
     search: 'Rechercher des marchés', free: 'Consultation et analyse gratuites · sans inscription', small: 'Seul ou en équipe, trouvez des marchés à votre taille.',
@@ -37,7 +38,8 @@ const TXT = {
   },
   en: {
     eyebrow: 'Craftspeople · Self-employed · Small businesses', title1: 'Find your next contract.', title2: 'We help you win it.',
-    sub: 'Public contracts, private tenders and subcontracting between professionals. A business advisor helps you prepare your bid.',
+    sub: 'Public contracts, private tenders and subcontracting between professionals.',
+    more: 'A business advisor helps you prepare your bid.',
     tablist: 'Search type', tabOpen: 'Open contracts', tabOpenD: 'Bids currently open', tabProj: 'Upcoming projects', tabProjD: 'Before tenders are published',
     job: 'What is your trade?', placeholder: 'E.g. electrician, cleaning…', zone: 'Which area are you searching in?', france: 'All of France',
     search: 'Search contracts', free: 'Free review and analysis · no sign-up', small: 'Alone or in a team, find contracts that fit your size.',
@@ -83,7 +85,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
 
   return (
     <div className="mdhero origin-app">
-      <section className="hx" style={{ padding: '40px 0 28px' }}>
+      <section className="hx hx-top">
         <div className="wrap">
           <div className="hx-grid">
             <div className="hx-main">
@@ -129,6 +131,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                       </div>
                       <p className="hx-free">{T.free}</p>
                       <p className="hx-small">{T.small}</p>
+                      <p className="hx-more">{T.more}</p>
                       <div role="radiogroup" aria-label={T.kind} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, alignItems: 'center' }}>
                         {TYPE_TABS.map(t => {
                           const on = tab === t.key;
