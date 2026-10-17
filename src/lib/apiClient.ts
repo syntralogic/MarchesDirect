@@ -1662,8 +1662,19 @@ export const analysesApi = {
     return data;
   },
   score: async (opportunityId: string, sessionId: string, answers?: Record<string, string | undefined>): Promise<ApiMatchScore> => {
-    const snap = await analysesApi.sync(opportunityId, sessionId, answers);
-    const { data } = await apiClient.get(`/analyses/${snap.analysis_id}`, { params: { sessionId } });
-    return data.match;
+    try {
+      const snap = await analysesApi.sync(opportunityId, sessionId, answers);
+      const { data } = await apiClient.get(`/analyses/${snap.analysis_id}`, { params: { sessionId } });
+      // Never hand the page something that is not a concordance: it would blank the whole screen.
+      if (data && data.match && Array.isArray(data.match.matchCriteria)) return data.match as ApiMatchScore;
+      throw new Error('analysis_without_match');
+    } catch {
+      // The snapshot needs a SIRET lookup made in THIS browser session (403 company_not_identified).
+      // A logged-in company, a session that predates the snapshot, or a snapshot error used to leave
+      // the concordance page with no percentage and no detail at all. The direct concordance
+      // endpoint serves exactly the same computation (and knows the logged-in company), so use it.
+      const param = Object.entries(answers || {}).filter(([, v]) => !!v).map(([k, v]) => `${k}:${v}`).join(',');
+      return opportunitiesApi.getMatchScore(opportunityId, sessionId, param || undefined);
+    }
   },
 };
