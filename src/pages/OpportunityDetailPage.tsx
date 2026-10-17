@@ -1913,12 +1913,12 @@ export default function OpportunityDetailPage() {
                     <span className="w-6 h-6 rounded-full bg-orange/15 border border-orange/30 flex items-center justify-center shrink-0">
                       <Building2 size={13} className="text-orange" />
                     </span>
-                    <p className="text-xs font-bold text-white">{t('siretYourCompany') || 'Votre entreprise'}</p>
+                    <p className="text-xs font-bold text-white whitespace-nowrap">{t('siretYourCompany') || 'Votre entreprise'}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => { setScreen(1); setSiretInput(''); }}
-                    className="flex items-center gap-1 text-[11px] font-bold text-orange border border-orange/40 rounded-md px-2 py-1 hover:bg-orange/10 transition-colors shrink-0"
+                    className="flex items-center gap-1 text-[11px] whitespace-nowrap font-bold text-orange border border-orange/40 rounded-md px-2 py-1 hover:bg-orange/10 transition-colors shrink-0"
                   >
                     <Pencil size={11} /> {t('siretModify') || 'Modifier'}
                   </button>
@@ -1975,8 +1975,8 @@ export default function OpportunityDetailPage() {
                     the same known/unknown distinction as CompanyInfoRow
                     above (25 Sep audit, point 4). Title kept as a tooltip on
                     the row rather than a repeated H2+sub. */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs pt-2 mt-2 border-t border-[#17334D]">
-                  <span className="text-xs text-[#8A9BB0] w-full -mb-0.5">{t('presenceDetectedTitle')}</span>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] pt-1.5 mt-1.5 border-t border-[#17334D]">
+                  <span className="text-[10px] text-[#8A9BB0] w-full -mb-0.5">{t('presenceDetectedTitle')}</span>
                   {([
                     { icon: Globe, label: t('presenceWebsite'), detected: Boolean(siretCompany.website), value: siretCompany.website },
                     { icon: Facebook, label: t('presenceFacebook'), detected: Boolean(siretCompany.facebook), value: facebookLabel(siretCompany.facebook), href: facebookHref(siretCompany.facebook) },
@@ -1985,8 +1985,8 @@ export default function OpportunityDetailPage() {
                   ] as { icon: typeof Globe; label: string; detected: boolean; value: string | null | undefined; href?: string | null }[]).map((sig, i) => {
                     const inner = (
                       <>
-                        {sig.detected ? <CheckCircle2 size={13} className="text-green-400 shrink-0" /> : <XCircle size={13} className="text-[#8A9BB0] shrink-0" />}
-                        <sig.icon size={12} className="text-[#8A9BB0] shrink-0" />
+                        {sig.detected ? <CheckCircle2 size={12} className="text-green-400 shrink-0" /> : <XCircle size={12} className="text-[#8A9BB0] shrink-0" />}
+                        <sig.icon size={11} className="text-[#8A9BB0] shrink-0" />
                         <span className={sig.detected ? 'text-white font-medium' : 'text-[#8A9BB0] italic'}>{sig.label}{sig.detected && sig.value && sig.label === t('presenceGoogleReviews') ? ` · ${sig.value}` : ''}</span>
                       </>
                     );
