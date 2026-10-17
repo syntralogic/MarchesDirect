@@ -1,8 +1,6 @@
 import { OpportunityLink } from '@/contexts/OpportunityTransitionContext';
-import { tradeDisplayName } from '@/data/tradeSuggestions';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDebounce } from '@/hooks/use-debounce';
 import { Building2, Handshake, ChevronRight, Globe, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, ChevronLeft, ChevronUp, Plus, Users, ArrowUpRight, Euro, FileText, Clock, Lock, Shield, Calendar, Trophy } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid, geoMercator } from 'd3-geo';
@@ -14,7 +12,6 @@ import DemoVideoModal from '@/components/DemoVideoModal';
 import XhDemo from '@/components/xh/XhDemo';
 import MdHero from '@/components/home/MdHero';
 import { CallbackModal } from '@/components/CallbackModal';
-import { tradesApi, type ApiTradeSuggestion } from '@/lib/apiClient';
 import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
 import { useOpportunityCounts } from '@/hooks/use-opportunity-counts';
@@ -1245,209 +1242,6 @@ function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, s
 }
 
 // ---------------------------------------------------------------------------
-// SECTORS ("Quel est votre métier ?")
-// ---------------------------------------------------------------------------
-interface SectorsSectionProps {
-  tab: 'regions' | 'departments' | 'cities';
-  selectedRegions: GeoFeatureProps[];
-  selectedDepts: GeoFeatureProps[];
-}
-
-function SectorsSection({ tab, selectedRegions, selectedDepts }: SectorsSectionProps) {
-  const navigate = useNavigate();
-  const { t } = useLang();
-  // 26 Sep client spec ("Voici le texte complet avec cette précision
-  // intégrée"): replace the sector cards entirely with a search+
-  // multi-select engine - title, a single text field with live
-  // suggestions from the first few letters, and a "Voir les
-  // opportunités" button. Reuses GET /api/trades/suggestions (already
-  // shipped server-side, accent/case-insensitive, resolves every
-  // suggestion to a real trade_id - see tradeSuggestions.ts's own note
-  // on why non-BTP sectors like informatique/transport/santé aren't in
-  // that catalog yet) and the trade_id=1,2,3 comma-list OR filter
-  // opportunities.ts already accepts.
-  const [query, setQuery] = useState('');
-  const debouncedQuery = useDebounce(query, 250);
-  const [suggestions, setSuggestions] = useState<ApiTradeSuggestion[]>([]);
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const [selectedTrades, setSelectedTrades] = useState<{ tradeId: number; tradeName: string }[]>([]);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!debouncedQuery.trim()) { setSuggestions([]); return; }
-    let cancelled = false;
-    tradesApi.suggestions(debouncedQuery).then((res) => {
-      if (!cancelled) setSuggestions(res);
-    }).catch(() => { if (!cancelled) setSuggestions([]); });
-    return () => { cancelled = true; };
-  }, [debouncedQuery]);
-
-  useEffect(() => {
-    if (!suggestOpen) return;
-    const onClickOutside = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setSuggestOpen(false);
-    };
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [suggestOpen]);
-
-  const addTrade = (s: ApiTradeSuggestion) => {
-    // "Un même métier ne peut pas être ajouté deux fois" - two different
-    // suggestion phrases can resolve to the same trade (e.g. "Électricité"
-    // and "Électricien"), so this dedupes by tradeId, not by label.
-    setSelectedTrades((prev) => (prev.some((p) => p.tradeId === s.tradeId) ? prev : [...prev, { tradeId: s.tradeId, tradeName: s.tradeName }]));
-    setQuery('');
-    setSuggestions([]);
-    // "Sélectionner un métier ne doit pas faire quitter la page
-    // immédiatement" - dropdown stays closed but the field is left ready
-    // for the next métier, matching the département multi-select pattern
-    // already used in RecherchePage.
-    setSuggestOpen(false);
-  };
-  const removeTrade = (tradeId: number) => setSelectedTrades((prev) => prev.filter((p) => p.tradeId !== tradeId));
-
-  // Same repeated-param pattern GeographicSection's own buildSearchUrl uses
-  // (?region=A&region=B) - carries whatever zone is selected on the map
-  // above into the results, same as the old per-card tradeHref did.
-  const resultsHref = () => {
-    const params: string[] = [];
-    if (selectedTrades.length > 0) params.push(`trade_id=${selectedTrades.map(t => t.tradeId).join(',')}`);
-    // 27 Sep audit, points 1 & 3: "un mot saisi sans sélectionner une
-    // suggestion, comme Informatique, peut être complètement perdu" +
-    // "permettre une recherche libre lorsqu'un terme n'est pas reconnu."
-    // resultsHref only ever carried selectedTrades (a clicked suggestion)
-    // forward - text still sitting in the field when "Voir les
-    // opportunités" is clicked (most likely because nothing matched it,
-    // e.g. a sector not yet in the BTP-only trade catalog - see
-    // tradeSuggestions.ts's own note on that gap) was silently dropped
-    // instead of at least searching as a keyword.
-    if (query.trim()) params.push(`q=${encodeURIComponent(query.trim())}`);
-    if (tab === 'departments') {
-      selectedDepts.forEach(d => params.push(`department=${encodeURIComponent(d.code)}`));
-    } else if (tab === 'regions') {
-      selectedRegions.forEach(r => params.push(`region=${encodeURIComponent(r.nom)}`));
-    }
-    return params.length > 0 ? `/recherche?${params.join('&')}` : '/recherche';
-  };
-
-  const activeSelection = tab === 'departments' ? selectedDepts : tab === 'regions' ? selectedRegions : [];
-  const zoneLabel = activeSelection.length === 0
-    ? 'Toute la France'
-    : activeSelection.length === 1
-      ? activeSelection[0].nom
-      : activeSelection.length === 2
-        ? activeSelection.map(z => z.nom).join(', ')
-        : `${activeSelection.length} ${tab === 'departments' ? 'départements' : 'régions'}`;
-
-  return (
-    <section id="mdh-metiers" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('sectors') || "Secteurs d'activité"}</span>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-1.5">Rechercher par métier <span className="text-orange">ou secteur d'activité</span></h2>
-      <p className="text-sm text-[#B9BBC8] mb-5">Trouvez des opportunités dans votre activité.</p>
-
-      {selectedTrades.length > 0 && (
-        <div className="mb-4">
-          <div className="text-xs font-semibold text-white mb-2">Vos métiers sélectionnés</div>
-          <div className="flex flex-wrap gap-2">
-            {selectedTrades.map((st) => (
-              <span key={st.tradeId} className="inline-flex items-center gap-1.5 bg-orange/10 border border-orange/50 text-white text-sm font-medium rounded-full pl-3.5 pr-2 py-1.5">
-                {tradeDisplayName(st.tradeName)}
-                <button type="button" onClick={() => removeTrade(st.tradeId)} aria-label={`Retirer ${st.tradeName}`} className="hover:bg-orange/25 rounded-full p-1 touch-manipulation text-orange">
-                  <X size={13} />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {selectedTrades.length === 0 && (
-        <label className="text-sm text-white mb-1.5 block">Métier, activité ou produit</label>
-      )}
-      <div className="relative" ref={wrapRef}>
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6B7280]" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setSuggestOpen(true); }}
-          onFocus={() => setSuggestOpen(true)}
-          // 28 Sep user test: Enter did nothing here (only the "Voir les
-          // opportunités" link worked), unlike the city field above which
-          // already submits on Enter. Same destination as that link.
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter') return;
-            if (!query.trim() && selectedTrades.length === 0) return;
-            e.preventDefault();
-            navigate(resultsHref());
-          }}
-          placeholder={selectedTrades.length > 0 ? 'Ajouter un métier…' : 'Votre métier, activité ou produit…'}
-          className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-10 pr-10 py-3.5 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange transition-colors"
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={() => { setQuery(''); setSuggestions([]); }}
-            aria-label="Effacer"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280] hover:text-white rounded-full p-1 touch-manipulation"
-          >
-            <X size={14} />
-          </button>
-        )}
-        {suggestOpen && suggestions.length > 0 && (
-          <div className="absolute z-10 mt-1 w-full bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden shadow-xl max-h-72 overflow-y-auto">
-            <div className="px-3.5 py-2 text-[11px] font-semibold text-[#B9BBC8] uppercase tracking-wide border-b border-[#17334D]">Suggestions</div>
-            {suggestions
-              .filter((s) => !selectedTrades.some((st) => st.tradeId === s.tradeId))
-              .map((s) => {
-                // Mockup ("Électricité générale", "Électricité — courants
-                // faibles"...): the matched trade name is highlighted in
-                // orange, the rest of the phrase in white.
-                const highlightEnd = s.label.startsWith(s.tradeName) ? s.tradeName.length : 0;
-                return (
-                  <button
-                    key={`${s.tradeId}-${s.label}`}
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); addTrade(s); }}
-                    className="w-full flex items-center justify-between gap-2 text-left px-3.5 py-3 text-sm hover:bg-orange/10 border-b border-[#17334D] last:border-b-0 touch-manipulation"
-                  >
-                    <span>
-                      <span className="text-orange font-semibold">{s.label.slice(0, highlightEnd)}</span>
-                      <span className="text-white">{s.label.slice(highlightEnd)}</span>
-                    </span>
-                    <Plus size={18} className="text-orange shrink-0" />
-                  </button>
-                );
-              })}
-          </div>
-        )}
-      </div>
-      <p className="text-xs text-[#B9BBC8] mt-2">
-        {selectedTrades.length > 0 ? 'Vous pouvez ajouter ou retirer un métier.' : 'Ajoutez un ou plusieurs métiers.'}
-      </p>
-
-      <Link
-        to={resultsHref()}
-        className={`mt-3 w-full flex items-center justify-center gap-2 font-semibold text-sm rounded-xl py-3.5 px-4 transition-colors ${
-          selectedTrades.length > 0
-            ? 'bg-orange text-white hover:bg-orange/90'
-            : 'bg-[#17334D] text-[#B9BBC8] hover:bg-[#1d3d5c]'
-        }`}
-      >
-        Voir les opportunités <ArrowRight size={14} />
-      </Link>
-      {selectedTrades.length > 0 && (
-        <p className="text-xs text-[#B9BBC8] mt-2">Précisez ensuite votre zone de recherche.</p>
-      )}
-
-      <div className="flex items-center justify-between mt-4 text-xs">
-        <span className="text-[#B9BBC8]">Zone : {zoneLabel}</span>
-        <Link to="/recherche" className="text-orange font-semibold">Toute la France</Link>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // BLOG ("Répondre à un marché : les premiers repères.")
 // ---------------------------------------------------------------------------
 function BlogSection() {
@@ -1696,7 +1490,6 @@ export default function HomePage() {
         selectedRegions={selectedRegions} setSelectedRegions={setSelectedRegions}
         selectedDepts={selectedDepts} setSelectedDepts={setSelectedDepts}
       />
-      <SectorsSection tab={geoTab} selectedRegions={selectedRegions} selectedDepts={selectedDepts} />
       <BlogSection />
       <PricingSection />
       <HomeFaqSection />
