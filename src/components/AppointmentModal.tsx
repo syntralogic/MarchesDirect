@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
+import { useIdempotency } from '@/lib/useIdempotency';
+import { FormRetryError } from '@/components/FormRetryError';
 import { getSessionId, trackVisitorEvent, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { normalizeFrPhoneDigits, isValidEmail, isValidFrPhone } from '@/lib/utils';
 import RequiredLegend from '@/components/RequiredLegend';
@@ -93,6 +95,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
   const [selectedSlot, setSelectedSlot] = useState('');
   const [form, setForm] = useState({ nom: '', entreprise: '', email: '', telephone: '' });
   const [submitting, setSubmitting] = useState(false);
+  const idem = useIdempotency();
   // DEV-14: the contact-details step is the real start of the form.
   const formStartedRef = useRef(false);
   useEffect(() => {
@@ -210,6 +213,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) { setError(null); return; }
 
+    if (!idem.begin()) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -224,12 +228,15 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
         leadSource: 'appointment_modal',
         message: `Motif : ${motif}${marketLabel ? `\nMarché : ${marketLabel}` : ''}\nCréneau souhaité : ${selectedDate} à ${selectedSlot}`,
         sessionId: getSessionId(),
+        idempotencyKey: idem.key(),
       });
+      idem.reset();
       trackRequestSubmitted('appointment');
       setStep(5);
     } catch (err) {
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
     } finally {
+      idem.end();
       setSubmitting(false);
     }
   };
@@ -411,7 +418,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
                   </div>
                 ))}
               </div>
-              {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
+              {error && <FormRetryError className="mt-3" message={error} onRetry={() => handleConfirm()} busy={submitting} />}
               <div className="flex gap-3 mt-5">
                 <button onClick={() => setStep(3)} className="flex-1 border border-[#17334D] text-brand-muted font-medium py-3 rounded-xl hover:border-orange/40 transition-colors text-sm">
                   <ChevronLeft size={14} className="inline mr-1" /> Retour

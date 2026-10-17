@@ -8,6 +8,8 @@ import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { getSessionId, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
+import { useIdempotency } from '@/lib/useIdempotency';
+import { FormRetryError } from '@/components/FormRetryError';
 import { isValidEmail, isValidFrPhone } from '@/lib/utils';
 import RequiredLegend from '@/components/RequiredLegend';
 
@@ -22,6 +24,7 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const startTracker = useMemo(() => createFormStartTracker('contact'), []);
   const [submitting, setSubmitting] = useState(false);
+  const idem = useIdempotency();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const clearErr = (k: string) => setFieldErrors(fe => ({ ...fe, [k]: '' }));
@@ -51,8 +54,8 @@ export default function ContactPage() {
   const [subject, setSubject] = useState(SUBJECTS[0]);
   const [message, setMessage] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
 
     // DEV-08: errors shown next to the field, before anything is sent.
@@ -65,6 +68,7 @@ export default function ContactPage() {
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) { setError(null); return; }
 
+    if (!idem.begin()) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -79,12 +83,15 @@ export default function ContactPage() {
         leadSource: 'contact_form',
         message: `Sujet : ${subject}\n\n${message}`,
         sessionId: getSessionId(),
+        idempotencyKey: idem.key(),
       });
+      idem.reset();
       trackRequestSubmitted('contact');
       setSubmitted(true);
     } catch (err) {
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
     } finally {
+      idem.end();
       setSubmitting(false);
     }
   };
@@ -179,7 +186,7 @@ export default function ContactPage() {
               placeholder={t('contactMessagePlaceholder')} />
             {fieldErr('message')}
           </div>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <FormRetryError message={error} onRetry={() => handleSubmit()} busy={submitting} />}
           <button
             type="submit"
             disabled={submitting}

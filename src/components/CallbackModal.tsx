@@ -5,6 +5,8 @@ import { useLang } from '@/contexts/LangContext';
 import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
+import { useIdempotency } from '@/lib/useIdempotency';
+import { FormRetryError } from '@/components/FormRetryError';
 import { getSessionId, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { normalizeFrPhoneDigits, isValidFrPhone } from '@/lib/utils';
 import RequiredLegend from '@/components/RequiredLegend';
@@ -26,6 +28,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const [submitted, setSubmitted] = useState(false);
   const startTracker = useMemo(() => createFormStartTracker('callback'), []);
   const [submitting, setSubmitting] = useState(false);
+  const idem = useIdempotency();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: '' });
@@ -34,8 +37,8 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
 
   const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setError(null); setFieldErrors({}); }, 300); };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!brandId) { setError('Impossible de contacter le serveur, réessayez.'); return; }
 
     // DEV-08: errors shown next to the field, before anything is sent.
@@ -46,6 +49,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) { setError(null); return; }
 
+    if (!idem.begin()) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -59,12 +63,15 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
         leadSource: 'callback_modal',
         message: form.moment ? `Créneau souhaité : ${MOMENT_LABELS[form.moment] || form.moment}` : undefined,
         sessionId: getSessionId(),
+        idempotencyKey: idem.key(),
       });
+      idem.reset();
       trackRequestSubmitted('callback');
       setSubmitted(true);
     } catch (err) {
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
     } finally {
+      idem.end();
       setSubmitting(false);
     }
   };
@@ -135,9 +142,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
                 </div>
               </div>
 
-              {error && (
-                <p className="text-xs text-red-400 -mb-1">{error}</p>
-              )}
+              {error && <FormRetryError message={error} onRetry={() => handleSubmit()} busy={submitting} />}
 
               <button
                 type="submit"

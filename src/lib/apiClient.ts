@@ -888,8 +888,14 @@ export const crmApi = {
     leadSource?: string;
     message?: string;
     sessionId?: string;
+    idempotencyKey?: string;
   }) => {
-    const { data } = await axios.post(`${API_URL}/api/crm/leads`, payload);
+    const { data } = await axios.post(`${API_URL}/api/crm/leads`, payload, {
+      headers: payload.idempotencyKey ? { 'Idempotency-Key': payload.idempotencyKey } : undefined,
+      timeout: 20000,
+    });
+    // A request is confirmed only when the server says it was really recorded.
+    if (!data || data.success !== true || !data.id) throw new Error('Demande non enregistrée.');
     return data;
   },
 };

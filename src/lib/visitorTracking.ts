@@ -61,6 +61,22 @@ export function trackRequestSubmitted(kind: RequestKind, extra?: Record<string, 
 
 // Fire-and-forget by design: a failed analytics beacon must never surface
 // an error to the visitor or block navigation. Swallows all errors.
+// Guide v24 s.12: contact details never go to traffic-analytics tools. Drop PII-named keys and
+// redact anything that looks like an e-mail or a phone number, whatever the caller passed.
+const PII_KEY_RE = /^(e-?mail|mail|phone|tel|telephone|mobile|nom|name|firstname|lastname|prenom|contact)$/i;
+function stripPii(v: unknown): unknown {
+  if (typeof v === 'string') {
+    return v.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[redacted]').replace(/(?:\+|00)?\d[\d\s.\-()]{7,}\d/g, '[redacted]');
+  }
+  if (Array.isArray(v)) return v.map(stripPii);
+  if (v && typeof v === 'object') {
+    const o: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) { if (!PII_KEY_RE.test(k)) o[k] = stripPii(val); }
+    return o;
+  }
+  return v;
+}
+
 export function trackVisitorEvent(eventType: VisitorEventType, eventLabel?: string, brandId?: string, eventData?: Record<string, unknown>) {
   // No consent (not asked yet, or refused) = nothing is recorded.
   if (getAnalyticsConsent() !== 'granted') return;
@@ -68,7 +84,7 @@ export function trackVisitorEvent(eventType: VisitorEventType, eventLabel?: stri
     fetch(`${API_URL}/api/visitor-events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: getSessionId(), eventType, eventLabel, brandId, eventData }),
+      body: JSON.stringify({ sessionId: getSessionId(), eventType, eventLabel, brandId, eventData: eventData ? stripPii(eventData) : eventData }),
       keepalive: true,
     }).catch(() => {});
   } catch {
