@@ -1071,12 +1071,12 @@ export default function RecherchePage() {
             <span className="text-orange">{total}</span> {t(headerKeySuffix ? `searchResults${headerKeySuffix}` : 'searchResults')}
           </h2>
         )}
-        <div className="relative shrink-0">
+        <div className="relative min-w-0 max-w-[60%]">
           <select
             value={sort}
             onChange={e => setSortChoice(e.target.value as SortKey)}
             aria-label={t('sortLabel')}
-            className="bg-[#031B30] border border-[#17334D] rounded-md pl-2 pr-6 py-1.5 text-[10px] text-white focus:outline-none appearance-none cursor-pointer"
+            className="w-full min-w-0 text-ellipsis bg-[#031B30] border border-[#17334D] rounded-md pl-2 pr-6 py-1.5 text-[10px] text-white focus:outline-none appearance-none cursor-pointer"
           >
             {publicOnly && <option value="time_left">{t('sortTimeLeft')}</option>}
             <option value="deadline">{t('sortDeadline')}</option>
