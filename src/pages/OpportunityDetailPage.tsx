@@ -16,7 +16,7 @@ import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId, getConsultationsToday, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getBlobApiErrorMessage,
-  dossiersApi, siretApi,
+  dossiersApi, siretApi, analysesApi,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
   type ApiDossierRequest,
@@ -809,7 +809,7 @@ export default function OpportunityDetailPage() {
     if (!isOpportunityConfirmed(id) && !isAuthenticated) return;
     setScoreLoading(true);
     setScoreError(null);
-    opportunitiesApi.getMatchScore(id, getSessionId(), refineAnswersParam)
+    analysesApi.score(id, getSessionId(), refineAnswers)
       .then(setMatchScore)
       .catch(err => {
         scoreFailedKeyRef.current = `${id}|${isAuthenticated}`;
@@ -828,7 +828,7 @@ export default function OpportunityDetailPage() {
     lastAnswersParamRef.current = refineAnswersParam;
     if (!id || !matchScore) return;
     const ticket = ++scoreRequestRef.current;
-    opportunitiesApi.getMatchScore(id, getSessionId(), refineAnswersParam)
+    analysesApi.score(id, getSessionId(), refineAnswers)
       .then(result => { if (ticket === scoreRequestRef.current) setMatchScore(result); })
       .catch(() => { /* keep the previous comparison on screen */ });
   }, [refineAnswersParam, id, matchScore]);

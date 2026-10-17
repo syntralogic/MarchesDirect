@@ -1647,3 +1647,22 @@ export const tendersApi = {
     return data;
   },
 };
+
+// Server-side analysis snapshot (guide v24 s.4): company + market + answers + versions live in ONE server record;
+// the concordance is read from it, so every screen shows the same analysis.
+export interface ApiAnalysisSnapshot {
+  analysis_id: string; company_name: string | null; siret: string | null; establishment_siret: string | null;
+  market_id: string; lot_id: string; market_version: string; answers: Record<string, string>; answers_version: number; rules_version: string;
+}
+export const analysesApi = {
+  sync: async (opportunityId: string, sessionId: string, answers?: Record<string, string | undefined>, lotId?: string): Promise<ApiAnalysisSnapshot> => {
+    const { data } = await apiClient.put('/analyses', { sessionId, opportunityId, lotId, answers });
+    try { sessionStorage.setItem(`md_analysis_${opportunityId}`, data.analysis_id); } catch { /* storage unavailable */ }
+    return data;
+  },
+  score: async (opportunityId: string, sessionId: string, answers?: Record<string, string | undefined>): Promise<ApiMatchScore> => {
+    const snap = await analysesApi.sync(opportunityId, sessionId, answers);
+    const { data } = await apiClient.get(`/analyses/${snap.analysis_id}`, { params: { sessionId } });
+    return data.match;
+  },
+};
