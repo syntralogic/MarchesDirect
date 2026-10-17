@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { PersonalizedAnalysis } from '@/components/xh/PersonalizedAnalysis';
 import { AdvisorInsight } from '@/components/AdvisorInsight';
+import { AiAdvisorInsight } from '@/components/AiAdvisorInsight';
 import elenaPortrait from '@/assets/1.jpeg';
 import { CallbackModal } from '@/components/CallbackModal';
 import {
@@ -1543,9 +1544,12 @@ export default function OpportunityDetailPage() {
             if (firstRisk) parts.push(`Point important : ${clip(riskLabel(firstRisk)).replace(/[.\s]+$/, '')}.`);
             parts.push('Vérifiez maintenant s’il correspond à votre entreprise.');
             return (
-              <AdvisorInsight
+              <AiAdvisorInsight
                 id="advisor-fiche"
-                advice={parts.join(' ')}
+                kind="opportunity"
+                opportunityId={id}
+                sessionId={getSessionId()}
+                fallbackAdvice={parts.join(' ')}
                 ctaLabel={isAuthenticated ? 'Vérifier si ce marché correspond à mon entreprise' : 'Vérifier si ce marché me correspond'}
                 onNext={() => {
                   if (isAuthenticated) { setScreen(2); return; }
@@ -2216,9 +2220,13 @@ export default function OpportunityDetailPage() {
                     else if (conf.length) parts.push(sentence(conf.slice(0, 1), 'reste', 'restent', ' à compléter : quelques précisions suffisent.'));
                     parts.push('Découvrez votre dossier prérempli, puis échangez avec un chargé d’affaires pour avancer.');
                     return (
-                      <AdvisorInsight
+                      <AiAdvisorInsight
                         id="advisor-concordance"
-                        advice={parts.join(' ')}
+                        kind="compatibility"
+                        opportunityId={id}
+                        sessionId={getSessionId()}
+                        answers={refineAnswers}
+                        fallbackAdvice={parts.join(' ')}
                                 ctaLabel="Découvrir mon dossier prérempli"
                         onNext={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                       />

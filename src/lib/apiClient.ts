@@ -1654,6 +1654,22 @@ export interface ApiAnalysisSnapshot {
   analysis_id: string; company_name: string | null; siret: string | null; establishment_siret: string | null;
   market_id: string; lot_id: string; market_version: string; answers: Record<string, string>; answers_version: number; rules_version: string;
 }
+// AI-written "regard du chargé d'affaires". The server reads every fact itself; we only send ids + the visitor's answers.
+// Resolves to null whenever the caller should keep its deterministic text (AI down, rejected output, aborted).
+export const advisorApi = {
+  advice: async (
+    payload: { kind: 'opportunity' | 'compatibility'; opportunityId: string; sessionId?: string; answers?: Record<string, string | undefined> },
+    signal?: AbortSignal,
+  ): Promise<string | null> => {
+    try {
+      const { data } = await apiClient.post('/advisor/advice', payload, { signal });
+      return typeof data?.advice === 'string' && data.advice.trim() ? data.advice.trim() : null;
+    } catch {
+      return null;
+    }
+  },
+};
+
 export const analysesApi = {
   currentId: (opportunityId: string): string | undefined => { try { return sessionStorage.getItem(`md_analysis_${opportunityId}`) || undefined; } catch { return undefined; } },
   sync: async (opportunityId: string, sessionId: string, answers?: Record<string, string | undefined>, lotId?: string): Promise<ApiAnalysisSnapshot> => {
