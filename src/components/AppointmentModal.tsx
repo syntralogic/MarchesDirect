@@ -217,7 +217,7 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
       });
       idem.reset();
       trackRequestSubmitted('appointment');
-      setConfirmed({ slotAt: data.slotAt, slotLabel: data.slotLabel, already: !!data.alreadyBooked });
+      setConfirmed({ slotAt: data.slotAt ?? '', slotLabel: data.slotLabel ?? '', already: !!data.alreadyBooked });
       setStep(5);
     } catch (err: any) {
       if (err?.response?.status === 409 && err.response.data?.code === 'slot_taken') {

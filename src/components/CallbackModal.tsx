@@ -22,10 +22,25 @@ const MOMENT_LABELS: Record<string, string> = {
   fin: 'Fin de journée (17h–19h)',
 };
 
+// "Demande enregistrée le 17 octobre 2026 à 14 h 05 (heure de Paris)" - from the
+// server's own timestamp, never the visitor's clock. Returns null if absent.
+function formatRecordedAt(iso?: string, tz?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const zone = tz || 'Europe/Paris';
+  const date = new Intl.DateTimeFormat('fr-FR', { timeZone: zone, day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+  const parts = new Intl.DateTimeFormat('fr-FR', { timeZone: zone, hour: 'numeric', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d);
+  const hh = parts.find(p => p.type === 'hour')?.value ?? '';
+  const mm = parts.find(p => p.type === 'minute')?.value ?? '';
+  return `Demande enregistrée le ${date} à ${hh} h ${mm} (${zone === 'Europe/Paris' ? 'heure de Paris' : zone}).`;
+}
+
 export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const { t } = useLang();
   const { brandId } = useBrand();
   const [submitted, setSubmitted] = useState(false);
+  const [recordedLabel, setRecordedLabel] = useState<string | null>(null);
   const startTracker = useMemo(() => createFormStartTracker('callback'), []);
   const [submitting, setSubmitting] = useState(false);
   const idem = useIdempotency();
@@ -35,7 +50,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
 
   if (!open) return null;
 
-  const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setError(null); setFieldErrors({}); }, 300); };
+  const handleClose = () => { onClose(); setTimeout(() => { setSubmitted(false); setRecordedLabel(null); setError(null); setFieldErrors({}); }, 300); };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -54,7 +69,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
     setError(null);
     try {
       const [firstName, ...rest] = form.nom.trim().split(' ');
-      await crmApi.submitLead({
+      const saved = await crmApi.submitLead({
         brandId,
         firstName: firstName || form.nom,
         lastName: rest.join(' ') || undefined,
@@ -67,6 +82,8 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
       });
       idem.reset();
       trackRequestSubmitted('callback');
+      // Date and time come from the server's save time, shown in Paris time.
+      setRecordedLabel(formatRecordedAt(saved.recordedAt, saved.timezone));
       setSubmitted(true);
     } catch (err) {
       setError(`${getApiErrorMessage(err, "Échec de l'envoi.")} ${t('requestRetryHint')}`);
@@ -161,6 +178,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
               </div>
               <h3 className="text-lg font-bold text-brand-primary mb-2">Demande envoyée !</h3>
               <p className="text-sm text-brand-muted">{t('callbackConfirm')}</p>
+              {recordedLabel && <p className="text-xs text-brand-muted mt-2">{recordedLabel}</p>}
               <button onClick={handleClose} className="mt-5 w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors">
                 Fermer
               </button>

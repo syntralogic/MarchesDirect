@@ -915,7 +915,7 @@ export const crmApi = {
     });
     // A request is confirmed only when the server says it was really recorded.
     if (!data || data.success !== true || !data.id) throw new Error('Demande non enregistrée.');
-    return data;
+    return data as { success: true; id: string | number; duplicate?: boolean; alreadyBooked?: boolean; recordedAt?: string; timezone?: string; slotAt?: string; slotLabel?: string };
   },
 };
 
