@@ -737,3 +737,4 @@
   .mdhero.origin-app .hx-body .field{min-height:calc(46px + 14px * var(--hx-u,0))!important}
   .mdhero.origin-app .hx-body .btn-o{min-height:calc(52px + 14px * var(--hx-u,0))!important;font-size:calc(16px + 2px * var(--hx-u,0))!important}
 }
+.mdhero .hx-qlab2.hx-qlab-main{font-size:19px;color:#fff;margin-bottom:12px}
