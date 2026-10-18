@@ -16,6 +16,8 @@ interface Props {
   sessionId?: string;
   answers?: Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>;
   fallbackAdvice: string;
+  /** The deterministic text (built around the visitor's lot) is final: no generated text replaces it. */
+  preferFallback?: boolean;
   ctaLabel: string;
   onNext: () => void;
   className?: string;
@@ -29,7 +31,7 @@ const storageKey = (k: string) => `md_advisor_text_${k}`;
 const readStored = (k: string): string | null => { try { return sessionStorage.getItem(storageKey(k)); } catch { return null; } };
 const writeStored = (k: string, text: string) => { try { sessionStorage.setItem(storageKey(k), text); } catch { /* storage unavailable */ } };
 
-export function AiAdvisorInsight({ id, kind, opportunityId, sessionId, answers, fallbackAdvice, ctaLabel, onNext, className }: Props) {
+export function AiAdvisorInsight({ id, kind, opportunityId, sessionId, answers, fallbackAdvice, preferFallback, ctaLabel, onNext, className }: Props) {
   const answersKey = kind === 'compatibility'
     ? ['experience', 'capacity', 'location', 'calendar'].map(k => `${k}:${answers?.[k] || ''}`).join(',')
     : '';
@@ -40,7 +42,7 @@ export function AiAdvisorInsight({ id, kind, opportunityId, sessionId, answers, 
   });
 
   useEffect(() => {
-    if (!opportunityId) return;
+    if (!opportunityId || preferFallback) return;
     const stored = readStored(requestKey);
     if (stored) { setGenerated({ key: requestKey, text: stored }); return; }
     const controller = new AbortController();
@@ -54,6 +56,6 @@ export function AiAdvisorInsight({ id, kind, opportunityId, sessionId, answers, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestKey, sessionId]);
 
-  const advice = generated && generated.key === requestKey ? generated.text : fallbackAdvice;
+  const advice = !preferFallback && generated && generated.key === requestKey ? generated.text : fallbackAdvice;
   return <AdvisorInsight id={id} advice={advice} ctaLabel={ctaLabel} onNext={onNext} className={className} />;
 }
