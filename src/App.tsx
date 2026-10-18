@@ -1,7 +1,7 @@
 import { PageErrorBoundary } from '@/components/PageErrorBoundary';
 import NotFound from '@/pages/NotFound';
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigationType, useParams } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
@@ -65,6 +65,13 @@ import { siteStatusApi } from '@/lib/apiClient';
 // plainly on the app_settings table itself) - flipping it in the admin
 // panel visibly did nothing. This is the visitor-facing half of the fix
 // (server.ts's maintenance gate is the other half, on the API side).
+
+// Remounted for every announcement: no state (result, answers, company card) can leak from one fiche to the next.
+function KeyedOpportunityDetail() {
+  const { id } = useParams<{ id: string }>();
+  return <OpportunityDetailPage key={id} />;
+}
+
 function MaintenancePage({ message }: { message: string }) {
   return (
     <div className="min-h-screen w-full bg-[#001326] flex items-center justify-center px-4">
@@ -197,7 +204,7 @@ const App: React.FC = () => {
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
               <Route path="/parcours" element={<OpportunityJourneyPage />} />
-              <Route path="/opportunites/:id" element={<PageErrorBoundary><OpportunityDetailPage /></PageErrorBoundary>} />
+              <Route path="/opportunites/:id" element={<PageErrorBoundary><KeyedOpportunityDetail /></PageErrorBoundary>} />
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />

@@ -363,15 +363,26 @@ export default function OpportunityDetailPage() {
   const refineAnswersStorageKey = id ? `md_refine_answers_${id}_${refineCompanyKey}` : null;
   // Optional questions accordion: closed by default; answers live in refineAnswers so closing/going back keeps them.
   const [refineOpen, setRefineOpen] = useState(false);
-  const [refineAnswers, setRefineAnswers] = useState<Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>>(() => {
-    if (!refineAnswersStorageKey) return {};
-    try {
-      const raw = sessionStorage.getItem(refineAnswersStorageKey);
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
-    }
-  });
+  // Client brief 18 Oct, point 6: answers belong to ONE announcement and ONE company. They are looked up by that key
+  // (never carried over when the visitor changes announcement or company, and restored when he comes back to the
+  // same pair), so the index, verdict and advice always describe the right company and the right lot.
+  type RefineAnswersMap = Record<string, 'oui' | 'non' | 'a_confirmer' | undefined>;
+  const readStoredAnswers = (k: string): RefineAnswersMap => {
+    try { const raw = sessionStorage.getItem(k); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
+  };
+  const [answersByKey, setAnswersByKey] = useState<Record<string, RefineAnswersMap>>({});
+  const refineAnswers: RefineAnswersMap = useMemo(
+    () => (refineAnswersStorageKey ? (answersByKey[refineAnswersStorageKey] ?? readStoredAnswers(refineAnswersStorageKey)) : {}),
+    [answersByKey, refineAnswersStorageKey],
+  );
+  const setRefineAnswers = (update: RefineAnswersMap | ((a: RefineAnswersMap) => RefineAnswersMap)) => {
+    const key = refineAnswersStorageKey;
+    if (!key) return;
+    setAnswersByKey(prev => {
+      const current = prev[key] ?? readStoredAnswers(key);
+      return { ...prev, [key]: typeof update === 'function' ? update(current) : update };
+    });
+  };
   useEffect(() => {
     if (!refineAnswersStorageKey) return;
     try {
@@ -919,6 +930,19 @@ export default function OpportunityDetailPage() {
   // answer to the four questions is added or changed. The counter drops
   // responses that arrive out of order after quick successive clicks.
   const scoreRequestRef = useRef(0);
+  // A result belongs to one announcement + one company: when the visitor changes the company (or the announcement
+  // changes under us) the previous result is dropped at once - never shown next to the wrong company or lot.
+  const scoreContextRef = useRef(`${id}|${displayedSiret || ''}`);
+  useEffect(() => {
+    const ctx = `${id}|${displayedSiret || ''}`;
+    if (scoreContextRef.current === ctx) return;
+    scoreContextRef.current = ctx;
+    scoreRequestRef.current++;
+    scoreFailedKeyRef.current = null;
+    setMatchScore(null);
+    setScoreError(null);
+    setScoreErrorCode(null);
+  }, [id, displayedSiret]);
   const lastAnswersParamRef = useRef(refineAnswersParam);
   useEffect(() => {
     if (lastAnswersParamRef.current === refineAnswersParam) return;
