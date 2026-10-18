@@ -3075,12 +3075,41 @@ export default function OpportunityDetailPage() {
         };
 
         const card = 'bg-[#061D32] border border-[#17334D] rounded-2xl p-4';
-        const prepItems = [
+        // Client brief 18 Oct, point 7: the documents follow the kind of offer. DC1/DC2/DUME only exist for public
+        // contracts; a private tender or a subcontracting proposal has its own, lighter set.
+        const prepItems = isPublic ? [
           { icon: FileText, title: t('dv13Forms') || 'Formulaires de candidature', desc: t('dv13FormsDesc') || 'DC1, DC2, DUME — pré-remplis à partir de votre profil entreprise, vérifiés avec vous sur rendez-vous.' },
           { icon: CheckCircle2, title: t('dv13Memo') || 'Mémoire technique', desc: t('dv13MemoDesc') || 'Construit avec vous, à partir des moyens et références réels de votre entreprise.' },
-          { icon: ShieldCheck, title: t('dv13Pieces') || 'Pièces de votre entreprise', desc: t('dv13PiecesDesc') || 'Le conseiller vous indique ce qui est nécessaire ; vous fournissez vos justificatifs (assurances, attestations, qualifications).' },
-          { icon: Euro, title: t('dv13Finance') || 'Réponse financière', desc: t('dv13FinanceDesc') || "Vous fournissez et validez vos prix ; le conseiller vous aide à compléter et vérifier les documents." },
+          { icon: ShieldCheck, title: t('dv13Pieces') || 'Pièces de votre entreprise', desc: t('dv13PiecesDesc') || 'Le conseiller vous indique ce qui est nécessaire ; vous fournissez vos justificatifs (assurances, attestations, Kbis).' },
+          { icon: Euro, title: t('dv13Finance') || 'Réponse financière', desc: t('dv13FinanceDesc') || 'Vous fournissez et validez vos prix ; le conseiller vous aide à compléter et vérifier les documents.' },
+        ] : journey === 'subcontracting' ? [
+          { icon: FileText, title: 'Présentation pour le donneur d’ordre', desc: 'Présentation de votre entreprise et de vos références, préremplie à partir de votre profil et vérifiée avec vous.' },
+          { icon: CheckCircle2, title: 'Votre proposition de travaux', desc: 'Votre méthode, vos moyens et votre disponibilité pour la prestation confiée, construits avec vous.' },
+          { icon: ShieldCheck, title: 'Pièces demandées par le donneur d’ordre', desc: 'Le conseiller vous indique celles à fournir (Kbis, assurances, attestations) ; vous remettez vos justificatifs.' },
+          { icon: Euro, title: 'Votre devis', desc: 'Vous fournissez et validez votre prix ; le conseiller vous aide à le présenter clairement.' },
+        ] : [
+          { icon: FileText, title: 'Lettre de candidature et présentation', desc: 'Présentation de votre entreprise et lettre d’intention, préremplies à partir de votre profil et vérifiées avec vous.' },
+          { icon: CheckCircle2, title: 'Note méthodologique', desc: 'Construite avec vous, à partir des moyens et références réels de votre entreprise.' },
+          { icon: ShieldCheck, title: 'Pièces demandées par l’acheteur', desc: 'Le conseiller vous indique celles à fournir (Kbis, assurances, références) ; vous remettez vos justificatifs.' },
+          { icon: Euro, title: 'Offre de prix', desc: 'Vous fournissez et validez vos prix (devis ou bordereau) ; le conseiller vous aide à compléter et vérifier le document.' },
         ];
+
+        // What is REALLY prefilled: only the data we hold for this visitor, nothing implied.
+        const prefillEmail = user?.email || leadEmail || contextLeadEmail || '';
+        const prefillPhone = leadPhone || contextLeadPhone || '';
+        const prefilled = [
+          siretCompany?.name ? { label: 'Entreprise', value: siretCompany.name } : null,
+          siretCompany?.siret ? { label: 'SIRET', value: String(siretCompany.siret) } : null,
+          (siretCompany?.city || siretCompany?.postal) ? { label: 'Adresse', value: [siretCompany?.postal, siretCompany?.city].filter(Boolean).join(' ') } : null,
+          (siretCompany?.activity || (siretCompany as any)?.ape) ? { label: 'Activité', value: String(siretCompany?.activity || (siretCompany as any)?.ape) } : null,
+          prefillEmail ? { label: 'E-mail', value: prefillEmail } : null,
+          prefillPhone ? { label: 'Téléphone', value: prefillPhone } : null,
+        ].filter(Boolean) as { label: string; value: string }[];
+        const toProvide = isPublic
+          ? 'références similaires, moyens humains et matériels, pièces administratives, prix'
+          : journey === 'subcontracting'
+            ? 'références, disponibilité, pièces demandées, devis'
+            : 'références, méthode, pièces demandées, prix';
 
         return (
         <div className="space-y-3 mt-4">
@@ -3336,6 +3365,22 @@ export default function OpportunityDetailPage() {
               </>
             )}
           </div>
+
+          {/* Client brief 18 Oct, point 7: show what is really prefilled, and what remains to be provided with the advisor. */}
+          {prefilled.length > 0 && (
+            <div className={card}>
+              <p className="text-sm font-bold text-white">Déjà prérempli pour vous</p>
+              <ul className="mt-2 space-y-1">
+                {prefilled.map(it => (
+                  <li key={it.label} className="flex items-start gap-2 text-xs text-[#B9BBC8]">
+                    <CheckCircle2 size={13} className="text-green-400 shrink-0 mt-0.5" aria-hidden="true" />
+                    <span><span className="text-white font-semibold">{it.label}</span> · {it.value}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-[#B9BBC8]">À préparer avec votre chargé d’affaires : {toProvide}.</p>
+            </div>
+          )}
 
           {/* 5. Préparer mon dossier (position 4, collapsed by default) */}
           <div className={card}>
