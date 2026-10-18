@@ -68,6 +68,41 @@ export function personalizeXh(host: HTMLElement, company: AnalysisCompany, marke
     if (!values[i] || !b) { row.remove(); return; }
     b.textContent = values[i] as string;
   });
+
+  // Client brief 18 Oct, point 4: after the SIRET the visitor must recognise HIS company and see only real cross-checks.
+  // The scrolling check lists come from the fictional demo: (1) lines carrying the demo's invented figures or trade
+  // (RGE, 14 classes, 60 %/40 %...) become neutral, (2) the lines for which we hold real data show that data.
+  // Text is replaced in place, so the counters of the sequence stay as designed.
+  const short = (v: string, n = 64) => (v.length > n ? `${v.slice(0, n - 1).trim()}…` : v);
+  const activity = (company.activity || company.ape || '').trim();
+  const value = market.value ? `${Number(market.value).toLocaleString('fr-FR')} €` : '';
+  const limit = deadlineText(market.deadline);
+  const neutral: Record<string, string> = {
+    'Certification RGE': 'Certifications déclarées',
+    'Habilitations électriques': 'Habilitations du métier',
+    'Démarrage en période scolaire': 'Période de démarrage des travaux',
+    'Volume : 14 classes': 'Volume des prestations',
+    'Critère prix (60 %)': 'Critère prix',
+    'Valeur technique (40 %)': 'Valeur technique',
+    'Marchés d\u2019électricité': 'Marchés du même métier',
+    'Marchés d\'électricité': 'Marchés du même métier',
+    'Titulaires certifiés RGE': 'Titulaires certifiés',
+  };
+  const real: Record<string, string | null> = {
+    'Identité et établissement': `Identité : ${name}`,
+    'Activité déclarée': activity ? `Activité déclarée : ${activity}` : null,
+    'Implantation et distance au chantier': company.city ? `Implantation : ${company.city}` : null,
+    'Objet et lot concerné': market.title ? `Lot concerné : ${market.title}` : null,
+    'Montant estimé du lot': value ? `Montant estimé : ${value}` : null,
+    'Date limite de remise': limit ? `Date limite : ${limit}` : null,
+  };
+  root.querySelectorAll('.xh-roll-in li').forEach(li => {
+    const txt = (li.textContent || '').replace(/\u2019/g, "'").trim();
+    const key = Object.keys(neutral).find(k => k.replace(/\u2019/g, "'") === txt);
+    if (key) { li.textContent = neutral[key]; return; }
+    const r = real[txt];
+    if (r) li.textContent = short(r);
+  });
 }
 
 interface Props {
