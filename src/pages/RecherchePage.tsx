@@ -1100,11 +1100,36 @@ export default function RecherchePage() {
           Clôturé/Attribué/Annulé status). OpportunityListCard already has
           the correct real-status badge logic (used elsewhere); this page
           just wasn't using it. */}
-      <div className="space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-        {filtered.map((o) => (
-          <OpportunityListCard key={o.id} opportunity={o} compatible={companyKnown} loadedCount={filtered.length} />
-        ))}
-      </div>
+      {/* Client brief 18 Oct (point 2): open markets, archives and demonstrations are kept apart, so a closed market or
+          a demo example is never read as an offer that can still be answered. Order: open → archives → demonstrations.
+          Headings appear only when more than one group is present. */}
+      {(() => {
+        const now = Date.now();
+        const isClosed = (o: (typeof filtered)[number]) => {
+          if (o.lifecycleStatus && o.lifecycleStatus !== 'active') return true;
+          const d = o.deadline ? new Date(o.deadline as string).getTime() : NaN;
+          return !Number.isNaN(d) && d < now;
+        };
+        const groups = [
+          { key: 'open', title: 'Marchés ouverts', items: filtered.filter(o => !o.isDemo && !isClosed(o)) },
+          { key: 'archive', title: 'Archives · marchés clôturés', items: filtered.filter(o => !o.isDemo && isClosed(o)) },
+          { key: 'demo', title: 'Démonstrations · exemples non réels', items: filtered.filter(o => o.isDemo) },
+        ].filter(g => g.items.length > 0);
+        return groups.map(g => (
+          <section key={g.key} aria-label={g.title} className="mb-4">
+            {groups.length > 1 && (
+              <h2 className="text-xs font-bold uppercase tracking-wide text-[#B9BBC8] mt-4 mb-2">
+                {g.title} <span className="font-normal">({g.items.length})</span>
+              </h2>
+            )}
+            <div className="space-y-2 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+              {g.items.map((o) => (
+                <OpportunityListCard key={o.id} opportunity={o} compatible={companyKnown} loadedCount={filtered.length} />
+              ))}
+            </div>
+          </section>
+        ));
+      })()}
 
       <LoadMoreButton
         hasMore={hasMore}
