@@ -3,6 +3,8 @@ import { useLang } from '@/contexts/LangContext';
 import { SaveButton } from '@/components/SaveButton';
 import type { Opportunity } from '@/data/mockData';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
+import { pickRelevantLots, lotsFrom, recallSearchedTrade } from '@/lib/relevantLot';
+import { splitLots } from '@/lib/lotsClean';
 
 interface OpportunityListCardProps {
   opportunity: Opportunity;
@@ -102,6 +104,17 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
     statusLine = { text: t('searchIdentifyPrompt'), className: 'text-[#B9BBC8]' };
   }
 
+  // 18 Oct client brief: with several lots, the card says which one is the artisan's ("Lot Peinture · 1 lot sur 16").
+  // Only when the searched métier really matches a lot of the notice (same matching as the fiche), never guessed.
+  const lotLine = (() => {
+    const lots = lotsFrom([], o.rawDescription, splitLots);
+    if (lots.length < 2) return '';
+    const { matched, total } = pickRelevantLots(lots, [recallSearchedTrade()]);
+    if (!matched.length) return '';
+    const name = matched[0].length > 42 ? `${matched[0].slice(0, 41).trimEnd()}…` : matched[0];
+    return matched.length === 1 ? `Lot ${name} · 1 lot sur ${total}` : `Lots ${name} et ${matched.length - 1} autre${matched.length > 2 ? 's' : ''} · ${matched.length} lots sur ${total}`;
+  })();
+
   const saveScrollForReturn = () => {
     // Client (19 Sep): "les retours en arrière doivent conserver
     // l'entreprise, les réponses et les critères de recherche" - the
@@ -166,7 +179,8 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
       </div>
 
       <h3 title={o.title} className="text-base font-bold text-white leading-snug mb-1 line-clamp-2">{o.title}</h3>
-      <p className="text-xs text-[#B9BBC8] mb-4 line-clamp-2">{o.location}</p>
+      <p className={`text-xs text-[#B9BBC8] line-clamp-2 ${lotLine ? 'mb-1.5' : 'mb-4'}`}>{o.location}</p>
+      {lotLine && <p className="text-xs font-semibold text-[#FDBA74] mb-4 leading-snug" title={lotLine}>{lotLine}</p>}
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>

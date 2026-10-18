@@ -30,7 +30,8 @@ import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from
 import { publicReference } from '@/lib/publicReference';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { cleanAllotmentValue, cleanPresentationLots, splitLots } from '@/lib/lotsClean';
-import { pickRelevantLots, lotsFrom, recallSearchedTrade } from '@/lib/relevantLot';
+import { pickRelevantLots, lotsFrom, recallSearchedTrade, lotInfo } from '@/lib/relevantLot';
+import { lotAdvice, type OfferKind } from '@/lib/advisorLotText';
 import { SOCIAL_PROOF } from '@/lib/socialProof';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle, isCoveredBy, isCoveredByAny, safeHttpUrl } from '@/components/OpportunityAnalysisAccordions';
@@ -200,6 +201,22 @@ function markOpportunityConfirmed(oppId: string | undefined, siret: string | nul
 // (RCS) or an unknown one must never be read as "closed".
 function isClosedStatut(s: string | null | undefined): boolean {
   return !!s && /cess|clos|radi|ferm/i.test(s);
+}
+
+// Lot context for the chargé d'affaires text. `withCompany` adds the identified company's activity to the signals.
+function lotAdviceContext(opp: any, tradeLabel: string | null | undefined, company: { name?: string | null; activity?: string | null; ape?: string | null } | null | undefined) {
+  const allot = opp.ai_extracted_facts?.allotment;
+  const clean = allot?.available ? splitLots(String(allot.value || '')) : [];
+  const lots = lotsFrom(clean, opp.description, splitLots);
+  const activity = [company?.activity, company?.ape].filter(Boolean).join(' ');
+  const signals = [recallSearchedTrade(), activity, tradeLabel, ...((opp.ai_matched_trades || []) as Array<{ trade_name?: string }>).map(m => m.trade_name)];
+  const info = lotInfo(lots, signals, Boolean(activity));
+  const typeStr = String(opp.opportunity_type || '').toLowerCase();
+  const kind: OfferKind = typeStr.includes('sous') ? 'subcontracting' : (typeStr.includes('priv') ? 'private' : 'public');
+  const v = opp.ai_extracted_facts?.technical_visit;
+  const visitText = v?.available ? String(v.value || '') : '';
+  const visitMentioned = /obligatoire|impos/i.test(visitText) && !/(non|pas)\s+obligatoire/i.test(visitText);
+  return { info, kind, visitMentioned, lots };
 }
 
 export default function OpportunityDetailPage() {
@@ -515,7 +532,7 @@ export default function OpportunityDetailPage() {
     }
     setEditContactSaving(true);
     setEditContactError(null);
-    const { error, code } = await captureLead(editPhone, editEmail, id);
+    const { error, code } = await captureLead(editPhone, editEmail, id, currentLotLabel());
     setEditContactSaving(false);
     if (code === 'phone_not_verified') {
       // phoneVerified is session-wide and still true from the *previous*
@@ -575,7 +592,7 @@ export default function OpportunityDetailPage() {
       setLeadSubmitting(false);
       return;
     }
-    const { error, dossierEmailed } = await captureLead(leadPhone, leadEmail, id);
+    const { error, dossierEmailed } = await captureLead(leadPhone, leadEmail, id, currentLotLabel());
     setLeadSubmitting(false);
     if (error) {
       setLeadError(error);
@@ -644,7 +661,7 @@ export default function OpportunityDetailPage() {
       if (!leadCaptured || otpEditMode) {
         const phone = otpPendingPhone || phoneForOtp;
         const email = otpPendingEmail || leadEmail || contextLeadEmail || '';
-        const result = await captureLead(phone, email, id);
+        const result = await captureLead(phone, email, id, currentLotLabel());
         if (result.error) {
           setOtpError(result.error);
           setOtpSubmitting(false);
@@ -782,6 +799,9 @@ export default function OpportunityDetailPage() {
   const tradeLabel = opportunity?.trade_name
     || opportunity?.ai_matched_trades?.find(m => m.trade_name)?.trade_name
     || null;
+  // 18 Oct: the artisan's lot (when the notice has several and one matches), sent with the dossier request so the
+  // e-mail and the CRM note say which lot is concerned.
+  const currentLotLabel = (): string | null => (opportunity ? lotAdviceContext(opportunity, tradeLabel, siretCompany as any).info.lot : null);
   // Sticky "Recevoir mon dossier prérempli" bar (client example): shown on mobile until the lead form itself is on screen.
   useEffect(() => {
     const el = leadGateRef.current;
@@ -1352,13 +1372,20 @@ export default function OpportunityDetailPage() {
       {screen !== 1 && (
         <div className="mb-4">
           <h2 className="text-2xl font-extrabold text-white leading-tight">
-            {screen === 2 ? (t('compatibilityTitle') || 'Ce marché est-il adapté à votre entreprise ?') : (t('detailDossier') || 'Votre dossier')}
+            {screen === 2 ? (lotAdviceContext(opportunity, tradeLabel, siretCompany as any).info.lot ? 'Ce lot est-il adapté à votre entreprise ?' : (t('compatibilityTitle') || 'Ce marché est-il adapté à votre entreprise ?')) : (t('detailDossier') || 'Votre dossier')}
           </h2>
           <p className="text-sm text-[#B9BBC8] mt-1">
             {screen === 2
               ? (t('compatibilitySubtitle') || 'Découvrez votre entreprise et son adéquation avec cette opportunité.')
               : (t('detailDossierSubtitle') || 'Vos documents et votre accompagnement, au même endroit.')}
           </p>
+          {/* 18 Oct client brief: the dossier title names the company and the lot (when the notice has several). */}
+          {screen === 3 && (() => {
+            const lot = lotAdviceContext(opportunity, tradeLabel, siretCompany as any).info.lot;
+            const who = siretCompany?.name;
+            if (!lot && !who) return null;
+            return <p className="text-sm font-semibold text-[#FDBA74] mt-1.5">{[who, lot ? `Lot : ${lot}` : ''].filter(Boolean).join(' · ')}</p>;
+          })()}
         </div>
       )}
 
@@ -1611,7 +1638,7 @@ export default function OpportunityDetailPage() {
             const lots = lotsFrom(cleanAllot, opportunity.description, splitLots);
             if (lots.length < 2) return null;
             const signals = [recallSearchedTrade(), tradeLabel, ...(opportunity.ai_matched_trades || []).map(m => m.trade_name)];
-            const { matched, others } = pickRelevantLots(lots, signals);
+            const { matched, others, total } = pickRelevantLots(lots, signals);
             if (!matched.length) return null;
             return (
               <div className="rounded-2xl border border-[#FDBA74]/60 bg-[#061D32] p-4 md:p-5" aria-label="Le lot qui vous concerne">
@@ -1619,6 +1646,7 @@ export default function OpportunityDetailPage() {
                 <ul className="mt-2 space-y-1">
                   {matched.map((l, i) => (<li key={i} className="text-base font-extrabold text-white leading-snug">{l}</li>))}
                 </ul>
+                <p className="mt-2 text-sm text-[#F5F5F5] leading-snug">Ce marché est découpé en {total} lots, par corps de métier : {matched.length > 1 ? 'ces lots sont ceux' : 'ce lot est celui'} que nous examinons pour votre entreprise.</p>
                 {others > 0 && (
                   <p className="mt-2 text-xs text-[#B9BBC8]">{others} autre{others > 1 ? 's' : ''} lot{others > 1 ? 's' : ''} dans ce marché : le détail est replié dans les informations techniques.</p>
                 )}
@@ -1631,13 +1659,19 @@ export default function OpportunityDetailPage() {
           {!closedFiche && (() => {
             // Market-only advice: the company is not known yet, so nothing here claims the market suits it. It must not
             // repeat what the summary already shows (amount, place, deadline, risks): it interprets and points to the next step.
+            // 18 Oct: built around the visitor's LOT when the notice has several (otherwise the previous text applies).
+            const lc = lotAdviceContext(opportunity, tradeLabel, null);
+            const lotText = (lc.kind !== 'public' || lc.info.lot)
+              ? lotAdvice({ stage: 'opportunity', kind: lc.kind, lot: lc.info.lot, lotsTotal: lc.info.total, relation: lc.info.relation, deadline: opportunity.deadline as string | null })
+              : '';
             return (
               <AiAdvisorInsight
                 id="advisor-fiche"
                 kind="opportunity"
                 opportunityId={id}
                 sessionId={getSessionId()}
-                fallbackAdvice={opportunityAdviceFallback(tradeLabel)}
+                fallbackAdvice={lotText || opportunityAdviceFallback(tradeLabel)}
+                preferFallback={Boolean(lotText)}
                 ctaLabel={isAuthenticated ? 'Vérifier si ce marché correspond à mon entreprise' : 'Vérifier si ce marché me correspond'}
                 onNext={() => {
                   if (isAuthenticated) { setScreen(2); return; }
@@ -2314,6 +2348,12 @@ export default function OpportunityDetailPage() {
                   {!closedFiche && (() => {
                     // Interprets the result for THIS company and follows the visitor's answers (declared as such); never
                     // recites the index shown right above, and never keeps praising a point answered « non ».
+                    // 18 Oct: company name + the visitor's lot + deadline + the priority point (six situations, cahier §6).
+                    const lc = lotAdviceContext(opportunity, tradeLabel, siretCompany as any);
+                    const hasNo = Object.values(refineAnswers || {}).some(v => v === 'non');
+                    const lotText = (lc.kind !== 'public' || lc.info.relation !== 'unknown' || hasNo)
+                      ? lotAdvice({ stage: 'compatibility', kind: lc.kind, companyName: siretCompany?.name, lot: lc.info.lot, lotsTotal: lc.info.total, relation: lc.info.relation, deadline: opportunity.deadline as string | null, visitMentioned: lc.visitMentioned, answers: refineAnswers })
+                      : '';
                     return (
                       <AiAdvisorInsight
                         id="advisor-concordance"
@@ -2321,7 +2361,8 @@ export default function OpportunityDetailPage() {
                         opportunityId={id}
                         sessionId={getSessionId()}
                         answers={refineAnswers}
-                        fallbackAdvice={compatibilityAdviceFallback({ companyName: siretCompany?.name, activityMatches: ok.some(c => c.key === 'metier'), answers: refineAnswers })}
+                        fallbackAdvice={lotText || compatibilityAdviceFallback({ companyName: siretCompany?.name, activityMatches: ok.some(c => c.key === 'metier'), answers: refineAnswers })}
+                        preferFallback={Boolean(lotText)}
                         ctaLabel="Découvrir mon dossier prérempli"
                         onNext={() => leadGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                       />

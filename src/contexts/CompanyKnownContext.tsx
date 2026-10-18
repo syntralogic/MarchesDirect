@@ -21,7 +21,7 @@ interface CompanyKnownContextType {
   // `code` is the backend's machine-readable error id (e.g.
   // 'phone_not_verified' from POST /siret/lead's 403) when there is one -
   // lets a caller branch on *which* error happened, not just display `error`.
-  captureLead: (phone: string, email: string, opportunityId?: string) => Promise<{ error: string | null; code?: string; dossierEmailed?: boolean }>;
+  captureLead: (phone: string, email: string, opportunityId?: string, lot?: string | null) => Promise<{ error: string | null; code?: string; dossierEmailed?: boolean }>;
   confirmPhoneVerified: () => void;
   // Undoes confirmPhoneVerified() for a phone number change that itself
   // still needs its own OTP check - phoneVerified is session-wide, so
@@ -113,9 +113,9 @@ export function CompanyKnownProvider({ children }: { children: ReactNode }) {
 
   // "lead" gate (client's newest brief): global per session once given,
   // never re-asked on another opportunity.
-  const captureLead = useCallback(async (phone: string, email: string, opportunityId?: string) => {
+  const captureLead = useCallback(async (phone: string, email: string, opportunityId?: string, lot?: string | null) => {
     try {
-      const result = await siretApi.captureLead(phone, email, getSessionId(), opportunityId);
+      const result = await siretApi.captureLead(phone, email, getSessionId(), opportunityId, lot);
       setLeadCaptured(true);
       // A freshly submitted/edited phone hasn't been OTP-confirmed yet, even
       // if an earlier phone this session was. confirmPhoneVerified() below
