@@ -1,3 +1,4 @@
+import { rememberSearchedTrade } from '@/lib/relevantLot';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import PageMeta from '@/components/common/PageMeta';
 import { useSearchParams } from 'react-router-dom';
@@ -636,6 +637,7 @@ export default function RecherchePage() {
   useScrollRestore(!loading);
 
   useEffect(() => {
+    if (debouncedQuery) rememberSearchedTrade(debouncedQuery);
     if (!debouncedQuery && !debouncedLocation) return;
     const parts = [debouncedQuery, debouncedLocation].filter(Boolean);
     trackVisitorEvent('search', `Recherche : ${parts.join(' · ')}`, undefined, { q: debouncedQuery, location: debouncedLocation, journey: journeyParam });

@@ -30,6 +30,7 @@ import { stripMarkdownArtifacts, humanizeRawLabel, normalizeFrPhoneDigits } from
 import { publicReference } from '@/lib/publicReference';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { cleanAllotmentValue, cleanPresentationLots, splitLots } from '@/lib/lotsClean';
+import { pickRelevantLots, lotsFrom, recallSearchedTrade } from '@/lib/relevantLot';
 import { SOCIAL_PROOF } from '@/lib/socialProof';
 import { useLang } from '@/contexts/LangContext';
 import { OpportunityAnalysisAccordions, hasAnalysisContent, isRedundantWithTitle, isCoveredBy, isCoveredByAny, safeHttpUrl } from '@/components/OpportunityAnalysisAccordions';
@@ -1573,6 +1574,29 @@ export default function OpportunityDetailPage() {
                   </ul>
                 ) : (
                   <p className="text-xs text-[#B9BBC8]">{t('quickStatPending') || 'Analyse en cours — revenez bientôt pour le détail complet.'}</p>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Client brief 18 Oct, point 3: with many lots the artisan must see at once which one is his. Highlighted only
+              when a real signal (searched métier, the opportunity's trade, its matched trades) matches a lot. */}
+          {(() => {
+            const allotFact = opportunity.ai_extracted_facts?.allotment;
+            const cleanAllot = allotFact?.available ? splitLots(String(allotFact.value || '')) : [];
+            const lots = lotsFrom(cleanAllot, opportunity.description, splitLots);
+            if (lots.length < 2) return null;
+            const signals = [recallSearchedTrade(), tradeLabel, ...(opportunity.ai_matched_trades || []).map(m => m.trade_name)];
+            const { matched, others } = pickRelevantLots(lots, signals);
+            if (!matched.length) return null;
+            return (
+              <div className="rounded-2xl border border-[#FDBA74]/60 bg-[#061D32] p-4 md:p-5" aria-label="Le lot qui vous concerne">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-[#FDBA74]">{matched.length > 1 ? 'Les lots qui vous concernent' : 'Le lot qui vous concerne'}</p>
+                <ul className="mt-2 space-y-1">
+                  {matched.map((l, i) => (<li key={i} className="text-base font-extrabold text-white leading-snug">{l}</li>))}
+                </ul>
+                {others > 0 && (
+                  <p className="mt-2 text-xs text-[#B9BBC8]">{others} autre{others > 1 ? 's' : ''} lot{others > 1 ? 's' : ''} dans ce marché : le détail est replié dans les informations techniques.</p>
                 )}
               </div>
             );
