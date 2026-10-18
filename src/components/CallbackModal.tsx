@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
@@ -50,6 +52,24 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: '' });
+
+  // Client brief point 7: the contact details already known (account, identified company, earlier request)
+  // are prefilled once when the modal opens, without overwriting anything typed in this session.
+  const { user, company } = useAuth();
+  const { company: anonCompany, leadPhone } = useCompanyKnown();
+  useEffect(() => {
+    if (!open) return;
+    setForm(f => {
+      if (f.nom || f.entreprise || f.telephone) return f;
+      const nom = user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : (company?.contact_name || '');
+      return {
+        ...f,
+        nom: nom || f.nom,
+        entreprise: company?.name || anonCompany?.name || f.entreprise,
+        telephone: company?.phone || leadPhone || f.telephone,
+      };
+    });
+  }, [open, user, company, anonCompany, leadPhone]);
 
   if (!open && !slotOpen) return null;
 
