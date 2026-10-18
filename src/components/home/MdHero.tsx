@@ -24,7 +24,7 @@ const NATURE_KEYS: Nature[] = ['travaux', 'services', 'fournitures'];
 const TXT = {
   fr: {
     title1: 'Trouvez votre prochain marché.', title2: 'Nous vous aidons à y répondre.',
-    sub: 'Marchés publics, appels d’offres privés et sous-traitance entre professionnels.',
+    sub: 'Marchés publics, appels d’offres privés et sous-traitance, entre professionnels.',
     more: 'Un chargé d’affaires vous aide à préparer votre candidature.',
     tablist: 'Type de recherche', tabOpen: 'Marchés ouverts', tabOpenD: 'Consultations en cours', tabProj: 'Futurs chantiers', tabProjD: 'Avant les appels d’offres',
     job: 'Quel est votre métier ?', placeholder: 'Ex. : électricien, nettoyage…', zone: 'Dans quelle zone recherchez-vous ?', france: 'Toute la France',
@@ -38,7 +38,7 @@ const TXT = {
   },
   en: {
     title1: 'Find your next contract.', title2: 'We help you win it.',
-    sub: 'Public contracts, private tenders and subcontracting between professionals.',
+    sub: 'Public contracts, private tenders and subcontracting, between professionals.',
     more: 'A business advisor helps you prepare your bid.',
     tablist: 'Search type', tabOpen: 'Open contracts', tabOpenD: 'Bids currently open', tabProj: 'Upcoming projects', tabProjD: 'Before tenders are published',
     job: 'What is your trade?', placeholder: 'E.g. electrician, cleaning…', zone: 'Which area are you searching in?', france: 'All of France',
@@ -145,7 +145,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                 {T.title1}<span>{T.title2}</span>
               </h1>
               <p className="hx-sub hx-promise">
-                {T.sub} {T.more}
+                {T.sub}
               </p>
               <div className="hx-search">
                 <div role="tablist" aria-label={T.tablist} className="hx-tabs">
@@ -159,9 +159,9 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                 <div className="hx-body">
                   {mode === 'open' ? (
                     <>
-                      <label htmlFor="mdhero-q" className="hx-qlab2">{T.job}</label>
+                      <label htmlFor="mdhero-q" className="hx-qlab2 hx-qlab-main">{T.job}</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                        <div className="qfield" style={{ flex: '1 1 260px', minWidth: 0, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10, background: '#fff', borderRadius: 12, padding: '0 14px', minHeight: 60 }}>
+                        <div className="qfield" style={{ flex: '1 1 260px', minWidth: 0, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10, background: '#fff', borderRadius: 12, padding: '0 14px', minHeight: 64, border: '2px solid #F97316', boxShadow: '0 0 0 4px rgba(249,115,22,.22), 0 8px 24px rgba(0,0,0,.28)' }}>
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.2" aria-hidden="true">
                             <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" strokeLinecap="round" />
                           </svg>
@@ -181,9 +181,16 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                         </button>
                       </div>
                       <p className="hx-free">{T.free}</p>
-                      <p className="hx-small">{T.small}</p>
-                      <div role="radiogroup" aria-label={T.kind} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, alignItems: 'center' }}>
-                        {TYPE_TABS.map(t => {
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                        <button className="link origin-refine cdc04-refine" onClick={() => setShowRefine(v => !v)} aria-expanded={showRefine} style={{ fontSize: 14, minHeight: 40 }}>
+                          {showRefine ? T.hide : T.refine}
+                        </button>
+                      </div>
+                      {showRefine && (
+                        <div style={{ marginTop: 12, paddingTop: 14, borderTop: '1px solid rgba(147,197,253,.18)' }}>
+                          <div className="lbl">{T.kind}</div>
+                          <div role="radiogroup" aria-label={T.kind} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                            {TYPE_TABS.map(t => {
                           const on = tab === t.key;
                           return (
                             <button key={t.key} role="radio" aria-checked={on} onClick={() => setTab(t.key)}
@@ -192,13 +199,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                             </button>
                           );
                         })}
-                        <span style={{ flex: '1 1 0' }} />
-                        <button className="link origin-refine cdc04-refine" onClick={() => setShowRefine(v => !v)} aria-expanded={showRefine} style={{ fontSize: 14, minHeight: 40 }}>
-                          {showRefine ? T.hide : T.refine}
-                        </button>
-                      </div>
-                      {showRefine && (
-                        <div style={{ marginTop: 12, paddingTop: 14, borderTop: '1px solid rgba(147,197,253,.18)' }}>
+                          </div>
                           <div className="lbl">{T.nature}</div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {NATURE_KEYS.map(n => (
