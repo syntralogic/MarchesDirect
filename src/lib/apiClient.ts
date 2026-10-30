@@ -1,3 +1,4 @@
+import { identifyHubspot } from '@/lib/hubspot';
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 // Base URL for the marchesdirect-backend Express API. Configure via
@@ -686,6 +687,7 @@ export const siretApi = {
   // viewed so the account manager knows why to call.
   captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string, lot?: string | null): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
     const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId, ...(lot ? { lot } : {}) });
+    identifyHubspot(email); // consent-gated no-op unless HubSpot tracking is configured
     return data;
   },
   // 25 Sep audit, point 5: "Télécharger mon exemplaire" / "Me le renvoyer"
@@ -915,6 +917,7 @@ export const crmApi = {
     });
     // A request is confirmed only when the server says it was really recorded.
     if (!data || data.success !== true || !data.id) throw new Error('Demande non enregistrée.');
+    identifyHubspot(payload.email); // consent-gated no-op unless HubSpot tracking is configured
     return data as { success: true; id: string | number; duplicate?: boolean; alreadyBooked?: boolean; recordedAt?: string; timezone?: string; slotAt?: string; slotLabel?: string };
   },
 };

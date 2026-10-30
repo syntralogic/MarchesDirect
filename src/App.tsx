@@ -42,6 +42,8 @@ import SecteursPage from '@/pages/SecteursPage';
 import InternationalPage from '@/pages/InternationalPage';
 import MentionsLegalesPage from '@/pages/MentionsLegalesPage';
 import ConfidentialitePage from '@/pages/ConfidentialitePage';
+import { trackHubspotPageView } from '@/lib/hubspot';
+import { onConsentChange } from '@/lib/consent';
 import CguPage from '@/pages/CguPage';
 import ContactPage from '@/pages/ContactPage';
 import LoginPage from '@/pages/LoginPage';
@@ -160,6 +162,17 @@ const ScrollToTop: React.FC = () => {
   return null;
 };
 
+// HubSpot page-view tracking (no-op without VITE_HUBSPOT_PORTAL_ID, and without analytics consent).
+const HubspotTracker: React.FC = () => {
+  const { pathname, search } = useLocation();
+  useEffect(() => {
+    trackHubspotPageView(pathname + search);
+  }, [pathname, search]);
+  // Visitor accepts (or withdraws) analytics on the banner: apply it right away.
+  useEffect(() => onConsentChange(() => trackHubspotPageView(window.location.pathname + window.location.search)), []);
+  return null;
+};
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -170,6 +183,7 @@ const App: React.FC = () => {
           <BrowserRouter>
             <OpportunityTransitionProvider>
             <ScrollToTop />
+            <HubspotTracker />
             <AppLayout>
             <Routes>
               {/* Public Routes */}
