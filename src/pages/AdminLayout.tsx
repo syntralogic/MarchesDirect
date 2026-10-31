@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Users, Settings, UserCheck, CreditCard, Building,
-  Search, LogOut, ArrowLeft, Menu, X, CheckCircle2, XCircle, Mail, Database
+  Search, LogOut, ArrowLeft, Menu, X, CheckCircle2, XCircle, Mail, Database, TrendingDown
 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +14,7 @@ const ADMIN_LINKS = [
   { key: 'adminUsers', href: '/admin/users', icon: Users },
   { key: 'adminLeads', href: '/admin/leads', icon: UserCheck },
   { key: 'adminContacts', href: '/admin/contacts', icon: Mail },
+  { key: 'adminAbandon', href: '/admin/abandon', icon: TrendingDown },
   { key: 'adminProspects', href: '/admin/entreprises', icon: Database },
   { key: 'adminSubscriptions', href: '/admin/subscriptions', icon: CreditCard },
   { key: 'adminBrands', href: '/admin/brands', icon: Building },
