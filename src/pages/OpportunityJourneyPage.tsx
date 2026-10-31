@@ -1146,9 +1146,9 @@ export default function OpportunityJourneyPage() {
                       <p className="text-[11px] font-semibold text-white">{o.amount}</p>
                     </div>
                   </div>
-                  <button onClick={() => openOpportunity(`/opportunites/${o.id}`, o.title)} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors ml-auto w-fit">
+                  <a href={`/opportunites/${o.id}`} onClick={(e) => { if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; e.preventDefault(); openOpportunity(`/opportunites/${o.id}`, o.title); }} className="flex items-center gap-1 text-[10px] font-bold text-orange border border-orange/40 rounded px-2 py-1 hover:bg-orange/10 transition-colors ml-auto w-fit">
                     {t('searchView')} <ArrowRight size={10} />
-                  </button>
+                  </a>
                 </div>
               </div>
             ))}

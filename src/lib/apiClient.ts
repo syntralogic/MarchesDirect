@@ -1153,6 +1153,12 @@ export const seoPagesApi = {
     const { data } = await axios.get(`${API_URL}/api/seo-pages`);
     return data;
   },
+  // Local pages of one journey (most recently updated first) - feeds the category landing pages'
+  // internal links so /marches-publics etc. lead crawlers to the city / department / trade pages.
+  listByJourney: async (journey: string, limit = 60): Promise<{ pages: { page_slug: string; filter_city?: string | null; filter_department?: string | null; filter_trade_name?: string | null; filter_journey?: string | null }[] }> => {
+    const { data } = await axios.get(`${API_URL}/api/seo-pages`, { params: { journey, limit } });
+    return data;
+  },
   getBySlug: async (slug: string): Promise<ApiSeoPage> => {
     const { data } = await axios.get(`${API_URL}/api/seo-pages/${slug}`);
     return data;

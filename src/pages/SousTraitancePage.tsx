@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTrades } from '@/hooks/use-trades';
 import { useLang } from '@/contexts/LangContext';
 import PageMeta from '@/components/common/PageMeta';
+import CategoryLandingPage from '@/pages/CategoryLandingPage';
 
 // Client audit (msg 1, point 2 / msg 5, point 1): "les liens du bas de
 // l'accueil ouvrent encore d'autres pages, avec des filtres sur le côté...
@@ -28,9 +29,10 @@ export default function SousTraitancePage() {
   const city = searchParams.get('city') || '';
   const dept = searchParams.get('department') || 'Tous';
   const sector = searchParams.get('sector') || 'Tous';
+  const bare = searchParams.toString() === ''; // SEO audit 23 Oct, point 2: bare URL = indexable entry page
 
   useEffect(() => {
-    if (mode !== 'chantier') return;
+    if (mode !== 'chantier' || bare) return;
     if (sector !== 'Tous' && trades.length === 0) return;
     const params = new URLSearchParams();
     params.set('journey', 'subcontracting');
@@ -41,8 +43,9 @@ export default function SousTraitancePage() {
       if (tradeId) params.set('trade_id', tradeId);
     }
     navigate(`/recherche?${params.toString()}`, { replace: true });
-  }, [navigate, mode, trades, city, dept, sector]);
+  }, [navigate, mode, trades, city, dept, sector, bare]);
 
+  if (bare) return <CategoryLandingPage journey="subcontracting" />;
   if (mode !== 'partenaire') return null;
 
   return (

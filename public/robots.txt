@@ -3,5 +3,6 @@ Allow: /
 Disallow: /tableau-de-bord
 Disallow: /profil
 Disallow: /admin
+Disallow: /opportunites/*/candidature
 
-Sitemap: https://marchesdirect.vercel.app/sitemap.xml
+Sitemap: https://www.marchesdirect.fr/sitemap.xml

@@ -149,6 +149,16 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
     }
   };
 
+  // SEO audit 23 Oct, point 3: the title and the button are real <a href> links, so crawlers (and
+  // "open in a new tab" / copy-link) work. A plain left click keeps the existing animated transition.
+  const followLink = (e: React.MouseEvent) => {
+    e.stopPropagation(); // the whole card is also clickable: never run both handlers
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // browser opens it itself
+    e.preventDefault();
+    saveScrollForReturn();
+    openOpportunity(destination, o.title);
+  };
+
   return (
     <div
       data-opp-id={String(o.id)}
@@ -178,7 +188,9 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
         </div>
       </div>
 
-      <h3 title={o.title} className="text-base font-bold text-white leading-snug mb-1 line-clamp-2">{o.title}</h3>
+      <h3 title={o.title} className="text-base font-bold text-white leading-snug mb-1 line-clamp-2">
+        <a href={destination} onClick={followLink} className="hover:underline">{o.title}</a>
+      </h3>
       <p className={`text-xs text-[#B9BBC8] line-clamp-2 ${lotLine ? 'mb-1.5' : 'mb-4'}`}>{o.location}</p>
       {lotLine && <p className="text-xs font-semibold text-[#FDBA74] mb-4 leading-snug" title={lotLine}>{lotLine}</p>}
 
@@ -203,16 +215,13 @@ export function OpportunityListCard({ opportunity: o, matchScore, canScore, comp
 
       <p className={`text-xs mb-4 ${statusLine.className}`}>{statusLine.text}</p>
 
-      <button
-        onClick={e => {
-          e.stopPropagation();
-          saveScrollForReturn();
-          openOpportunity(destination, o.title);
-        }}
-        className="w-full bg-orange text-white font-semibold text-sm py-3 rounded-xl hover:brightness-110 transition-all"
+      <a
+        href={destination}
+        onClick={followLink}
+        className="block w-full text-center bg-orange text-white font-semibold text-sm py-3 rounded-xl hover:brightness-110 transition-all"
       >
         {ctaLabel ?? t('listingViewOpportunity')}
-      </button>
+      </a>
     </div>
   );
 }
