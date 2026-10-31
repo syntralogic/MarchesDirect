@@ -53,6 +53,7 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import AdminTenders from '@/pages/AdminTenders';
 import AdminUsers from '@/pages/AdminUsers';
 import AdminLeads from '@/pages/AdminLeads';
+import AdminLeadJourney from '@/pages/AdminLeadJourney';
 import AdminContacts from '@/pages/AdminContacts';
 import AdminProspects from '@/pages/AdminProspects';
 import AdminSubscriptions from '@/pages/AdminSubscriptions';
@@ -236,6 +237,7 @@ const App: React.FC = () => {
               <Route path="/admin/tenders" element={<RequireAuth adminOnly><AdminTenders /></RequireAuth>} />
               <Route path="/admin/users" element={<RequireAuth adminOnly><AdminUsers /></RequireAuth>} />
               <Route path="/admin/leads" element={<RequireAuth adminOnly><AdminLeads /></RequireAuth>} />
+              <Route path="/admin/leads/:leadId/journey" element={<RequireAuth adminOnly><AdminLeadJourney /></RequireAuth>} />
               <Route path="/admin/contacts" element={<RequireAuth adminOnly><AdminContacts /></RequireAuth>} />
               <Route path="/admin/entreprises" element={<RequireAuth adminOnly><AdminProspects /></RequireAuth>} />
               <Route path="/admin/subscriptions" element={<RequireAuth adminOnly><AdminSubscriptions /></RequireAuth>} />
