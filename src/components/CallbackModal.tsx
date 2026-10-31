@@ -17,6 +17,9 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 interface CallbackModalProps {
   open: boolean;
   onClose: () => void;
+  // Market (and optional lot) the visitor is looking at, so the request carries it to the CRM deal.
+  opportunityId?: string;
+  lotLabel?: string;
 }
 
 const MOMENT_LABELS: Record<string, string> = {
@@ -39,7 +42,7 @@ function formatRecordedAt(iso?: string, tz?: string): string | null {
   return `Demande enregistrée le ${date} à ${hh} h ${mm} (${zone === 'Europe/Paris' ? 'heure de Paris' : zone}).`;
 }
 
-export function CallbackModal({ open, onClose }: CallbackModalProps) {
+export function CallbackModal({ open, onClose, opportunityId, lotLabel }: CallbackModalProps) {
   const { t } = useLang();
   const { brandId } = useBrand();
   const [submitted, setSubmitted] = useState(false);
@@ -101,6 +104,8 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
         phone: form.telephone,
         companyName: form.entreprise || undefined,
         leadSource: 'callback_modal',
+        opportunityId,
+        lotLabel,
         message: form.moment ? `Créneau souhaité : ${MOMENT_LABELS[form.moment] || form.moment}` : undefined,
         sessionId: getSessionId(),
         idempotencyKey: idem.key(),
@@ -119,7 +124,7 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
     }
   };
 
-  if (!open) return <AppointmentModal open={slotOpen} onClose={() => setSlotOpen(false)} />;
+  if (!open) return <AppointmentModal open={slotOpen} onClose={() => setSlotOpen(false)} opportunityId={opportunityId} lotLabel={lotLabel} />;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4" role="dialog" aria-modal="true">

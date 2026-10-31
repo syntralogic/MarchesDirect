@@ -3540,8 +3540,9 @@ export default function OpportunityDetailPage() {
         );
       })()}
 
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
+      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} opportunityId={opportunity?.id} />
       <AppointmentModal
+        opportunityId={opportunity?.id}
         open={showAccountManagerModal}
         onClose={() => setShowAccountManagerModal(false)}
         defaultMotif="Répondre à un appel d'offres"
