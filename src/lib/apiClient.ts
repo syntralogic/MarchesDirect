@@ -1337,6 +1337,10 @@ export const adminApi = {
     const { data } = await apiClient.get(`/admin/leads/${leadId}/journey`);
     return data;
   },
+  abandonmentReport: async (days: number): Promise<ApiAbandonmentReport> => {
+    const { data } = await apiClient.get('/admin/reports/abandonment', { params: { days } });
+    return data;
+  },
   // Full history of the person behind a request (HubSpot link target): every session of this contact.
   leadJourneyFull: async (leadId: string): Promise<ApiLeadJourneyFull> => {
     const { data } = await apiClient.get(`/admin/leads/${leadId}/journey`);
@@ -1451,6 +1455,14 @@ export type ApiVisitorEvent = {
   event_label: string | null;
   event_data: Record<string, unknown> | null;
   created_at: string;
+};
+
+export type ApiAbandonmentReport = {
+  days: number;
+  funnel: { step: string; sessions: number; pctOfPrevious: number | null; pctOfFirst: number | null }[];
+  analyses: { started: number; completed: number; abandoned: number };
+  lastStepOfSessionsWithoutRequest: { step: string; n: number }[];
+  dossierPreviewWithoutRequest: number;
 };
 
 export type ApiLeadJourneyEvent = {
