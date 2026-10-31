@@ -1337,6 +1337,11 @@ export const adminApi = {
     const { data } = await apiClient.get(`/admin/leads/${leadId}/journey`);
     return data;
   },
+  // Full history of the person behind a request (HubSpot link target): every session of this contact.
+  leadJourneyFull: async (leadId: string): Promise<ApiLeadJourneyFull> => {
+    const { data } = await apiClient.get(`/admin/leads/${leadId}/journey`);
+    return data;
+  },
   // Plain contact/appointment/callback leads (opportunity_id IS NULL on the
   // backend) - distinct from opportunityLeads() above, which is the
   // graduated-access review queue for opportunity fiches specifically.
@@ -1446,6 +1451,26 @@ export type ApiVisitorEvent = {
   event_label: string | null;
   event_data: Record<string, unknown> | null;
   created_at: string;
+};
+
+export type ApiLeadJourneyEvent = {
+  event_id: string | null;
+  session_id: string;
+  event_type: string;
+  event_label: string | null;
+  event_data: Record<string, unknown> | null;
+  siret: string | null;
+  opportunity_id: string | null;
+  lot_ref: string | null;
+  analysis_id: string | null;
+  created_at: string;
+};
+
+export type ApiLeadJourneyFull = {
+  contact: { leadId: string; email: string | null; firstName: string | null; lastName: string | null; phone: string | null; companyName: string | null };
+  sessions: number;
+  requests: { id: string; lead_source: string | null; created_at: string }[];
+  history: ApiLeadJourneyEvent[];
 };
 
 export type ApiCrmLead = {
