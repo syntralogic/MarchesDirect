@@ -223,8 +223,9 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
         sessionId: getSessionId(),
         idempotencyKey: idem.key(),
       });
+      const requestId = idem.key();
       idem.reset();
-      trackRequestSubmitted('appointment');
+      trackRequestSubmitted('appointment', { requestId });
       setConfirmed({ slotAt: data.slotAt ?? '', slotLabel: data.slotLabel ?? '', already: !!data.alreadyBooked });
       setStep(5);
     } catch (err: any) {

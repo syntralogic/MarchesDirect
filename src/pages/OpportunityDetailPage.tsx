@@ -847,7 +847,7 @@ export default function OpportunityDetailPage() {
     opportunitiesApi.getById(id)
       .then(o => {
         setOpportunity(o);
-        trackVisitorEvent('view_opportunity', o.title, undefined, { opportunityId: id, journey: o.journey });
+        trackVisitorEvent('offer_view', o.title, undefined, { opportunityId: id, journey: o.journey });
       })
       .catch(err => setError(getApiErrorMessage(err, t('detailLoadError'))))
       .finally(() => setLoading(false));
@@ -935,8 +935,16 @@ export default function OpportunityDetailPage() {
         throw err;
       }
     };
+    trackVisitorEvent('analysis_started', 'Analyse démarrée', undefined, { opportunityId: id, siret: displayedSiret || undefined });
     runScore()
-      .then(setMatchScore)
+      .then(result => {
+        setMatchScore(result);
+        // Only the completed analysis carries the result (score, verdict) and the snapshot id; no company data.
+        trackVisitorEvent('analysis_completed', 'Analyse terminée', undefined, {
+          opportunityId: id, siret: displayedSiret || undefined, analysisId: analysesApi.currentId(id),
+          score: result.score, matchLabel: result.matchLabel,
+        });
+      })
       .catch(err => {
         scoreFailedKeyRef.current = `${id}|${isAuthenticated}`;
         console.warn('[concordance] analysis failed', getApiErrorCode(err), getApiErrorMessage(err, ''));
@@ -997,6 +1005,7 @@ export default function OpportunityDetailPage() {
     else if (result.companyKnown) {
       markOpportunityConfirmed(id, result.siret);
       trackVisitorEvent('company_identified', 'Entreprise identifiée', undefined, { opportunityId: id });
+      trackVisitorEvent('company_selected', 'Entreprise sélectionnée', undefined, { opportunityId: id, siret: result.siret });
       setAnalyzing(true);
     }
     setSiretSubmitting(false);
@@ -1011,6 +1020,7 @@ export default function OpportunityDetailPage() {
     else if (result.companyKnown) {
       markOpportunityConfirmed(id, result.siret);
       trackVisitorEvent('company_identified', 'Entreprise identifiée', undefined, { opportunityId: id });
+      trackVisitorEvent('company_selected', 'Entreprise sélectionnée', undefined, { opportunityId: id, siret: result.siret });
       setAnalyzing(true);
     }
     setConfirmingCandidate(null);
@@ -2654,7 +2664,7 @@ export default function OpportunityDetailPage() {
                         together in one plain bordered box (no reddish
                         tint) - only the counter's own text is colored. */}
                     <div className="mb-4">
-                      <button type="button" onClick={() => setExcerptOpen(o => !o)} aria-expanded={excerptOpen} className="w-full flex items-center justify-center gap-2 border border-[#17334D] bg-[#031B30] rounded-xl py-3 text-sm text-orange font-bold hover:border-orange/50 transition-colors">
+                      <button type="button" onClick={() => { if (!excerptOpen) trackVisitorEvent('dossier_preview', 'Aperçu du dossier consulté', undefined, { opportunityId: id, analysisId: id ? analysesApi.currentId(id) : undefined }); setExcerptOpen(o => !o); }} aria-expanded={excerptOpen} className="w-full flex items-center justify-center gap-2 border border-[#17334D] bg-[#031B30] rounded-xl py-3 text-sm text-orange font-bold hover:border-orange/50 transition-colors">
                         <Search size={15} /> {excerptOpen ? (t('scorePreviewClose') || "Refermer l'extrait") : (t('scorePreviewSample') || 'Voir un extrait de mon dossier')}
                       </button>
                       {consultation && (

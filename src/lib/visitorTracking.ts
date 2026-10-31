@@ -40,7 +40,16 @@ export type VisitorEventType =
   | 'company_identified'
   | 'concordance_shown'
   | 'form_started'
-  | 'request_submitted';
+  | 'request_submitted'
+  // Codes of the HubSpot journey brief (31 Oct): the journal keeps one row per event.
+  | 'offer_view'
+  | 'company_selected'
+  | 'analysis_started'
+  | 'analysis_completed'
+  | 'dossier_preview'
+  | 'dossier_requested'
+  | 'callback_requested'
+  | 'appointment_booked';
 
 export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request';
 
@@ -55,8 +64,21 @@ export function createFormStartTracker(kind: RequestKind, extra?: () => Record<s
   };
 }
 
+const REQUEST_EVENT_CODE: Partial<Record<RequestKind, VisitorEventType>> = {
+  dossier_request: 'dossier_requested',
+  callback: 'callback_requested',
+  appointment: 'appointment_booked',
+};
+
+// `requestId` (the form's idempotency key) makes the specific event id stable: a retry of the same request
+// can never add a second journal row, the server keeps the first one.
 export function trackRequestSubmitted(kind: RequestKind, extra?: Record<string, unknown>) {
   trackVisitorEvent('request_submitted', `Demande enregistrée : ${kind}`, undefined, { kind, ...(extra || {}) });
+  const code = REQUEST_EVENT_CODE[kind];
+  if (code) {
+    const requestId = typeof extra?.requestId === 'string' ? extra.requestId : undefined;
+    trackVisitorEvent(code, `Demande enregistrée : ${kind}`, undefined, { kind, ...(extra || {}), ...(requestId ? { eventId: `${code}:${requestId}` } : {}) });
+  }
 }
 
 // Fire-and-forget by design: a failed analytics beacon must never surface
@@ -77,14 +99,43 @@ function stripPii(v: unknown): unknown {
   return v;
 }
 
+function newEventId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  } catch { /* fall through */ }
+  return `ev-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+// Identifiers the server stores in their own columns. They are read BEFORE stripPii (a 14-digit SIRET looks like
+// a phone number to the redaction regex) and only sent when well-formed, because the server drops a whole event
+// whose fields are invalid.
+function pickIds(data?: Record<string, unknown>) {
+  const str = (v: unknown, max = 100) => (typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : undefined);
+  const siret = typeof data?.siret === 'string' ? data.siret.replace(/\s/g, '') : undefined;
+  return {
+    eventId: str(data?.eventId),
+    siret: siret && /^\d{14}$/.test(siret) ? siret : undefined,
+    opportunityId: str(data?.opportunityId),
+    lotRef: str(data?.lotRef),
+    analysisId: str(data?.analysisId),
+  };
+}
+
 export function trackVisitorEvent(eventType: VisitorEventType, eventLabel?: string, brandId?: string, eventData?: Record<string, unknown>) {
   // No consent (not asked yet, or refused) = nothing is recorded.
   if (getAnalyticsConsent() !== 'granted') return;
   try {
+    const ids = pickIds(eventData);
+    const { eventId: _drop, siret: _siret, ...dataWithoutIds } = (eventData || {}) as Record<string, unknown>;
     fetch(`${API_URL}/api/visitor-events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: getSessionId(), eventType, eventLabel, brandId, eventData: eventData ? stripPii(eventData) : eventData }),
+      body: JSON.stringify({
+        sessionId: getSessionId(), eventType, eventLabel, brandId,
+        eventData: eventData ? stripPii(dataWithoutIds) : eventData,
+        eventId: ids.eventId || newEventId(), occurredAt: new Date().toISOString(),
+        siret: ids.siret, opportunityId: ids.opportunityId, lotRef: ids.lotRef, analysisId: ids.analysisId,
+      }),
       keepalive: true,
     }).catch(() => {});
   } catch {
