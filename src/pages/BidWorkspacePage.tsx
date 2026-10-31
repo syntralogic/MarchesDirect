@@ -560,7 +560,7 @@ export default function BidWorkspacePage() {
           </div>
         </>
 
-      <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} deadline={opportunity?.deadline as string | null | undefined} />
+      <AppointmentModal open={showAccountManagerModal} onClose={() => setShowAccountManagerModal(false)} opportunityId={opportunity?.id} deadline={opportunity?.deadline as string | null | undefined} />
     </div>
   );
 }

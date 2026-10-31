@@ -22,6 +22,9 @@ interface AppointmentModalProps {
   // the lead so the visitor isn't asked to re-state what the page implies.
   defaultMotif?: string;
   marketLabel?: string;
+  // Id (and optional lot) of the market, sent with the request so the CRM deal carries it.
+  opportunityId?: string;
+  lotLabel?: string;
   // Tender's submission deadline (opportunity.deadline), when the modal is
   // opened from a specific opportunity's dossier page. Used to warn the
   // visitor when they're booking a rendez-vous after that deadline has
@@ -45,7 +48,7 @@ type SlotDay = { date: string; label: string; slots: { slotAt: string; time: str
 const icsEscape = (v: string) => v.replace(/[\\,;]/g, m => '\\' + m).replace(/\n/g, '\\n');
 const icsStamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
-export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, deadline }: AppointmentModalProps) {
+export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, opportunityId, lotLabel, deadline }: AppointmentModalProps) {
   const { t } = useLang();
   const { brandId } = useBrand();
   const { user, company } = useAuth();
@@ -218,6 +221,8 @@ export function AppointmentModal({ open, onClose, defaultMotif, marketLabel, dea
         phone: form.telephone || undefined,
         companyName: form.entreprise || undefined,
         leadSource: 'appointment_modal',
+        opportunityId,
+        lotLabel,
         message: `Motif : ${motif}${marketLabel ? `\nMarché : ${marketLabel}` : ''}`,
         slotAt: selectedSlot,
         sessionId: getSessionId(),
