@@ -685,7 +685,9 @@ export const siretApi = {
   // opportunityId links the CRM lead to the specific opportunity being
   // viewed so the account manager knows why to call.
   captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string, lot?: string | null): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
-    const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId, ...(lot ? { lot } : {}) });
+    // The visitor's "Préférences de contact" choice (if made before giving their details) travels with them.
+    const contactMode = getStoredContactMode();
+    const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId, ...(lot ? { lot } : {}), ...(contactMode ? { contactMode } : {}) });
     return data;
   },
   // 25 Sep audit, point 5: "Télécharger mon exemplaire" / "Me le renvoyer"
@@ -1692,5 +1694,24 @@ export const analysesApi = {
       const param = Object.entries(answers || {}).filter(([, v]) => !!v).map(([k, v]) => `${k}:${v}`).join(',');
       return opportunitiesApi.getMatchScore(opportunityId, sessionId, param || undefined);
     }
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Contact preferences (client brief 31 Oct, part D). The choice must reach the server: the page may only say it is
+// "prise en compte" when the server confirmed it (saved: true). Before the visitor has given any contact details the
+// server holds nothing to attach it to (saved: false): the choice is kept for this session and sent with the details.
+// ---------------------------------------------------------------------------
+export type ContactMode = 'followup' | 'request-only';
+const CONTACT_MODE_KEY = 'md_contact_mode';
+export function getStoredContactMode(): ContactMode | null {
+  try { const v = sessionStorage.getItem(CONTACT_MODE_KEY); return v === 'followup' || v === 'request-only' ? v : null; } catch { return null; }
+}
+export const contactApi = {
+  /** Resolves { saved: true } only when the server really recorded the choice. */
+  setMode: async (sessionId: string, mode: ContactMode): Promise<{ saved: boolean }> => {
+    try { sessionStorage.setItem(CONTACT_MODE_KEY, mode); } catch { /* private mode: the server call below still counts */ }
+    const { data } = await apiClient.post('/contact/preferences', { sessionId, mode });
+    return { saved: data?.saved === true };
   },
 };
