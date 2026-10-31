@@ -21,7 +21,7 @@ import PageMeta from '@/components/common/PageMeta';
 import { trackVisitorEvent, getSessionId, getConsultationIndicator, createFormStartTracker, trackRequestSubmitted } from '@/lib/visitorTracking';
 import {
   opportunitiesApi, tendersApi, companyVaultApi, favoritesApi, getApiErrorMessage, getApiErrorCode, getBlobApiErrorMessage,
-  dossiersApi, siretApi, analysesApi,
+  dossiersApi, siretApi, analysesApi, contactApi, getStoredContactMode,
   type ApiOpportunityDetail, type ApiTender, type ApiBidResponse, type ApiTenderDocument,
   type ApiOpportunityAccess, type ApiMatchScore, type ApiCompanyDocument, type ApiSiretCompany,
   type ApiDossierRequest,
@@ -440,7 +440,19 @@ export default function OpportunityDetailPage() {
   // existing pages that were there before.
   const [contactPrefsOpen, setContactPrefsOpen] = useState(false);
   const [privacyPanelOpen, setPrivacyPanelOpen] = useState(false);
-  const [contactMode, setContactMode] = useState<'followup' | 'request-only'>('followup');
+  const [contactMode, setContactMode] = useState<'followup' | 'request-only'>(() => getStoredContactMode() || 'followup');
+  // What the SERVER did with the choice: 'saved' | 'pending' (nothing to attach it to yet) | 'error'.
+  const [contactModeState, setContactModeState] = useState<'saved' | 'pending' | 'error' | null>(null);
+  const changeContactMode = async (mode: 'followup' | 'request-only') => {
+    setContactMode(mode);
+    setContactModeState(null);
+    try {
+      const r = await contactApi.setMode(getSessionId(), mode);
+      setContactModeState(r.saved ? 'saved' : 'pending');
+    } catch {
+      setContactModeState('error');
+    }
+  };
   // Phone+email gate (client's newest brief, Écran 7): shown once SIRET is
   // known but leadCaptured is still false, in place of the fuller analysis
   // breakdown (criteria/eligibility/refine accordion) - global per session
@@ -2925,7 +2937,7 @@ export default function OpportunityDetailPage() {
                             <span className="text-xs text-[#B9BBC8] block mb-1">{t('contactPrefsUsageLabel') || 'Utilisation de mes coordonnées'}</span>
                             <select
                               value={contactMode}
-                              onChange={e => setContactMode(e.target.value as 'followup' | 'request-only')}
+                              onChange={e => changeContactMode(e.target.value as 'followup' | 'request-only')}
                               className="w-full bg-[#061D32] border border-[#17334D] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-orange/50"
                             >
                               <option value="followup">{t('contactPrefsFollowup') || "Suivi et offres d'accompagnement"}</option>
@@ -2934,8 +2946,14 @@ export default function OpportunityDetailPage() {
                           </label>
                           <p className="text-xs text-[#8A9BB0]">{t('contactPrefsHelp') || 'Nous pouvons échanger au sujet de votre dossier et vous présenter notre accompagnement.'}</p>
                           <p className="text-xs text-[#8A9BB0]">{t('contactPrefsNote') || "Ce choix ne change pas l'envoi de votre dossier pré-rempli."}</p>
-                          {contactMode === 'request-only' && (
+                          {contactMode === 'request-only' && contactModeState === 'saved' && (
                             <p className="text-xs text-green-400">{t('contactPrefsConfirmed') || 'Votre opposition aux sollicitations commerciales est prise en compte.'}</p>
+                          )}
+                          {contactMode === 'request-only' && contactModeState === 'pending' && (
+                            <p className="text-xs text-[#B9BBC8]">{t('contactPrefsPending') || 'Votre choix sera enregistré avec vos coordonnées.'}</p>
+                          )}
+                          {contactModeState === 'error' && (
+                            <p className="text-xs text-red-400">{t('contactPrefsError') || "Votre choix n'a pas pu être enregistré. Réessayez."}</p>
                           )}
                           <button type="button" onClick={() => setContactPrefsOpen(false)} className="text-xs text-orange font-semibold hover:underline">
                             {t('contactPrefsClose') || 'Fermer les préférences'}
