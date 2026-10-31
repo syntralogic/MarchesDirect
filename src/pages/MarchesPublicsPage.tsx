@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTrades } from '@/hooks/use-trades';
+import CategoryLandingPage from '@/pages/CategoryLandingPage';
 
 // Client audit (msg 1, point 2 / msg 5, point 1): "les liens du bas de
 // l'accueil ouvrent encore d'autres pages, avec des filtres sur le côté...
@@ -28,8 +29,11 @@ export default function MarchesPublicsPage() {
   const city = searchParams.get('city') || '';
   const sector = searchParams.get('sector') || 'Tous';
   const status = searchParams.get('status') || 'Tous';
+  // SEO audit 23 Oct, point 2: the bare URL is an indexable entry page; only filtered URLs redirect.
+  const bare = searchParams.toString() === '';
 
   useEffect(() => {
+    if (bare) return;
     // Sector needs a resolved trade_id (see use-trades.ts) - wait for the
     // list to load rather than redirecting without it and dropping the
     // filter. No sector filter means nothing to wait for.
@@ -43,7 +47,7 @@ export default function MarchesPublicsPage() {
       if (tradeId) params.set('trade_id', tradeId);
     }
     navigate(`/recherche?${params.toString()}`, { replace: true });
-  }, [navigate, trades, city, sector, status]);
+  }, [navigate, trades, city, sector, status, bare]);
 
-  return null;
+  return bare ? <CategoryLandingPage journey="public_procurement" /> : null;
 }

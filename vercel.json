@@ -6,6 +6,12 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap.xml" },
+    { "source": "/:base(marches-publics|appels-doffres|sous-traitance)", "destination": "/api/prerender?kind=category&base=:base" },
+    { "source": "/:base(marches-publics|appels-doffres|sous-traitance)/departement/:department", "destination": "/api/prerender?kind=local&base=:base&department=:department" },
+    { "source": "/:base(marches-publics|appels-doffres|sous-traitance)/:city/:trade", "destination": "/api/prerender?kind=local&base=:base&city=:city&trade=:trade" },
+    { "source": "/:base(marches-publics|appels-doffres|sous-traitance)/:city", "destination": "/api/prerender?kind=local&base=:base&city=:city" },
+    { "source": "/opportunites/:id", "destination": "/api/prerender?kind=opportunity&id=:id" },
+    { "source": "/pages/:slug", "destination": "/api/prerender?kind=slug&slug=:slug" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTrades } from '@/hooks/use-trades';
+import CategoryLandingPage from '@/pages/CategoryLandingPage';
 
 // Same unification as MarchesPublicsPage - see its comment for the client
 // quote/reasoning. This page's own filters (city, sector) are a subset of
@@ -12,8 +13,10 @@ export default function AppelsPage() {
   const trades = useTrades();
   const city = searchParams.get('city') || '';
   const sector = searchParams.get('sector') || 'Tous';
+  const bare = searchParams.toString() === ''; // SEO audit 23 Oct, point 2: bare URL = indexable entry page
 
   useEffect(() => {
+    if (bare) return;
     if (sector !== 'Tous' && trades.length === 0) return;
     const params = new URLSearchParams();
     params.set('journey', 'tender');
@@ -23,7 +26,7 @@ export default function AppelsPage() {
       if (tradeId) params.set('trade_id', tradeId);
     }
     navigate(`/recherche?${params.toString()}`, { replace: true });
-  }, [navigate, trades, city, sector]);
+  }, [navigate, trades, city, sector, bare]);
 
-  return null;
+  return bare ? <CategoryLandingPage journey="tender" /> : null;
 }

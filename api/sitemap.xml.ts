@@ -13,7 +13,11 @@ const JOURNEY_BASE_PATH: Record<string, string> = {
 };
 
 export default async function handler(req: any, res: any) {
-  const siteUrl = (process.env.FRONTEND_URL || 'https://marchesdirect.vercel.app').replace(/\/$/, '');
+  // SEO audit 23 Oct, point 1: every sitemap URL pointed at marchesdirect.vercel.app. Always advertise the
+  // public domain; FRONTEND_URL is honoured only when it is not a *.vercel.app address.
+  const PUBLIC_SITE = 'https://www.marchesdirect.fr';
+  const configured = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+  const siteUrl = configured && !/\.vercel\.app/i.test(configured) ? configured : PUBLIC_SITE;
   const apiUrl = (process.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
   const staticPaths = [
@@ -61,15 +65,32 @@ export default async function handler(req: any, res: any) {
     // so the sitemap keeps working during a backend deploy/outage.
   }
 
-  const staticUrls = staticPaths.map((p) => ({ loc: `${siteUrl}${p}` }));
-  const allUrls = [...staticUrls, ...seoUrls];
+  // SEO audit 23 Oct, point 3: no /opportunites/ URL was listed. Open, non-demo fiches only (the backend
+  // already filters); they are real <a href> targets now so crawlers can also reach them from the lists.
+  let oppUrls: { loc: string; lastmod?: string }[] = [];
+  try {
+    const r = await fetch(`${apiUrl}/api/seo-pages/opportunities-sitemap`);
+    if (r.ok) {
+      const data = await r.json();
+      oppUrls = (data.opportunities || []).map((o: { id: string; updated_at?: string }) => {
+        const d = o.updated_at ? new Date(o.updated_at) : null;
+        return { loc: `${siteUrl}/opportunites/${o.id}`, lastmod: d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : undefined };
+      });
+    }
+  } catch {
+    // Same policy as above: never fail the whole sitemap because one source is down.
+  }
+
+  const staticUrls: { loc: string; lastmod?: string }[] = staticPaths.map((p) => ({ loc: `${siteUrl}${p}` }));
+  // One sitemap file may hold at most 50,000 URLs.
+  const allUrls = [...staticUrls, ...seoUrls, ...oppUrls].slice(0, 50000);
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${allUrls
   .map(
     (u) => `  <url>
-    <loc>${u.loc}</loc>${u.lastmod ? `\n    <lastmod>${u.lastmod}</lastmod>` : ''}
+    <loc>${u.loc.replace(/&/g, '&amp;')}</loc>${u.lastmod ? `\n    <lastmod>${u.lastmod}</lastmod>` : ''}
   </url>`
   )
   .join('\n')}
