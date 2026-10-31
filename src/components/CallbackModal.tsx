@@ -105,8 +105,9 @@ export function CallbackModal({ open, onClose }: CallbackModalProps) {
         sessionId: getSessionId(),
         idempotencyKey: idem.key(),
       });
+      const requestId = idem.key();
       idem.reset();
-      trackRequestSubmitted('callback');
+      trackRequestSubmitted('callback', { requestId });
       // Date and time come from the server's save time, shown in Paris time.
       setRecordedLabel(formatRecordedAt(saved.recordedAt, saved.timezone));
       setSubmitted(true);
