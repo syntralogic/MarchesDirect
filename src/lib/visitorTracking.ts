@@ -49,7 +49,11 @@ export type VisitorEventType =
   | 'dossier_preview'
   | 'dossier_requested'
   | 'callback_requested'
-  | 'appointment_booked';
+  | 'appointment_booked'
+  // Refonte v26 (écran 3): the "30 minutes offertes" invitation.
+  | 'invitation_30min_shown'
+  | 'invitation_30min_closed'
+  | 'invitation_30min_clicked';
 
 export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request';
 
