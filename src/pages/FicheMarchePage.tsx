@@ -7,6 +7,7 @@ import {
   type ApiOpportunityDetail, type ApiMatchScore, type ApiSiretCandidate, type ApiSiretStatus,
 } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent, getConsultationIndicator, getDossierRequestsCount } from '@/lib/visitorTracking';
+import { getAnalyticsConsent } from '@/lib/consent';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { CallbackModal } from '@/components/CallbackModal';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -33,6 +34,14 @@ function Details({ title, children }: { title: string; children: React.ReactNode
       <div className="px-4 pb-4 text-[15px] text-[#D6E0EC]">{children}</div>
     </details>
   );
+}
+
+// Elena's photo is supplied by the client: drop it at public/team/elena.jpg and it appears. Until then, initials (never a stock photo).
+function ElenaPhoto() {
+  const [ok, setOk] = useState(true);
+  return ok
+    ? <img src="/team/elena.jpg" alt="Elena Popescu" width={48} height={48} onError={() => setOk(false)} className="h-12 w-12 shrink-0 rounded-full object-cover" />
+    : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#22385A] text-[13px] font-bold text-[#D6E0EC]" aria-hidden>EP</div>;
 }
 
 export default function FicheMarchePage() {
@@ -178,7 +187,8 @@ export default function FicheMarchePage() {
   const openInvite = useCallback(() => {
     if (acted.current) return;
     try { if (sessionStorage.getItem(INVITE_KEY)) return; } catch { return; }
-    if (document.activeElement?.tagName === 'INPUT') { window.setTimeout(openInvite, 15000); return; }
+    // Not while the visitor is typing, and not on top of the cookie banner (they have not answered it yet).
+    if (document.activeElement?.tagName === 'INPUT' || getAnalyticsConsent() === null) { window.setTimeout(openInvite, 15000); return; }
     try { sessionStorage.setItem(INVITE_KEY, '1'); } catch { return; }
     setInvite(true);
     trackVisitorEvent('invitation_30min_shown', 'Invitation 30 minutes affichée', undefined, { opportunityId: id });
@@ -274,7 +284,7 @@ export default function FicheMarchePage() {
             ) : <div className="h-24 animate-pulse rounded-xl bg-[#0F1F35]" aria-busy="true" />}
             {sc != null && <p className="text-[14px] text-[#D6E0EC]">{summaryFor(sc)}</p>}
             <div className="flex items-center gap-2 rounded-xl bg-[#123B2A] px-3 py-2 text-[13px] text-[#6EE7B7]">
-              <span aria-hidden>✓</span><span className="min-w-0 flex-1">Pour {company}{opp.trade_name ? ` · ${opp.trade_name}` : ''}{status?.company?.city ? ` · ${status.company.city}` : ''}</span>
+              <span aria-hidden>✓</span><span className="min-w-0 flex-1">{['Pour ' + company, status?.company?.activity && status.company.activity.length <= 40 ? status.company.activity : null, status?.company?.city ? `${status.company.city}${status.company.postal ? ` (${status.company.postal.slice(0, 2)})` : ''}` : null].filter(Boolean).join(' · ')}</span>
               <button type="button" onClick={() => { setEditing(true); setQuery(company); }} className="min-h-[44px] min-w-[44px] font-bold underline">Modifier</button>
             </div>
             <p className="text-[13px] text-[#B4C1D3]">Pourcentage de correspondance calculé à partir des informations publiques de votre entreprise. Il ne mesure pas vos chances de gagner. Répondez aux 4 questions ci-dessous pour l’affiner.</p>
@@ -283,7 +293,7 @@ export default function FicheMarchePage() {
           {advice && (
             <section className="flex flex-col gap-3 rounded-2xl border-l-4 border-[#C2410C] bg-[#1C2433] p-4" aria-label="Votre conseil personnalisé">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#22385A] text-[13px] font-bold text-[#D6E0EC]" aria-hidden>EP</div>
+                <ElenaPhoto />
                 <div className="flex flex-col"><b>Votre conseil personnalisé</b><span className="text-[13px] text-[#B4C1D3]">Elena Popescu · Chargée de relation</span></div>
               </div>
               <p className="text-[15px]">{advice.text}</p>
@@ -316,7 +326,7 @@ export default function FicheMarchePage() {
             </details>
           </section>
 
-          <p className="text-[14px] text-[#B4C1D3]">Une question avant de choisir ? <button type="button" onClick={() => choose('info')} className="min-h-[44px] font-semibold text-[#FB923C] underline">Demandez à Elena</button>, elle vous rappelle dans l’heure.</p>
+          <div className="flex flex-col text-[14px] text-[#B4C1D3]"><span>Une question avant de choisir ?</span><button type="button" onClick={() => choose('info')} className="min-h-[44px] self-start text-left font-semibold text-[#FB923C] underline">Demandez à Elena, elle vous rappelle dans l’heure ›</button></div>
 
           <section className="flex flex-col gap-3">
             <h2 className="text-[20px] font-extrabold">Que voulez-vous faire ?</h2>

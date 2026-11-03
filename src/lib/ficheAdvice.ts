@@ -37,7 +37,8 @@ export function shortTitle(official: string, city?: string | null): string {
     t = cut.slice(0, Math.max(cut.lastIndexOf(' '), 30)).replace(/[\s,;:–-]+$/, '') + '…';
   }
   const c = (city || '').trim();
-  if (c && !clean.toLowerCase().includes(c.toLowerCase()) && t.length + c.length + 3 <= 80) t = `${t} — ${c}`;
+  // The city is checked against what is actually shown: a cut title may have lost it.
+  if (c && !t.toLowerCase().includes(c.toLowerCase()) && t.length + c.length + 3 <= 80) t = `${t} — ${c}`;
   return t;
 }
 
