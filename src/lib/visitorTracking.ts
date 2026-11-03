@@ -171,3 +171,15 @@ export async function getConsultationIndicator(opportunityId: string, lang: 'fr'
     return null;
   }
 }
+
+// Fiche marché 3.9: real number of prefilled dossiers requested on this market over 7 rolling days; null when unknown.
+export async function getDossierRequestsCount(opportunityId: string): Promise<number | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/visitor-events/dossier-requests/${opportunityId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data?.count === 'number' ? data.count : null;
+  } catch {
+    return null;
+  }
+}

@@ -6,7 +6,7 @@ import {
   opportunitiesApi, siretApi,
   type ApiOpportunityDetail, type ApiMatchScore, type ApiSiretCandidate, type ApiSiretStatus,
 } from '@/lib/apiClient';
-import { getSessionId, trackVisitorEvent, getConsultationIndicator } from '@/lib/visitorTracking';
+import { getSessionId, trackVisitorEvent, getConsultationIndicator, getDossierRequestsCount } from '@/lib/visitorTracking';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { CallbackModal } from '@/components/CallbackModal';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -51,6 +51,7 @@ export default function FicheMarchePage() {
   const [candidates, setCandidates] = useState<ApiSiretCandidate[]>([]);
   const [editing, setEditing] = useState(false);
   const [consult, setConsult] = useState<string | null>(null);
+  const [dossiers, setDossiers] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
   const [apptOpen, setApptOpen] = useState(false);
@@ -71,6 +72,7 @@ export default function FicheMarchePage() {
     opportunitiesApi.getById(id).then(o => { if (live) setOpp(o); }).catch(() => live && setLoadError(true));
     siretApi.status(sessionId).then(s => { if (live) setStatus(s); }).catch(() => {});
     getConsultationIndicator(id).then(v => { if (live) setConsult(v && (v.value ?? 2) >= 2 ? v.label : null); });
+    getDossierRequestsCount(id).then(n => { if (live) setDossiers(n); });
     try { setSaved((JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') as { id: string }[]).some(s => s.id === id)); } catch { setSaved(false); }
     return () => { live = false; };
   }, [id, sessionId]);
@@ -333,6 +335,7 @@ export default function FicheMarchePage() {
           {([['Donneur d’ordre', opp.buyer_name || (opp.identity_unlocked === false ? 'Révélé après un rendez-vous' : 'Non précisé')], ['Lieu d’exécution', `${city}${dept}` || 'Non précisé'], ['Date limite', deadlineTxt], ['Montant', money(opp.estimated_value, opp.currency)], ['Lot', opp.trade_name || 'Non précisé'], ['Référence', opp.source_reference || 'Non précisée']] as const).map(([k, v]) => (
             <div key={k} className="flex flex-col"><dt className="text-[13px] text-[#B4C1D3]">{k}</dt><dd className="font-bold">{v}</dd></div>))}
         </dl>
+        {dossiers != null && dossiers >= 2 && <p className="text-[14px] text-[#D6E0EC]">{dossiers} dossiers préremplis demandés pour ce marché ces 7 derniers jours</p>}
         {(opp.ai_summary || sections?.presentation) && <div className="rounded-2xl border border-[#22385A] bg-[#12233A] p-4"><h3 className="mb-1 font-extrabold">Le marché en 30 secondes</h3><p className="text-[14px] text-[#D6E0EC]">{opp.ai_summary || sections?.presentation}</p></div>}
         {sections?.conditions && <Details title="Conditions et points à vérifier"><p className="whitespace-pre-line">{sections.conditions}</p></Details>}
         {sections?.presentation && <Details title="Informations techniques"><p className="whitespace-pre-line">{sections.presentation}</p></Details>}
