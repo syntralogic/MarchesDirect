@@ -183,3 +183,20 @@ export async function getDossierRequestsCount(opportunityId: string): Promise<nu
     return null;
   }
 }
+
+// utm_source / utm_campaign of the first page of the visit, kept for this browser session only (no consent-dependent
+// storage of personal data: just two short campaign labels). Sent with the requests so HubSpot can show where a lead came from.
+const UTM_KEY = 'md_utm';
+export function captureUtm(): void {
+  try {
+    if (sessionStorage.getItem(UTM_KEY)) return;
+    const q = new URLSearchParams(window.location.search);
+    const source = (q.get('utm_source') || '').trim().slice(0, 100);
+    const campaign = (q.get('utm_campaign') || '').trim().slice(0, 150);
+    if (source || campaign) sessionStorage.setItem(UTM_KEY, JSON.stringify({ utmSource: source || undefined, utmCampaign: campaign || undefined }));
+  } catch { /* storage unavailable: no source recorded */ }
+}
+export function getUtm(): { utmSource?: string; utmCampaign?: string } {
+  try { return JSON.parse(sessionStorage.getItem(UTM_KEY) || '{}'); } catch { return {}; }
+}
+if (typeof window !== 'undefined') captureUtm();
