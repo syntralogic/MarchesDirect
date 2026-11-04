@@ -431,6 +431,12 @@ export const opportunitiesApi = {
     return data;
   },
 
+  // Accueil v26 (1.5): real count of open markets, one query a day on the server (24 h cache). Throws on failure (503): the home page then hides the line.
+  getOpenToday: async () => {
+    const { data } = await apiClient.get<{ total: number; date: string }>('/opportunities/stats/open-today');
+    return data;
+  },
+
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;
