@@ -35,6 +35,11 @@ function Ring({ score }: { score: number | null | undefined }) {
 function Card({ c, score, withScore }: { c: RankedCard; score: number | null | undefined; withScore: boolean }) {
   const n = daysLeft(c.deadline);
   const dept = c.location_department ? ` (${c.location_department})` : '';
+  // Un acheteur réduit à son SIREN (« 110068012 ») n'aide pas le visiteur ;
+  // et quand l'acheteur et la ville sont le même libellé (« Mairie d'Izon ·
+  // Mairie d'Izon (33) »), on ne l'écrit qu'une fois.
+  const buyer = c.buyer_name && !/^\d{9,14}$/.test(c.buyer_name.trim()) ? c.buyer_name.trim() : null;
+  const place = c.location_city && c.location_city.trim() !== buyer ? `${c.location_city.trim()}${dept}` : dept.trim();
   return (
     <Link to={`/opportunites/${c.id}`} className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5 text-[#F2F5F9]">
       {withScore ? <Ring score={score} /> : <div className="flex w-[76px] shrink-0 flex-col items-center gap-1.5"><div className="flex h-[64px] w-[64px] items-center justify-center rounded-full border-4 border-[#1E3352] text-[15px] font-extrabold">— %</div><span className="text-center text-[12px] font-bold text-[#FB923C]">Voir mon %</span></div>}
@@ -44,8 +49,8 @@ function Card({ c, score, withScore }: { c: RankedCard; score: number | null | u
           {isClosingSoon(c.deadline) && <span className="rounded-full bg-[#3A2312] px-2 py-0.5 text-[#FDBA74]">Bientôt clos</span>}
         </div>
         <h3 className="line-clamp-3 text-[16px] font-extrabold leading-snug">{c.title}</h3>
-        <p className="text-[13px] text-[#B4C1D3]">{[c.buyer_name, `${c.location_city || ''}${dept}`.trim()].filter(Boolean).join(' · ')}</p>
-        <p className="text-[13px] text-[#D6E0EC]">Réponse avant le {formatDeadlineExact(c.deadline) || 'date non précisée'}{n != null && n >= 0 ? ` · J-${n}` : ''}</p>
+        <p className="text-[13px] text-[#B4C1D3]">{[buyer, place].filter(Boolean).join(' · ')}</p>
+        <p className="text-[13px] text-[#D6E0EC]">{formatDeadlineExact(c.deadline) ? `Réponse avant le ${formatDeadlineExact(c.deadline)}${n != null && n >= 0 ? ` · J-${n}` : ''}` : 'Date limite non précisée'}</p>
         <span className="text-[14px] font-bold text-[#FB923C]">Voir le marché ›</span>
       </div>
     </Link>
