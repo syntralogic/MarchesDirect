@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
 import { COPY, EMPTY_COORDS, formatPhone, leadMessage, loadCoords, saveCoords, validateCoords, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
@@ -19,9 +19,11 @@ function ElenaPhoto() {
 
 export default function QuestionPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { brandId } = useBrand();
   const idem = useIdempotency();
-  const [coords, setCoords] = useState<CoordValues>(() => ({ ...EMPTY_COORDS, ...loadCoords(), question: '' }));
+  // ?q= : question préremplie (ex. « Être prévenu » depuis la liste quand un type de marché est vide).
+  const [coords, setCoords] = useState<CoordValues>(() => ({ ...EMPTY_COORDS, ...loadCoords(), question: (params.get('q') || '').slice(0, 1000) }));
   const [errors, setErrors] = useState<CoordErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
