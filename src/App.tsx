@@ -14,6 +14,7 @@ import { BottomNav } from '@/components/BottomNav';
 import ConsentBanner from '@/components/ConsentBanner';
 
 import HomePage from '@/pages/HomePage';
+import QuestionPage from '@/pages/QuestionPage';
 import AppelsPage from '@/pages/AppelsPage';
 import MarchesPublicsPage from '@/pages/MarchesPublicsPage';
 import SousTraitancePage from '@/pages/SousTraitancePage';
@@ -27,8 +28,10 @@ import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
 import MiseEnRelationPage from '@/pages/sous-traitance/MiseEnRelationPage';
 import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
+import ListeMarchesPage from '@/pages/ListeMarchesPage';
 import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
+import FicheMarchePage from '@/pages/FicheMarchePage';
 import { OpportunityTransitionProvider } from '@/contexts/OpportunityTransitionContext';
 import BidWorkspacePage from '@/pages/BidWorkspacePage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
@@ -71,7 +74,9 @@ import { siteStatusApi } from '@/lib/apiClient';
 // Remounted for every announcement: no state (result, answers, company card) can leak from one fiche to the next.
 function KeyedOpportunityDetail() {
   const { id } = useParams<{ id: string }>();
-  return <OpportunityDetailPage key={id} />;
+  // Refonte v26 (écran 3). `?ancien=1` keeps the previous page reachable (dossier flow until screen 4 is rebuilt, and rollback).
+  const legacy = new URLSearchParams(useLocation().search).get('ancien') === '1';
+  return legacy ? <OpportunityDetailPage key={id} /> : <FicheMarchePage key={id} />;
 }
 
 function MaintenancePage({ message }: { message: string }) {
@@ -176,6 +181,7 @@ const App: React.FC = () => {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
+              <Route path="/question" element={<QuestionPage />} />
               <Route path="/appels-doffres" element={<AppelsPage />} />
               <Route path="/marches-publics" element={<MarchesPublicsPage />} />
               <Route path="/sous-traitance" element={<SousTraitancePage />} />
@@ -205,6 +211,7 @@ const App: React.FC = () => {
               <Route path="/sous-traitance/mise-en-relation" element={<RequireAuth><MiseEnRelationPage /></RequireAuth>} />
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
+              <Route path="/vos-marches" element={<ListeMarchesPage />} />
               <Route path="/parcours" element={<OpportunityJourneyPage />} />
               <Route path="/opportunites/:id" element={<PageErrorBoundary><KeyedOpportunityDetail /></PageErrorBoundary>} />
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />

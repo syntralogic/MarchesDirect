@@ -431,6 +431,12 @@ export const opportunitiesApi = {
     return data;
   },
 
+  // Accueil v26 (1.5): real count of open markets, one query a day on the server (24 h cache). Throws on failure (503): the home page then hides the line.
+  getOpenToday: async () => {
+    const { data } = await apiClient.get<{ total: number; date: string }>('/opportunities/stats/open-today');
+    return data;
+  },
+
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;
@@ -454,6 +460,16 @@ export const opportunitiesApi = {
     mode: 'slot' | 'callback'; slotLabel?: string; slotAt?: string;
   }): Promise<{ identityUnlocked: boolean; leadId: string }> => {
     const { data } = await apiClient.post(`/opportunities/${id}/request-access`, payload);
+    return data;
+  },
+  // Écran 2 « Vos marchés »: open markets of the identified company's trade and zone, WITHOUT percentages.
+  // 403 company_not_identified until a SIRET lookup is done for this session.
+  rankedCandidates: async (sessionId: string, zone?: string) => {
+    const { data } = await apiClient.get<{
+      items: { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null }[];
+      total: number; zone: string; reason?: 'trade_unknown';
+      company?: { name: string | null; activity: string | null; city: string | null; department: string | null };
+    }>('/opportunities/ranked/candidates', { params: { sessionId, ...(zone ? { zone } : {}) } });
     return data;
   },
   getMatchScore: async (id: string, sessionId?: string, answers?: string): Promise<ApiMatchScore> => {
@@ -671,6 +687,11 @@ export const siretApi = {
     const { data } = await apiClient.get('/siret/status', { params: { sessionId } });
     return data;
   },
+  // Accueil v26 (1.2): métier deduced from the recognised company (APE + activity), most specific first. Empty list = unknown.
+  profile: async (sessionId: string): Promise<{ companyKnown: boolean; trades: { slug: string; name: string }[] }> => {
+    const { data } = await apiClient.get('/siret/profile', { params: { sessionId } });
+    return data;
+  },
   lookup: async (query: string, sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.post('/siret/lookup', { query, sessionId });
     return data;
@@ -684,10 +705,10 @@ export const siretApi = {
   // already seen the score/why-it-matches, gating the fuller breakdown.
   // opportunityId links the CRM lead to the specific opportunity being
   // viewed so the account manager knows why to call.
-  captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string, lot?: string | null): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
+  captureLead: async (phone: string, email: string | undefined, sessionId: string, opportunityId?: string, lot?: string | null): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
     // The visitor's "Préférences de contact" choice (if made before giving their details) travels with them.
     const contactMode = getStoredContactMode();
-    const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId, ...(lot ? { lot } : {}), ...(contactMode ? { contactMode } : {}) });
+    const { data } = await apiClient.post('/siret/lead', { phone, ...(email ? { email } : {}), sessionId, opportunityId, ...(lot ? { lot } : {}), ...(contactMode ? { contactMode } : {}), ...utmFromSession() });
     return data;
   },
   // 25 Sep audit, point 5: "Télécharger mon exemplaire" / "Me le renvoyer"
@@ -890,6 +911,11 @@ export const accountApi = {
 // this client sent snake_case, which meant every field except brandId/email
 // was silently dropped (landed as NULL) since Express never reads a body key
 // that doesn't match what the route destructures.
+// utm_source / utm_campaign captured by visitorTracking (read straight from the session: no import cycle).
+function utmFromSession(): { utmSource?: string; utmCampaign?: string } {
+  try { return JSON.parse(sessionStorage.getItem('md_utm') || '{}'); } catch { return {}; }
+}
+
 export const crmApi = {
   getAppointmentSlots: async (): Promise<{ timezone: string; days: { date: string; label: string; slots: { slotAt: string; time: string }[] }[] }> => {
     const { data } = await axios.get(`${API_URL}/api/opportunities/appointment-slots`, { timeout: 15000 });
@@ -913,7 +939,7 @@ export const crmApi = {
     opportunityId?: string;
     lotLabel?: string;
   }) => {
-    const { data } = await axios.post(`${API_URL}/api/crm/leads`, payload, {
+    const { data } = await axios.post(`${API_URL}/api/crm/leads`, { ...utmFromSession(), ...payload }, {
       headers: payload.idempotencyKey ? { 'Idempotency-Key': payload.idempotencyKey } : undefined,
       timeout: 20000,
     });

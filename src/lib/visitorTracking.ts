@@ -49,9 +49,15 @@ export type VisitorEventType =
   | 'dossier_preview'
   | 'dossier_requested'
   | 'callback_requested'
-  | 'appointment_booked';
+  | 'appointment_booked'
+  // Refonte v26 (écran 3): the "30 minutes offertes" invitation.
+  | 'invitation_30min_shown'
+  | 'invitation_30min_closed'
+  | 'invitation_30min_clicked'
+  // Refonte v26 (écran 2): the ranked list was shown.
+  | 'ranked_list_shown';
 
-export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request';
+export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request' | 'alert';
 
 // Returns a handler to attach to a <form onFocusCapture>: fires `form_started`
 // once per form instance, when the visitor first touches a field.
@@ -167,3 +173,32 @@ export async function getConsultationIndicator(opportunityId: string, lang: 'fr'
     return null;
   }
 }
+
+// Fiche marché 3.9: real number of prefilled dossiers requested on this market over 7 rolling days; null when unknown.
+export async function getDossierRequestsCount(opportunityId: string): Promise<number | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/visitor-events/dossier-requests/${opportunityId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data?.count === 'number' ? data.count : null;
+  } catch {
+    return null;
+  }
+}
+
+// utm_source / utm_campaign of the first page of the visit, kept for this browser session only (no consent-dependent
+// storage of personal data: just two short campaign labels). Sent with the requests so HubSpot can show where a lead came from.
+const UTM_KEY = 'md_utm';
+export function captureUtm(): void {
+  try {
+    if (sessionStorage.getItem(UTM_KEY)) return;
+    const q = new URLSearchParams(window.location.search);
+    const source = (q.get('utm_source') || '').trim().slice(0, 100);
+    const campaign = (q.get('utm_campaign') || '').trim().slice(0, 150);
+    if (source || campaign) sessionStorage.setItem(UTM_KEY, JSON.stringify({ utmSource: source || undefined, utmCampaign: campaign || undefined }));
+  } catch { /* storage unavailable: no source recorded */ }
+}
+export function getUtm(): { utmSource?: string; utmCampaign?: string } {
+  try { return JSON.parse(sessionStorage.getItem(UTM_KEY) || '{}'); } catch { return {}; }
+}
+if (typeof window !== 'undefined') captureUtm();
