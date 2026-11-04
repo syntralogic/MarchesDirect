@@ -677,6 +677,11 @@ export const siretApi = {
     const { data } = await apiClient.get('/siret/status', { params: { sessionId } });
     return data;
   },
+  // Accueil v26 (1.2): métier deduced from the recognised company (APE + activity), most specific first. Empty list = unknown.
+  profile: async (sessionId: string): Promise<{ companyKnown: boolean; trades: { slug: string; name: string }[] }> => {
+    const { data } = await apiClient.get('/siret/profile', { params: { sessionId } });
+    return data;
+  },
   lookup: async (query: string, sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.post('/siret/lookup', { query, sessionId });
     return data;

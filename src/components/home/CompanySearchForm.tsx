@@ -73,11 +73,16 @@ export const CompanySearchForm = forwardRef<CompanySearchHandle>(function Compan
     finally { setBusy(false); }
   };
 
-  const go = (s: ApiSiretStatus) => {
+  const go = async (s: ApiSiretStatus) => {
     // company_selected part ici : il peut donc précéder tout offer_view.
     trackVisitorEvent('company_selected', 'Entreprise sélectionnée', undefined, { siret: s.siret, source: 'accueil' });
-    // La liste classée (écran 2) n'existe pas encore : en attendant, la recherche existante s'ouvre sur la zone du siège.
+    // Métier déduit du code APE, zone déduite du siège : rien n'est redemandé.
+    // La liste classée (écran 2) n'existe pas encore : en attendant, la recherche existante s'ouvre sur ce métier et cette zone.
     const p = new URLSearchParams();
+    try {
+      const prof = await siretApi.profile(sessionId);
+      if (prof.trades[0]?.name) p.set('q', prof.trades[0].name);
+    } catch { /* métier inconnu : recherche par zone seule */ }
     const dept = deptFromPostal(s.company?.postal);
     if (dept) p.append('department', dept);
     p.set('status', 'all');
@@ -86,14 +91,14 @@ export const CompanySearchForm = forwardRef<CompanySearchHandle>(function Compan
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (known) { go(known); return; }
+    if (known) { setBusy(true); await go(known); setBusy(false); return; }
     const t = cleanQuery(q);
     if (t.length < 3) { setErr('Indiquez le nom de votre entreprise ou votre SIRET.'); return; }
     if (candidates.length) { setErr('Touchez votre entreprise dans la liste ci-dessus.'); return; }
     setBusy(true); setErr(null);
     try {
       const s = await siretApi.lookup(t, sessionId);
-      if (s.companyKnown) { setKnown(s); go(s); }
+      if (s.companyKnown) { setKnown(s); await go(s); }
       else if (s.candidates?.length) setCandidates(s.candidates.slice(0, 3));
       else setErr('Nous ne trouvons pas cette entreprise. Vérifiez le nom ou saisissez les 14 chiffres du SIRET.');
     } catch { setErr('La recherche n’a pas abouti. Réessayez dans un instant.'); }
