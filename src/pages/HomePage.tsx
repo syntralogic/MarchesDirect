@@ -1480,7 +1480,7 @@ export default function HomePage() {
         title="Marchés Direct — Marchés publics, appels d'offres privés et sous-traitance"
         description="Trouvez et candidatez aux marchés publics, appels d'offres privés et missions de sous-traitance partout en France. Analyse IA du DCE, scoring de compatibilité et génération de dossier."
       />
-      <MdHero onAppt={() => setAppointmentOpen(true)} />
+      <MdHero />
       <XhDemo onReserve={() => setAppointmentOpen(true)} />
       <SituationSection onAppt={() => setAppointmentOpen(true)} />
       <TestimonialsSection />
