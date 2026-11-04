@@ -1,22 +1,40 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Mail } from 'lucide-react';
 import { apiClient, tokenStorage, getApiErrorMessage } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLang } from '@/contexts/LangContext';
+import { BTN, LinkOutcome, NEXT_KEY, requestLink, useResendTimer, type LinkState } from '@/components/auth/MagicLinkShared';
 
-// Landing page for the link sent by POST /api/auth/magic-link (see
-// requestMagicLink in authService.ts, which points here:
-// `${APP_URL}/connexion/lien?token=...&email=...`). Until this page existed,
-// every magic-link / "recovery" email sent a real user to a 404 - this is
-// the other half of DEV-07 (no account-recovery path actually worked).
+// Page d'atterrissage du lien envoyé par POST /api/auth/magic-link
+// (`${APP_URL}/connexion/lien?token=...&email=...`). Le jeton est échangé
+// contre une session ; un compte est créé côté serveur si l'adresse était
+// inconnue. Lien expiré ou déjà utilisé : message précis et nouveau lien
+// en un geste, sans ressaisir l'adresse. Après connexion, retour à la page
+// demandée avant la connexion (même appareil), sinon le tableau de bord.
+
+type Code = 'invalid' | 'expired' | 'used' | undefined;
+
+const TITLE: Record<Exclude<Code, undefined>, string> = {
+  invalid: 'Ce lien de connexion est invalide',
+  expired: 'Ce lien a expiré',
+  used: 'Ce lien a déjà été utilisé',
+};
+const HINT: Record<Exclude<Code, undefined>, string> = {
+  invalid: 'Il est peut-être incomplet (copié à la main) ou ne correspond plus à cette adresse.',
+  expired: 'Un lien est valable 1 heure. Demandez-en un nouveau : il arrive en quelques secondes.',
+  used: 'Un lien ne sert qu’une fois. Si vous l’avez ouvert sur un autre appareil, vous y êtes déjà connecté. Sinon, demandez-en un nouveau.',
+};
+
 export default function MagicLinkPage() {
-  const { t } = useLang();
   const navigate = useNavigate();
   const { refreshProfile } = useAuth();
   const [params] = useSearchParams();
+  const email = params.get('email') || '';
   const [status, setStatus] = useState<'verifying' | 'error'>('verifying');
+  const [code, setCode] = useState<Code>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [link, setLink] = useState<LinkState>({ kind: 'idle' });
+  const resendLeft = useResendTimer(link.kind === 'sent');
   const ran = useRef(false);
 
   useEffect(() => {
@@ -24,48 +42,83 @@ export default function MagicLinkPage() {
     ran.current = true;
 
     const token = params.get('token');
-    const email = params.get('email');
     if (!token || !email) {
       setStatus('error');
-      setError(t('magicLinkMissing') || "Ce lien de connexion est incomplet.");
+      setCode('invalid');
+      setError('Ce lien de connexion est incomplet.');
       return;
     }
 
     (async () => {
       try {
         const { data } = await apiClient.post('/auth/magic-link/verify', { token, email });
+        if (data.mfaRequired) {
+          // Le lien prouve l'adresse, pas le second facteur : retour à la
+          // connexion où le code est demandé.
+          navigate('/connexion', { replace: true, state: { mfa: { token: data.mfaToken, userId: data.userId } } });
+          return;
+        }
         tokenStorage.setTokens(data.accessToken, data.refreshToken);
-        // Same reason LoginPage's MfaStep does this: AuthContext only loads
-        // the profile on mount, so without it the next protected route would
-        // bounce straight back to /connexion despite the tokens being valid.
+        // AuthContext only loads the profile on mount: without this the
+        // protected route we navigate to would bounce straight back to /connexion.
         await refreshProfile();
-        navigate('/tableau-de-bord', { replace: true });
+        let next = '';
+        try { next = sessionStorage.getItem(NEXT_KEY) || ''; sessionStorage.removeItem(NEXT_KEY); } catch { /* stockage indisponible */ }
+        navigate(next && next.startsWith('/') ? next : '/tableau-de-bord', { replace: true });
       } catch (err) {
+        const c = (err as { response?: { data?: { code?: Code } } })?.response?.data?.code;
         setStatus('error');
-        setError(getApiErrorMessage(err, t('magicLinkInvalid') || 'Ce lien de connexion est invalide ou a expiré.'));
+        setCode(c && c in TITLE ? c : 'invalid');
+        setError(getApiErrorMessage(err, 'Ce lien de connexion est invalide ou a expiré.'));
       }
     })();
-  }, [params, navigate, refreshProfile, t]);
+  }, [params, email, navigate, refreshProfile]);
 
+  const resend = async () => {
+    if (!email) return;
+    setLink({ kind: 'sending' });
+    setLink(await requestLink(email));
+  };
+
+  if (status === 'verifying') {
+    return (
+      <div className="page-fade-in mx-auto flex min-h-screen w-full max-w-[440px] flex-col items-center px-4 py-16 text-center text-white">
+        <Loader2 size={32} className="mb-4 animate-spin text-[#FB923C]" />
+        <p className="text-[17px] font-bold">Connexion en cours…</p>
+        <p className="mt-1 text-[14px] text-[#B4C1D3]">Un instant, nous ouvrons votre espace.</p>
+      </div>
+    );
+  }
+
+  const c = code || 'invalid';
   return (
-    <div className="page-fade-in max-w-sm mx-auto px-4 py-16 min-h-screen flex flex-col items-center text-center">
-      {status === 'verifying' ? (
-        <>
-          <Loader2 size={28} className="animate-spin text-orange mb-4" />
-          <p className="text-sm text-[#B9BBC8]">{t('magicLinkVerifying') || 'Connexion en cours...'}</p>
-        </>
-      ) : (
-        <>
-          <AlertCircle size={28} className="text-red-400 mb-4" />
-          <p className="text-sm text-white font-semibold mb-1">{error}</p>
-          <p className="text-xs text-[#B9BBC8] mb-6">
-            {t('magicLinkRetryHint') || 'Demandez un nouveau lien depuis la page de connexion.'}
-          </p>
-          <Link to="/connexion" className="text-orange font-semibold text-xs hover:underline">
-            {t('magicLinkBackToLogin') || 'Retour à la connexion'}
-          </Link>
-        </>
-      )}
+    <div className="page-fade-in mx-auto min-h-screen w-full max-w-[440px] px-4 py-8 text-white md:py-14">
+      <div className="mb-5">
+        <span className="mb-1 block text-[12px] font-bold uppercase tracking-widest text-[#FB923C]">Mon espace</span>
+        <h1 className="flex items-start gap-2 text-[24px] font-extrabold leading-tight md:text-[30px]"><AlertCircle size={26} className="mt-1 shrink-0 text-[#FB923C]" />{TITLE[c]}</h1>
+        <p className="mt-2 text-[15px] leading-snug text-[#D6E0EC]">{HINT[c]}</p>
+        {error && c === 'invalid' && <p className="mt-1 text-[13px] text-[#8A97A8]">{error}</p>}
+      </div>
+
+      <div className="rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-4 shadow-[0_18px_40px_rgba(0,0,0,.35)] md:p-5">
+        {link.kind === 'sent' || link.kind === 'paused' || link.kind === 'failed' ? (
+          <LinkOutcome state={link} resendLeft={resendLeft} onRetry={() => void resend()} onContinue={() => navigate('/')} />
+        ) : email ? (
+          <div className="space-y-3">
+            <p className="text-[15px] text-[#D6E0EC]">Nouveau lien pour <span className="font-bold text-white">{email}</span></p>
+            <button type="button" onClick={() => void resend()} disabled={link.kind === 'sending'} className={BTN}>
+              <Mail size={18} /> {link.kind === 'sending' ? 'Envoi en cours…' : 'Recevoir un nouveau lien'}
+            </button>
+            <Link to="/connexion" className="block w-full py-1 text-center text-[14px] font-bold text-[#FB923C] underline underline-offset-4">Utiliser une autre adresse</Link>
+          </div>
+        ) : (
+          <Link to="/connexion" className={BTN}>Demander un lien de connexion</Link>
+        )}
+      </div>
+
+      <p className="mt-5 text-center text-[14px] leading-snug text-[#B4C1D3]">
+        Aucun compte n'est nécessaire pour chercher vos marchés. <Link to="/" className="font-bold text-[#FB923C] underline underline-offset-4">Retour à l'accueil</Link>
+      </p>
     </div>
   );
 }

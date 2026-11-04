@@ -1,35 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, User } from 'lucide-react';
-import { useLang } from '@/contexts/LangContext';
-import { AppointmentModal } from '@/components/AppointmentModal';
-import { CallbackModal } from '@/components/CallbackModal';
+import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/NotificationBell';
+import { ELENA } from '@/data/homeContent';
 
+// 4 Nov (parcours v26/v27) : en-tête recentré sur le parcours réel.
+// Téléphone : logo, « Une question ? » (Elena), espace personnel, menu.
+// Ordinateur : navigation courte + bouton « Poser ma question ».
+// Les anciens liens par type de marché, la prise de rendez-vous en modale
+// et le sélecteur EN/FR (site français) ont été retirés de l'en-tête.
 const NAV_LINKS = [
-  { key: 'tenders', href: '/parcours?type=appels-doffres' },
-  { key: 'public', href: '/parcours?type=marches-publics' },
-  { key: 'subcontracting', href: '/parcours?type=sous-traitance' },
-  { key: 'howItWorks', href: '/how-it-works' },
-  { key: 'pricing', href: '/tarifs' },
-];
-
-const MOBILE_NAV_LINKS = [
-  { key: 'home', href: '/' },
-  { key: 'tenders', href: '/parcours?type=appels-doffres' },
-  { key: 'public', href: '/parcours?type=marches-publics' },
-  { key: 'subcontracting', href: '/parcours?type=sous-traitance' },
-  { key: 'howItWorks', href: '/how-it-works' },
-  { key: 'pricing', href: '/tarifs' },
+  { label: 'Accueil', href: '/' },
+  { label: 'Vos marchés', href: '/vos-marches' },
+  { label: 'Comment ça marche', href: '/how-it-works' },
+  { label: 'Qui sommes-nous ?', href: '/a-propos' },
+  { label: 'Notre équipe', href: '/equipe' },
 ];
 
 export function Header() {
-  const { lang, setLang, t } = useLang();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [appointmentOpen, setAppointmentOpen] = useState(false);
-  const [callbackOpen, setCallbackOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const space = isAuthenticated ? '/tableau-de-bord' : '/connexion';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -43,120 +37,90 @@ export function Header() {
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
 
   return (
-    <>
-      <header
-        className={`sticky top-0 z-40 w-full transition-all duration-200 ${
-          scrolled
-            ? 'bg-[#001326]/95 backdrop-blur-md border-b border-[#17334D]'
-            : 'bg-[#001326] border-b border-[#17334D]'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between h-14 md:h-16">
-            <Link to="/" className="flex items-center shrink-0">
-              <span className="text-lg md:text-xl font-bold tracking-tight">
-                <span className="text-white">Marchés</span>
-                <span className="text-orange"> Direct</span>
-              </span>
+    <header
+      className={`sticky top-0 z-40 w-full border-b border-[#1E3352] transition-all duration-200 ${
+        scrolled ? 'bg-[#0A1628]/95 backdrop-blur-md' : 'bg-[#0A1628]'
+      }`}
+    >
+      <div className="mx-auto max-w-[1100px] px-4 md:px-6">
+        <div className="flex h-14 items-center justify-between md:h-16">
+          <Link to="/" className="flex shrink-0 items-center" aria-label="Marchés Direct, accueil">
+            <span className="text-[19px] font-extrabold tracking-tight md:text-xl">
+              <span className="text-white">Marchés</span>
+              <span className="text-[#FB923C]"> Direct</span>
+            </span>
+          </Link>
+
+          <nav className="mx-6 hidden items-center gap-1 md:flex">
+            {NAV_LINKS.map(link => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className={`whitespace-nowrap rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors ${
+                  isActive(link.href) ? 'bg-[#F97316]/10 text-[#FB923C]' : 'text-[#D6E0EC] hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="hidden shrink-0 items-center gap-2 md:flex">
+            <Link to="/question" className="rounded-lg bg-[#F97316] px-4 py-2 text-[14px] font-bold text-white hover:bg-[#EA6A0E]">
+              Poser ma question
             </Link>
+            {isAuthenticated && <NotificationBell />}
+            <Link to={space} aria-label="Mon espace" className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[14px] font-semibold text-[#D6E0EC] hover:bg-white/5 hover:text-white">
+              <User size={18} /> Mon espace
+            </Link>
+          </div>
 
-            <nav className="hidden md:flex items-center gap-1 mx-6">
-              {NAV_LINKS.map(link => (
-                <Link
-                  key={link.key}
-                  to={link.href}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                    isActive(link.href)
-                      ? 'text-orange bg-orange/10'
-                      : 'text-[#B9BBC8] hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {t(link.key)}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="hidden md:flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors border border-[#17334D] hover:border-[#FF6500]/40"
-              >
-                {lang === 'fr' ? 'EN' : 'FR'}
-              </button>
-              <button
-                onClick={() => setAppointmentOpen(true)}
-                className="px-4 py-2 bg-orange text-white text-sm font-semibold rounded-lg hover:bg-orange/90 transition-colors"
-              >
-                {t('bookAppointment')}
-              </button>
-              <NotificationBell />
-              <Link to="/profil" aria-label={t('profile')} className="p-2 rounded-lg text-[#B9BBC8] hover:text-white hover:bg-white/5 transition-colors">
-                <User size={18} />
-              </Link>
-            </div>
-
-            <div className="flex md:hidden items-center gap-1">
-              {/* 4 Oct client mockup ("proposition-accueil-v2", marked AJOUT): a direct
-                  "Contactez-nous" link in the mobile header, next to the logo area. */}
-              <Link to="/contact" className="text-xs font-semibold text-white underline underline-offset-4 decoration-orange mr-1 whitespace-nowrap">
-                Contactez-nous
-              </Link>
-              <NotificationBell />
-              <button
-                onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-                className="px-2 py-1 rounded text-xs font-semibold text-[#B9BBC8] border border-[#17334D]"
-              >
-                {lang === 'fr' ? 'EN' : 'FR'}
-              </button>
-              <button
-                onClick={() => setMenuOpen(o => !o)}
-                className="p-2 rounded-lg text-[#B9BBC8] hover:text-white"
-                aria-label="Toggle menu"
-              >
-                {menuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-            </div>
+          <div className="flex items-center gap-1 md:hidden">
+            <Link to="/question" className="mr-1 whitespace-nowrap text-[13px] font-bold text-white underline decoration-[#F97316] underline-offset-4">
+              Une question ?
+            </Link>
+            {isAuthenticated && <NotificationBell />}
+            <Link to={space} aria-label="Mon espace" className="rounded-lg p-2 text-[#D6E0EC]">
+              <User size={21} />
+            </Link>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="rounded-lg p-2 text-[#D6E0EC]"
+              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
           </div>
         </div>
+      </div>
 
-        {menuOpen && (
-          <div className="md:hidden border-t border-[#17334D] bg-[#031B30]">
-            <nav className="px-4 py-4 space-y-1">
-              {MOBILE_NAV_LINKS.map(link => (
-                <Link
-                  key={link.key}
-                  to={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                    isActive(link.href)
-                      ? 'text-orange bg-orange/10'
-                      : 'text-[#B9BBC8] hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {t(link.key)}
-                </Link>
-              ))}
-              <div className="pt-3 border-t border-[#17334D] space-y-2">
-                <button
-                  onClick={() => { setMenuOpen(false); setAppointmentOpen(true); }}
-                  className="w-full bg-orange text-white font-semibold py-3 rounded-xl text-sm hover:bg-orange/90 transition-colors"
-                >
-                  {t('bookAppointment')}
-                </button>
-                <button
-                  onClick={() => { setMenuOpen(false); setCallbackOpen(true); }}
-                  className="w-full border border-orange text-orange font-semibold py-3 rounded-xl text-sm hover:bg-orange/10 transition-colors"
-                >
-                  {t('callBack')}
-                </button>
-              </div>
-            </nav>
-          </div>
-        )}
-      </header>
-
-      <AppointmentModal open={appointmentOpen} onClose={() => setAppointmentOpen(false)} />
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
-    </>
+      {menuOpen && (
+        <div className="border-t border-[#1E3352] bg-[#0A1628] md:hidden">
+          <nav className="space-y-1 px-4 py-4">
+            {NAV_LINKS.map(link => (
+              <Link
+                key={link.href}
+                to={link.href}
+                onClick={() => setMenuOpen(false)}
+                className={`flex items-center rounded-xl px-4 py-3 text-[16px] font-semibold ${
+                  isActive(link.href) ? 'bg-[#F97316]/10 text-[#FB923C]' : 'text-[#D6E0EC]'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="space-y-2 border-t border-[#1E3352] pt-3">
+              <Link to="/question" onClick={() => setMenuOpen(false)} className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#F97316] text-[16px] font-extrabold text-white">
+                Poser ma question à {ELENA.name.split(' ')[0]}
+              </Link>
+              <Link to={space} onClick={() => setMenuOpen(false)} className="flex min-h-[48px] w-full items-center justify-center rounded-xl border-2 border-[#2A4A74] text-[15px] font-bold text-white">
+                {isAuthenticated ? 'Mon espace' : 'Me connecter par e-mail'}
+              </Link>
+            </div>
+          </nav>
+        </div>
+      )}
+    </header>
   );
 }

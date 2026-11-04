@@ -1,34 +1,35 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, LayoutDashboard, User } from 'lucide-react';
-import { useLang } from '@/contexts/LangContext';
+import { Home, Search, MessageCircle, User } from 'lucide-react';
 
+// 4 Nov (parcours v26/v27) : la barre basse suit le parcours réel du site —
+// accueil, liste des marchés, question à Elena, espace personnel. Elle
+// renvoyait auparavant vers l'ancienne page de filtres (/recherche).
 const NAV_ITEMS = [
-  { key: 'navHome', href: '/', icon: Home },
-  { key: 'navSearch', href: '/recherche', icon: Search },
-  { key: 'navDashboard', href: '/tableau-de-bord', icon: LayoutDashboard },
-  { key: 'navProfile', href: '/profil', icon: User },
+  { label: 'Accueil', href: '/', icon: Home },
+  { label: 'Vos marchés', href: '/vos-marches', icon: Search },
+  { label: 'Une question', href: '/question', icon: MessageCircle },
+  { label: 'Mon espace', href: '/tableau-de-bord', icon: User },
 ];
 
 export function BottomNav() {
   const location = useLocation();
-  const { t } = useLang();
 
   const isActive = (href: string) =>
-    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
+    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href) || (href === '/tableau-de-bord' && (location.pathname.startsWith('/connexion') || location.pathname.startsWith('/profil')));
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#031B30] border-t border-[#17334D]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0A1628] border-t border-[#1E3352]">
       <div className="flex items-stretch h-16">
         {NAV_ITEMS.map(item => {
           const active = isActive(item.href);
           return (
-            <Link key={item.key} to={item.href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group">
+            <Link key={item.href} to={item.href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group">
               {active && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-orange rounded-full" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#F97316] rounded-full" />
               )}
-              <item.icon size={20} strokeWidth={active ? 2 : 1.5} className={active ? 'text-orange' : 'text-[#B9BBC8] group-hover:text-white transition-colors'} />
-              <span className={`text-[10px] font-medium ${active ? 'text-orange' : 'text-[#B9BBC8] group-hover:text-white transition-colors'}`}>
-                {t(item.key)}
+              <item.icon size={22} strokeWidth={active ? 2.2 : 1.7} className={active ? 'text-[#FB923C]' : 'text-[#B4C1D3]'} />
+              <span className={`text-[11px] font-bold ${active ? 'text-[#FB923C]' : 'text-[#B4C1D3]'}`}>
+                {item.label}
               </span>
             </Link>
           );
