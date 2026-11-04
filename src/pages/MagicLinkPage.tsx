@@ -102,7 +102,7 @@ export default function MagicLinkPage() {
         <span className="mb-1 block text-[12px] font-bold uppercase tracking-widest text-[#FB923C]">Mon espace</span>
         <h1 className="flex items-start gap-2 text-[24px] font-extrabold leading-tight md:text-[30px]"><AlertCircle size={26} className="mt-1 shrink-0 text-[#FB923C]" />{TITLE[c]}</h1>
         <p className="mt-2 text-[15px] leading-snug text-[#D6E0EC]">{HINT[c]}</p>
-        {error && c === 'invalid' && <p className="mt-1 text-[13px] text-[#8A97A8]">{error}</p>}
+        {error && c === 'invalid' && !/invalide/i.test(error) && <p className="mt-1 text-[13px] text-[#8A97A8]">{error}</p>}
       </div>
 
       <div className="rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-4 shadow-[0_18px_40px_rgba(0,0,0,.35)] md:p-5">
