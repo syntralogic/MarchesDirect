@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
 import { DEPARTMENTS } from '@/data/departments';
+import CompanyField from './CompanyField';
 import '@/styles/mdHero.css';
 
 // Hero de l'accueil, aligné sur la maquette client (Marches-Direct-conversion-v24) :
@@ -9,7 +10,12 @@ import '@/styles/mdHero.css';
 // filtres par type de marché et « Affiner ma recherche ». La recherche ouvre /recherche
 // avec les mêmes paramètres que le reste du site (q, department, journey, nature).
 
-type Mode = 'open' | 'proj';
+// Accueil, onglets : « Par entreprise » (par défaut) et « Recherche simple » (le formulaire métier + zone actuel).
+// Le sélecteur « Marchés ouverts / Futurs chantiers » a disparu (client, version 26). Les onglets ne s'affichent qu'avec
+// VITE_HOME_COMPANY_TAB=true (aperçu Vercel, puis « bascule » sur accord écrit de Hedi) : sans ce drapeau l'accueil garde
+// l'ancien parcours de recherche simple.
+type View = 'company' | 'simple';
+const COMPANY_TAB = import.meta.env.VITE_HOME_COMPANY_TAB === 'true';
 type TypeTab = 'all' | 'pub' | 'priv' | 'st';
 type Nature = 'travaux' | 'services' | 'fournitures';
 
@@ -26,13 +32,11 @@ const TXT = {
     title1: 'Trouvez votre prochain marché.', title2: 'Nous vous aidons à y répondre.',
     sub: 'Marchés publics, appels d’offres privés et sous-traitance, entre professionnels.',
     more: 'Un chargé d’affaires vous aide à préparer votre candidature.',
-    tablist: 'Type de recherche', tabOpen: 'Marchés ouverts', tabOpenD: 'Consultations en cours', tabProj: 'Futurs chantiers', tabProjD: 'Avant les appels d’offres',
+    tablist: 'Type de recherche', tabCompany: 'Par entreprise', tabCompanyD: 'Nom ou SIRET', tabSimple: 'Recherche simple', tabSimpleD: 'Métier et zone',
     job: 'Quel est votre métier ?', placeholder: 'Ex. : électricien, nettoyage…', zone: 'Dans quelle zone recherchez-vous ?', france: 'Toute la France',
     search: 'Rechercher des marchés', free: 'Consultation et analyse gratuites · sans inscription', small: 'Seul ou en équipe, trouvez des marchés à votre taille.',
     kind: 'Type de marché', all: 'Tous les marchés', pub: 'Marchés publics', priv: 'Appels d’offres privés', st: 'Sous-traitance',
     refine: 'Affiner ma recherche', hide: 'Masquer les filtres', nature: 'Nature', travaux: 'Travaux', services: 'Services', fournitures: 'Fournitures',
-    projT: 'Repérez les futurs chantiers avant la publication des appels d’offres.', projP: 'Projets repérés à partir des autorisations d’urbanisme publiées, avant l’ouverture des consultations.',
-    projN: 'Un projet détecté n’est ni une consultation ouverte, ni une recherche de prestataires confirmée.', projCta: 'Étudier un projet avec un chargé d’affaires',
     aiT: 'Ce marché est-il fait pour votre entreprise ?', aiP: 'Choisissez un marché, renseignez votre nom ou SIRET. Découvrez ce qui correspond, ce qu’il faut vérifier et comment préparer votre réponse.',
     s1: 'Un marché', s2: 'Votre entreprise', s3: 'Votre analyse gratuite',
   },
@@ -40,23 +44,21 @@ const TXT = {
     title1: 'Find your next contract.', title2: 'We help you win it.',
     sub: 'Public contracts, private tenders and subcontracting, between professionals.',
     more: 'A business advisor helps you prepare your bid.',
-    tablist: 'Search type', tabOpen: 'Open contracts', tabOpenD: 'Bids currently open', tabProj: 'Upcoming projects', tabProjD: 'Before tenders are published',
+    tablist: 'Search type', tabCompany: 'By company', tabCompanyD: 'Name or SIRET', tabSimple: 'Simple search', tabSimpleD: 'Trade and area',
     job: 'What is your trade?', placeholder: 'E.g. electrician, cleaning…', zone: 'Which area are you searching in?', france: 'All of France',
     search: 'Search contracts', free: 'Free review and analysis · no sign-up', small: 'Alone or in a team, find contracts that fit your size.',
     kind: 'Contract type', all: 'All contracts', pub: 'Public contracts', priv: 'Private tenders', st: 'Subcontracting',
     refine: 'Refine my search', hide: 'Hide filters', nature: 'Type of work', travaux: 'Works', services: 'Services', fournitures: 'Supplies',
-    projT: 'Spot upcoming projects before the tenders are published.', projP: 'Projects identified from published planning permits, before consultations open.',
-    projN: 'A detected project is neither an open consultation nor a confirmed search for contractors.', projCta: 'Review a project with a business advisor',
     aiT: 'Is this contract right for your business?', aiP: 'Choose a contract, enter your company name or SIRET number. See what matches, what to check and how to prepare your bid.',
     s1: 'A contract', s2: 'Your company', s3: 'Your free analysis',
   },
 } as const;
 
-export default function MdHero({ onAppt }: { onAppt: () => void }) {
+export default function MdHero() {
   const navigate = useNavigate();
   const { lang } = useLang();
   const T = TXT[lang === 'en' ? 'en' : 'fr'];
-  const [mode, setMode] = useState<Mode>('open');
+  const [view, setView] = useState<View>(COMPANY_TAB ? 'company' : 'simple');
   const [q, setQ] = useState('');
   const [dept, setDept] = useState('FR');
   const [tab, setTab] = useState<TypeTab>('all');
@@ -71,7 +73,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
   // libellés, des champs et du bouton (--hx-u, voir mdHero.css). Au-delà de 1,4 unité, le reste devient un espace (--hx-gap).
   useLayoutEffect(() => {
     const root = rootRef.current;
-    if (!root || mode !== 'open') return;
+    if (!root) return;
     let lastW = -1;
     const MAX_U = 1.4;
     const fit = () => {
@@ -113,7 +115,14 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
     window.addEventListener('orientationchange', fit);
     document.fonts?.ready.then(fit).catch(() => {});
     return () => { window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', fit); };
-  }, [mode, lang]);
+  }, [view, lang]);
+
+  // « Indiquer mon entreprise » (bas de l'accueil) : remonte au moteur, onglet « Par entreprise », focus dans le champ.
+  useEffect(() => {
+    const f = () => { setView('company'); window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => document.getElementById('mdhero-company')?.focus({ preventScroll: true }), 350); };
+    window.addEventListener('md:show-company', f);
+    return () => window.removeEventListener('md:show-company', f);
+  }, []);
 
   const doSearch = () => {
     const p = new URLSearchParams();
@@ -148,16 +157,18 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                 {T.sub}
               </p>
               <div className="hx-search">
-                <div role="tablist" aria-label={T.tablist} className="hx-tabs">
-                  <button role="tab" aria-selected={mode === 'open'} onClick={() => setMode('open')} className={mode === 'open' ? 'hx-tab hx-tab-on' : 'hx-tab'}>
-                    <span className="hx-tab-l">{T.tabOpen}</span><span className="hx-tab-d">{T.tabOpenD}</span>
-                  </button>
-                  <button role="tab" aria-selected={mode === 'proj'} onClick={() => setMode('proj')} className={mode === 'proj' ? 'hx-tab hx-tab-on' : 'hx-tab'}>
-                    <span className="hx-tab-l">{T.tabProj}</span><span className="hx-tab-d">{T.tabProjD}</span>
-                  </button>
-                </div>
+                {COMPANY_TAB && (
+                  <div role="tablist" aria-label={T.tablist} className="hx-tabs">
+                    <button role="tab" aria-selected={view === 'company'} onClick={() => setView('company')} className={view === 'company' ? 'hx-tab hx-tab-on' : 'hx-tab'}>
+                      <span className="hx-tab-l">{T.tabCompany}</span><span className="hx-tab-d">{T.tabCompanyD}</span>
+                    </button>
+                    <button role="tab" aria-selected={view === 'simple'} onClick={() => setView('simple')} className={view === 'simple' ? 'hx-tab hx-tab-on' : 'hx-tab'}>
+                      <span className="hx-tab-l">{T.tabSimple}</span><span className="hx-tab-d">{T.tabSimpleD}</span>
+                    </button>
+                  </div>
+                )}
                 <div className="hx-body">
-                  {mode === 'open' ? (
+                  {view === 'simple' ? (
                     <>
                       <label htmlFor="mdhero-q" className="hx-qlab2 hx-qlab-main">{T.job}</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -210,20 +221,7 @@ export default function MdHero({ onAppt }: { onAppt: () => void }) {
                       )}
                     </>
                   ) : (
-                    <>
-                      <div style={{ fontSize: 22, lineHeight: 1.2, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>
-                        {T.projT}
-                      </div>
-                      <p style={{ margin: '6px 0 0', fontSize: 16, color: '#CBD5E1' }}>
-                        {T.projP}
-                      </p>
-                      <p style={{ margin: '10px 0 0', fontSize: 14, color: '#94A3B8' }}>
-                        {T.projN}
-                      </p>
-                      <button className="btn btn-o" onClick={onAppt} style={{ marginTop: 14, minHeight: 52, borderRadius: 12 }}>
-                        {T.projCta}
-                      </button>
-                    </>
+                    <CompanyField />
                   )}
                 </div>
               </div>
