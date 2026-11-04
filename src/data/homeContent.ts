@@ -4,12 +4,15 @@
 export const ELENA = {
   name: 'Elena Popescu',
   role: 'Chargée de relation',
-  photo: null as string | null, // URL de la photo d'Elena, à fournir
+  photo: '/team/elena.jpg' as string | null, // vraie photo (déjà sur le site : page « Qui sommes-nous »)
 };
 
 export interface TeamMember { name: string; role: string; photo: string; bio: string }
 // Photos, prénoms et rôles de l'équipe, à fournir. Le bloc « Notre équipe » n'apparaît que si la photo d'Elena est fournie.
-export const TEAM: TeamMember[] = [];
+export const TEAM: TeamMember[] = [
+  { name: 'Maria Ferreira', role: 'Chargée d’affaires', photo: '/team/maria.jpg', bio: 'Référente marchés privés : elle prépare la candidature avec vous jusqu’au dépôt' },
+  { name: 'Bernard Delmas', role: 'Directeur général', photo: '/team/bernard.jpg', bio: 'Il valide chaque dossier avant son envoi' },
+];
 
 export interface VideoTestimonial { trade: string; result: string; who: string; duration: string; src: string; poster?: string }
 // Témoignages vidéo réels uniquement (60–90 s, sous-titrés). Liste vide = le bloc n'apparaît pas.

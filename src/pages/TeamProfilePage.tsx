@@ -46,7 +46,7 @@ const TEAM: TeamMember[] = [
   },
   {
     name: 'Elena Popescu',
-    role: 'Assistante de direction',
+    role: 'Chargée de relation',
     badge: 'Votre premier contact',
     description: 'Elena accueille votre demande, identifie votre besoin et organise votre premier échange avec l\'équipe.',
     strengthTitle: 'Son point fort',

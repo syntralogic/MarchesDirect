@@ -18,7 +18,7 @@ import mem6 from "@/assets/6.jpeg";
 
 const TEAM = [
   { name: 'Bernard Delmas', role: 'Directeur général', tagline: 'Pilotage stratégique', image: mem3 },
-  { name: 'Elena Popescu', role: 'Assistante de direction', tagline: 'Votre premier contact', image: mem1 },
+  { name: 'Elena Popescu', role: 'Chargée de relation', tagline: 'Votre premier contact', image: mem1 },
   { name: 'Maria Ferreira', role: 'Chargée d\'affaires', tagline: 'Référente marchés privés', image: mem2 },
   { name: 'Nicole Pisseron', role: 'Chargée d\'affaires', tagline: 'Référente préparation des offres', image: mem4 },
   { name: 'Emre Kaya', role: 'Chargé d\'affaires', tagline: 'Référent sous-traitance', image: mem5 },

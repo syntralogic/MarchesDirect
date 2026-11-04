@@ -1,6 +1,5 @@
-// Accueil v26 (maquette v26, écran 1). Ordre des blocs (fonctionnalités détaillées, 1.7) :
-// moteur (2 onglets) → Elena → compteur → trois étapes → six critères → accompagnement → équipe → témoignages
-// → questions → carte (chargée après le premier écran) → dernier appel. Le pied de page légal est celui du site.
+// Accueil v27 (mobile d'abord). Ordre : promesse courte + moteur (visible sans défiler) → carte de France →
+// trois étapes → accompagnement → équipe → témoignages → questions → dernier appel. Le pied de page est celui du site.
 // Retirés de l'accueil : « Marchés ouverts / Futurs chantiers », « Conseils et actualités ».
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -15,6 +14,9 @@ import { opportunitiesApi } from '@/lib/apiClient';
 
 const GeographicSection = lazy(() => import('@/components/home/GeographicSection'));
 const SAVED_KEY = 'md_saved_markets';
+// Champ clair sur carte sombre : le moteur doit ressortir du fond bleu nuit.
+export const FIELD = 'h-[54px] w-full rounded-xl border-2 border-[#C9D6E8] bg-white px-3.5 text-[16px] text-[#0A1628]';
+export const BTN = 'min-h-[56px] w-full rounded-[14px] bg-[#C2410C] px-4 py-2 text-[17px] font-extrabold text-white shadow-[0_6px_20px_rgba(194,65,12,.35)] disabled:opacity-70';
 
 const Eyebrow = ({ children }: { children: React.ReactNode }) => (
   <div className="text-[12px] font-bold uppercase tracking-[0.06em] text-[#FB923C]">{children}</div>
@@ -87,24 +89,23 @@ function SimpleSearch() {
   const [dept, setDept] = useState('FR');
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Recherche simple -> la liste v26 (cartes d'abord, sans pourcentage), jamais l'ancienne page de filtres.
     const p = new URLSearchParams();
     if (metier.trim()) p.set('q', metier.trim());
-    if (dept !== 'FR') p.append('department', dept);
-    p.set('status', 'all');
-    navigate(`/recherche?${p.toString()}`);
+    if (dept !== 'FR') p.set('department', dept);
+    navigate(`/vos-marches?${p.toString()}`);
   };
-  const field = 'h-[52px] w-full rounded-xl border border-[#2B4468] bg-[#0A1628] px-3.5 text-[16px] text-[#F2F5F9]';
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
-      <label htmlFor="md-metier" className="text-[14px] font-semibold">Votre métier</label>
-      <input id="md-metier" value={metier} onChange={e => setMetier(e.target.value)} placeholder="Ex. : nettoyage, peinture, sécurité, architecte…" className={`${field} placeholder:text-[#7F93AE]`} />
-      <label htmlFor="md-zone" className="text-[14px] font-semibold">Votre zone</label>
-      <select id="md-zone" value={dept} onChange={e => setDept(e.target.value)} className={field}>
+      <label htmlFor="md-metier" className="text-[15px] font-bold">Votre métier</label>
+      <input id="md-metier" value={metier} onChange={e => setMetier(e.target.value)} placeholder="Ex. : nettoyage, peinture, sécurité, architecte…" className={`${FIELD} placeholder:text-[#6B7A90]`} />
+      <label htmlFor="md-zone" className="text-[15px] font-bold">Votre zone</label>
+      <select id="md-zone" value={dept} onChange={e => setDept(e.target.value)} className={FIELD}>
         <option value="FR">Toute la France</option>
         {DEPARTMENTS.map(d => <option key={d.code} value={d.code}>{d.code} – {d.name}</option>)}
       </select>
-      <button type="submit" className="min-h-[54px] w-full rounded-[14px] bg-[#C2410C] px-4 py-2 text-[17px] font-extrabold text-white">Rechercher des marchés</button>
-      <p className="text-center text-[13px] text-[#FFE9DC]">Indiquez ensuite votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché</p>
+      <button type="submit" className={BTN}>Rechercher des marchés</button>
+      <p className="text-center text-[13px] text-[#B4C1D3]">Indiquez ensuite votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché</p>
     </form>
   );
 }
@@ -211,7 +212,8 @@ function Faq() {
   );
 }
 
-// 1.8 : la carte ne se charge (code et données) qu'à l'approche du bas de page, jamais avant le premier écran.
+// Carte juste sous le moteur : le code de la carte reste un morceau séparé (lazy) chargé après le premier rendu,
+// pour ne jamais retarder l'affichage du champ.
 function DeferredMap() {
   const ref = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
@@ -222,12 +224,12 @@ function DeferredMap() {
     const el = ref.current;
     if (!el || show) return;
     if (!('IntersectionObserver' in window)) { setShow(true); return; }
-    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { setShow(true); io.disconnect(); } }, { rootMargin: '300px 0px' });
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { setShow(true); io.disconnect(); } }, { rootMargin: '600px 0px' });
     io.observe(el);
     return () => io.disconnect();
   }, [show]);
   return (
-    <div ref={ref} className="-mx-4 min-h-[180px]">
+    <div ref={ref} className="min-h-[320px]">
       {show && (
         <Suspense fallback={<p className="px-4 text-[15px] text-[#B4C1D3]">Chargement de la carte…</p>}>
           <GeographicSection tab={geoTab} setTab={setGeoTab} selectedRegions={regions} setSelectedRegions={setRegions} selectedDepts={depts} setSelectedDepts={setDepts} />
@@ -248,7 +250,7 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     window.setTimeout(() => companyRef.current?.focus(), 300);
   };
-  const tabCls = (on: boolean) => `min-h-[44px] min-w-0 flex-1 rounded-[9px] px-1.5 text-center text-[14px] font-bold leading-tight ${on ? 'bg-[#3A2312] text-[#FB923C]' : 'text-[#B4C1D3]'}`;
+  const tabCls = (on: boolean) => `min-h-[46px] min-w-0 flex-1 rounded-[10px] px-1.5 text-center text-[15px] font-bold leading-tight transition-colors ${on ? 'bg-[#C2410C] text-white' : 'text-[#D6E0EC]'}`;
 
   return (
     <div className="page-fade-in">
@@ -256,106 +258,103 @@ export default function HomePage() {
         title="Marchés Direct — Les marchés faits pour votre entreprise"
         description="Indiquez le nom de votre entreprise ou son SIRET : nous trouvons les marchés publics et privés qui vous correspondent, et nous vous accompagnons jusqu’au dépôt."
       />
-      <main className="mx-auto flex w-full max-w-[560px] flex-col gap-8 bg-[#0A1628] px-4 pb-16 pt-4 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
-        <Block>
-          <Eyebrow>Artisans, TPE et PME · tous métiers</Eyebrow>
-          <h1 className="text-[25px] font-extrabold leading-tight">Les marchés faits pour votre entreprise, et une équipe pour y répondre.</h1>
-          <p className="text-[14px] text-[#B4C1D3]">Indiquez le nom de votre entreprise ou son SIRET : nous trouvons les marchés publics et privés qui vous correspondent, et nous vous accompagnons jusqu’au dépôt.</p>
-          <div className="flex flex-wrap gap-2 text-[13px] font-bold text-[#6EE7B7]">
-            <span className="rounded-full bg-[#123B2A] px-3 py-1.5">✓ Recherche et dossier prérempli gratuits</span>
-            <span className="rounded-full bg-[#123B2A] px-3 py-1.5">✓ Sans inscription</span>
-          </div>
-          <p className="text-[13px] text-[#B4C1D3]">Accompagnement à la candidature sur devis.</p>
-        </Block>
+      <main className="w-full bg-[#0A1628] pb-16 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
 
-        <section className="flex flex-col gap-4 rounded-[18px] border border-[#22385A] bg-[#12233A] p-[18px]">
-          <div role="tablist" aria-label="Mode de recherche" className="flex gap-1.5 rounded-xl border border-[#22385A] bg-[#0A1628] p-1">
-            <button type="button" role="tab" aria-selected={mode === 'company'} onClick={() => setMode('company')} className={tabCls(mode === 'company')}>Par entreprise</button>
-            <button type="button" role="tab" aria-selected={mode === 'simple'} onClick={() => setMode('simple')} className={tabCls(mode === 'simple')}>Recherche simple</button>
+        {/* ===== 1. PREMIER ÉCRAN : promesse courte + moteur. Rien d'autre avant le champ. ===== */}
+        <section className="mx-auto grid w-full max-w-[1100px] gap-5 px-4 pt-4 md:grid-cols-[1fr_1.15fr] md:items-start md:gap-10 md:px-6 md:pt-14">
+          <div className="flex flex-col gap-2 md:gap-4 md:pt-6">
+            <Eyebrow>Artisans, TPE et PME · tous métiers</Eyebrow>
+            <h1 className="text-[24px] font-extrabold leading-[1.15] md:text-[40px]">Trouvez les marchés adaptés à votre entreprise.</h1>
+            <p className="text-[15px] text-[#B4C1D3] md:text-[18px]">Découvrez vos marchés et faites le point avec notre équipe.</p>
           </div>
-          <div hidden={mode !== 'company'}><CompanySearchForm ref={companyRef} /></div>
-          {mode === 'simple' && <SimpleSearch />}
-          <SavedBanner />
-          <div className="flex items-start gap-3">
-            <ElenaAvatar />
-            <div>
-              <h3 className="text-[15px] font-bold">{ELENA.name} <span className="font-medium text-[#B4C1D3]">· {ELENA.role}</span></h3>
-              <p className="text-[15px] text-[#B4C1D3]">« Une question avant de commencer ? Je vous rappelle, de 9 h à 18 h. »{' '}
-                <Link to="/question" className="inline-flex min-h-[48px] items-center font-bold text-[#FB923C] underline">Poser ma question</Link>
+
+          <div className="flex flex-col gap-3">
+            <section aria-label="Rechercher des marchés" className="flex flex-col gap-4 rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-4 shadow-[0_12px_40px_rgba(0,0,0,.45)] md:p-6">
+              <div role="tablist" aria-label="Mode de recherche" className="flex gap-1.5 rounded-xl bg-[#0A1628] p-1">
+                <button type="button" role="tab" aria-selected={mode === 'company'} onClick={() => setMode('company')} className={tabCls(mode === 'company')}>Par entreprise</button>
+                <button type="button" role="tab" aria-selected={mode === 'simple'} onClick={() => setMode('simple')} className={tabCls(mode === 'simple')}>Par métier</button>
+              </div>
+              <div hidden={mode !== 'company'}><CompanySearchForm ref={companyRef} /></div>
+              {mode === 'simple' && <SimpleSearch />}
+              <SavedBanner />
+            </section>
+            <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-center text-[13px] font-bold text-[#6EE7B7]">
+              <span>✓ Gratuit</span><span>✓ Sans inscription</span><span>✓ Réponse immédiate</span>
+            </p>
+            <div className="flex items-center gap-3 px-1">
+              <ElenaAvatar size={44} />
+              <p className="text-[14px] text-[#B4C1D3]"><span className="font-bold text-[#F2F5F9]">{ELENA.name}</span>, {ELENA.role.toLowerCase()} · « Une question ? Je vous rappelle, de 9 h à 18 h. »{' '}
+                <Link to="/question" className="font-bold text-[#FB923C] underline">Poser ma question</Link>
               </p>
             </div>
           </div>
         </section>
 
-        <OpenCounter />
-        <p className="text-center text-[15px] text-[#B4C1D3]">Tous métiers : nettoyage, électricité, peinture, sécurité, architecture, énergie, maintenance, espaces verts, informatique… Marchés publics issus des publications officielles (BOAMP, JOUE) et marchés privés de nos partenaires, mis à jour chaque jour.</p>
-
-        <Block>
-          <Eyebrow>Comment ça marche</Eyebrow>
-          <h2 className="text-[21px] font-bold">Trois étapes, en quelques minutes</h2>
-          <ol className="flex flex-col gap-3 rounded-2xl border border-[#22385A] bg-[#0F1F35] p-4">
-            {[
-              ['Indiquez votre entreprise', 'Son nom ou son SIRET : nous l’identifions dans les registres officiels.'],
-              ['Comparez vos marchés', 'Chaque marché affiche son pourcentage de correspondance avec votre entreprise, analysé sur six critères.'],
-              ['Obtenez votre dossier prérempli', 'À votre nom, prêt tout de suite. Puis notre équipe vous rappelle pour préparer la suite avec vous.'],
-            ].map(([t, d], i) => (
-              <li key={t} className="flex gap-3">
-                <b className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#C2410C] text-[15px] font-extrabold text-white">{i + 1}</b>
-                <div><h3 className="text-[16px] font-bold">{t}</h3><p className="text-[15px] text-[#B4C1D3]">{d}</p></div>
-              </li>
-            ))}
-          </ol>
-        </Block>
-
-        <Block>
-          <Eyebrow>Le moteur de correspondance</Eyebrow>
-          <h2 className="text-[21px] font-bold">Six critères analysés sur chaque marché</h2>
-          <p className="text-[15px] text-[#B4C1D3]">Ce que demande l’acheteur, face à ce que nous savons de votre entreprise.</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[['Activité', 'Vos métiers face aux prestations demandées.'], ['Zone', 'Le lieu d’exécution face à votre secteur.'], ['Calendrier', 'Date limite, démarrage, durée.'], ['Moyens', 'Équipe et matériel nécessaires.'], ['Références', 'Chantiers similaires à présenter.'], ['Qualifications', 'Certifications, assurances, labels exigés.']].map(([t, d]) => (
-              <div key={t} className="rounded-xl border border-[#22385A] bg-[#12233A] p-3"><h3 className="text-[15px] font-bold">{t}</h3><p className="text-[14px] text-[#B4C1D3]">{d}</p></div>
-            ))}
-          </div>
-        </Block>
-
-        <Block>
-          <Eyebrow>Ce que nous faisons avec vous</Eyebrow>
-          <h2 className="text-[21px] font-bold">Vous n’êtes pas seul face au dossier</h2>
-          <div className="flex flex-col gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-4 text-[14px] text-[#D6E0EC]">
-            {[
-              ['Gratuit :', ' la recherche, le pourcentage par marché et votre dossier prérempli à votre nom.'],
-              ['Un premier échange offert de 30 minutes', ' pour faire le point sur le marché et sur votre entreprise.'],
-              ['Si vous le souhaitez, nous préparons la candidature avec vous :', ' formulaires, mémoire technique, dépôt. Sur devis, après l’échange.'],
-            ].map(([b, r]) => (
-              <div key={b} className="flex gap-2"><span className="font-bold text-[#6EE7B7]" aria-hidden>✓</span><span><strong>{b}</strong>{r}</span></div>
-            ))}
-          </div>
-        </Block>
-
-        {hasTeam && (
-          <Block>
-            <Eyebrow>Notre équipe</Eyebrow>
-            <h2 className="text-[21px] font-bold">De vraies personnes, du premier appel au dépôt</h2>
-            <div className="flex flex-col gap-3">
-              <div className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3"><ElenaAvatar size={64} /><div><h3 className="text-[16px] font-bold">{ELENA.name}</h3><p className="text-[15px] text-[#B4C1D3]">{ELENA.role}, votre premier contact. Elle vous rappelle, répond à vos questions et vous oriente vers la bonne personne.</p></div></div>
-              {TEAM.map(m => (
-                <div key={m.name} className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3"><img src={m.photo} alt={m.name} width={64} height={64} loading="lazy" className="h-16 w-16 shrink-0 rounded-full object-cover" /><div><h3 className="text-[16px] font-bold">{m.name}</h3><p className="text-[15px] text-[#B4C1D3]">{m.role}. {m.bio}</p></div></div>
-              ))}
-            </div>
-          </Block>
-        )}
-
-        <div className="-mx-4"><TestimonialsSection /></div>
-
-        <Faq />
-
-        <DeferredMap />
-
-        <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-5 text-center">
-          <h2 className="text-[21px] font-bold">Voyez les marchés qui vous correspondent</h2>
-          <button type="button" onClick={focusCompany} className="min-h-[54px] w-full rounded-[14px] bg-[#C2410C] px-4 py-2 text-[17px] font-extrabold text-white">Indiquer mon entreprise</button>
-          <button type="button" onClick={() => setCallbackOpen(true)} className="min-h-[48px] text-[15px] font-bold text-[#FB923C] underline">Vous préférez qu’on vous appelle ?</button>
+        {/* ===== 2. LA CARTE, juste sous le moteur : l'autre façon d'entrer, sans lire. ===== */}
+        <section className="mx-auto mt-10 w-full max-w-[1100px] px-4 md:px-6">
+          <Eyebrow>Ou explorez par zone</Eyebrow>
+          <h2 className="mt-1 text-[22px] font-extrabold leading-tight md:text-[28px]">Les marchés près de chez vous</h2>
+          <p className="mt-1 text-[15px] text-[#B4C1D3]">Touchez une région, un département ou une ville : les marchés ouverts s’affichent.</p>
+          <DeferredMap />
+          <OpenCounter />
         </section>
+
+        {/* ===== 3. COMPRENDRE, pour celui qui veut lire avant d'agir. Trois blocs courts, pas de cadres. ===== */}
+        <div className="mx-auto mt-12 flex w-full max-w-[720px] flex-col gap-12 px-4 md:px-6">
+          <Block>
+            <Eyebrow>Comment ça marche</Eyebrow>
+            <h2 className="text-[22px] font-extrabold leading-tight">Trois étapes, en quelques minutes</h2>
+            <ol className="mt-1 flex flex-col gap-4">
+              {[
+                ['Indiquez votre entreprise', 'Son nom ou son SIRET : nous l’identifions dans les registres officiels.'],
+                ['Comparez vos marchés', 'Chaque marché affiche son pourcentage de correspondance, analysé sur six critères : activité, zone, calendrier, moyens, références, qualifications.'],
+                ['Obtenez votre dossier prérempli', 'À votre nom, prêt tout de suite. Puis notre équipe vous rappelle pour préparer la suite avec vous.'],
+              ].map(([t, d], i) => (
+                <li key={t} className="flex gap-4">
+                  <b className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[#C2410C] text-[16px] font-extrabold text-white">{i + 1}</b>
+                  <div><h3 className="text-[17px] font-bold">{t}</h3><p className="mt-0.5 text-[15px] leading-relaxed text-[#B4C1D3]">{d}</p></div>
+                </li>
+              ))}
+            </ol>
+          </Block>
+
+          <Block>
+            <Eyebrow>Ce que nous faisons avec vous</Eyebrow>
+            <h2 className="text-[22px] font-extrabold leading-tight">Vous n’êtes pas seul face au dossier</h2>
+            <ul className="mt-1 flex flex-col gap-3 text-[15px] leading-relaxed text-[#D6E0EC]">
+              {[
+                ['Gratuit :', ' la recherche, le pourcentage par marché et votre dossier prérempli à votre nom.'],
+                ['Un premier échange offert de 30 minutes', ' pour faire le point sur le marché et sur votre entreprise.'],
+                ['Si vous le souhaitez, nous préparons la candidature avec vous :', ' formulaires, mémoire technique, dépôt.'],
+              ].map(([b, r]) => (
+                <li key={b} className="flex gap-3"><span className="mt-0.5 text-[18px] font-bold text-[#6EE7B7]" aria-hidden>✓</span><span><strong className="text-[#F2F5F9]">{b}</strong>{r}</span></li>
+              ))}
+            </ul>
+          </Block>
+
+          {hasTeam && (
+            <Block>
+              <Eyebrow>Notre équipe</Eyebrow>
+              <h2 className="text-[22px] font-extrabold leading-tight">De vraies personnes, du premier appel au dépôt</h2>
+              <div className="mt-1 flex flex-col gap-4">
+                <div className="flex items-center gap-4"><ElenaAvatar size={72} /><div><h3 className="text-[17px] font-bold">{ELENA.name}</h3><p className="text-[15px] text-[#B4C1D3]">{ELENA.role}, votre premier contact. Elle vous rappelle, répond à vos questions et vous oriente vers la bonne personne.</p></div></div>
+                {TEAM.map(m => (
+                  <div key={m.name} className="flex items-center gap-4"><img src={m.photo} alt={m.name} width={72} height={72} loading="lazy" className="h-[72px] w-[72px] shrink-0 rounded-full object-cover" /><div><h3 className="text-[17px] font-bold">{m.name}</h3><p className="text-[15px] text-[#B4C1D3]">{m.role}. {m.bio}</p></div></div>
+                ))}
+              </div>
+            </Block>
+          )}
+
+          <div className="-mx-4 md:-mx-6"><TestimonialsSection /></div>
+
+          <Faq />
+
+          <section className="flex flex-col items-center gap-3 rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-5 text-center">
+            <h2 className="text-[22px] font-extrabold leading-tight">Voyez les marchés qui vous correspondent</h2>
+            <button type="button" onClick={focusCompany} className={BTN}>Indiquer mon entreprise</button>
+            <button type="button" onClick={() => setCallbackOpen(true)} className="min-h-[48px] text-[15px] font-bold text-[#FB923C] underline">Vous préférez qu’on vous appelle ?</button>
+          </section>
+        </div>
       </main>
       <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
