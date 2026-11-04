@@ -269,8 +269,8 @@ export default function HomePage() {
             <h2 className="text-[21px] font-bold">Des entrepreneurs racontent leur candidature</h2>
             {VIDEO_TESTIMONIALS.map(v => (
               <figure key={v.src} className="flex flex-col gap-2">
-                <video controls preload="none" poster={v.poster} src={v.src} className="w-full rounded-2xl bg-[#12233A]" />
-                <figcaption className="text-[15px]"><span className="rounded-full bg-[#1E3352] px-2.5 py-1 text-[13px] font-semibold text-[#D6E0EC]">{v.trade}</span><strong className="mt-1 block text-[17px]">{v.result}</strong><span className="text-[#B4C1D3]">{v.who} · {v.duration} · sous-titré</span></figcaption>
+                <video controls preload="none" playsInline poster={v.poster} src={v.src} className="w-full rounded-2xl bg-[#12233A]" />
+                <figcaption className="text-[15px]"><span className="rounded-full bg-[#1E3352] px-2.5 py-1 text-[13px] font-semibold text-[#D6E0EC]">{v.trade}</span><strong className="mt-1 block text-[17px]">{v.result}</strong><span className="text-[#B4C1D3]">{v.who} · {v.duration}{v.subtitled ? ' · sous-titré' : ''}</span></figcaption>
               </figure>
             ))}
           </Block>
