@@ -1,7 +1,7 @@
 import { PageErrorBoundary } from '@/components/PageErrorBoundary';
 import NotFound from '@/pages/NotFound';
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigationType, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useParams } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
@@ -49,7 +49,6 @@ import CguPage from '@/pages/CguPage';
 import ContactPage from '@/pages/ContactPage';
 import LoginPage from '@/pages/LoginPage';
 import MagicLinkPage from '@/pages/MagicLinkPage';
-import SignupPage from '@/pages/SignupPage';
 import { RequireAuth } from '@/components/common/RequireAuth';
 
 import AdminDashboard from '@/pages/AdminDashboard';
@@ -90,6 +89,11 @@ function MaintenancePage({ message }: { message: string }) {
       </div>
     </div>
   );
+}
+
+function InscriptionRedirect() {
+  const location = useLocation();
+  return <Navigate to="/connexion" replace state={location.state} />;
 }
 
 function AppLayout({ children }: { children: React.ReactNode }) {
@@ -238,7 +242,8 @@ const App: React.FC = () => {
 
               <Route path="/connexion" element={<LoginPage />} />
               <Route path="/connexion/lien" element={<MagicLinkPage />} />
-              <Route path="/inscription" element={<SignupPage />} />
+              {/* 4 Nov : plus de mot de passe. L'inscription passe par le lien magique (/connexion), le compte est créé à l'ouverture du lien. */}
+              <Route path="/inscription" element={<InscriptionRedirect />} />
 
               {/* Admin Routes */}
               <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
