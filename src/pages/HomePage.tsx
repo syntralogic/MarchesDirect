@@ -4,11 +4,13 @@
 // Retirés de l'accueil : « Marchés ouverts / Futurs chantiers », « Conseils et actualités ».
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import DemoVideoModal from '@/components/DemoVideoModal';
 import PageMeta from '@/components/common/PageMeta';
 import { CallbackModal } from '@/components/CallbackModal';
 import { CompanySearchForm, type CompanySearchHandle } from '@/components/home/CompanySearchForm';
 import { DEPARTMENTS } from '@/data/departments';
-import { ELENA, TEAM, VIDEO_TESTIMONIALS } from '@/data/homeContent';
+import { ELENA, TEAM } from '@/data/homeContent';
 import { opportunitiesApi } from '@/lib/apiClient';
 
 const GeographicSection = lazy(() => import('@/components/home/GeographicSection'));
@@ -107,6 +109,86 @@ function SimpleSearch() {
   );
 }
 
+// Bloc témoignages : copie EXACTE de l'accueil actuel (vignette, flèches, « Témoignage 1 sur 2 », lecteur en fenêtre au clic).
+function TestimonialsSection() {
+  // 30 Sep, client over WhatsApp: "Ca c'est la 1ere video temoignage avec la
+  // miniature ... En tout il y aura 8 video temoignage." 4 Oct: 2nd video (Nico,
+  // gérant chauffage & climatisation) added. The clips are NOT chained: the
+  // visitor moves from one thumbnail to the next with the arrows, and a video
+  // only plays when its own thumbnail is tapped ("Non du tout - tu as une
+  // flèche pour aller à la miniature suivante"). Adding a clip = one more entry
+  // in this array (+ its .mp4 and .jpeg in public/testimonials).
+  const slides = [
+    {
+      title: '10 mois de planning rempli — Bordeaux Élec.',
+      image: '/testimonials/temoignage-didier-bourdon.jpeg',
+      alt: 'Témoignage client : Didier Bourdon, directeur de Bordeaux Élec, 10 mois de planning rempli',
+      videoUrl: '/testimonials/temoignage-didier-bourdon.mp4',
+    },
+    {
+      title: 'Nico — gérant, chauffage & climatisation.',
+      image: '/testimonials/temoignage-nico.jpeg',
+      alt: 'Témoignage client : Nico, gérant dans le chauffage et la climatisation',
+      videoUrl: '/testimonials/temoignage-nico.mp4',
+    },
+  ];
+  const [i, setI] = useState(0);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const slide = slides[i];
+  const arrow = 'w-9 h-9 shrink-0 rounded-full border border-[#17334D] bg-[#061D32] flex items-center justify-center text-[#B9BBC8] hover:text-orange hover:border-orange/50 transition-colors';
+  return (
+    <section id="mdh-temoignages" className="scroll-mt-16 px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
+      <span className="text-[11px] font-bold text-orange uppercase tracking-widest">
+        Leur expérience, avec leurs mots
+      </span>
+      <h2 className="text-xl md:text-2xl font-bold text-white mt-1 mb-3 leading-tight">
+        Des entrepreneurs racontent leur candidature.
+      </h2>
+
+      {/* 4 Oct, client: "Réduire la taille car ça prend trop de place ... comme la
+          partie démo niveau taille". The portrait thumbnail is now capped in height
+          (about the height of the demo thumbnail just above) and the arrows sit
+          on each side of it instead of on a row of their own. */}
+      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-3 md:p-4">
+        {/* 4 Oct (evening), client: the video block looked small, with empty space on
+            both sides. The thumbnail is larger (width-driven, portrait ratio kept) and
+            the arrows now sit over its left/right edges instead of taking room beside it. */}
+        <div className="relative mx-auto w-full max-w-[300px] md:max-w-[380px]">
+          <button
+            onClick={() => setVideoOpen(true)}
+            className="relative rounded-xl border border-[#17334D] overflow-hidden block group w-full"
+            aria-label={`Lire la vidéo : ${slide.title}`}
+          >
+            <img src={slide.image} alt={slide.alt} loading="lazy" className="w-full h-auto block" />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+              <span className="w-12 h-12 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                <PlayCircle size={24} className="text-white" />
+              </span>
+            </span>
+          </button>
+          {slides.length > 1 && (
+            <>
+              <button onClick={() => setI((i - 1 + slides.length) % slides.length)} className={`${arrow} absolute left-2 top-1/2 -translate-y-1/2 bg-[#061D32]/85`} aria-label="Témoignage précédent">
+                <ChevronLeft size={16} />
+              </button>
+              <button onClick={() => setI((i + 1) % slides.length)} className={`${arrow} absolute right-2 top-1/2 -translate-y-1/2 bg-[#061D32]/85`} aria-label="Témoignage suivant">
+                <ChevronRight size={16} />
+              </button>
+            </>
+          )}
+        </div>
+        {slides.length > 1 && (
+          <p className="text-[11px] text-[#B9BBC8] text-center mt-2">
+            Témoignage {i + 1} sur {slides.length}
+          </p>
+        )}
+      </div>
+
+      <DemoVideoModal open={videoOpen} onClose={() => setVideoOpen(false)} videoUrl={slide.videoUrl || ''} title={slide.title} />
+    </section>
+  );
+}
+
 function Faq() {
   const items: [string, string][] = [
     ['Qu’est-ce qui est gratuit ?', 'La recherche, le pourcentage par marché, le premier échange de 30 minutes et votre dossier prérempli. L’accompagnement à la candidature (mémoire technique, formulaires, dépôt) est sur devis, présenté lors de cet échange. Vous décidez ensuite.'],
@@ -133,7 +215,7 @@ function Faq() {
 function DeferredMap() {
   const ref = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
-  const [geoTab, setGeoTab] = useState<'regions' | 'departments' | 'cities'>('departments');
+  const [geoTab, setGeoTab] = useState<'regions' | 'departments' | 'cities'>('regions');
   const [regions, setRegions] = useState<{ code: string; nom: string }[]>([]);
   const [depts, setDepts] = useState<{ code: string; nom: string }[]>([]);
   useEffect(() => {
@@ -166,7 +248,7 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     window.setTimeout(() => companyRef.current?.focus(), 300);
   };
-  const tabCls = (on: boolean) => `min-h-[44px] flex-1 whitespace-nowrap rounded-[9px] px-2 text-[14px] font-bold ${on ? 'bg-[#3A2312] text-[#FB923C]' : 'text-[#B4C1D3]'}`;
+  const tabCls = (on: boolean) => `min-h-[44px] min-w-0 flex-1 rounded-[9px] px-1.5 text-center text-[14px] font-bold leading-tight ${on ? 'bg-[#3A2312] text-[#FB923C]' : 'text-[#B4C1D3]'}`;
 
   return (
     <div className="page-fade-in">
@@ -263,26 +345,11 @@ export default function HomePage() {
           </Block>
         )}
 
-        {VIDEO_TESTIMONIALS.length > 0 && (
-          <Block>
-            <Eyebrow>Leur expérience, avec leurs mots</Eyebrow>
-            <h2 className="text-[21px] font-bold">Des entrepreneurs racontent leur candidature</h2>
-            {VIDEO_TESTIMONIALS.map(v => (
-              <figure key={v.src} className="flex flex-col gap-2">
-                <video controls preload="none" playsInline poster={v.poster} src={v.src} className="w-full rounded-2xl bg-[#12233A]" />
-                <figcaption className="text-[15px]"><span className="rounded-full bg-[#1E3352] px-2.5 py-1 text-[13px] font-semibold text-[#D6E0EC]">{v.trade}</span><strong className="mt-1 block text-[17px]">{v.result}</strong><span className="text-[#B4C1D3]">{v.who} · {v.duration}{v.subtitled ? ' · sous-titré' : ''}</span></figcaption>
-              </figure>
-            ))}
-          </Block>
-        )}
+        <div className="-mx-4"><TestimonialsSection /></div>
 
         <Faq />
 
-        <Block>
-          <Eyebrow>Vous préférez regarder par département ?</Eyebrow>
-          <h2 className="text-[19px] font-bold">Explorer la carte des marchés</h2>
-          <DeferredMap />
-        </Block>
+        <DeferredMap />
 
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-5 text-center">
           <h2 className="text-[21px] font-bold">Voyez les marchés qui vous correspondent</h2>

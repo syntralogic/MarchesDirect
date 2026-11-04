@@ -603,8 +603,14 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
   };
 
   return (
-    <section id="mdh-zones" className="scroll-mt-16 px-4 md:px-6 py-2 max-w-3xl mx-auto w-full">
-      <p className="text-[#B4C1D3] text-[15px] mb-4">Touchez un département pour voir ses marchés ouverts.</p>
+    <section id="mdh-zones" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
+      <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('nearYou')}</span>
+      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">
+        Des opportunités partout en France.
+      </h2>
+      <p className="text-[#B9BBC8] text-sm mb-5">
+        Explorez les marchés par région, département ou ville, puis précisez votre métier.
+      </p>
 
       <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-5">
         <div className="grid grid-cols-3 gap-1 border border-[#17334D] rounded-xl p-1 w-full mb-4">
@@ -612,7 +618,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
             <button
               key={k}
               onClick={() => { setTab(k); setSearch(''); }}
-              className={`min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                 tab === k ? 'bg-orange/15 text-orange border border-orange' : 'text-[#B9BBC8] hover:text-white border border-transparent'
               }`}
             >
@@ -623,7 +629,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
 
         {tab !== 'cities' ? (
           <>
-            <label className="block text-[14px] text-[#B9BBC8] mb-2">
+            <label className="block text-xs text-[#B9BBC8] mb-2">
               {tab === 'regions' ? 'Rechercher une région' : 'Rechercher un département'}
             </label>
             <div className="flex gap-2 mb-3">
@@ -655,7 +661,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
                 <ArrowRight size={18} />
               </button>
             </div>
-            <p className="text-[13px] text-[#B9BBC8] flex items-center gap-1.5 mb-3">
+            <p className="text-[11px] text-[#B9BBC8] flex items-center gap-1.5 mb-3">
               <MousePointerClick size={12} /> Sélectionnez une région sur la carte ou dans la recherche.
             </p>
 
@@ -663,7 +669,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
               {geoLoadError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
                   <AlertCircle size={20} className="text-red-400 mb-2" />
-                  <p className="text-[14px] text-[#B9BBC8]">Impossible de charger la carte. Rechargez la page.</p>
+                  <p className="text-xs text-[#B9BBC8]">Impossible de charger la carte. Rechargez la page.</p>
                 </div>
               ) : !regionsGeoJson || !departementsGeoJson ? (
                 <div className="w-full h-full flex items-center justify-center">
@@ -746,9 +752,9 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
               )}
 
               <div className="absolute top-3 right-3 flex flex-col gap-2">
-                <button onClick={() => setPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} className="w-11 h-11 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
-                <button onClick={() => setPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} className="w-11 h-11 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
-                <button onClick={() => setPosition({ coordinates: [2.4, 46.6], zoom: 1 })} className="w-11 h-11 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
+                <button onClick={() => setPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
+                <button onClick={() => setPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
+                <button onClick={() => setPosition({ coordinates: [2.4, 46.6], zoom: 1 })} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
               </div>
 
               {selectedCount > 0 && (
@@ -766,9 +772,9 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
                     return (
                       <div key={code || name || index} className="flex items-center justify-between gap-2 py-1 border-b border-[#17334D]/50 last:border-0">
                         <div className="min-w-0">
-                          <p className="text-[14px] font-semibold text-white truncate">{name}</p>
+                          <p className="text-xs font-semibold text-white truncate">{name}</p>
                           {count !== undefined && (
-                            <p className="text-[13px] text-orange font-medium">
+                            <p className="text-[10px] text-orange font-medium">
                               {count.toLocaleString('fr-FR')} {count > 1 ? 'opportunités disponibles' : 'opportunité disponible'}
                             </p>
                           )}
@@ -792,8 +798,8 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
                   })}
                   {selectedCount > 1 && (tab === 'regions' || tab === 'departments') && (
                     <div className="flex items-center justify-between gap-2 pt-1.5 mt-0.5 border-t border-[#17334D]">
-                      <p className="text-[13px] font-bold text-white">Total combiné</p>
-                      <p className="text-[13px] font-bold text-orange">
+                      <p className="text-[10px] font-bold text-white">Total combiné</p>
+                      <p className="text-[10px] font-bold text-orange">
                         {combinedSelectedTotal.toLocaleString('fr-FR')} {combinedSelectedTotal > 1 ? 'opportunités' : 'opportunité'}
                       </p>
                     </div>
@@ -802,7 +808,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
               )}
             </div>
 
-            <p className="text-[13px] text-[#B9BBC8] text-center mt-3">
+            <p className="text-[10px] text-[#B9BBC8] text-center mt-3">
               Contours régionaux : IGN / France GeoJSON
             </p>
 
@@ -827,7 +833,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
               <div className="mt-3 flex flex-col items-center text-center py-4">
                 <Globe size={26} className="text-orange mb-2" />
                 <p className="text-sm font-bold text-white">Sélectionnez une zone</p>
-                <p className="text-[14px] text-[#B9BBC8] mt-1">Touchez une région ou un département sur la carte.</p>
+                <p className="text-xs text-[#B9BBC8] mt-1">Touchez une région ou un département sur la carte.</p>
               </div>
             )}
           </>
@@ -852,7 +858,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
                 {cityLoading && <Loader2 size={14} className="animate-spin" />} Rechercher
               </button>
             </div>
-            <p className="text-[13px] text-[#B9BBC8] flex items-center gap-1.5 mb-3">
+            <p className="text-[11px] text-[#B9BBC8] flex items-center gap-1.5 mb-3">
               <MousePointerClick size={12} /> Touchez une ville sur la carte, ou zoomez pour en voir davantage.
             </p>
 
@@ -860,7 +866,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
               {geoLoadError ? (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
                   <AlertCircle size={20} className="text-red-400 mb-2" />
-                  <p className="text-[14px] text-[#B9BBC8]">Impossible de charger la carte. Rechargez la page.</p>
+                  <p className="text-xs text-[#B9BBC8]">Impossible de charger la carte. Rechargez la page.</p>
                 </div>
               ) : !regionsGeoJson ? (
                 <div className="w-full h-full flex items-center justify-center">
@@ -911,16 +917,16 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
               )}
 
               <div className="absolute top-3 right-3 flex flex-col gap-2">
-                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} aria-label="Zoomer" className="w-11 h-11 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
-                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} aria-label="Dézoomer" className="w-11 h-11 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
-                <button onClick={() => setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 })} aria-label="Recentrer la carte" className="w-11 h-11 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
+                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} aria-label="Zoomer" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
+                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} aria-label="Dézoomer" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
+                <button onClick={() => setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 })} aria-label="Recentrer la carte" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
               </div>
 
               <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-2.5 py-1.5">
-                <p className="text-[13px] font-semibold text-white">Niveau de zoom : {zoomLevelLabel}</p>
+                <p className="text-[10px] font-semibold text-white">Niveau de zoom : {zoomLevelLabel}</p>
               </div>
             </div>
-            <p className="text-[13px] text-[#B9BBC8] mb-3">Plus vous zoomez, plus les villes apparaissent.</p>
+            <p className="text-[11px] text-[#B9BBC8] mb-3">Plus vous zoomez, plus les villes apparaissent.</p>
 
             {cityLoading ? (
               <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-8 flex items-center justify-center">
@@ -930,12 +936,12 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
               <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-6 flex flex-col items-center text-center">
                 <Globe size={24} className="text-orange mb-2" />
                 <p className="text-sm font-bold text-white">Sélectionnez une ville</p>
-                <p className="text-[14px] text-[#B9BBC8] mt-1">Touchez une ville sur la carte ou lancez une recherche.</p>
+                <p className="text-xs text-[#B9BBC8] mt-1">Touchez une ville sur la carte ou lancez une recherche.</p>
               </div>
             ) : cityOpportunities.length === 0 ? (
               <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-6 text-center">
                 <p className="text-sm font-semibold text-white">{cityResult.name}</p>
-                <p className="text-[14px] text-[#B9BBC8] mt-1">
+                <p className="text-xs text-[#B9BBC8] mt-1">
                   {cityRadiusKm ? `Aucune opportunité dans un rayon de ${cityRadiusKm} km.` : 'Aucune opportunité pour le moment.'}
                 </p>
               </div>
@@ -947,7 +953,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
                     with no total and no way to reach the rest, and gave no
                     way to tell an open opportunity from an expired one. */}
                 <div className="flex items-center justify-between px-1">
-                  <p className="text-[14px] text-[#B9BBC8]">
+                  <p className="text-xs text-[#B9BBC8]">
                     <span className="text-orange font-semibold">{cityTotal}</span> opportunité{cityTotal !== 1 ? 's' : ''}{' '}
                     {cityRadiusKm ? `dans un rayon de ${cityRadiusKm} km autour de ${cityResult.name}` : `à ${cityResult.name}`}
                   </p>
@@ -957,7 +963,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
                         ? `/recherche?city=${encodeURIComponent(cityResult.name)}&lat=${cityApiCoords.lat}&lng=${cityApiCoords.lng}&radius_km=${cityRadiusKm ?? DEFAULT_CITY_RADIUS_KM}`
                         : `/recherche?city=${encodeURIComponent(cityResult.name)}`
                     }
-                    className="text-[13px] text-orange font-semibold hover:underline"
+                    className="text-[11px] text-orange font-semibold hover:underline"
                   >
                     Voir toutes les opportunités {cityRadiusKm ? `dans ces ${cityRadiusKm} km` : 'de cette ville'}
                   </Link>
@@ -972,7 +978,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
                           {opp.status === 'expired' ? 'Expirée' : opp.status === 'cancelled' ? 'Annulée' : opp.status === 'awarded' ? 'Attribuée' : 'Ouverte'}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-3 text-[13px] text-[#B9BBC8]">
+                      <div className="flex flex-wrap gap-3 text-[10px] text-[#B9BBC8]">
                         {opp.location_city && <span className="flex items-center gap-1"><MapPin size={10} /> {opp.location_city}</span>}
                         {opp.deadline && <span>{new Date(opp.deadline).toLocaleDateString('fr-FR')}</span>}
                       </div>
@@ -997,3 +1003,5 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
   );
 }
 
+// ---------------------------------------------------------------------------
+// BLOG ("Répondre à un marché : les premiers repères.")
