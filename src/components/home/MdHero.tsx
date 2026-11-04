@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLang } from '@/contexts/LangContext';
 import { useNavigate } from 'react-router-dom';
 import { DEPARTMENTS } from '@/data/departments';
+import CompanyField from './CompanyField';
 import '@/styles/mdHero.css';
 
 // Hero de l'accueil, aligné sur la maquette client (Marches-Direct-conversion-v24) :
@@ -11,8 +12,8 @@ import '@/styles/mdHero.css';
 
 // Accueil, onglets : « Par entreprise » (par défaut) et « Recherche simple » (le formulaire métier + zone actuel).
 // Le sélecteur « Marchés ouverts / Futurs chantiers » a disparu (client, version 26). Les onglets ne s'affichent qu'avec
-// VITE_HOME_COMPANY_TAB=true (aperçu Vercel) : sans ce drapeau l'accueil garde le seul formulaire de recherche simple,
-// tant que le champ « Nom de votre entreprise ou SIRET » n'est pas raccordé.
+// VITE_HOME_COMPANY_TAB=true (aperçu Vercel, puis « bascule » sur accord écrit de Hedi) : sans ce drapeau l'accueil garde
+// l'ancien parcours de recherche simple.
 type View = 'company' | 'simple';
 const COMPANY_TAB = import.meta.env.VITE_HOME_COMPANY_TAB === 'true';
 type TypeTab = 'all' | 'pub' | 'priv' | 'st';
@@ -31,7 +32,7 @@ const TXT = {
     title1: 'Trouvez votre prochain marché.', title2: 'Nous vous aidons à y répondre.',
     sub: 'Marchés publics, appels d’offres privés et sous-traitance, entre professionnels.',
     more: 'Un chargé d’affaires vous aide à préparer votre candidature.',
-    tablist: 'Type de recherche', tabCompany: 'Par entreprise', tabCompanyD: 'Nom ou SIRET', tabSimple: 'Recherche simple', tabSimpleD: 'Métier et zone', companyLab: 'Nom de votre entreprise ou SIRET', companySoon: 'Raccordement du champ en cours.',
+    tablist: 'Type de recherche', tabCompany: 'Par entreprise', tabCompanyD: 'Nom ou SIRET', tabSimple: 'Recherche simple', tabSimpleD: 'Métier et zone',
     job: 'Quel est votre métier ?', placeholder: 'Ex. : électricien, nettoyage…', zone: 'Dans quelle zone recherchez-vous ?', france: 'Toute la France',
     search: 'Rechercher des marchés', free: 'Consultation et analyse gratuites · sans inscription', small: 'Seul ou en équipe, trouvez des marchés à votre taille.',
     kind: 'Type de marché', all: 'Tous les marchés', pub: 'Marchés publics', priv: 'Appels d’offres privés', st: 'Sous-traitance',
@@ -43,7 +44,7 @@ const TXT = {
     title1: 'Find your next contract.', title2: 'We help you win it.',
     sub: 'Public contracts, private tenders and subcontracting, between professionals.',
     more: 'A business advisor helps you prepare your bid.',
-    tablist: 'Search type', tabCompany: 'By company', tabCompanyD: 'Name or SIRET', tabSimple: 'Simple search', tabSimpleD: 'Trade and area', companyLab: 'Your company name or SIRET', companySoon: 'Field being connected.',
+    tablist: 'Search type', tabCompany: 'By company', tabCompanyD: 'Name or SIRET', tabSimple: 'Simple search', tabSimpleD: 'Trade and area',
     job: 'What is your trade?', placeholder: 'E.g. electrician, cleaning…', zone: 'Which area are you searching in?', france: 'All of France',
     search: 'Search contracts', free: 'Free review and analysis · no sign-up', small: 'Alone or in a team, find contracts that fit your size.',
     kind: 'Contract type', all: 'All contracts', pub: 'Public contracts', priv: 'Private tenders', st: 'Subcontracting',
@@ -115,6 +116,13 @@ export default function MdHero() {
     document.fonts?.ready.then(fit).catch(() => {});
     return () => { window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', fit); };
   }, [view, lang]);
+
+  // « Indiquer mon entreprise » (bas de l'accueil) : remonte au moteur, onglet « Par entreprise », focus dans le champ.
+  useEffect(() => {
+    const f = () => { setView('company'); window.scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => document.getElementById('mdhero-company')?.focus({ preventScroll: true }), 350); };
+    window.addEventListener('md:show-company', f);
+    return () => window.removeEventListener('md:show-company', f);
+  }, []);
 
   const doSearch = () => {
     const p = new URLSearchParams();
@@ -213,10 +221,7 @@ export default function MdHero() {
                       )}
                     </>
                   ) : (
-                    <>
-                      <label className="hx-qlab2 hx-qlab-main">{T.companyLab}</label>
-                      <p style={{ margin: '6px 0 0', fontSize: 16, color: '#CBD5E1' }}>{T.companySoon}</p>
-                    </>
+                    <CompanyField />
                   )}
                 </div>
               </div>

@@ -666,6 +666,21 @@ export type ApiSiretStatus = {
 // Prototype V17 "reconnaissance d'entreprise" flow (see backend
 // routes/siret.ts). Session-scoped: companyKnown is a single flag per
 // browser, not per opportunity.
+// Home page (client brief v26): métier + zone deduced from the recognised company, and the daily open-markets count.
+export type ApiCompanySearchParams = { siret: string; profession: string; professionLabel: string; query: string | null; department: string | null };
+
+export const homeApi = {
+  companySearchParams: async (sessionId: string): Promise<ApiCompanySearchParams> => {
+    const { data } = await apiClient.get('/siret/search-params', { params: { sessionId } });
+    return data;
+  },
+  openMarketsCount: async (): Promise<number> => {
+    const { data } = await apiClient.get('/opportunities/stats/open-count');
+    if (typeof data?.count !== 'number') throw new Error('no count');
+    return data.count;
+  },
+};
+
 export const siretApi = {
   status: async (sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.get('/siret/status', { params: { sessionId } });

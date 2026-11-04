@@ -11,6 +11,7 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import DemoVideoModal from '@/components/DemoVideoModal';
 import XhDemo from '@/components/xh/XhDemo';
 import MdHero from '@/components/home/MdHero';
+import { HeroExtras, HowItWorksBlock, SixCriteriaBlock, NotAloneBlock, HomeFaq4, LazyOnView, BottomCta } from '@/components/home/HomeBlocks';
 import { CallbackModal } from '@/components/CallbackModal';
 import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
 import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
@@ -1456,6 +1457,10 @@ function FinalCTA({ onAppt, onCallback }: { onAppt: () => void; onCallback: () =
 // ---------------------------------------------------------------------------
 // HOME PAGE
 // ---------------------------------------------------------------------------
+// Bascule de l'accueil (client, méthode : fiche, coordonnées, liste, accueil, bascule) : le nouvel accueil n'est montré
+// qu'avec VITE_HOME_COMPANY_TAB=true. À activer en production seulement sur accord écrit de Hedi.
+const NEW_HOME = import.meta.env.VITE_HOME_COMPANY_TAB === 'true';
+
 export default function HomePage() {
   const [appointmentOpen, setAppointmentOpen] = useState(false);
   const [callbackOpen, setCallbackOpen] = useState(false);
@@ -1481,19 +1486,46 @@ export default function HomePage() {
         description="Trouvez et candidatez aux marchés publics, appels d'offres privés et missions de sous-traitance partout en France. Analyse IA du DCE, scoring de compatibilité et génération de dossier."
       />
       <MdHero />
-      <XhDemo onReserve={() => setAppointmentOpen(true)} />
-      <SituationSection onAppt={() => setAppointmentOpen(true)} />
-      <TestimonialsSection />
-      <TeamSection />
-      <GeographicSection
-        tab={geoTab} setTab={setGeoTab}
-        selectedRegions={selectedRegions} setSelectedRegions={setSelectedRegions}
-        selectedDepts={selectedDepts} setSelectedDepts={setSelectedDepts}
-      />
-      <BlogSection />
-      <PricingSection />
-      <HomeFaqSection />
-      <FinalCTA onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
+      {NEW_HOME ? (
+        <>
+          {/* Accueil « nouveau parcours » (maquette v26) : ordre des blocs fixé par le client. « Conseils et actualités » supprimé. */}
+          <HeroExtras onQuestion={() => setCallbackOpen(true)} />
+          <HowItWorksBlock />
+          <SixCriteriaBlock />
+          <NotAloneBlock />
+          <TeamSection />
+          <TestimonialsSection />
+          <HomeFaq4 />
+          <section className="px-4 md:px-6 py-5 md:py-8 max-w-5xl mx-auto w-full">
+            <span className="text-[11px] md:text-xs font-bold text-orange uppercase tracking-widest">Vous préférez regarder par département ?</span>
+            <h2 className="text-xl md:text-2xl font-bold text-white mt-1 mb-3 leading-tight">Explorer la carte des marchés</h2>
+            <LazyOnView minHeight={420}>
+              <GeographicSection
+                tab={geoTab} setTab={setGeoTab}
+                selectedRegions={selectedRegions} setSelectedRegions={setSelectedRegions}
+                selectedDepts={selectedDepts} setSelectedDepts={setSelectedDepts}
+              />
+            </LazyOnView>
+          </section>
+          <BottomCta onCallback={() => setCallbackOpen(true)} />
+        </>
+      ) : (
+        <>
+          <XhDemo onReserve={() => setAppointmentOpen(true)} />
+          <SituationSection onAppt={() => setAppointmentOpen(true)} />
+          <TestimonialsSection />
+          <TeamSection />
+          <GeographicSection
+            tab={geoTab} setTab={setGeoTab}
+            selectedRegions={selectedRegions} setSelectedRegions={setSelectedRegions}
+            selectedDepts={selectedDepts} setSelectedDepts={setSelectedDepts}
+          />
+          <BlogSection />
+          <PricingSection />
+          <HomeFaqSection />
+          <FinalCTA onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
+        </>
+      )}
       <AppointmentModal open={appointmentOpen} onClose={() => setAppointmentOpen(false)} />
       <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
