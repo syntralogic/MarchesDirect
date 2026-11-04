@@ -300,7 +300,7 @@ export default function HomePage() {
         </section>
 
         {/* ===== 3. COMPRENDRE, pour celui qui veut lire avant d'agir. Trois blocs courts, pas de cadres. ===== */}
-        <div className="mx-auto mt-12 flex w-full max-w-[720px] flex-col gap-12 px-4 md:px-6">
+        <div id="mdh-etapes" className="mx-auto mt-12 flex w-full max-w-[720px] scroll-mt-16 flex-col gap-12 px-4 md:px-6">
           <Block>
             <Eyebrow>Comment ça marche</Eyebrow>
             <h2 className="text-[22px] font-extrabold leading-tight">Trois étapes, en quelques minutes</h2>

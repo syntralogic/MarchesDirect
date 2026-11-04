@@ -1,191 +1,133 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Lock, LogIn, Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, tokenStorage } from '@/lib/apiClient';
 import { useLang } from '@/contexts/LangContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import { BTN, FIELD, LinkOutcome, NEXT_KEY, requestLink, useResendTimer, type LinkState } from '@/components/auth/MagicLinkShared';
+
+// 4 Nov (mandat lien magique) : la connexion se fait par e-mail seul.
+// Le visiteur saisit son adresse, reçoit un lien sécurisé (1 h, usage
+// unique) et son compte est créé à l'ouverture du lien s'il n'en a pas.
+// Règle absolue : on n'affiche « Lien envoyé » que si le serveur confirme
+// un envoi réel (`sent: true`). Envoi en pause → message honnête, et le
+// visiteur peut continuer sans compte (la recherche et le dossier n'en
+// exigent aucun). Le mot de passe reste disponible, replié, pour les
+// comptes qui en ont un (administration).
 
 export default function LoginPage() {
   const { t } = useLang();
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation() as { state?: { from?: string } };
+  const location = useLocation() as { state?: { from?: string; mfa?: { token: string; userId: string } } };
+  const [params] = useSearchParams();
+  const next = location.state?.from || params.get('next') || '';
+
   const [email, setEmail] = useState('');
+  const [link, setLink] = useState<LinkState>({ kind: 'idle' });
+  const resendLeft = useResendTimer(link.kind === 'sent');
+
+  const [withPassword, setWithPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [mfa, setMfa] = useState<{ token: string; userId: string } | null>(null);
-  // PAR-03 / DEV-07: no recovery entry existed on this page at all. The
-  // actual auth system now supports passwordless accounts (6 Sep brief -
-  // password_hash can be NULL), so "forgot password" is a magic-link email
-  // rather than a reset form - the one recovery path that works for every
-  // account regardless of whether it has a password set.
-  const [forgotMode, setForgotMode] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotSent, setForgotSent] = useState(false);
-  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [mfa, setMfa] = useState<{ token: string; userId: string } | null>(location.state?.mfa ?? null);
 
-  const handleSubmit = async (e: FormEvent) => {
+  // Où revenir après le lien (même appareil) : la page protégée demandée,
+  // ou la page d'où le visiteur vient.
+  useEffect(() => {
+    try { if (next) sessionStorage.setItem(NEXT_KEY, next); } catch { /* stockage indisponible */ }
+  }, [next]);
+
+  const done = () => navigate(next || '/tableau-de-bord', { replace: true });
+  const continueWithout = () => navigate(next && !next.startsWith('/tableau-de-bord') && !next.startsWith('/profil') ? next : '/');
+
+  const sendLink = async (e?: FormEvent) => {
+    e?.preventDefault();
+    const value = email.trim();
+    if (!value) return;
+    setLink({ kind: 'sending' });
+    setLink(await requestLink(value));
+  };
+
+  const handlePassword = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     const result = await login(email, password);
     setSubmitting(false);
-
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    if (result.mfaRequired && result.mfaToken && result.userId) {
-      setMfa({ token: result.mfaToken, userId: result.userId });
-      return;
-    }
-    navigate(location.state?.from || '/tableau-de-bord', { replace: true });
+    if (result.error) { setError(result.error); return; }
+    if (result.mfaRequired && result.mfaToken && result.userId) { setMfa({ token: result.mfaToken, userId: result.userId }); return; }
+    done();
   };
 
-  const handleForgotSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setForgotSubmitting(true);
-    try {
-      await apiClient.post('/auth/magic-link', { email: forgotEmail, purpose: 'login' });
-    } catch {
-      // Backend never reveals whether the email exists (see requestMagicLink's
-      // comment); show the same confirmation either way so the UI doesn't leak it.
-    } finally {
-      setForgotSubmitting(false);
-      setForgotSent(true);
-    }
-  };
+  return (
+    <div className="page-fade-in mx-auto min-h-screen w-full max-w-[440px] px-4 py-8 md:py-14 text-white">
+      <div className="mb-5">
+        <span className="mb-1 block text-[12px] font-bold uppercase tracking-widest text-[#FB923C]">Mon espace</span>
+        <h1 className="text-[24px] font-extrabold leading-tight md:text-[30px]">Recevez votre lien de connexion</h1>
+        <p className="mt-2 text-[15px] leading-snug text-[#D6E0EC]">Pas de mot de passe : indiquez votre e-mail, vous recevez un lien sécurisé valable 1 heure. Pas encore de compte ? Il est créé à l'ouverture du lien.</p>
+      </div>
 
-  if (forgotMode) {
-    return (
-      <div className="page-fade-in max-w-sm mx-auto px-4 py-10 md:py-16 min-h-screen">
-        <div className="mb-6">
-          <span className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1 block">{t('loginEyebrow') || 'Connexion'}</span>
-          <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">{t('loginForgotTitle') || 'Mot de passe oublié'}</h1>
-          <p className="text-[#B9BBC8] text-xs leading-snug">
-            {t('loginForgotSub') || 'Recevez un lien de connexion par e-mail, valable 1 heure.'}
-          </p>
-        </div>
-        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
-          {forgotSent ? (
-            <>
-              <div className="text-[11px] text-[#B9BBC8] bg-white/5 border border-[#17334D] rounded-lg px-3 py-2">
-                {t('loginForgotSent') || "Si un compte existe pour cette adresse, un lien de connexion vient d'être envoyé."}
-              </div>
-              <button
-                type="button"
-                onClick={() => { setForgotMode(false); setForgotSent(false); }}
-                className="w-full text-center text-orange font-semibold text-xs hover:underline py-1"
-              >
-                {t('loginForgotBack') || 'Retour à la connexion'}
+      {mfa ? (
+        <MfaStep mfaToken={mfa.token} onDone={done} />
+      ) : (
+        <div className="rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-4 shadow-[0_18px_40px_rgba(0,0,0,.35)] md:p-5">
+          {link.kind === 'sent' || link.kind === 'paused' || link.kind === 'failed' ? (
+            <LinkOutcome
+              state={link}
+              resendLeft={resendLeft}
+              onRetry={() => void sendLink()}
+              onFix={() => setLink({ kind: 'idle' })}
+              onContinue={continueWithout}
+            />
+          ) : !withPassword ? (
+            <form onSubmit={sendLink} className="space-y-3">
+              <label htmlFor="login-email" className="block text-[17px] font-extrabold">Votre e-mail</label>
+              <input
+                id="login-email"
+                type="email"
+                required
+                autoComplete="email"
+                inputMode="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className={FIELD}
+                placeholder="vous@entreprise.fr"
+              />
+              <button type="submit" disabled={link.kind === 'sending'} className={BTN}>
+                <Mail size={18} /> {link.kind === 'sending' ? 'Envoi en cours…' : 'Recevoir mon lien de connexion'}
               </button>
-            </>
+              <GoogleSignInButton onSuccess={done} onMfa={setMfa} onError={setError} />
+              {error && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[13px] text-red-300">{error}</div>}
+              <button type="button" onClick={() => setWithPassword(true)} className="w-full py-1 text-center text-[13px] font-semibold text-[#B4C1D3] underline underline-offset-4">
+                J'ai un mot de passe
+              </button>
+            </form>
           ) : (
-            <form onSubmit={handleForgotSubmit} className="space-y-4">
-              <div>
-                <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('loginEmail')}</label>
-                <div className="relative">
-                  <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-                  <input
-                    type="email"
-                    required
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-8 pr-3 py-2.5 text-xs text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
-                    placeholder="vous@entreprise.fr"
-                  />
-                </div>
+            <form onSubmit={handlePassword} className="space-y-3">
+              {error && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[13px] text-red-300">{error}</div>}
+              <label htmlFor="pw-email" className="block text-[17px] font-extrabold">Votre e-mail</label>
+              <input id="pw-email" type="email" required autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} className={FIELD} placeholder="vous@entreprise.fr" />
+              <label htmlFor="pw-pass" className="block text-[17px] font-extrabold">Mot de passe</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A97A8]" />
+                <input id="pw-pass" type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className={FIELD + ' pl-9'} placeholder="••••••••" />
               </div>
-              <button
-                type="submit"
-                disabled={forgotSubmitting}
-                className="w-full bg-orange text-white font-semibold text-sm py-2.5 rounded-lg disabled:opacity-50"
-              >
-                {forgotSubmitting ? t('loginConnecting') : (t('loginForgotSend') || 'Recevoir un lien de connexion')}
+              <button type="submit" disabled={submitting} className={BTN}>
+                <LogIn size={18} /> {submitting ? (t('loginConnecting') || 'Connexion…') : 'Me connecter'}
               </button>
-              <button
-                type="button"
-                onClick={() => setForgotMode(false)}
-                className="w-full text-center text-[#B9BBC8] text-xs hover:underline py-1"
-              >
-                {t('loginForgotBack') || 'Retour à la connexion'}
+              <button type="button" onClick={() => setWithPassword(false)} className="w-full py-1 text-center text-[13px] font-semibold text-[#B4C1D3] underline underline-offset-4">
+                Recevoir plutôt un lien par e-mail
               </button>
             </form>
           )}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="page-fade-in max-w-sm mx-auto px-4 py-10 md:py-16 min-h-screen">
-      <div className="mb-6">
-        <span className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1 block">{t('loginEyebrow') || 'Connexion'}</span>
-        <h1 className="text-xl md:text-2xl font-extrabold text-white mb-2">{t('loginTitle')}</h1>
-        <p className="text-[#B9BBC8] text-xs leading-snug">{t('loginSub')}</p>
-      </div>
-
-      {mfa ? (
-        <MfaStep mfaToken={mfa.token} onDone={() => navigate(location.state?.from || '/tableau-de-bord', { replace: true })} />
-      ) : (
-        <form onSubmit={handleSubmit} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
-          {error && (
-            <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
-          )}
-          <GoogleSignInButton
-            onSuccess={() => navigate(location.state?.from || '/tableau-de-bord', { replace: true })}
-            onMfa={setMfa}
-            onError={setError}
-          />
-          <div>
-            <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('loginEmail')}</label>
-            <div className="relative">
-              <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-8 pr-3 py-2.5 text-xs text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
-                placeholder="vous@entreprise.fr"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-semibold text-[#B9BBC8] uppercase tracking-wide mb-1.5 block">{t('loginPassword')}</label>
-            <div className="relative">
-              <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#031B30] border border-[#17334D] rounded-lg pl-8 pr-3 py-2.5 text-xs text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
-                placeholder="********"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setForgotMode(true)}
-              className="text-orange text-[11px] font-semibold hover:underline mt-1.5"
-            >
-              {t('loginForgot') || 'Mot de passe oublié ?'}
-            </button>
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 bg-orange text-white font-semibold text-sm py-2.5 rounded-lg disabled:opacity-50"
-          >
-            <LogIn size={14} /> {submitting ? t('loginConnecting') : t('loginButton')}
-          </button>
-        </form>
       )}
 
-      <p className="text-[11px] text-[#B9BBC8] text-center mt-5">
-        {t('loginNoAccount')} <Link to="/inscription" state={location.state} className="text-orange font-semibold hover:underline">{t('loginCreateAccount')}</Link>
+      <p className="mt-5 text-center text-[14px] leading-snug text-[#B4C1D3]">
+        Aucun compte n'est nécessaire pour chercher vos marchés. <Link to="/" className="font-bold text-[#FB923C] underline underline-offset-4">Retour à l'accueil</Link>
       </p>
     </div>
   );
@@ -203,13 +145,12 @@ function MfaStep({ mfaToken, onDone }: { mfaToken: string; onDone: () => void })
     setSubmitting(true);
     setError(null);
     try {
-      // mfaToken is the signed challenge from /auth/login (proves the password
-      // step); the server derives the user from it, so userId isn't sent.
+      // mfaToken is the signed challenge from the first step; the server
+      // derives the user from it, so userId isn't sent.
       const { data } = await apiClient.post('/auth/mfa/verify-login', { mfaToken, code: code.trim() });
       tokenStorage.setTokens(data.accessToken, data.refreshToken);
-      // Without this the AuthContext still has no user (it only loads the
-      // profile on mount), so the protected route we navigate to would bounce
-      // straight back to /connexion.
+      // AuthContext only loads the profile on mount: without this the
+      // protected route we navigate to would bounce straight back here.
       await refreshProfile();
       onDone();
     } catch {
@@ -220,22 +161,22 @@ function MfaStep({ mfaToken, onDone }: { mfaToken: string; onDone: () => void })
   };
 
   return (
-    <form onSubmit={handleVerify} className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 space-y-4">
-      <p className="text-xs text-[#B9BBC8]">{t('loginMfaTitle')}</p>
-      {error && <div className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>}
+    <form onSubmit={handleVerify} className="space-y-3 rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-4 md:p-5">
+      <p className="text-[15px] text-[#D6E0EC]">{t('loginMfaTitle') || 'Saisissez le code de votre application d’authentification.'}</p>
+      {error && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[13px] text-red-300">{error}</div>}
       <input
         type="text"
         required
         value={code}
-        onChange={(e) => setCode(e.target.value)}
-        className="w-full bg-[#031B30] border border-[#17334D] rounded-lg px-3 py-2.5 text-xs text-white text-center tracking-[0.3em] focus:outline-none focus:border-orange"
+        onChange={e => setCode(e.target.value)}
+        className={FIELD + ' text-center tracking-[0.3em]'}
         placeholder="000000"
         maxLength={6}
         inputMode="numeric"
         autoComplete="one-time-code"
       />
-      <button type="submit" disabled={submitting} className="w-full bg-orange text-white font-semibold text-sm py-2.5 rounded-lg disabled:opacity-50">
-        {submitting ? t('loginVerifying') : t('loginMfaVerify')}
+      <button type="submit" disabled={submitting} className={BTN}>
+        {submitting ? (t('loginVerifying') || 'Vérification…') : (t('loginMfaVerify') || 'Valider')}
       </button>
     </form>
   );

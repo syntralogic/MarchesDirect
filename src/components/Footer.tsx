@@ -21,9 +21,12 @@ function TikTokIcon({ size = 16 }: { size?: number }) {
 // the only thing to touch once the remaining links arrive.
 const SOCIAL_LINKS: { key: string; label: string; url: string | null; Icon: typeof Facebook }[] = [
   { key: 'facebook', label: 'Facebook', url: 'https://www.facebook.com/share/192HjKpqQ4/', Icon: Facebook },
-  { key: 'instagram', label: 'Instagram', url: 'https://www.instagram.com/', Icon: Instagram },
-  { key: 'tiktok', label: 'TikTok', url: 'https://www.tiktok.com/', Icon: TikTokIcon as unknown as typeof Facebook },
-  { key: 'linkedin', label: 'LinkedIn', url: 'https://www.linkedin.com/', Icon: Linkedin },
+  // 4 Nov : adresses génériques (instagram.com, tiktok.com, linkedin.com)
+  // retirées — un lien qui n'ouvre pas la page de Marchés Direct nuit à la
+  // crédibilité. Renseigner l'URL réelle pour faire réapparaître l'icône.
+  { key: 'instagram', label: 'Instagram', url: null, Icon: Instagram },
+  { key: 'tiktok', label: 'TikTok', url: null, Icon: TikTokIcon as unknown as typeof Facebook },
+  { key: 'linkedin', label: 'LinkedIn', url: null, Icon: Linkedin },
 ];
 
 // Contact information
@@ -78,41 +81,34 @@ function ContactInfo() {
   );
 }
 
-const FOOTER_COLS = [
+// 4 Nov (parcours v26/v27) : colonnes recentrées sur ce que le visiteur
+// peut réellement faire sur le site aujourd'hui.
+const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[] = [
   {
-    titleKey: 'footerBrand',
+    title: 'Marchés Direct',
     links: [
-      { labelKey: 'footerAbout', href: '/about' },
-      { labelKey: 'footerTeam', href: '/team' },
-      { labelKey: 'howItWorks', href: '/how-it-works' },
-      { labelKey: 'pricing', href: '/tarifs' },
+      { label: 'Comment ça marche', href: '/#mdh-etapes' },
+      { label: 'Qui sommes-nous ?', href: '/a-propos' },
+      { label: 'Notre équipe', href: '/equipe' },
+      { label: 'Questions fréquentes', href: '/faq' },
     ],
   },
   {
-    titleKey: 'footerMarkets',
+    title: 'Votre parcours',
     links: [
-      { labelKey: 'public', href: '/marches-publics' },
-      { labelKey: 'tenders', href: '/appels-doffres' },
-      { labelKey: 'subcontracting', href: '/sous-traitance' },
-      { labelKey: 'international', href: '/international' },
+      { label: 'Trouver mes marchés', href: '/' },
+      { label: 'Marchés par zone', href: '/#mdh-zones' },
+      { label: 'Poser ma question', href: '/question' },
+      { label: 'Mon espace', href: '/tableau-de-bord' },
     ],
   },
   {
-    titleKey: 'footerExplore',
+    title: 'Informations',
     links: [
-      { labelKey: 'footerZones', href: '/zones' },
-      { labelKey: 'footerSectors', href: '/secteurs' },
-      { labelKey: 'footerFaq', href: '/faq' },
-      { labelKey: 'news', href: '/actualites' },
-    ],
-  },
-  {
-    titleKey: 'footerLegal',
-    links: [
-      { labelKey: 'legalNotice', href: '/mentions-legales' },
-      { labelKey: 'privacy', href: '/confidentialite' },
-      { labelKey: 'terms', href: '/cgu' },
-      { labelKey: 'contact', href: '/contact' },
+      { label: 'Contact', href: '/contact' },
+      { label: 'Mentions légales', href: '/mentions-legales' },
+      { label: 'Confidentialité', href: '/confidentialite' },
+      { label: 'Conditions d’utilisation', href: '/cgu' },
     ],
   },
 ];
@@ -123,7 +119,7 @@ export function Footer() {
   return (
     <footer className="bg-[#031B30] border-t border-[#17334D] mt-auto">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-12">
-        <div className="hidden md:grid grid-cols-5 gap-8">
+        <div className="hidden md:grid grid-cols-4 gap-8">
           <div className="col-span-1">
             <Link to="/" className="inline-block mb-4">
               <span className="text-xl font-bold">
@@ -139,13 +135,13 @@ export function Footer() {
           </div>
 
           {FOOTER_COLS.map(col => (
-            <div key={col.titleKey}>
-              <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-4">{t(col.titleKey)}</h4>
+            <div key={col.title}>
+              <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-4">{col.title}</h4>
               <ul className="space-y-2">
                 {col.links.map(link => (
                   <li key={link.href}>
                     <Link to={link.href} className="text-xs text-[#B9BBC8] hover:text-orange transition-colors">
-                      {t(link.labelKey)}
+                      {link.label}
                     </Link>
                   </li>
                 ))}
@@ -165,15 +161,15 @@ export function Footer() {
             <SocialLinks />
             <ContactInfo />
           </div>
-          <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-2 gap-6 mb-6 md:grid-cols-3">
             {FOOTER_COLS.map(col => (
-              <div key={col.titleKey}>
-                <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">{t(col.titleKey)}</h4>
+              <div key={col.title}>
+                <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-3">{col.title}</h4>
                 <ul className="space-y-2">
                   {col.links.map(link => (
                     <li key={link.href}>
                       <Link to={link.href} className="text-xs text-[#B9BBC8] hover:text-orange transition-colors">
-                        {t(link.labelKey)}
+                        {link.label}
                       </Link>
                     </li>
                   ))}
