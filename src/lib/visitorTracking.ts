@@ -49,7 +49,9 @@ export type VisitorEventType =
   | 'dossier_preview'
   | 'dossier_requested'
   | 'callback_requested'
-  | 'appointment_booked';
+  | 'appointment_booked'
+  // Refonte v26 (écran 2): the ranked list was shown.
+  | 'ranked_list_shown';
 
 export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request';
 
