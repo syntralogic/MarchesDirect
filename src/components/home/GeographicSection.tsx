@@ -603,14 +603,7 @@ export default function GeographicSection({ tab, setTab, selectedRegions, setSel
   };
 
   return (
-    <section id="mdh-zones" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('nearYou')}</span>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">
-        Des opportunités partout en France.
-      </h2>
-      <p className="text-[#B9BBC8] text-sm mb-5">
-        Explorez les marchés par région, département ou ville, puis précisez votre métier.
-      </p>
+    <section id="mdh-zones" className="scroll-mt-16 w-full pt-4">
 
       <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-5">
         <div className="grid grid-cols-3 gap-1 border border-[#17334D] rounded-xl p-1 w-full mb-4">
