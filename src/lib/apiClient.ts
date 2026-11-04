@@ -431,6 +431,12 @@ export const opportunitiesApi = {
     return data;
   },
 
+  // Refonte 2.5 / 3.9: measured social proof for one market (distinct companies that opened it today,
+  // dossiers requested over 7 days). Never invented: the server returns real counts or nulls.
+  activity: async (id: string): Promise<{ companiesToday: number | null; dossiers7d: number | null }> => {
+    const { data } = await apiClient.get(`/opportunities/${id}/activity`);
+    return data;
+  },
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;

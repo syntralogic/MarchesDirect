@@ -29,6 +29,8 @@ import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
 import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
+import FichePage from '@/pages/refonte/FichePage';
+import { REFONTE_ON } from '@/lib/refonte/flags';
 import { OpportunityTransitionProvider } from '@/contexts/OpportunityTransitionContext';
 import BidWorkspacePage from '@/pages/BidWorkspacePage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
@@ -72,6 +74,12 @@ import { siteStatusApi } from '@/lib/apiClient';
 function KeyedOpportunityDetail() {
   const { id } = useParams<{ id: string }>();
   return <OpportunityDetailPage key={id} />;
+}
+
+// Same reason as KeyedOpportunityDetail: no state may leak from one fiche to the next.
+function KeyedFiche() {
+  const { id } = useParams<{ id: string }>();
+  return <FichePage key={id} />;
 }
 
 function MaintenancePage({ message }: { message: string }) {
@@ -207,6 +215,8 @@ const App: React.FC = () => {
               <Route path="/recherche" element={<RecherchePage />} />
               <Route path="/parcours" element={<OpportunityJourneyPage />} />
               <Route path="/opportunites/:id" element={<PageErrorBoundary><KeyedOpportunityDetail /></PageErrorBoundary>} />
+              {/* Refonte v26 screen 3 (preview only: VITE_REFONTE=on). The legacy fiche above stays until the bascule is approved. */}
+              {REFONTE_ON && <Route path="/v2/opportunites/:id" element={<PageErrorBoundary><KeyedFiche /></PageErrorBoundary>} />}
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
