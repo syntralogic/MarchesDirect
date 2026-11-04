@@ -73,3 +73,17 @@ describe('pdf file name and kept entries', () => {
     expect(loadCoords()).toMatchObject({ phone: '06 12 34 56 78', email: 'a@b.fr', question: 'Q ?', moment: 'now' });
   });
 });
+
+describe('alerte nouveaux marchés', () => {
+  it('needs only a valid phone number (no e-mail, no moment, no question)', () => {
+    expect(validateCoords('alerte', ok)).toEqual({});
+    expect(validateCoords('alerte', EMPTY_COORDS).phone).toBeTruthy();
+    expect(validateCoords('alerte', { ...ok, phone: '12' }).phone).toBeTruthy();
+  });
+  it('saves a message for Elena and never promises an e-mail', () => {
+    const m = leadMessage('alerte', ok, 'Climatisation · Neuilly-sur-Seine et alentours');
+    expect(m).toContain('Climatisation');
+    expect(m?.toLowerCase()).not.toContain('e-mail');
+    expect(Object.values(COPY.alerte.done).join(' ').toLowerCase()).not.toMatch(/vous recevrez|envoy.*e-mail/);
+  });
+});

@@ -77,7 +77,7 @@ export default function FicheMarchePage() {
   const shownFor = useRef('');
 
   // --- screens 4 and 5 (first half): DOSSIER / RAPPEL / QUESTION; the page keeps what was typed when going back ---
-  const [view, setView] = useState<View>({ kind: 'fiche' });
+  const [view, setView] = useState<View>(() => (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('alerte') === '1' ? { kind: 'coords', choice: 'alerte' } : { kind: 'fiche' }));  // ?alerte=1 : entry point for the alert (the ranked list links here)
   const [coords, setCoords] = useState<CoordValues>(() => loadCoords());
   const [coordErrors, setCoordErrors] = useState<CoordErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -186,10 +186,10 @@ export default function FicheMarchePage() {
   }) : null;
 
   // --- choices: no network call and no event here, the request itself fires events once saved ---
-  const choose = (c: 'dossier' | 'rappel' | 'rdv' | 'info') => {
+  const choose = (c: 'dossier' | 'rappel' | 'rdv' | 'info' | 'alerte') => {
     acted.current = true; setInvite(false);
     if (c === 'rdv') { setApptOpen(true); return; }      // RENDEZ-VOUS and ALERTE are the second half of screens 4 and 5
-    const choice: CoordChoice = c === 'rappel' ? 'rappel' : c === 'info' ? 'info' : 'dossier';
+    const choice: CoordChoice = c === 'rappel' ? 'rappel' : c === 'info' ? 'info' : c === 'alerte' ? 'alerte' : 'dossier';
     setSubmitError(null); setCoordErrors({});
     window.history.pushState({ md: 'coords' }, '');
     setView({ kind: 'coords', choice });
@@ -209,6 +209,15 @@ export default function FicheMarchePage() {
       if (choice === 'dossier') {
         await siretApi.captureLead(phone, coords.email.trim() || undefined, sessionId, id);
         trackRequestSubmitted('dossier_request', { requestId });
+      } else if (choice === 'alerte') {
+        // The alert is about FUTURE markets: no market is linked to the request, only the company, trade and zone.
+        if (!brandId) throw new Error('Impossible de contacter le serveur, réessayez.');
+        const scope = [opp?.trade_name, city ? `${city} et alentours` : ''].filter(Boolean).join(' · ');
+        await crmApi.submitLead({
+          brandId, phone, companyName: company || undefined, industryTrade: opp?.trade_name || undefined, locationCity: city || undefined,
+          sessionId, idempotencyKey: requestId, leadSource: 'alert_signup', message: leadMessage(choice, coords, scope),
+        });
+        trackRequestSubmitted('alert', { requestId });
       } else {
         if (!brandId) throw new Error('Impossible de contacter le serveur, réessayez.');
         await crmApi.submitLead({
@@ -286,7 +295,9 @@ export default function FicheMarchePage() {
   const tone = sc != null ? scoreTone(sc) : 'mid';
   const sections = opp.ai_analysis_sections;
   if (view.kind !== 'fiche') {
-    const context = [company, title, `réponse avant le ${deadlineTxt}`].filter(Boolean).join(' · ');
+    const context = view.choice === 'alerte'
+      ? [company, opp.trade_name, city ? `${city} et alentours` : ''].filter(Boolean).join(' · ')
+      : [company, title, `réponse avant le ${deadlineTxt}`].filter(Boolean).join(' · ');
     const back = () => { setView({ kind: 'fiche' }); window.scrollTo({ top: 0 }); };
     return (
       <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-10 pt-3 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>

@@ -55,7 +55,7 @@ export type VisitorEventType =
   | 'invitation_30min_closed'
   | 'invitation_30min_clicked';
 
-export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request';
+export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request' | 'alert';
 
 // Returns a handler to attach to a <form onFocusCapture>: fires `form_started`
 // once per form instance, when the visitor first touches a field.

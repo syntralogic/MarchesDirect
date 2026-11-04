@@ -73,6 +73,20 @@ export default function ConfirmationScreen(p: Props) {
   const c = COPY[p.choice];
   const hasPdf = p.pdf === 'ready';
   const phone = formatPhone(p.values.phone);
+  if (p.choice === 'alerte') return (
+    <div className="flex flex-col gap-4 pb-10">
+      <section role="status" className="rounded-2xl border border-[#1E6B4A] bg-[#123B2A] p-4">
+        <h1 className="text-[22px] font-extrabold text-[#6EE7B7]">✓ {c.done.title}</h1>
+        <p className="mt-1.5 text-[15px] text-[#E8FFF4]">{c.done.text}</p>
+      </section>
+      <section className={card}><b className="block text-[13px] uppercase tracking-wide text-[#B4C1D3]">Votre alerte</b>
+        <p className="mt-1 text-[16px]"><b>{p.company?.name || 'Votre entreprise'}</b>{p.company?.activity ? ` · ${p.company.activity}` : ''}</p>
+        <p className="mt-1 text-[15px]">Téléphone : {phone}</p>
+        <p className="mt-2 text-[14px] text-[#D6E0EC]">Prochaine étape : Elena vous appelle lorsqu’un nouveau marché adapté est identifié. Arrêt possible à tout moment.</p></section>
+      <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5">{p.elenaPhoto}<p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{c.done.elena}</p></div>
+      <button type="button" onClick={p.onBackToMarket} className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à ce marché</button>
+    </div>
+  );
   return (
     <div className="flex flex-col gap-4 pb-10">
       <ol className="flex gap-2 text-[13px] text-[#B4C1D3]" aria-label="Étapes"><li>1 · Vos marchés</li><li>2 · Mon analyse</li><li className="font-bold text-[#F2F5F9]">3 · Mon dossier</li></ol>

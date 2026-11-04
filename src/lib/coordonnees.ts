@@ -2,7 +2,7 @@
 // Copy comes from the client's mockup v26 (it wins over every other document). No promise of an e-mail anywhere.
 import { isValidEmail, isValidFrPhone, normalizeFrPhoneDigits } from './utils';
 
-export type CoordChoice = 'dossier' | 'rappel' | 'info';
+export type CoordChoice = 'dossier' | 'rappel' | 'info' | 'alerte';
 export type Moment = 'now' | 'afternoon' | 'tomorrow';
 export const MOMENTS: { id: Moment; label: string }[] = [
   { id: 'now', label: 'Maintenant' }, { id: 'afternoon', label: 'Cet après-midi' }, { id: 'tomorrow', label: 'Demain matin' },
@@ -52,6 +52,19 @@ export const COPY: Record<CoordChoice, {
       elena: 'Je réponds à votre question et, si vous le souhaitez, on regarde ensemble la suite.',
     },
   },
+  alerte: {
+    label: 'Alerte nouveaux marchés', title: 'Être prévenu des prochains marchés',
+    sub: 'Dès qu’un marché correspond à votre entreprise, Elena vous appelle pour vous le présenter. Vous décidez ensuite.',
+    benefit: 'un appel d’Elena à chaque nouveau marché adapté à votre entreprise. Rien d’autre à faire.',
+    before: 'Après validation : votre entreprise est inscrite à l’alerte. Elena vous appelle uniquement quand un marché correspond, de 9 h à 18 h. Vous pouvez arrêter à tout moment.',
+    btn: 'Être prévenu',
+    elena: 'C’est moi qui vous appelle quand un marché correspond à votre entreprise. Pas d’e-mail ni de SMS : un appel, seulement quand c’est utile.',
+    done: {
+      title: 'Votre alerte est enregistrée', text: 'Rien d’autre à faire. Elena vous appelle lorsqu’un nouveau marché adapté est identifié, de 9 h à 18 h.',
+      textNoPdf: 'Rien d’autre à faire. Elena vous appelle lorsqu’un nouveau marché adapté est identifié, de 9 h à 18 h.',
+      elena: 'Je surveille les nouveaux marchés de votre métier et de votre zone, et je vous appelle seulement quand l’un d’eux vous correspond.',
+    },
+  },
 };
 
 // ------------------------------------------------------------------ validation (errors go under the field, never in an alert)
@@ -77,8 +90,8 @@ export function callWhen(m: Moment | null): string {
 }
 
 // Text saved with the request: it is what Elena reads in the notification and in the CRM note.
-export const leadMessage = (choice: CoordChoice, v: CoordValues) =>
-  choice === 'rappel' ? `Moment de rappel souhaité : ${momentLabel(v.moment)}` : choice === 'info' ? v.question.trim().slice(0, 1000) : undefined;
+export const leadMessage = (choice: CoordChoice, v: CoordValues, scope?: string) =>
+  choice === 'alerte' ? `Alerte nouveaux marchés : appeler dès qu’un marché correspond${scope ? ` (${scope})` : ''}. Arrêt possible à tout moment.` : choice === 'rappel' ? `Moment de rappel souhaité : ${momentLabel(v.moment)}` : choice === 'info' ? v.question.trim().slice(0, 1000) : undefined;
 
 // ------------------------------------------------------------------ calendar "jusqu'au dépôt" (from the real deadline)
 export type CalendarRow = { when: string; what: string };
