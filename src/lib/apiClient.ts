@@ -684,10 +684,10 @@ export const siretApi = {
   // already seen the score/why-it-matches, gating the fuller breakdown.
   // opportunityId links the CRM lead to the specific opportunity being
   // viewed so the account manager knows why to call.
-  captureLead: async (phone: string, email: string, sessionId: string, opportunityId?: string, lot?: string | null): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
+  captureLead: async (phone: string, email: string | undefined, sessionId: string, opportunityId?: string, lot?: string | null): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
     // The visitor's "Préférences de contact" choice (if made before giving their details) travels with them.
     const contactMode = getStoredContactMode();
-    const { data } = await apiClient.post('/siret/lead', { phone, email, sessionId, opportunityId, ...(lot ? { lot } : {}), ...(contactMode ? { contactMode } : {}), ...utmFromSession() });
+    const { data } = await apiClient.post('/siret/lead', { phone, ...(email ? { email } : {}), sessionId, opportunityId, ...(lot ? { lot } : {}), ...(contactMode ? { contactMode } : {}), ...utmFromSession() });
     return data;
   },
   // 25 Sep audit, point 5: "Télécharger mon exemplaire" / "Me le renvoyer"

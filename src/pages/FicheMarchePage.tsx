@@ -1,15 +1,20 @@
 // Écran 3 de la refonte (maquette v26): fiche marché + analyse sur place, en un seul écran.
 // Pas d'appel IA à l'ouverture: le pourcentage vient du moteur de règles existant (match-score).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
-  opportunitiesApi, siretApi,
+  opportunitiesApi, siretApi, crmApi, getApiErrorMessage,
   type ApiOpportunityDetail, type ApiMatchScore, type ApiSiretCandidate, type ApiSiretStatus,
 } from '@/lib/apiClient';
-import { getSessionId, trackVisitorEvent, getConsultationIndicator, getDossierRequestsCount } from '@/lib/visitorTracking';
+import { getSessionId, trackVisitorEvent, trackRequestSubmitted, getConsultationIndicator, getDossierRequestsCount } from '@/lib/visitorTracking';
 import { getAnalyticsConsent } from '@/lib/consent';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
-import { CallbackModal } from '@/components/CallbackModal';
+import { useBrand } from '@/hooks/use-brand';
+import { useIdempotency } from '@/lib/useIdempotency';
+import { normalizeFrPhoneDigits } from '@/lib/utils';
+import { loadCoords, saveCoords, validateCoords, leadMessage, pdfFileName, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
+import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
+import ConfirmationScreen, { type PdfState } from '@/components/fiche/ConfirmationScreen';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import {
   QUESTIONS, CRITERIA_ORDER, STATUS_TEXT, answersToParam, buildAdvice, criterionStatus, daysLeft,
@@ -21,6 +26,8 @@ const TONE_COLOR = { hi: '#34D399', mid: '#FDBA74', lo: '#6B7A90' } as const;
 const STATUS_CLASS: Record<CriterionStatus, string> = { ok: 'text-[#6EE7B7]', tbc: 'text-[#FDBA74]', no: 'text-[#FCA5A5]', unknown: 'text-[#FDBA74]' };
 const SAVED_KEY = 'md_saved_markets';
 const INVITE_KEY = 'md_invite30_shown';
+
+type View = { kind: 'fiche' } | { kind: 'coords' | 'done'; choice: CoordChoice };
 
 const money = (v: number | null | undefined, cur?: string | null) =>
   v ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: cur || 'EUR', maximumFractionDigits: 0 }).format(v) : 'Non communiqué';
@@ -46,7 +53,6 @@ function ElenaPhoto() {
 
 export default function FicheMarchePage() {
   const { id = '' } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const sessionId = useMemo(() => getSessionId(), []);
 
   const [opp, setOpp] = useState<ApiOpportunityDetail | null>(null);
@@ -62,7 +68,6 @@ export default function FicheMarchePage() {
   const [consult, setConsult] = useState<string | null>(null);
   const [dossiers, setDossiers] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
-  const [callbackOpen, setCallbackOpen] = useState(false);
   const [apptOpen, setApptOpen] = useState(false);
   const [mainVisible, setMainVisible] = useState(false);
   const [fieldActive, setFieldActive] = useState(false);
@@ -71,8 +76,37 @@ export default function FicheMarchePage() {
   const acted = useRef(false);
   const shownFor = useRef('');
 
+  // --- screens 4 and 5 (first half): DOSSIER / RAPPEL / QUESTION; the page keeps what was typed when going back ---
+  const [view, setView] = useState<View>({ kind: 'fiche' });
+  const [coords, setCoords] = useState<CoordValues>(() => loadCoords());
+  const [coordErrors, setCoordErrors] = useState<CoordErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [pdf, setPdf] = useState<PdfState>('loading');
+  const pdfBlob = useRef<Blob | null>(null);
+  const idem = useIdempotency();
+  const { brandId } = useBrand();
+
   const known = !!status?.companyKnown && !editing;
   const company = status?.company?.name || '';
+
+  // The phone's back button leaves the form / confirmation and returns to the fiche (state kept in this page).
+  useEffect(() => {
+    const onPop = () => setView((v) => (v.kind === 'fiche' ? v : { kind: 'fiche' }));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // The prefilled dossier is fetched as soon as the confirmation shows: the button exists only for a real file.
+  useEffect(() => {
+    if (view.kind !== 'done') return;
+    if (view.choice !== 'dossier' && !status?.leadCaptured) { setPdf('unavailable'); return; }
+    let live = true; setPdf('loading'); pdfBlob.current = null;
+    siretApi.downloadPrefilledDossier(sessionId, id)
+      .then((b) => { if (!live) return; if (b && b.size > 0) { pdfBlob.current = b; setPdf('ready'); } else setPdf('unavailable'); })
+      .catch(() => { if (live) setPdf('unavailable'); });
+    return () => { live = false; };
+  }, [view, sessionId, id, status?.leadCaptured]);
 
   // --- load market + company status (no AI) ---
   useEffect(() => {
@@ -154,10 +188,50 @@ export default function FicheMarchePage() {
   // --- choices: no network call and no event here, the request itself fires events once saved ---
   const choose = (c: 'dossier' | 'rappel' | 'rdv' | 'info') => {
     acted.current = true; setInvite(false);
-    if (c === 'rappel') setCallbackOpen(true);
-    else if (c === 'rdv') setApptOpen(true);
-    else if (c === 'info') navigate('/contact');
-    else navigate(`/opportunites/${id}?ancien=1#dossier`); // screen 4 (Coordonnées) is the next step of the refonte
+    if (c === 'rdv') { setApptOpen(true); return; }      // RENDEZ-VOUS and ALERTE are the second half of screens 4 and 5
+    const choice: CoordChoice = c === 'rappel' ? 'rappel' : c === 'info' ? 'info' : 'dossier';
+    setSubmitError(null); setCoordErrors({});
+    window.history.pushState({ md: 'coords' }, '');
+    setView({ kind: 'coords', choice });
+    window.scrollTo({ top: 0 });
+  };
+
+  // One submit for the three forms. The request is confirmed only once the server says it was really saved.
+  const submitCoords = async (choice: CoordChoice) => {
+    const errs = validateCoords(choice, coords);
+    setCoordErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    if (!idem.begin()) return;                    // double tap: one request
+    setSubmitting(true); setSubmitError(null);
+    try {
+      const phone = normalizeFrPhoneDigits(coords.phone);
+      const requestId = idem.key();
+      if (choice === 'dossier') {
+        await siretApi.captureLead(phone, coords.email.trim() || undefined, sessionId, id);
+        trackRequestSubmitted('dossier_request', { requestId });
+      } else {
+        if (!brandId) throw new Error('Impossible de contacter le serveur, réessayez.');
+        await crmApi.submitLead({
+          brandId, phone, companyName: company || undefined, opportunityId: id, sessionId, idempotencyKey: requestId,
+          leadSource: choice === 'rappel' ? 'callback_modal' : 'contact_form', message: leadMessage(choice, coords),
+        });
+        trackRequestSubmitted(choice === 'rappel' ? 'callback' : 'contact', { requestId });
+      }
+      idem.reset(); saveCoords(coords);
+      window.history.replaceState({ md: 'done' }, '');
+      setView({ kind: 'done', choice });
+      window.scrollTo({ top: 0 });
+    } catch (err) {
+      setSubmitError(`${getApiErrorMessage(err, 'Échec de l’envoi.')} Vous pouvez réessayer.`);
+    } finally { idem.end(); setSubmitting(false); }
+  };
+
+  const downloadPdf = () => {
+    const blob = pdfBlob.current; if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = pdfFileName(company, opp?.source_reference); document.body.appendChild(a); a.click(); a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 4000);
   };
 
   // --- save on this phone (3.10): localStorage only, no network ---
@@ -211,6 +285,24 @@ export default function FicheMarchePage() {
 
   const tone = sc != null ? scoreTone(sc) : 'mid';
   const sections = opp.ai_analysis_sections;
+  if (view.kind !== 'fiche') {
+    const context = [company, title, `réponse avant le ${deadlineTxt}`].filter(Boolean).join(' · ');
+    const back = () => { setView({ kind: 'fiche' }); window.scrollTo({ top: 0 }); };
+    return (
+      <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-10 pt-3 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
+        {view.kind === 'coords' ? (
+          <CoordonneesScreen choice={view.choice} context={context} values={coords} errors={coordErrors} submitting={submitting} submitError={submitError}
+            onChange={(patch) => { setCoords((c) => ({ ...c, ...patch })); setCoordErrors({}); }} onSubmit={() => submitCoords(view.choice)} onBack={back} elenaPhoto={<ElenaPhoto />} />
+        ) : (
+          <ConfirmationScreen choice={view.choice} values={coords} company={status?.company} pdf={pdf} onDownload={downloadPdf} onAppointment={() => setApptOpen(true)} onBackToMarket={back} elenaPhoto={<ElenaPhoto />}
+            market={{ shortTitle: title, reference: opp.source_reference || null, deadline: (opp.deadline as string | null) || null, deadlineText: deadlineTxt, daysLeft: days, officialUrl: opp.official_url || null }} />
+        )}
+        <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} opportunityId={opp.id}
+          marketLabel={[opp.title, opp.source_reference].filter(Boolean).join(' · ')} deadline={opp.deadline} />
+      </main>
+    );
+  }
+
   const btnMain = 'flex min-h-[54px] w-full items-center justify-center rounded-[14px] bg-[#C2410C] px-4 py-2 text-center text-[17px] font-extrabold text-white';
   const choiceBase = 'flex min-h-[64px] w-full flex-col items-start justify-center gap-0.5 rounded-[14px] border px-4 py-2 text-left';
 
@@ -379,7 +471,6 @@ export default function FicheMarchePage() {
           </div>
         </div>)}
 
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} opportunityId={opp.id} />
       <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} opportunityId={opp.id}
         marketLabel={[opp.title, opp.source_reference].filter(Boolean).join(' · ')} deadline={opp.deadline} />
     </main>
