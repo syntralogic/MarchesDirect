@@ -199,7 +199,7 @@ export default function HomePage() {
             <div>
               <h3 className="text-[15px] font-bold">{ELENA.name} <span className="font-medium text-[#B4C1D3]">· {ELENA.role}</span></h3>
               <p className="text-[15px] text-[#B4C1D3]">« Une question avant de commencer ? Je vous rappelle, de 9 h à 18 h. »{' '}
-                <button type="button" onClick={() => setCallbackOpen(true)} className="min-h-[48px] font-bold text-[#FB923C] underline">Poser ma question</button>
+                <Link to="/question" className="inline-flex min-h-[48px] items-center font-bold text-[#FB923C] underline">Poser ma question</Link>
               </p>
             </div>
           </div>

@@ -67,3 +67,28 @@ describe('Confirmation screen', () => {
     expect(h.toLowerCase()).not.toMatch(/e-mail (envoy|de confirmation)|par e-mail|vous recevrez/);
   });
 });
+
+describe('Coordonnées screen - general question and alert (no market)', () => {
+  it('question without market: no step bar, custom back label, no e-mail field', () => {
+    const h = render(<CoordonneesScreen {...form} choice="info" values={vals} hideSteps backLabel="Retour" />);
+    expect(h).toContain('Quelle est votre question ?');
+    expect(h).toContain('‹ Retour');
+    expect(h).not.toContain('Retour au marché');
+    expect(h).not.toContain('3 · Mon dossier');
+    expect(h).not.toContain('id="coord-email"');
+  });
+  it('alerte: phone only, calls only when a market matches, no e-mail promise', () => {
+    const h = render(<CoordonneesScreen {...form} choice="alerte" values={vals} />);
+    expect(h).toContain('Être prévenu des prochains marchés');
+    expect(h).toContain('Être prévenu');
+    expect(h).not.toContain('id="coord-email"');
+    expect(h).not.toContain('id="coord-question"');
+  });
+  it('alerte confirmation: shows company and phone, no PDF, no 30-minute card', () => {
+    const h = render(<ConfirmationScreen choice="alerte" values={vals} company={company} market={market} pdf="unavailable" onDownload={noop} onAppointment={noop} onBackToMarket={noop} elenaPhoto={null} />);
+    expect(h).toContain('Votre alerte est enregistrée');
+    expect(h).toContain('ACME');
+    expect(h).not.toContain('Télécharger');
+    expect(h).not.toContain('30 minutes offertes');
+  });
+});

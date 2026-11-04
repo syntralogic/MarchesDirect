@@ -1,7 +1,7 @@
 import { OpportunityLink } from '@/contexts/OpportunityTransitionContext';
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Globe, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, Plus } from 'lucide-react';
+import { Globe, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { geoCentroid, geoMercator } from 'd3-geo';
 import { useLang } from '@/contexts/LangContext';

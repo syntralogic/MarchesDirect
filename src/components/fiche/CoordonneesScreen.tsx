@@ -14,6 +14,8 @@ type Props = {
   onSubmit: () => void;
   onBack: () => void;
   elenaPhoto: ReactNode;
+  backLabel?: string;                    // default: « Retour au marché »
+  hideSteps?: boolean;                   // the general question is not a step of the market journey
 };
 
 const field = 'min-h-[52px] w-full rounded-xl border border-[#2B4468] bg-[#0F1F35] px-3.5 text-[16px] text-[#F2F5F9] placeholder:text-[#7C8CA3] focus:border-[#FB923C] focus:outline-none';
@@ -24,8 +26,8 @@ export default function CoordonneesScreen(p: Props) {
   const err = p.errors;
   return (
     <div className="flex flex-col gap-4 pb-10">
-      <button type="button" onClick={p.onBack} className="min-h-[44px] self-start text-left text-[14px] font-semibold text-[#B4C1D3]">‹ Retour au marché</button>
-      <ol className="flex gap-2 text-[13px] text-[#B4C1D3]" aria-label="Étapes"><li>1 · Vos marchés</li><li>2 · Mon analyse</li><li className="font-bold text-[#F2F5F9]">3 · Mon dossier</li></ol>
+      <button type="button" onClick={p.onBack} className="min-h-[44px] self-start text-left text-[14px] font-semibold text-[#B4C1D3]">‹ {p.backLabel || 'Retour au marché'}</button>
+      {!p.hideSteps && <ol className="flex gap-2 text-[13px] text-[#B4C1D3]" aria-label="Étapes"><li>1 · Vos marchés</li><li>2 · Mon analyse</li><li className="font-bold text-[#F2F5F9]">3 · Mon dossier</li></ol>}
 
       <div>
         <p className="text-[13px] font-bold uppercase tracking-wide text-[#FB923C]">{c.label}</p>

@@ -14,6 +14,7 @@ import { BottomNav } from '@/components/BottomNav';
 import ConsentBanner from '@/components/ConsentBanner';
 
 import HomePage from '@/pages/HomePage';
+import QuestionPage from '@/pages/QuestionPage';
 import AppelsPage from '@/pages/AppelsPage';
 import MarchesPublicsPage from '@/pages/MarchesPublicsPage';
 import SousTraitancePage from '@/pages/SousTraitancePage';
@@ -179,6 +180,7 @@ const App: React.FC = () => {
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
+              <Route path="/question" element={<QuestionPage />} />
               <Route path="/appels-doffres" element={<AppelsPage />} />
               <Route path="/marches-publics" element={<MarchesPublicsPage />} />
               <Route path="/sous-traitance" element={<SousTraitancePage />} />
