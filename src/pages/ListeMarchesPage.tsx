@@ -77,7 +77,12 @@ export default function ListeMarchesPage() {
   const [cards, setCards] = useState<RankedCard[] | null>(null);
   const [scores, setScores] = useState<ScoreMap>({});
   const [filter, setFilter] = useState<Filter>('all');
-  const [type, setType] = useState<Journey>('all');
+  const typeParam = params.get('journey');
+  const type: Journey = typeParam === 'public_procurement' || typeParam === 'tender' || typeParam === 'subcontracting' ? typeParam : 'all';
+  const setType = (t: Journey) => { const p = new URLSearchParams(params); if (t === 'all') p.delete('journey'); else p.set('journey', t); setParams(p, { replace: true }); };
+  // Recherche simple : totaux réels par type (le serveur filtre et compte), pas un comptage sur la première page.
+  const [typeTotals, setTypeTotals] = useState<Record<string, number> | null>(null);
+  const [searchTotal, setSearchTotal] = useState<number | null>(null);
   const [tradeUnknown, setTradeUnknown] = useState(false);
   const [zoneLabel, setZoneLabel] = useState('Toute la France');
   const [error, setError] = useState(false);
@@ -93,7 +98,7 @@ export default function ListeMarchesPage() {
 
   // Cards first (SQL only), then one percentage at a time from the rules engine, 4 in flight.
   const load = useCallback(async () => {
-    setCards(null); setScores({}); setDone(false); setError(false); setTradeUnknown(false); shown.current = '';
+    setCards(null); setScores({}); setDone(false); setError(false); setTradeUnknown(false); shown.current = ''; setSearchTotal(null);
     const mine = ++run.current;
     const stop = () => run.current !== mine;
     try {
@@ -109,19 +114,29 @@ export default function ListeMarchesPage() {
         }, stop);
         if (!stop()) setDone(true);
       } else if (tradeId || q || dept) {
-        const r = await opportunitiesApi.search({ ...(tradeId ? { trade_id: tradeId } : {}), ...(q ? { q } : {}), ...(dept ? { department: dept } : {}), status: 'active', limit: 40 });
+        const base = { ...(tradeId ? { trade_id: tradeId } : {}), ...(q ? { q } : {}), ...(dept ? { department: dept } : {}), status: 'active' as const };
+        const r = await opportunitiesApi.search({ ...base, ...(type !== 'all' ? { journey: type } : {}), limit: 40 });
         if (stop()) return;
         setZoneLabel(dept ? `Département ${dept}` : 'Toute la France');
+        setSearchTotal(r.pagination?.total ?? r.results.length);
         setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline })));
+        // Totaux par type, en parallèle, pour que le visiteur voie qu'il n'y a pas que du marché public.
+        const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
+        const totals = await Promise.all(journeys.map(j => opportunitiesApi.search({ ...base, journey: j, limit: 1 }).then(x => x.pagination?.total ?? 0).catch(() => 0)));
+        if (stop()) return;
+        setTypeTotals(Object.fromEntries(journeys.map((j, i) => [j, totals[i]])));
       } else setCards([]);
     } catch { if (!stop()) setError(true); }
-  }, [known, sessionId, zoneParam, tradeId, q, dept]);
-  useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, dept]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [known, sessionId, zoneParam, tradeId, q, dept, type]);
+  useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, dept, type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ranked = useMemo(() => (cards ? (done ? rank(cards, scores) : cards) : []), [cards, scores, done]);
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
-  const byType = useMemo(() => type === 'all' ? ranked : ranked.filter(c => c.journey === type), [ranked, type]);
-  const typeCounts = useMemo(() => ranked.reduce<Record<string, number>>((acc, c) => { acc[c.journey || ''] = (acc[c.journey || ''] || 0) + 1; return acc; }, {}), [ranked]);
+  const byType = useMemo(() => !known || type === 'all' ? ranked : ranked.filter(c => c.journey === type), [ranked, type, known]);
+  const typeCounts = useMemo(() => known
+    ? ranked.reduce<Record<string, number>>((acc, c) => { acc[c.journey || ''] = (acc[c.journey || ''] || 0) + 1; return acc; }, {})
+    : (typeTotals || {}), [ranked, known, typeTotals]);
+  const typeAll = known ? ranked.length : (typeTotals ? Object.values(typeTotals).reduce((a, b) => a + b, 0) : (searchTotal ?? ranked.length));
   const visible = applyFilter(byType, scores, filter);
 
   // ranked_list_shown: once, when every percentage is in (SIRET, number of markets, three best percentages).
@@ -144,7 +159,7 @@ export default function ListeMarchesPage() {
     finally { setBusy(false); }
   };
 
-  const total = cards?.length ?? 0;
+  const total = known ? (cards?.length ?? 0) : (searchTotal ?? cards?.length ?? 0);
   // No company and no trade chosen: nothing to count yet, so no "0 marché".
   const { title, sub } = known || total > 0 ? titleFor(total, known, q, zoneLabel) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
   const c = status?.company;
@@ -172,14 +187,14 @@ export default function ListeMarchesPage() {
         {known && cards && !done && pending > 0 && <p className="text-[13px] text-[#FDBA74]" role="status">Calcul des pourcentages… {total - pending} / {total}</p>}
       </header>
 
-      {cards && cards.length > 0 && (
+      {cards && (cards.length > 0 || (!known && type !== 'all')) && (
         <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtrer par type de marché">
           {TYPE_CHIPS.map(ch => {
-            const count = ch.key === 'all' ? ranked.length : (typeCounts[ch.key] || 0);
+            const count = ch.key === 'all' ? typeAll : (typeCounts[ch.key] ?? (known ? 0 : null));
             return (
               <button key={ch.key} type="button" aria-pressed={type === ch.key} onClick={() => setType(ch.key)}
                 className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full border px-3.5 text-[14px] font-bold ${type === ch.key ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : count === 0 ? 'border-[#1E3352] text-[#6B7A90]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
-                {ch.label} ({count})
+                {ch.label}{count == null ? '' : ` (${count})`}
               </button>);
           })}
         </div>)}
@@ -206,7 +221,8 @@ export default function ListeMarchesPage() {
       {cards && cards.length === 0 && !error && (
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-5 text-center">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FB923C" strokeWidth="1.5" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <h2 className="text-[18px] font-extrabold">{known || q || dept ? 'Aucun marché ouvert aujourd’hui pour cette recherche' : 'Indiquez votre entreprise pour voir vos marchés'}</h2>
+          <h2 className="text-[18px] font-extrabold">{known || q || dept ? `Aucun ${type !== 'all' ? TYPE_CHIPS.find(t => t.key === type)?.label.toLowerCase() : 'marché ouvert'} aujourd’hui pour cette recherche` : 'Indiquez votre entreprise pour voir vos marchés'}</h2>
+          {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className={btn}>Voir tous les types</button>}
           <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
           {((known && zoneParam !== 'france') || dept) && !tradeUnknown && <button type="button" onClick={() => { const p = new URLSearchParams(params); p.set('zone', 'france'); p.delete('department'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {known && <p className="text-[13px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/contact" className="font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
