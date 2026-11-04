@@ -214,14 +214,14 @@ export default function ListeMarchesPage() {
       {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} />)}</div>}
       {cards && cards.length > 0 && visible.length === 0 && (
         <p className="text-[14px] text-[#B4C1D3]">
-          {type !== 'all' && byType.length === 0 ? `Aucun ${TYPE_CHIPS.find(t => t.key === type)?.label.toLowerCase()} pour cette recherche aujourd’hui. ` : 'Aucun marché dans cette catégorie pour le moment. '}
+          {type !== 'all' && byType.length === 0 ? `Aucun ${type === 'tender' ? 'appel d’offres privé' : type === 'subcontracting' ? 'marché de sous-traitance' : 'marché public'} pour cette recherche aujourd’hui. ` : 'Aucun marché dans cette catégorie pour le moment. '}
           <button type="button" onClick={() => { setType('all'); setFilter('all'); }} className="min-h-[44px] font-bold text-[#FB923C] underline">Voir tous les types</button>
         </p>)}
 
       {cards && cards.length === 0 && !error && (
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-5 text-center">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FB923C" strokeWidth="1.5" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <h2 className="text-[18px] font-extrabold">{known || q || dept ? `Aucun ${type !== 'all' ? TYPE_CHIPS.find(t => t.key === type)?.label.toLowerCase() : 'marché ouvert'} aujourd’hui pour cette recherche` : 'Indiquez votre entreprise pour voir vos marchés'}</h2>
+          <h2 className="text-[18px] font-extrabold">{known || q || dept ? `Aucun ${type === 'tender' ? 'appel d’offres privé' : type === 'subcontracting' ? 'marché de sous-traitance' : type === 'public_procurement' ? 'marché public' : 'marché ouvert'} aujourd’hui pour cette recherche` : 'Indiquez votre entreprise pour voir vos marchés'}</h2>
           {!known && type !== 'all' && (type === 'tender' || type === 'subcontracting') && (
             <p className="text-[14px] text-[#D6E0EC]">Les {type === 'tender' ? 'appels d’offres privés' : 'missions de sous-traitance'} nous arrivent par nos partenaires et les entreprises générales, au fil de l’eau. Dites-nous votre métier : Elena vous prévient dès qu’il y en a un dans votre zone.</p>)}
           {!known && type !== 'all' && (type === 'tender' || type === 'subcontracting') && (
