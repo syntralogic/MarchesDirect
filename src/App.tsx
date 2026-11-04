@@ -29,6 +29,7 @@ import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
 import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
+import FicheMarchePage from '@/pages/FicheMarchePage';
 import { OpportunityTransitionProvider } from '@/contexts/OpportunityTransitionContext';
 import BidWorkspacePage from '@/pages/BidWorkspacePage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
@@ -71,7 +72,9 @@ import { siteStatusApi } from '@/lib/apiClient';
 // Remounted for every announcement: no state (result, answers, company card) can leak from one fiche to the next.
 function KeyedOpportunityDetail() {
   const { id } = useParams<{ id: string }>();
-  return <OpportunityDetailPage key={id} />;
+  // Refonte v26 (écran 3). `?ancien=1` keeps the previous page reachable (dossier flow until screen 4 is rebuilt, and rollback).
+  const legacy = new URLSearchParams(useLocation().search).get('ancien') === '1';
+  return legacy ? <OpportunityDetailPage key={id} /> : <FicheMarchePage key={id} />;
 }
 
 function MaintenancePage({ message }: { message: string }) {
