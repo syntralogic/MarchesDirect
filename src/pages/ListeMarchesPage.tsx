@@ -184,7 +184,7 @@ export default function ListeMarchesPage() {
           <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
           {((known && zoneParam !== 'france') || dept) && !tradeUnknown && <button type="button" onClick={() => { const p = new URLSearchParams(params); p.set('zone', 'france'); p.delete('department'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {known && <p className="text-[13px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/contact" className="font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
-          <Link to="/recherche" className="min-h-[44px] py-3 text-[14px] font-semibold text-[#FB923C] underline">Faire une recherche simple</Link>
+          <Link to="/" className="min-h-[44px] py-3 text-[14px] font-semibold text-[#FB923C] underline">Changer de métier ou de zone</Link>
         </section>)}
 
       {!known && status !== undefined && (
