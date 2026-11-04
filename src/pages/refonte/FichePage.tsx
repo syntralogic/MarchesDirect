@@ -6,6 +6,8 @@ import { CallbackModal } from '@/components/CallbackModal';
 import { AppointmentModal } from '@/components/AppointmentModal';
 import ScoreRing from '@/components/refonte/ScoreRing';
 import SocialProofDot from '@/components/refonte/SocialProofDot';
+import InvitationSheet from '@/components/refonte/InvitationSheet';
+import { INVITE_DELAY_MS, INVITE_POSTPONE_MS, decideInvitation, markInviteShown, wasInviteShown } from '@/lib/refonte/invitation';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
 import { opportunitiesApi, getApiErrorMessage, type ApiMatchScore, type ApiOpportunityDetail } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent } from '@/lib/visitorTracking';
@@ -96,6 +98,8 @@ export default function FichePage() {
   const [stub, setStub] = useState<null | 'dossier' | 'question'>(null);
   const [mainBtnVisible, setMainBtnVisible] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [invite, setInvite] = useState(false);
+  const acted = useRef(false); // any choice made on this fiche: the invitation never shows afterwards
   const mainBtn = useRef<HTMLButtonElement>(null);
   const shownFor = useRef<string | null>(null);
 
@@ -144,6 +148,25 @@ export default function FichePage() {
     return () => { document.removeEventListener('focusin', on); document.removeEventListener('focusout', off); };
   }, []);
 
+  // 3.12: 40 s on a fiche with a percentage and no action -> one invitation per visit (postponed 15 s while a field is active).
+  const hasPct = score !== null && score.score !== null;
+  useEffect(() => {
+    if (!hasPct) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const attempt = () => {
+      const ae = document.activeElement as HTMLElement | null;
+      const d = decideInvitation({ alreadyShown: wasInviteShown(), acted: acted.current, fieldActive: !!ae && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName) });
+      if (d === 'postpone') { timer = setTimeout(attempt, INVITE_POSTPONE_MS); return; }
+      if (d === 'show') {
+        markInviteShown();
+        setInvite(true);
+        trackVisitorEvent('invitation_30min_shown', 'Invitation 30 minutes affichée', undefined, { opportunityId: id, siret: siret ?? undefined });
+      }
+    };
+    timer = setTimeout(attempt, INVITE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [hasPct, id, siret]);
+
   const toggleSave = useCallback(() => {
     const list = readSaved();
     const next = list.some((s) => s.id === id) ? list.filter((s) => s.id !== id) : [...list, { id, siret, at: new Date().toISOString() }];
@@ -178,7 +201,11 @@ export default function FichePage() {
     : null;
   const answeredCount = REFINE_QUESTIONS.filter((q) => answers[q.key]).length;
   const rowByCriterion = new Map(rows.map((r) => [r.key, r]));
-  const choose = (c: 'dossier' | 'rappel' | 'rdv' | 'question') => (c === 'rappel' || c === 'rdv' ? setModal(c) : setStub(c));
+  const choose = (c: 'dossier' | 'rappel' | 'rdv' | 'question') => {
+    acted.current = true;
+    setInvite(false);
+    if (c === 'rappel' || c === 'rdv') setModal(c); else setStub(c);
+  };
 
   const kv: [string, string | null][] = [
     ["Donneur d'ordre", opp.buyer_name ?? null],
@@ -336,6 +363,13 @@ export default function FichePage() {
             <p className="text-xs text-center text-[#B4C1D3] mt-1">À votre nom · à télécharger tout de suite</p>
           </div>
         </div>
+      )}
+
+      {invite && !modal && !stub && (
+        <InvitationSheet
+          onClose={() => { setInvite(false); trackVisitorEvent('invitation_30min_closed', 'Invitation 30 minutes fermée', undefined, { opportunityId: id, siret: siret ?? undefined }); }}
+          onAccept={() => { trackVisitorEvent('invitation_30min_clicked', 'Invitation 30 minutes acceptée', undefined, { opportunityId: id, siret: siret ?? undefined }); choose('rdv'); }}
+        />
       )}
 
       <CallbackModal open={modal === 'rappel'} onClose={() => setModal(null)} opportunityId={id} />

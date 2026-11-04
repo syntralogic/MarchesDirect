@@ -49,7 +49,13 @@ export type VisitorEventType =
   | 'dossier_preview'
   | 'dossier_requested'
   | 'callback_requested'
-  | 'appointment_booked';
+  | 'appointment_booked'
+  // Refonte v26 additions
+  | 'ranked_list_shown'
+  | 'alert_requested'
+  | 'invitation_30min_shown'
+  | 'invitation_30min_closed'
+  | 'invitation_30min_clicked';
 
 export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request';
 
