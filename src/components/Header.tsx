@@ -13,7 +13,7 @@ import { ELENA } from '@/data/homeContent';
 const NAV_LINKS = [
   { label: 'Accueil', href: '/' },
   { label: 'Vos marchés', href: '/vos-marches' },
-  { label: 'Comment ça marche', href: '/how-it-works' },
+  { label: 'Comment ça marche', href: '/#mdh-etapes' },
   { label: 'Qui sommes-nous ?', href: '/a-propos' },
   { label: 'Notre équipe', href: '/equipe' },
 ];

@@ -12,17 +12,19 @@ import { BTN, LinkOutcome, NEXT_KEY, requestLink, useResendTimer, type LinkState
 // en un geste, sans ressaisir l'adresse. Après connexion, retour à la page
 // demandée avant la connexion (même appareil), sinon le tableau de bord.
 
-type Code = 'invalid' | 'expired' | 'used' | undefined;
+type Code = 'invalid' | 'expired' | 'used' | 'unavailable' | undefined;
 
 const TITLE: Record<Exclude<Code, undefined>, string> = {
   invalid: 'Ce lien de connexion est invalide',
   expired: 'Ce lien a expiré',
   used: 'Ce lien a déjà été utilisé',
+  unavailable: 'Connexion impossible pour le moment',
 };
 const HINT: Record<Exclude<Code, undefined>, string> = {
   invalid: 'Il est peut-être incomplet (copié à la main) ou ne correspond plus à cette adresse.',
   expired: 'Un lien est valable 1 heure. Demandez-en un nouveau : il arrive en quelques secondes.',
   used: 'Un lien ne sert qu’une fois. Si vous l’avez ouvert sur un autre appareil, vous y êtes déjà connecté. Sinon, demandez-en un nouveau.',
+  unavailable: 'Le service redémarre ou ne répond pas. Votre lien reste valable : réessayez dans quelques secondes.',
 };
 
 export default function MagicLinkPage() {
@@ -66,9 +68,12 @@ export default function MagicLinkPage() {
         try { next = sessionStorage.getItem(NEXT_KEY) || ''; sessionStorage.removeItem(NEXT_KEY); } catch { /* stockage indisponible */ }
         navigate(next && next.startsWith('/') ? next : '/tableau-de-bord', { replace: true });
       } catch (err) {
-        const c = (err as { response?: { data?: { code?: Code } } })?.response?.data?.code;
+        const resp = (err as { response?: { status?: number; data?: { code?: Code } } })?.response;
+        const c = resp?.data?.code;
         setStatus('error');
-        setCode(c && c in TITLE ? c : 'invalid');
+        // 503 (service en redémarrage) ou pas de réponse : le lien n'a pas
+        // été consommé, on propose de réessayer plutôt que de le déclarer invalide.
+        setCode(!resp || (resp.status && resp.status >= 500) ? 'unavailable' : c && c in TITLE ? c : 'invalid');
         setError(getApiErrorMessage(err, 'Ce lien de connexion est invalide ou a expiré.'));
       }
     })();
@@ -101,7 +106,9 @@ export default function MagicLinkPage() {
       </div>
 
       <div className="rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-4 shadow-[0_18px_40px_rgba(0,0,0,.35)] md:p-5">
-        {link.kind === 'sent' || link.kind === 'paused' || link.kind === 'failed' ? (
+        {c === 'unavailable' ? (
+          <button type="button" onClick={() => window.location.reload()} className={BTN}>Réessayer maintenant</button>
+        ) : link.kind === 'sent' || link.kind === 'paused' || link.kind === 'failed' ? (
           <LinkOutcome state={link} resendLeft={resendLeft} onRetry={() => void resend()} onContinue={() => navigate('/')} />
         ) : email ? (
           <div className="space-y-3">
