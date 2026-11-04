@@ -462,6 +462,16 @@ export const opportunitiesApi = {
     const { data } = await apiClient.post(`/opportunities/${id}/request-access`, payload);
     return data;
   },
+  // Écran 2 « Vos marchés »: open markets of the identified company's trade and zone, WITHOUT percentages.
+  // 403 company_not_identified until a SIRET lookup is done for this session.
+  rankedCandidates: async (sessionId: string, zone?: string) => {
+    const { data } = await apiClient.get<{
+      items: { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null }[];
+      total: number; zone: string; reason?: 'trade_unknown';
+      company?: { name: string | null; activity: string | null; city: string | null; department: string | null };
+    }>('/opportunities/ranked/candidates', { params: { sessionId, ...(zone ? { zone } : {}) } });
+    return data;
+  },
   getMatchScore: async (id: string, sessionId?: string, answers?: string): Promise<ApiMatchScore> => {
     const params: Record<string, string> = {};
     if (sessionId) params.sessionId = sessionId;

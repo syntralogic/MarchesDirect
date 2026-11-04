@@ -53,7 +53,9 @@ export type VisitorEventType =
   // Refonte v26 (écran 3): the "30 minutes offertes" invitation.
   | 'invitation_30min_shown'
   | 'invitation_30min_closed'
-  | 'invitation_30min_clicked';
+  | 'invitation_30min_clicked'
+  // Refonte v26 (écran 2): the ranked list was shown.
+  | 'ranked_list_shown';
 
 export type RequestKind = 'callback' | 'appointment' | 'contact' | 'dossier_request' | 'alert';
 

@@ -28,6 +28,7 @@ import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
 import MiseEnRelationPage from '@/pages/sous-traitance/MiseEnRelationPage';
 import TarifsPage from '@/pages/TarifsPage';
 import RecherchePage from '@/pages/RecherchePage';
+import ListeMarchesPage from '@/pages/ListeMarchesPage';
 import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
 import FicheMarchePage from '@/pages/FicheMarchePage';
@@ -210,6 +211,7 @@ const App: React.FC = () => {
               <Route path="/sous-traitance/mise-en-relation" element={<RequireAuth><MiseEnRelationPage /></RequireAuth>} />
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RecherchePage />} />
+              <Route path="/vos-marches" element={<ListeMarchesPage />} />
               <Route path="/parcours" element={<OpportunityJourneyPage />} />
               <Route path="/opportunites/:id" element={<PageErrorBoundary><KeyedOpportunityDetail /></PageErrorBoundary>} />
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />
