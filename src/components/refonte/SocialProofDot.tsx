@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { opportunitiesApi } from '@/lib/apiClient';
 import { SOCIAL_PROOF_MODE } from '@/lib/refonte/flags';
+import { getSessionId } from '@/lib/visitorTracking';
 
 // Spec 2.5. PHASE 1 (preview): random 2-9 behind VITE_SOCIAL_PROOF_MODE=demo, to judge the rendering.
 // PHASE 2 (production, default): the measured number of distinct companies that opened this market today;
@@ -14,7 +15,7 @@ export default function SocialProofDot({ opportunityId }: { opportunityId: strin
       setN(2 + Math.floor(Math.random() * 8));
       return;
     }
-    opportunitiesApi.activity(opportunityId)
+    opportunitiesApi.activity(opportunityId, getSessionId())
       .then((r) => { if (!cancelled) setN(typeof r.companiesToday === 'number' ? r.companiesToday : null); })
       .catch(() => { if (!cancelled) setN(null); });
     return () => { cancelled = true; };

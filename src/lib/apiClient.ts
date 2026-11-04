@@ -431,11 +431,12 @@ export const opportunitiesApi = {
     return data;
   },
 
-  // Refonte 2.5 / 3.9: measured social proof for one market (distinct companies that opened it today,
-  // dossiers requested over 7 days). Never invented: the server returns real counts or nulls.
-  activity: async (id: string): Promise<{ companiesToday: number | null; dossiers7d: number | null }> => {
-    const { data } = await apiClient.get(`/opportunities/${id}/activity`);
-    return data;
+  // Refonte 2.5: measured social proof for one market = distinct visitor sessions that opened it in the last 24 h
+  // (the caller's own session excluded by the server). Real numbers only; a failure means "show nothing".
+  // dossiers7d (3.9) needs a dedicated server count and stays null until that endpoint exists.
+  activity: async (id: string, sessionId?: string): Promise<{ companiesToday: number | null; dossiers7d: number | null }> => {
+    const { data } = await apiClient.get(`/visitor-events/consultations/${id}`, { params: sessionId ? { sessionId } : undefined });
+    return { companiesToday: typeof data?.count === 'number' ? data.count : null, dossiers7d: null };
   },
   getById: async (id: string) => {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
