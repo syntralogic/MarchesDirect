@@ -2,7 +2,7 @@
 // trois étapes → accompagnement → équipe → témoignages → questions → dernier appel. Le pied de page est celui du site.
 // Retirés de l'accueil : « Marchés ouverts / Futurs chantiers », « Conseils et actualités ».
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import DemoVideoModal from '@/components/DemoVideoModal';
 import PageMeta from '@/components/common/PageMeta';
@@ -105,7 +105,8 @@ function SimpleSearch() {
         {DEPARTMENTS.map(d => <option key={d.code} value={d.code}>{d.code} – {d.name}</option>)}
       </select>
       <button type="submit" className={BTN}>Rechercher des marchés</button>
-      <p className="text-center text-[13px] text-[#B4C1D3]">Indiquez ensuite votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché</p>
+      <p className="text-center text-[13px] font-bold text-[#FDBA74]">Marchés publics · Appels d’offres privés · Sous-traitance</p>
+      <p className="text-center text-[13px] text-[#B4C1D3]">Filtrez par type dans la liste. Indiquez ensuite votre entreprise pour voir le pourcentage de chaque marché.</p>
     </form>
   );
 }
@@ -240,7 +241,9 @@ function DeferredMap() {
 }
 
 export default function HomePage() {
-  const [mode, setMode] = useState<'company' | 'simple'>('company');
+  // ?mode=metier : arrivée depuis « Vos marchés » sans entreprise, l'onglet « Par métier » s'ouvre directement.
+  const [params] = useSearchParams();
+  const [mode, setMode] = useState<'company' | 'simple'>(params.get('mode') === 'metier' ? 'simple' : 'company');
   const [callbackOpen, setCallbackOpen] = useState(false);
   const companyRef = useRef<CompanySearchHandle>(null);
   const hasTeam = !!ELENA.photo;

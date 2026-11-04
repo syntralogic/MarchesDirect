@@ -12,6 +12,13 @@ import {
 
 const RING = { hi: '#34D399', mid: '#FDBA74', lo: '#6B7A90' } as const;
 const CHIPS: { key: Filter; label: string }[] = [{ key: 'all', label: 'Tous' }, { key: 'hi', label: 'Très adaptés' }, { key: 'mid', label: 'À étudier' }, { key: 'lo', label: 'Peu adaptés' }];
+// 5 Nov (retour client) : le visiteur doit voir qu'il n'y a pas que du marché public.
+// Filtre par type, visible dès la recherche simple comme sur la liste par entreprise.
+type Journey = 'all' | 'public_procurement' | 'tender' | 'subcontracting';
+const TYPE_CHIPS: { key: Journey; label: string }[] = [
+  { key: 'all', label: 'Tous les types' }, { key: 'public_procurement', label: 'Marchés publics' },
+  { key: 'tender', label: 'Appels d’offres privés' }, { key: 'subcontracting', label: 'Sous-traitance' },
+];
 const btn = 'flex min-h-[54px] w-full items-center justify-center rounded-[14px] bg-[#C2410C] px-4 py-2 text-center text-[17px] font-extrabold text-white';
 
 function Ring({ score }: { score: number | null | undefined }) {
@@ -70,6 +77,7 @@ export default function ListeMarchesPage() {
   const [cards, setCards] = useState<RankedCard[] | null>(null);
   const [scores, setScores] = useState<ScoreMap>({});
   const [filter, setFilter] = useState<Filter>('all');
+  const [type, setType] = useState<Journey>('all');
   const [tradeUnknown, setTradeUnknown] = useState(false);
   const [zoneLabel, setZoneLabel] = useState('Toute la France');
   const [error, setError] = useState(false);
@@ -112,7 +120,9 @@ export default function ListeMarchesPage() {
 
   const ranked = useMemo(() => (cards ? (done ? rank(cards, scores) : cards) : []), [cards, scores, done]);
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
-  const visible = applyFilter(ranked, scores, filter);
+  const byType = useMemo(() => type === 'all' ? ranked : ranked.filter(c => c.journey === type), [ranked, type]);
+  const typeCounts = useMemo(() => ranked.reduce<Record<string, number>>((acc, c) => { acc[c.journey || ''] = (acc[c.journey || ''] || 0) + 1; return acc; }, {}), [ranked]);
+  const visible = applyFilter(byType, scores, filter);
 
   // ranked_list_shown: once, when every percentage is in (SIRET, number of markets, three best percentages).
   useEffect(() => {
@@ -162,6 +172,18 @@ export default function ListeMarchesPage() {
         {known && cards && !done && pending > 0 && <p className="text-[13px] text-[#FDBA74]" role="status">Calcul des pourcentages… {total - pending} / {total}</p>}
       </header>
 
+      {cards && cards.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtrer par type de marché">
+          {TYPE_CHIPS.map(ch => {
+            const count = ch.key === 'all' ? ranked.length : (typeCounts[ch.key] || 0);
+            return (
+              <button key={ch.key} type="button" aria-pressed={type === ch.key} onClick={() => setType(ch.key)}
+                className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full border px-3.5 text-[14px] font-bold ${type === ch.key ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : count === 0 ? 'border-[#1E3352] text-[#6B7A90]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
+                {ch.label} ({count})
+              </button>);
+          })}
+        </div>)}
+
       {known && cards && cards.length > 0 && (
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par correspondance">
           {CHIPS.map(ch => (
@@ -175,7 +197,11 @@ export default function ListeMarchesPage() {
       {cards === null && !error && <div className="flex flex-col gap-2.5" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="h-[150px] animate-pulse rounded-2xl bg-[#12233A]" />)}</div>}
 
       {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} />)}</div>}
-      {cards && cards.length > 0 && visible.length === 0 && <p className="text-[14px] text-[#B4C1D3]">Aucun marché dans cette catégorie pour le moment.</p>}
+      {cards && cards.length > 0 && visible.length === 0 && (
+        <p className="text-[14px] text-[#B4C1D3]">
+          {type !== 'all' && byType.length === 0 ? `Aucun ${TYPE_CHIPS.find(t => t.key === type)?.label.toLowerCase()} pour cette recherche aujourd’hui. ` : 'Aucun marché dans cette catégorie pour le moment. '}
+          <button type="button" onClick={() => { setType('all'); setFilter('all'); }} className="min-h-[44px] font-bold text-[#FB923C] underline">Voir tous les types</button>
+        </p>)}
 
       {cards && cards.length === 0 && !error && (
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-5 text-center">
@@ -184,7 +210,10 @@ export default function ListeMarchesPage() {
           <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
           {((known && zoneParam !== 'france') || dept) && !tradeUnknown && <button type="button" onClick={() => { const p = new URLSearchParams(params); p.set('zone', 'france'); p.delete('department'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {known && <p className="text-[13px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/contact" className="font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
-          <Link to="/" className="min-h-[44px] py-3 text-[14px] font-semibold text-[#FB923C] underline">Changer de métier ou de zone</Link>
+          {known || q || dept
+            ? <Link to="/?mode=metier" className="min-h-[44px] py-3 text-[14px] font-semibold text-[#FB923C] underline">Changer de métier ou de zone</Link>
+            : <Link to="/?mode=metier" className={btn}>Chercher par métier et par zone</Link>}
+          {!(known || q || dept) && <p className="text-[13px] text-[#B4C1D3]">Marchés publics, appels d’offres privés et sous-traitance : sans entreprise, vous voyez les marchés sans leur pourcentage.</p>}
         </section>)}
 
       {!known && status !== undefined && (
