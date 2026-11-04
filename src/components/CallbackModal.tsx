@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, Phone, User, Building2, Clock, Loader2 } from 'lucide-react';
+import { X, Check, Phone, User, Building2, Loader2 } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyKnown } from '@/contexts/CompanyKnownContext';
@@ -23,9 +23,9 @@ interface CallbackModalProps {
 }
 
 const MOMENT_LABELS: Record<string, string> = {
-  matin: 'Matin (9h–12h)',
-  aprem: 'Après-midi (14h–17h)',
-  fin: 'Fin de journée (17h–19h)',
+  maintenant: 'Maintenant',
+  apres_midi: 'Cet après-midi',
+  demain_matin: 'Demain matin',
 };
 
 // "Demande enregistrée le 17 octobre 2026 à 14 h 05 (heure de Paris)" - from the
@@ -54,7 +54,7 @@ export function CallbackModal({ open, onClose, opportunityId, lotLabel }: Callba
   const idem = useIdempotency();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: '' });
+  const [form, setForm] = useState({ nom: '', entreprise: '', telephone: '', moment: 'maintenant' });
 
   // Client brief point 7: the contact details already known (account, identified company, earlier request)
   // are prefilled once when the modal opens, without overwriting anything typed in this session.
@@ -106,7 +106,7 @@ export function CallbackModal({ open, onClose, opportunityId, lotLabel }: Callba
         leadSource: 'callback_modal',
         opportunityId,
         lotLabel,
-        message: form.moment ? `Créneau souhaité : ${MOMENT_LABELS[form.moment] || form.moment}` : undefined,
+        callbackMoment: (form.moment || undefined) as 'maintenant' | 'apres_midi' | 'demain_matin' | undefined,
         sessionId: getSessionId(),
         idempotencyKey: idem.key(),
       });
@@ -174,23 +174,24 @@ export function CallbackModal({ open, onClose, opportunityId, lotLabel }: Callba
                 </div>
               ))}
 
-              {/* Moment souhaité */}
-              <div>
-                <label className="text-xs text-brand-muted mb-1.5 block font-medium">{t('callbackTime')}</label>
-                <div className="relative">
-                  <Clock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <select
-                    value={form.moment}
-                    onChange={e => setForm(f => ({ ...f, moment: e.target.value }))}
-                    className="w-full bg-[#061D32] border border-[#17334D] rounded-xl pl-9 pr-4 py-3 text-sm text-brand-primary focus:outline-none focus:border-orange transition-colors appearance-none"
-                  >
-                    <option value="">Indifférent</option>
-                    <option value="matin">Matin (9h–12h)</option>
-                    <option value="aprem">Après-midi (14h–17h)</option>
-                    <option value="fin">Fin de journée (17h–19h)</option>
-                  </select>
+              {/* Moment souhaité (v26): three choices, sent as an enum; the server writes it into the note the team reads. */}
+              <fieldset>
+                <legend className="text-xs text-brand-muted mb-1.5 block font-medium">{t('callbackTime')}</legend>
+                <div className="flex gap-2" role="radiogroup">
+                  {Object.entries(MOMENT_LABELS).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={form.moment === value}
+                      onClick={() => setForm(f => ({ ...f, moment: value }))}
+                      className={`min-h-[48px] flex-1 rounded-xl border px-2 text-sm font-semibold transition-colors ${form.moment === value ? 'border-orange bg-orange/15 text-orange' : 'border-[#17334D] bg-[#061D32] text-brand-primary'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              </div>
+              </fieldset>
 
               {error && <FormRetryError message={error} onRetry={() => handleSubmit()} busy={submitting} />}
 

@@ -912,6 +912,7 @@ export const crmApi = {
     slotAt?: string;
     opportunityId?: string;
     lotLabel?: string;
+    callbackMoment?: 'maintenant' | 'apres_midi' | 'demain_matin';
   }) => {
     const { data } = await axios.post(`${API_URL}/api/crm/leads`, payload, {
       headers: payload.idempotencyKey ? { 'Idempotency-Key': payload.idempotencyKey } : undefined,
