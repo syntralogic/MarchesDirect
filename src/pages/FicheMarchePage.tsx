@@ -289,7 +289,7 @@ export default function FicheMarchePage() {
   }, [hasScore, openInvite]);
   const closeInvite = () => { setInvite(false); trackVisitorEvent('invitation_30min_closed', 'Invitation fermée', undefined, { opportunityId: id }); };
 
-  if (loadError) return <main className="mx-auto max-w-[560px] px-4 py-16 text-center text-[#F2F5F9]"><p>Ce marché n’est plus disponible.</p><Link to="/recherche" className="mt-4 inline-block text-[#FB923C] underline">‹ Voir les marchés</Link></main>;
+  if (loadError) return <main className="mx-auto max-w-[560px] px-4 py-16 text-center text-[#F2F5F9]"><p>Ce marché n’est plus disponible.</p><Link to="/vos-marches" className="mt-4 inline-block text-[#FB923C] underline">‹ Voir les marchés</Link></main>;
   if (!opp) return <main className="mx-auto max-w-[560px] px-4 py-10" aria-busy="true"><div className="h-8 w-2/3 animate-pulse rounded bg-[#12233A]" /><div className="mt-6 h-40 animate-pulse rounded-2xl bg-[#12233A]" /></main>;
 
   const tone = sc != null ? scoreTone(sc) : 'mid';
@@ -334,7 +334,7 @@ export default function FicheMarchePage() {
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-32 pt-3 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
       <nav aria-label="Étapes" className="flex flex-col gap-3">
-        <Link to="/recherche" className="flex min-h-[44px] items-center gap-1.5 text-[15px] text-[#B4C1D3]">‹ Vos marchés</Link>
+        <Link to="/vos-marches" className="flex min-h-[44px] items-center gap-1.5 text-[15px] text-[#B4C1D3]">‹ Vos marchés</Link>
         <ol className="flex text-center text-[13px]">
           {['Vos marchés', 'Mon analyse', 'Mon dossier'].map((s, i) => (
             <li key={s} className={`flex flex-1 flex-col items-center gap-1.5 ${i === 1 ? 'font-bold text-[#FB923C]' : i === 0 ? 'text-[#6EE7B7]' : 'text-[#B4C1D3]'}`} aria-current={i === 1 ? 'step' : undefined}>
@@ -347,7 +347,7 @@ export default function FicheMarchePage() {
         <div className="flex flex-wrap gap-2 text-[12px] font-bold">
           <span className="rounded-full bg-[#3A2312] px-2.5 py-1 text-[#FDBA74]">{TYPE_LABEL[opp.journey] || 'MARCHÉ'}</span>
           <span className="rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold text-[#D6E0EC]">{city}{dept}</span>
-          <span className={`rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold ${days != null && days <= 7 ? 'text-[#FDBA74]' : 'text-[#D6E0EC]'}`}>Réponse avant le {deadlineTxt}{days != null && days >= 0 ? ` · J-${days}` : ''}</span>
+          <span className={`rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold ${days != null && days <= 7 ? 'text-[#FDBA74]' : 'text-[#D6E0EC]'}`}>{formatDeadlineExact(opp?.deadline) ? `Réponse avant le ${deadlineTxt}${days != null && days >= 0 ? ` · J-${days}` : ''}` : 'Date limite non précisée'}</span>
         </div>
         <h1 className="text-[23px] font-extrabold leading-tight">{title}</h1>
         {consult && <p className="flex items-center gap-2 text-[14px] text-[#D6E0EC]"><span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden />{consult}</p>}
@@ -400,7 +400,7 @@ export default function FicheMarchePage() {
                 <div className="flex flex-col"><b>Votre conseil personnalisé</b><span className="text-[13px] text-[#B4C1D3]">Elena Popescu · Chargée de relation</span></div>
               </div>
               <p className="text-[15px]">{advice.text}</p>
-              {advice.suggestBetter && <Link to="/recherche" className="text-[14px] font-semibold text-[#FB923C]">Voir les marchés qui me correspondent mieux ›</Link>}
+              {advice.suggestBetter && <Link to="/vos-marches" className="text-[14px] font-semibold text-[#FB923C]">Voir les marchés qui me correspondent mieux ›</Link>}
               <p className="text-[12px] text-[#B4C1D3]">Synthèse automatique, à confirmer avec Elena.</p>
             </section>)}
 
@@ -463,7 +463,7 @@ export default function FicheMarchePage() {
 
       {/* Barre fixe (3.11) */}
       {!(known && mainVisible) && !fieldActive && !invite && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#22385A] bg-[#0A1628]/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-[64px] z-30 border-t border-[#22385A] bg-[#0A1628]/95 md:bottom-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
           <div className="mx-auto max-w-[560px]">
             {known
               ? <><button type="button" onClick={() => choose('dossier')} className={btnMain}>Obtenir mon dossier prérempli</button><div className="mt-1 text-center text-[12px] text-[#B4C1D3]">À votre nom · à télécharger tout de suite</div></>
@@ -473,7 +473,7 @@ export default function FicheMarchePage() {
 
       {/* Invitation « 30 minutes offertes » (3.12): volet bas, pas un pop-up */}
       {invite && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#2B4468] bg-[#12233A] px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_24px_rgba(0,0,0,.4)]" role="region" aria-label="30 minutes offertes">
+        <div className="fixed inset-x-0 bottom-[64px] z-40 border-t border-[#2B4468] bg-[#12233A] md:bottom-0 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_24px_rgba(0,0,0,.4)]" role="region" aria-label="30 minutes offertes">
           <div className="relative mx-auto flex max-w-[560px] flex-col gap-3 pr-8">
             <p className="text-[15px]">Ce marché vous intéresse, mais vous ne savez pas par où commencer ? Profitez de 30 minutes offertes avec notre équipe pour faire le point sur votre entreprise, ce marché et les prochaines étapes.</p>
             <button type="button" className={btnMain} onClick={() => { trackVisitorEvent('invitation_30min_clicked', 'Invitation cliquée', undefined, { opportunityId: id }); setInvite(false); acted.current = true; setApptOpen(true); }}>Demander mes 30 minutes offertes</button>

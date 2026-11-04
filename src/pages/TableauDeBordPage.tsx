@@ -379,7 +379,7 @@ export default function TableauDeBordPage() {
             <h2 className="text-base font-bold text-white">{t('dashQuickLinks') || 'Accès rapides'}</h2>
           </div>
           <div className="space-y-2">
-            <QuickLink to="/recherche" icon={Search} label={t('dashSearchOpportunities') || 'Rechercher d\'autres opportunités'} />
+            <QuickLink to="/vos-marches" icon={Search} label={t('dashSearchOpportunities') || 'Rechercher d\'autres opportunités'} />
             <QuickLink to="/profil" icon={UserRound} label={t('dashViewProfile') || 'Voir et compléter mon profil'} />
           </div>
         </>
