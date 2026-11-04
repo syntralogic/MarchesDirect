@@ -77,16 +77,8 @@ export const CompanySearchForm = forwardRef<CompanySearchHandle>(function Compan
     // company_selected part ici : il peut donc précéder tout offer_view.
     trackVisitorEvent('company_selected', 'Entreprise sélectionnée', undefined, { siret: s.siret, source: 'accueil' });
     // Métier déduit du code APE, zone déduite du siège : rien n'est redemandé.
-    // La liste classée (écran 2) n'existe pas encore : en attendant, la recherche existante s'ouvre sur ce métier et cette zone.
-    const p = new URLSearchParams();
-    try {
-      const prof = await siretApi.profile(sessionId);
-      if (prof.trades[0]?.name) p.set('q', prof.trades[0].name);
-    } catch { /* métier inconnu : recherche par zone seule */ }
-    const dept = deptFromPostal(s.company?.postal);
-    if (dept) p.append('department', dept);
-    p.set('status', 'all');
-    navigate(`/recherche?${p.toString()}`);
+    // The ranked list (screen 2) reads the recognised company from the session: nothing to pass in the URL.
+    navigate('/vos-marches');
   };
 
   const submit = async (e: React.FormEvent) => {
