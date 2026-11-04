@@ -133,7 +133,7 @@ function Faq() {
 function DeferredMap() {
   const ref = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState(false);
-  const [geoTab, setGeoTab] = useState<'regions' | 'departments' | 'cities'>('regions');
+  const [geoTab, setGeoTab] = useState<'regions' | 'departments' | 'cities'>('departments');
   const [regions, setRegions] = useState<{ code: string; nom: string }[]>([]);
   const [depts, setDepts] = useState<{ code: string; nom: string }[]>([]);
   useEffect(() => {
