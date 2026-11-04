@@ -222,7 +222,11 @@ export default function ListeMarchesPage() {
         <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-5 text-center">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#FB923C" strokeWidth="1.5" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <h2 className="text-[18px] font-extrabold">{known || q || dept ? `Aucun ${type !== 'all' ? TYPE_CHIPS.find(t => t.key === type)?.label.toLowerCase() : 'marché ouvert'} aujourd’hui pour cette recherche` : 'Indiquez votre entreprise pour voir vos marchés'}</h2>
-          {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className={btn}>Voir tous les types</button>}
+          {!known && type !== 'all' && (type === 'tender' || type === 'subcontracting') && (
+            <p className="text-[14px] text-[#D6E0EC]">Les {type === 'tender' ? 'appels d’offres privés' : 'missions de sous-traitance'} nous arrivent par nos partenaires et les entreprises générales, au fil de l’eau. Dites-nous votre métier : Elena vous prévient dès qu’il y en a un dans votre zone.</p>)}
+          {!known && type !== 'all' && (type === 'tender' || type === 'subcontracting') && (
+            <Link to={`/question?q=${encodeURIComponent(`Prévenez-moi des ${type === 'tender' ? 'appels d’offres privés' : 'missions de sous-traitance'}${q ? ` en ${q}` : ''}${dept ? ` (département ${dept})` : ''}.`)}`} className={btn}>Être prévenu par Elena</Link>)}
+          {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className="min-h-[44px] text-[14px] font-semibold text-[#FB923C] underline">Voir tous les types</button>}
           <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
           {((known && zoneParam !== 'france') || dept) && !tradeUnknown && <button type="button" onClick={() => { const p = new URLSearchParams(params); p.set('zone', 'france'); p.delete('department'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {known && <p className="text-[13px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/contact" className="font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
