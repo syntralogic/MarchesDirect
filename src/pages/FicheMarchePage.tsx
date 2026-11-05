@@ -529,7 +529,7 @@ export default function FicheMarchePage() {
             <div className="text-center text-[13px] text-[#B4C1D3]">Gratuit · Sans engagement · <button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">J’ai juste une question</button></div>
           </section>
 
-          <MarketSuivi opportunityId={id} sessionId={sessionId} analysed={sc != null} onDossier={() => choose('dossier')} fileName={pdfFileName(company, opp?.source_reference)} />
+          <MarketSuivi light opportunityId={id} sessionId={sessionId} analysed={sc != null} onDossier={() => choose('dossier')} fileName={pdfFileName(company, opp?.source_reference)} />
         </div>)}
 
       <section className="flex flex-col gap-4">

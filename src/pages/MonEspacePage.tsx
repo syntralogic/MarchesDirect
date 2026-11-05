@@ -5,6 +5,7 @@ import { getSessionId } from '@/lib/visitorTracking';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { MiniProgress, stateLine } from '@/components/suivi/DossierTimeline';
+import InstallOffer from '@/components/pwa/InstallOffer';
 
 // « Mon espace » (5 nov.) : mes dossiers suivis, mes favoris, et l'accès aux nouveaux marchés.
 // Fonctionne sans compte (ce navigateur) ; une fois connecté par lien e-mail, on retrouve aussi les dossiers liés à
@@ -78,6 +79,7 @@ export default function MonEspacePage() {
         <p className="rounded-[14px] border border-[#22385A] bg-[#0F1F35] p-3 text-[13px] text-[#B4C1D3]">
           Votre espace est gardé sur ce téléphone. Pour le retrouver sur un autre appareil, <Link to="/connexion?next=/mon-espace" className="font-bold text-[#FB923C] underline">connectez-vous avec votre e-mail</Link>.
         </p>)}
+      {dossiers && dossiers.length > 0 && <InstallOffer context="espace" />}
       {isAuthenticated && <Link to="/tableau-de-bord" className="text-center text-[13.5px] font-bold text-[#FB923C] underline">Mon compte et mes documents</Link>}
     </main>
   );
