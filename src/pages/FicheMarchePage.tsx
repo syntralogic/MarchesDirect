@@ -93,6 +93,9 @@ export default function FicheMarchePage() {
   const known = !!status?.companyKnown && !editing;
   const company = status?.company?.name || '';
 
+  // Saisie conservée au fil de l'eau (téléphone, e-mail, créneau) : un retour arrière qui quitte la page la retrouve.
+  useEffect(() => { saveCoords(coords); }, [coords]);
+
   // The phone's back button leaves the form / confirmation and returns to the fiche (state kept in this page).
   useEffect(() => {
     const onPop = () => setView((v) => (v.kind === 'fiche' ? v : { kind: 'fiche' }));
@@ -198,8 +201,15 @@ export default function FicheMarchePage() {
   const fmtPts = (n: number | undefined) => (n == null ? '0' : (Math.round(n * 10) / 10).toLocaleString('fr-FR', { maximumFractionDigits: 1 }));
 
   // --- choices: no network call and no event here, the request itself fires events once saved ---
-  const loadSlots = () => {
-    setSlots(undefined);
+  // « Lun. 9 nov. · 09:00 » (heure de Paris), même format que les créneaux proposés.
+  const slotShortLabel = (iso: string) => {
+    const d = new Date(iso);
+    const day = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Europe/Paris' }).format(d);
+    const time = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).format(d);
+    return `${day.charAt(0).toUpperCase() + day.slice(1)} · ${time}`;
+  };
+  const loadSlots = (keep: { slotAt: string; label: string } | null = null) => {
+    setSlots(keep ? [keep] : undefined);
     crmApi.getAppointmentSlots().then(r => {
       const out: { slotAt: string; label: string }[] = [];
       const short = (date: string) => { const d = new Date(`${date}T12:00:00`); const t = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).format(d); return t.charAt(0).toUpperCase() + t.slice(1); };
@@ -207,15 +217,23 @@ export default function FicheMarchePage() {
       const pick = (d: typeof d1 | undefined, pred: (t: string) => boolean) => { const sl = d?.slots.find(x => pred(x.time)); return sl && d ? { slotAt: sl.slotAt, label: `${short(d.date)} · ${sl.time}` } : null; };
       const a = pick(d1, () => true); const b = pick(d1, t => Number(t.split(':')[0]) >= 14 && (!a || t !== a.label.split(' · ')[1])); const c3 = pick(d2, () => true);
       for (const x of [a, b, c3]) if (x && !out.some(o => o.slotAt === x.slotAt)) out.push(x);
-      setSlots(out.slice(0, 3));
-    }).catch(() => setSlots([]));
+      // Le créneau déjà choisi reste affiché et sélectionné, même s'il ne fait pas partie des trois proposés.
+      if (keep && !out.some(o => o.slotAt === keep.slotAt)) out.unshift(keep);
+      setSlots(out.slice(0, keep ? 4 : 3));
+    }).catch(() => setSlots(keep ? [keep] : []));
   };
 
   const choose = (c: 'dossier' | 'rappel' | 'rdv' | 'info' | 'alerte') => {
     acted.current = true; setInvite(false);
     if (c === 'rdv') { setApptOpen(true); return; }      // RENDEZ-VOUS and ALERTE are the second half of screens 4 and 5
     const choice: CoordChoice = c === 'rappel' ? 'rappel' : c === 'info' ? 'info' : c === 'alerte' ? 'alerte' : 'dossier';
-    if (choice === 'dossier') { setCoords(v => ({ ...v, moment: 'now', slotAt: null, slotLabel: null })); loadSlots(); }
+    // Retour arrière (contrôle client du 5 nov.) : un créneau déjà choisi est conservé ; « Dès que possible » n'est
+    // que la valeur par défaut d'un premier passage, ou d'un créneau désormais passé.
+    if (choice === 'dossier') {
+      const keep = coords.slotAt && new Date(coords.slotAt).getTime() > Date.now() + 30 * 60000 ? { slotAt: coords.slotAt, label: slotShortLabel(coords.slotAt) } : null;
+      setCoords(v => (keep ? { ...v, moment: null } : { ...v, moment: 'now', slotAt: null, slotLabel: null }));
+      loadSlots(keep);
+    }
     setSubmitError(null); setCoordErrors({});
     window.history.pushState({ md: 'coords' }, '');
     setView({ kind: 'coords', choice });
