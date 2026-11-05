@@ -229,6 +229,14 @@ async function buildLocal(base: string, city: string, trade: string, department:
   if (r.status === 404 || r.status === 400) return notFound(asked);
   if (r.status !== 200 || !r.json) return unavailable(asked);
   if (r.json.redirect) return { ...notFound(asked), status: 301, redirect: r.json.redirect };
+  if (Array.isArray(r.json.choices)) {
+    // Communes homonymes sans majorité nette : page de choix, jamais un mélange (non indexée).
+    const c = r.json as { name: string; choices: { departmentName: string; department: string; path: string }[] };
+    return { status: 200, path: asked, noindex: true, cache: 'public, s-maxage=600, stale-while-revalidate=86400',
+      title: `${SEO_LABEL[journey]} — ${c.name} : plusieurs communes portent ce nom | Marchés Direct`,
+      description: `Plusieurs communes s’appellent ${c.name}. Choisissez la vôtre.`,
+      body: wrap(`<h1>${esc(c.name)} : plusieurs communes portent ce nom</h1><p>Choisissez le département :</p><ul>${c.choices.map(x => `<li><a href="${esc(x.path)}${trade ? `/${esc(trade)}` : ''}" style="color:#FF6B00">${esc(c.name)} (${esc(x.departmentName)}, ${esc(x.department)})</a></li>`).join('')}</ul>`) };
+  }
   const p = r.json as SeoV2Page;
   // Une seule adresse par page : majuscules, accents, synonymes de métier → 301 vers l'adresse canonique.
   if (p.canonicalPath !== asked) return { ...notFound(asked), status: 301, redirect: seoPagePath(p, pageNum) };

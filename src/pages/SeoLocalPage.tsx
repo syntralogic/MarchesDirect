@@ -25,14 +25,16 @@ export default function SeoLocalPage({ journey }: { journey: 'public_procurement
   const navigate = useNavigate(); const location = useLocation(); const [sp] = useSearchParams();
   const pageParam = sp.get('page') || undefined;
   const [page, setPage] = useState<SeoV2Page | null | undefined>(undefined);
+  const [choices, setChoices] = useState<{ name: string; choices: { department: string; departmentName: string; path: string }[] } | null>(null);
   const base = BASES[journey];
 
   useEffect(() => {
-    let live = true; setPage(undefined);
+    let live = true; setPage(undefined); setChoices(null);
     seoV2Api.page({ base, city, trade, department, page: pageParam })
       .then(r => {
         if (!live) return;
         if ('redirect' in r) { navigate(r.redirect, { replace: true }); return; }
+        if ('choices' in r) { setChoices(r); setPage(null); return; }
         if (r.canonicalPath !== location.pathname) { navigate(seoPagePath(r, r.page), { replace: true }); return; }
         setPage(r);
         trackVisitorEvent('view_seo_page', seoH1(r), undefined, { journey, city: r.zone.type === 'city' ? r.zone.name : undefined, department: r.zone.department || undefined, trade: r.trade?.name });
@@ -43,6 +45,13 @@ export default function SeoLocalPage({ journey }: { journey: 'public_procurement
 
   const shell = 'mx-auto w-full max-w-[720px] px-4 pb-24 pt-4 text-[#F2F5F9]';
   if (page === undefined) return <main className={shell} aria-busy="true"><div className="h-8 w-2/3 animate-pulse rounded bg-[#12233A]" /><div className="mt-4 flex flex-col gap-2">{[0, 1, 2].map(k => <div key={k} className="h-20 animate-pulse rounded-[14px] bg-[#12233A]" />)}</div></main>;
+  if (choices) return (
+    <main className={shell}>
+      <PageMeta title={`${SEO_LABEL[journey]} — ${choices.name} : plusieurs communes | Marchés Direct`} description={`Plusieurs communes s’appellent ${choices.name}.`} noindex />
+      <h1 className="text-[22px] font-extrabold">{choices.name} : plusieurs communes portent ce nom</h1>
+      <p className="mt-2 text-[14px] text-[#D6E0EC]">Choisissez le département :</p>
+      <ul className="mt-3 flex flex-col gap-2">{choices.choices.map(c => <li key={c.path}><Link to={`${c.path}${trade ? `/${trade}` : ''}`} className="font-bold text-[#FB923C] underline">{choices.name} ({c.departmentName}, {c.department})</Link></li>)}</ul>
+    </main>);
   if (page === null) return (
     <main className={shell}>
       <PageMeta title="Page introuvable | Marchés Direct" description="Cette page n’existe pas." noindex />
