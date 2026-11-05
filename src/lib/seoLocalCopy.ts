@@ -52,8 +52,9 @@ export function seoTitle(p: SeoV2Page): string {
   const what = `${SEO_LABEL[p.journey]}${p.trade ? ` ${p.trade.name}` : ''}`;
   const where = p.zone.type === 'city' ? `à ${p.zone.name}` : zoneLabel(p);
   const pg = p.page > 1 ? ` — page ${p.page}` : '';
-  return openTotal(p) > 0
-    ? `${what} ${where} : ${countText(p.journey, openTotal(p))} (${seoMonth(p.generatedAt)})${pg} | Marchés Direct`
+  // Le nombre du titre est celui de la liste principale (lieu d'exécution dans la zone), jamais une somme de groupes.
+  return p.count > 0
+    ? `${what} ${where} : ${countText(p.journey, p.count)} (${seoMonth(p.generatedAt)})${pg} | Marchés Direct`
     : `${what} ${where}${pg} | Marchés Direct`;
 }
 export function seoH1(p: SeoV2Page): string {
@@ -61,7 +62,7 @@ export function seoH1(p: SeoV2Page): string {
 }
 export function seoDescription(p: SeoV2Page): string {
   const next = seoDate(p.nextDeadline);
-  if (openTotal(p) > 0) return `${countText(p.journey, openTotal(p))}${tradeIn(p)} ${zoneIn(p)}${next ? `, prochaine date limite le ${next}` : ''}. Lieu d’exécution, acheteur et date limite de chaque avis ; vérifiez gratuitement si le marché correspond à votre entreprise.`.slice(0, 300);
+  if (openTotal(p) > 0) return `${p.count ? `${countText(p.journey, p.count)}${tradeIn(p)} ${zoneIn(p)}` : ''}${p.count && p.buyerCount ? ', plus ' : ''}${p.buyerCount ? `${bare(p.journey, p.buyerCount)} d’acheteurs ${p.zone.type === 'city' ? `de ${p.zone.name}` : 'du département'} sans lieu précisé` : ''}${next ? ` ; prochaine date limite le ${next}` : ''}. Lieu d’exécution, acheteur et date limite de chaque avis.`.slice(0, 300);
   if (p.closedCount > 0) return `Pas de ${BARE[p.journey][0]}${tradeIn(p)} ${p.journey === 'tender' ? 'ouvert' : 'ouverte'} ${zoneIn(p)} aujourd’hui ; ${bare(p.journey, p.closedCount)} ${ag(p.journey, p.closedCount, 'clôturée')} ces 6 derniers mois, avec leurs acheteurs. Soyez prévenu des prochaines.`;
   return `${p.journey === 'tender' ? 'Aucun' : 'Aucune'} ${NOUN[p.journey][0]}${tradeIn(p)} ${zoneIn(p)} aujourd’hui. Consultez les annonces du département et soyez prévenu des prochaines.`;
 }
