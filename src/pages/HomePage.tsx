@@ -303,14 +303,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ===== 2. LA CARTE, juste sous le moteur : l'autre façon d'entrer, sans lire. ===== */}
-        <section className="mx-auto mt-10 w-full max-w-[1100px] px-4 md:px-6">
-          <Eyebrow>Ou explorez par zone</Eyebrow>
-          <h2 className="mt-1 text-[22px] font-extrabold leading-tight md:text-[28px]">Les marchés près de chez vous</h2>
-          <p className="mt-1 text-[15px] text-[#B4C1D3]">Touchez une région, un département ou une ville : les marchés ouverts s’affichent.</p>
-          <DeferredMap />
-          <OpenCounter />
-        </section>
+        {/* ===== 2. LA VIDÉO (témoignages), juste sous le moteur. ===== */}
+        <div className="mt-10"><TestimonialsSection /></div>
 
         {/* ===== 3. COMPRENDRE, pour celui qui veut lire avant d'agir. Trois blocs courts, pas de cadres. ===== */}
         <div id="mdh-etapes" className="mx-auto mt-12 flex w-full max-w-[720px] scroll-mt-16 flex-col gap-12 px-4 md:px-6">
@@ -368,7 +362,14 @@ export default function HomePage() {
             </Block>
           )}
 
-          <div className="-mx-4 md:-mx-6"><TestimonialsSection /></div>
+          {/* ===== LA CARTE (déplacée à l'ancienne place de la vidéo). ===== */}
+          <section className="w-full">
+            <Eyebrow>Ou explorez par zone</Eyebrow>
+            <h2 className="mt-1 text-[22px] font-extrabold leading-tight md:text-[28px]">Les marchés près de chez vous</h2>
+            <p className="mt-1 text-[15px] text-[#B4C1D3]">Touchez une région, un département ou une ville : les marchés ouverts s’affichent.</p>
+            <DeferredMap />
+            <OpenCounter />
+          </section>
 
           <Faq />
 
