@@ -67,6 +67,8 @@ export default function FicheMarchePage() {
   const [editing, setEditing] = useState(false);
   const [consult, setConsult] = useState<string | null>(null);
   const [dossiers, setDossiers] = useState<number | null>(null);
+  // 5 Nov (un clic = dossier + créneau) : trois créneaux réels du serveur pour l'appel d'Elena.
+  const [slots, setSlots] = useState<{ slotAt: string; label: string }[] | undefined>(undefined);
   const [saved, setSaved] = useState(false);
   const [apptOpen, setApptOpen] = useState(false);
   const [mainVisible, setMainVisible] = useState(false);
@@ -186,10 +188,24 @@ export default function FicheMarchePage() {
   }) : null;
 
   // --- choices: no network call and no event here, the request itself fires events once saved ---
+  const loadSlots = () => {
+    setSlots(undefined);
+    crmApi.getAppointmentSlots().then(r => {
+      const out: { slotAt: string; label: string }[] = [];
+      const short = (date: string) => { const d = new Date(`${date}T12:00:00`); const t = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).format(d); return t.charAt(0).toUpperCase() + t.slice(1); };
+      const d1 = r.days[0]; const d2 = r.days[1];
+      const pick = (d: typeof d1 | undefined, pred: (t: string) => boolean) => { const sl = d?.slots.find(x => pred(x.time)); return sl && d ? { slotAt: sl.slotAt, label: `${short(d.date)} · ${sl.time}` } : null; };
+      const a = pick(d1, () => true); const b = pick(d1, t => Number(t.split(':')[0]) >= 14 && (!a || t !== a.label.split(' · ')[1])); const c3 = pick(d2, () => true);
+      for (const x of [a, b, c3]) if (x && !out.some(o => o.slotAt === x.slotAt)) out.push(x);
+      setSlots(out.slice(0, 3));
+    }).catch(() => setSlots([]));
+  };
+
   const choose = (c: 'dossier' | 'rappel' | 'rdv' | 'info' | 'alerte') => {
     acted.current = true; setInvite(false);
     if (c === 'rdv') { setApptOpen(true); return; }      // RENDEZ-VOUS and ALERTE are the second half of screens 4 and 5
     const choice: CoordChoice = c === 'rappel' ? 'rappel' : c === 'info' ? 'info' : c === 'alerte' ? 'alerte' : 'dossier';
+    if (choice === 'dossier') { setCoords(v => ({ ...v, moment: 'now', slotAt: null, slotLabel: null })); loadSlots(); }
     setSubmitError(null); setCoordErrors({});
     window.history.pushState({ md: 'coords' }, '');
     setView({ kind: 'coords', choice });
@@ -209,6 +225,23 @@ export default function FicheMarchePage() {
       if (choice === 'dossier') {
         await siretApi.captureLead(phone, coords.email.trim() || undefined, sessionId, id);
         trackRequestSubmitted('dossier_request', { requestId });
+        // Un clic = dossier + appel : le créneau choisi (rendez-vous à confirmer par Elena) ou un rappel dès que possible.
+        if (brandId) {
+          try {
+            const r = await crmApi.submitLead({
+              brandId, phone, email: coords.email.trim() || undefined, companyName: company || undefined, opportunityId: id, sessionId, idempotencyKey: `${requestId}:appel`,
+              ...(coords.slotAt ? { leadSource: 'appointment_modal', slotAt: coords.slotAt, message: 'Dossier demandé · appel de 30 minutes au créneau choisi' }
+                : { leadSource: 'callback_modal', message: 'Dossier demandé · rappel dès que possible (dans l’heure, 9 h–18 h)', callbackMoment: 'maintenant' }),
+            });
+            if (coords.slotAt) { if (r.slotLabel) setCoords(v => ({ ...v, slotLabel: r.slotLabel || v.slotLabel })); trackRequestSubmitted('appointment', { requestId: `${requestId}:appel` }); }
+            else trackRequestSubmitted('callback', { requestId: `${requestId}:appel` });
+          } catch (err) {
+            // Créneau pris entre-temps : le dossier est acquis, on le dit et on propose « dès que possible ».
+            const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+            if (code === 'slot_taken' || code === 'slot_invalid') { setCoordErrors({ moment: 'Ce créneau vient d’être pris. Choisissez-en un autre ou « Dès que possible ».' }); loadSlots(); idem.reset(); return; }
+            throw err;
+          }
+        }
       } else if (choice === 'alerte') {
         // The alert is about FUTURE markets: no market is linked to the request, only the company, trade and zone.
         if (!brandId) throw new Error('Impossible de contacter le serveur, réessayez.');
@@ -303,9 +336,9 @@ export default function FicheMarchePage() {
       <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-10 pt-3 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
         {view.kind === 'coords' ? (
           <CoordonneesScreen choice={view.choice} context={context} values={coords} errors={coordErrors} submitting={submitting} submitError={submitError}
-            onChange={(patch) => { setCoords((c) => ({ ...c, ...patch })); setCoordErrors({}); }} onSubmit={() => submitCoords(view.choice)} onBack={back} elenaPhoto={<ElenaPhoto />} />
+            onChange={(patch) => { setCoords((c) => ({ ...c, ...patch })); setCoordErrors({}); }} onSubmit={() => submitCoords(view.choice)} onBack={back} elenaPhoto={<ElenaPhoto />} slots={slots} />
         ) : (
-          <ConfirmationScreen choice={view.choice} values={coords} company={status?.company} pdf={pdf} onDownload={downloadPdf} onAppointment={() => setApptOpen(true)} onBackToMarket={back} elenaPhoto={<ElenaPhoto />}
+          <ConfirmationScreen choice={view.choice} values={coords} company={status?.company} pdf={pdf} onDownload={downloadPdf} onAppointment={() => setApptOpen(true)} onBackToMarket={back} elenaPhoto={<ElenaPhoto />} dossiers={dossiers}
             market={{ shortTitle: title, reference: opp.source_reference || null, deadline: (opp.deadline as string | null) || null, deadlineText: deadlineTxt, daysLeft: days, officialUrl: opp.official_url || null }} />
         )}
         <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} opportunityId={opp.id}
@@ -429,15 +462,17 @@ export default function FicheMarchePage() {
             </details>
           </section>
 
-          <div className="flex flex-col text-[14px] text-[#B4C1D3]"><span>Une question avant de choisir ?</span><button type="button" onClick={() => choose('info')} className="min-h-[44px] self-start text-left font-semibold text-[#FB923C] underline">Demandez à Elena, elle vous rappelle dans l’heure ›</button></div>
 
           <section className="flex flex-col gap-3">
-            <h2 className="text-[20px] font-extrabold">Que voulez-vous faire ?</h2>
-            <button ref={mainBtn} type="button" onClick={() => choose('dossier')} className={`${choiceBase} border-[#C2410C] bg-[#C2410C] text-white`}><b className="text-[17px]">Obtenir mon dossier prérempli</b><span className="text-[13px] text-[#FFE9DC]">Gratuit · à votre nom · à télécharger tout de suite</span></button>
-            <button type="button" onClick={() => choose('rappel')} className={`${choiceBase} border-[#2B4468]`}><b className="text-[16px]">Être rappelé par Elena</b><span className="text-[13px] text-[#B4C1D3]">Dans l’heure, de 9 h à 18 h · pour faire le point</span></button>
-            <button type="button" onClick={() => choose('rdv')} className={`${choiceBase} border-[#2B4468]`}><b className="text-[16px]">Prendre rendez-vous</b><span className="text-[13px] text-[#B4C1D3]">30 minutes offertes avec notre équipe, par téléphone</span></button>
-            <div className="text-center"><button type="button" onClick={() => choose('info')} className="min-h-[44px] text-[13px] text-[#B4C1D3] underline">J’ai juste une question</button></div>
-            <div className="text-center text-[13px] text-[#B4C1D3]">Sans engagement · Vous pouvez arrêter à tout moment</div>
+            <h2 className="text-[20px] font-extrabold">La suite, en un clic</h2>
+            {/* 5 Nov (décision client) : un seul bouton. Le dossier et l'appel de 30 minutes ne font qu'une action :
+                SIRET = froid, dossier seul = moyen, appel planifié = chaud. */}
+            <button ref={mainBtn} type="button" onClick={() => choose('dossier')} className={`${choiceBase} relative border-[#F97316] bg-[#C2410C] text-white shadow-[0_6px_18px_rgba(249,115,22,.35)]`}>
+              <span className="absolute right-3 top-[-10px] rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold text-[#C2410C]">30 MIN OFFERTES</span>
+              <b className="text-[17px] leading-tight">Recevoir mon dossier et faire le point avec Elena</b>
+              <span className="text-[13px] text-[#FFE9DC]">Dossier prérempli à votre nom tout de suite · un appel pour mesurer vos chances et préparer la suite</span>
+            </button>
+            <div className="text-center text-[13px] text-[#B4C1D3]">Gratuit · Sans engagement · <button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">J’ai juste une question</button></div>
           </section>
         </div>)}
 
@@ -466,7 +501,7 @@ export default function FicheMarchePage() {
         <div className="fixed inset-x-0 bottom-[64px] z-30 border-t border-[#22385A] bg-[#0A1628]/95 md:bottom-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
           <div className="mx-auto max-w-[560px]">
             {known
-              ? <><button type="button" onClick={() => choose('dossier')} className={btnMain}>Obtenir mon dossier prérempli</button><div className="mt-1 text-center text-[12px] text-[#B4C1D3]">À votre nom · à télécharger tout de suite</div></>
+              ? <><button type="button" onClick={() => choose('dossier')} className={btnMain}>Recevoir mon dossier et faire le point</button><div className="mt-1 text-center text-[12px] text-[#B4C1D3]">À votre nom · 30 minutes offertes avec Elena</div></>
               : companyForm(true)}
           </div>
         </div>)}

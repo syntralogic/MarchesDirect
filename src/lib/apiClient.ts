@@ -941,6 +941,7 @@ export const crmApi = {
     sessionId?: string;
     idempotencyKey?: string;
     slotAt?: string;
+    callbackMoment?: 'maintenant' | 'apres_midi' | 'demain_matin';
     opportunityId?: string;
     lotLabel?: string;
   }) => {

@@ -13,14 +13,16 @@ const company = { name: 'ACME', siret: '12345678901234', city: 'Nanterre', posta
 const vals = { ...EMPTY_COORDS, phone: '06 12 34 56 78' };
 
 describe('Coordonnées screen', () => {
-  it('dossier: phone required, e-mail optional, no appointment imposed', () => {
-    const h = render(<CoordonneesScreen {...form} choice="dossier" values={vals} />);
-    expect(h).toContain('Préparez votre dossier pour ce marché');
+  it('dossier: phone required, e-mail optional, call moment chosen in the same form (5 Nov: one click = dossier + call)', () => {
+    const h = render(<CoordonneesScreen {...form} choice="dossier" values={{ ...vals, moment: 'now' }} slots={[{ slotAt: '2099-11-18T08:00:00.000Z', label: 'Jeu. 18 nov. · 09:00' }]} />);
+    expect(h).toContain('Votre dossier, et votre créneau avec Elena');
     expect(h).toContain('(facultatif)');
-    expect(h).toContain('Obtenir mon dossier prérempli');
+    expect(h).toContain('Recevoir mon dossier');
+    expect(h).toContain('Quand Elena vous appelle-t-elle ?');
+    expect(h).toContain('Dès que possible');
+    expect(h).toContain('Jeu. 18 nov.');
     expect(h).toContain('Sans engagement · Données confidentielles');
     expect(h).toContain('type="tel"');
-    expect(h).not.toMatch(/rendez-vous/i);
   });
   it('rappel: the three moments, no e-mail field', () => {
     const h = render(<CoordonneesScreen {...form} choice="rappel" values={{ ...vals, moment: 'tomorrow' }} />);
@@ -39,18 +41,19 @@ describe('Coordonnées screen', () => {
 
 describe('Confirmation screen', () => {
   const base = { company, market, onDownload: noop, onAppointment: noop, onBackToMarket: noop, elenaPhoto: null };
-  it('dossier with a real file: download button, dossier section open', () => {
-    const h = render(<ConfirmationScreen {...base} choice="dossier" values={vals} pdf="ready" />);
-    expect(h).toContain('Votre dossier est prêt');
+  it('dossier with a real file: download button, call announced, dossier folded, nothing sold', () => {
+    const h = render(<ConfirmationScreen {...base} choice="dossier" values={{ ...vals, slotAt: '2099-11-18T08:00:00.000Z', slotLabel: 'Jeu. 18 nov. · 09:00' }} pdf="ready" />);
+    expect(h).toContain('Dossier prêt. Elena vous appelle Jeu. 18 nov. · 09:00');
     expect(h).toContain('Télécharger mon dossier prérempli (PDF)');
-    expect(h).toMatch(/<details open/);
-    expect(h).toContain('Qui fait quoi');
-    expect(h).toContain('17 novembre 2099');
+    expect(h).toContain('Ce que vous verrez avec Elena');
+    expect(h).not.toMatch(/<details open/);
+    expect(h).not.toContain('Demander mes 30 minutes offertes');
   });
-  it('dossier without a file: no dead button, says it comes after the call', () => {
-    const h = render(<ConfirmationScreen {...base} choice="dossier" values={vals} pdf="unavailable" />);
+  it('dossier without a file: no dead button, says it comes with the call', () => {
+    const h = render(<ConfirmationScreen {...base} choice="dossier" values={{ ...vals, moment: 'now' }} pdf="unavailable" />);
     expect(h).not.toContain('Télécharger mon dossier prérempli (PDF)');
-    expect(h).toContain('disponible après l’appel d’Elena');
+    expect(h).toContain('remis lors de l’appel');
+    expect(h).toContain('dès que possible');
   });
   it('rappel: preference box with the moment, "dans l’heure" only for Maintenant, dossier folded', () => {
     const later = render(<ConfirmationScreen {...base} choice="rappel" values={{ ...vals, moment: 'tomorrow' }} pdf="unavailable" />);

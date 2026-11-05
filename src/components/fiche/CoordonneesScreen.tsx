@@ -16,6 +16,8 @@ type Props = {
   elenaPhoto: ReactNode;
   backLabel?: string;                    // default: « Retour au marché »
   hideSteps?: boolean;                   // the general question is not a step of the market journey
+  // 5 Nov (dossier + créneau) : créneaux réels proposés par le serveur (3 au plus) ; undefined = pas encore chargés.
+  slots?: { slotAt: string; label: string }[];
 };
 
 const field = 'min-h-[52px] w-full rounded-xl border border-[#2B4468] bg-[#0F1F35] px-3.5 text-[16px] text-[#F2F5F9] placeholder:text-[#7C8CA3] focus:border-[#FB923C] focus:outline-none';
@@ -78,12 +80,30 @@ export default function CoordonneesScreen(p: Props) {
           </div>
         )}
 
+        {p.choice === 'dossier' && (
+          <fieldset>
+            <legend className="mb-1.5 text-[14px] font-semibold">Quand Elena vous appelle-t-elle ?</legend>
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Quand Elena vous appelle-t-elle ?">
+              <button type="button" role="radio" aria-checked={p.values.moment === 'now' && !p.values.slotAt} onClick={() => p.onChange({ moment: 'now', slotAt: null, slotLabel: null })}
+                className={`flex min-h-[52px] flex-col items-center justify-center rounded-xl border px-2 text-[14px] font-bold leading-tight ${p.values.moment === 'now' && !p.values.slotAt ? 'border-2 border-[#FB923C] bg-[#C2410C]/25 text-white' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
+                Dès que possible<span className="text-[11px] font-semibold text-[#B4C1D3]">dans l’heure, 9 h – 18 h</span></button>
+              {(p.slots || []).map((sl) => (
+                <button key={sl.slotAt} type="button" role="radio" aria-checked={p.values.slotAt === sl.slotAt} onClick={() => p.onChange({ moment: null, slotAt: sl.slotAt, slotLabel: sl.label })}
+                  className={`flex min-h-[52px] flex-col items-center justify-center rounded-xl border px-2 text-[14px] font-bold leading-tight ${p.values.slotAt === sl.slotAt ? 'border-2 border-[#FB923C] bg-[#C2410C]/25 text-white' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
+                  {sl.label.split(' · ')[0]}<span className="text-[11px] font-semibold text-[#B4C1D3]">{sl.label.split(' · ')[1] || ''}</span></button>))}
+            </div>
+            {p.slots === undefined && <p className="mt-1 text-[13px] text-[#B4C1D3]">Chargement des créneaux…</p>}
+            {err.moment && <p className={errText}>{err.moment}</p>}
+          </fieldset>
+        )}
+
         <p className="text-[13px] text-[#B4C1D3]">{c.before}</p>
         {p.submitError && <p className={errText} role="status">{p.submitError}</p>}
-        <button type="submit" disabled={p.submitting} className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#C2410C] px-4 text-[17px] font-extrabold text-white disabled:opacity-60">
+        <button type="submit" disabled={p.submitting} className="flex min-h-[60px] w-full flex-col items-center justify-center rounded-[14px] bg-[#F97316] px-4 text-[17px] font-extrabold text-white shadow-[0_6px_18px_rgba(249,115,22,.35)] disabled:opacity-60">
           {p.submitting ? 'Envoi…' : c.btn}
+          {!p.submitting && p.choice === 'dossier' && <span className="text-[12px] font-semibold text-[#FFE9DC]">et réserver mon appel avec Elena</span>}
         </button>
-        <p className="text-center text-[13px] text-[#B4C1D3]">Sans engagement · Données confidentielles</p>
+        <p className="text-center text-[13px] text-[#B4C1D3]">Sans engagement · Données confidentielles{p.choice === 'dossier' ? ' · Aucun e-mail publicitaire' : ''}</p>
       </form>
 
       <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5">

@@ -7,24 +7,26 @@ export type Moment = 'now' | 'afternoon' | 'tomorrow';
 export const MOMENTS: { id: Moment; label: string }[] = [
   { id: 'now', label: 'Maintenant' }, { id: 'afternoon', label: 'Cet après-midi' }, { id: 'tomorrow', label: 'Demain matin' },
 ];
-export type CoordValues = { phone: string; email: string; question: string; moment: Moment | null };
-export const EMPTY_COORDS: CoordValues = { phone: '', email: '', question: '', moment: null };
+// 5 Nov (décision client : « un clic = dossier + créneau d'appel ») : pour le dossier, le visiteur choisit
+// « dès que possible » (moment = 'now') ou un créneau proposé par le serveur (slotAt, ISO) ; slotLabel = son libellé.
+export type CoordValues = { phone: string; email: string; question: string; moment: Moment | null; slotAt: string | null; slotLabel: string | null };
+export const EMPTY_COORDS: CoordValues = { phone: '', email: '', question: '', moment: null, slotAt: null, slotLabel: null };
 
 export const COPY: Record<CoordChoice, {
   label: string; title: string; sub: string; benefit: string; before: string; btn: string; elena: string;
   done: { title: string; text: string; textNoPdf: string; elena: string };
 }> = {
   dossier: {
-    label: 'Votre dossier prérempli', title: 'Préparez votre dossier pour ce marché',
-    sub: 'Il est déjà prérempli au nom de votre entreprise avec vos informations officielles. Indiquez où vous joindre pour l’obtenir.',
-    benefit: 'votre dossier prérempli, à télécharger tout de suite. Puis Elena vous rappelle pour faire le point sur ce marché.',
-    before: 'Après validation : votre dossier s’affiche et se télécharge. Elena vous appelle dans l’heure (9 h–18 h) pour faire le point sur ce dossier. Vous décidez librement de la suite.',
-    btn: 'Obtenir mon dossier prérempli',
-    elena: 'Je reçois votre demande et je vous rappelle dans l’heure, de 9 h à 18 h, pour faire le point sur ce marché.',
+    label: 'Votre dossier', title: 'Votre dossier, et votre créneau avec Elena',
+    sub: 'Prérempli au nom de votre entreprise avec ses informations officielles, prêt tout de suite.',
+    benefit: 'le dossier prérempli tout de suite + 30 minutes offertes par téléphone pour mesurer vos chances sur ce marché.',
+    before: 'Après validation : votre dossier s’affiche et se télécharge. Elena vous appelle au moment choisi, avec le dossier et le marché sous les yeux. Vous décidez librement de la suite.',
+    btn: 'Recevoir mon dossier',
+    elena: 'Je vous appelle avec votre dossier sous les yeux : on regarde ensemble si ce marché vaut le coup pour vous, et avec quoi y aller.',
     done: {
-      title: 'Votre dossier est prêt', text: 'Maintenant : téléchargez-le ci-dessous. Ensuite : Elena vous rappelle dans l’heure, de 9 h à 18 h, pour faire le point.',
-      textNoPdf: 'Votre demande est enregistrée. Elena vous rappelle dans l’heure, de 9 h à 18 h, pour faire le point. Le dossier prérempli vous est remis lors de cet appel.',
-      elena: 'Je vous rappelle dans l’heure, de 9 h à 18 h, pour faire le point sur ce marché et sur ce qu’il faut préparer.',
+      title: 'Dossier prêt.', text: 'Téléchargez-le ci-dessous.',
+      textNoPdf: 'Votre demande est enregistrée. Le dossier prérempli vous est remis lors de l’appel.',
+      elena: 'Rien à préparer pour l’appel : j’aurai votre dossier et le marché sous les yeux.',
     },
   },
   rappel: {
@@ -73,6 +75,7 @@ export function validateCoords(choice: CoordChoice, v: CoordValues): CoordErrors
   const e: CoordErrors = {};
   if (choice === 'info' && v.question.trim().length < 3) e.question = 'Écrivez votre question en une ou deux phrases.';
   if (choice === 'rappel' && !v.moment) e.moment = 'Choisissez le moment qui vous convient.';
+  if (choice === 'dossier' && v.moment !== 'now' && !v.slotAt) e.moment = 'Choisissez quand Elena vous appelle.';
   if (!v.phone.trim()) e.phone = 'Indiquez votre numéro de téléphone.';
   else if (!isValidFrPhone(v.phone)) e.phone = 'Ce numéro n’est pas valide : 10 chiffres, par exemple 06 12 34 56 78.';
   if (choice === 'dossier' && v.email.trim() && !isValidEmail(v.email)) e.email = 'Cette adresse e-mail n’est pas valide.';
@@ -83,6 +86,10 @@ export const formatPhone = (raw: string) => normalizeFrPhoneDigits(raw).replace(
 export const momentLabel = (m: Moment | null) => MOMENTS.find((x) => x.id === m)?.label || '';
 
 // "Dans l'heure" is only ever said for "Maintenant" - never with another moment.
+/** Texte du moment d'appel pour le dossier : créneau choisi ou « dès que possible ». */
+export const dossierCallWhen = (v: Pick<CoordValues, 'moment' | 'slotAt' | 'slotLabel'>) =>
+  v.slotAt && v.slotLabel ? v.slotLabel : 'dès que possible, dans l’heure (9 h–18 h)';
+
 export function callWhen(m: Moment | null): string {
   if (m === 'afternoon') return 'cet après-midi';
   if (m === 'tomorrow') return 'demain matin';
@@ -95,11 +102,11 @@ export const leadMessage = (choice: CoordChoice, v: CoordValues, scope?: string)
 
 // ------------------------------------------------------------------ calendar "jusqu'au dépôt" (from the real deadline)
 export type CalendarRow = { when: string; what: string };
-export function calendarRows(a: { deadline: string | Date | null | undefined; choice: CoordChoice; moment: Moment | null; now?: Date }): CalendarRow[] {
+export function calendarRows(a: { deadline: string | Date | null | undefined; choice: CoordChoice; moment: Moment | null; slotLabel?: string | null; now?: Date }): CalendarRow[] {
   const now = a.now || new Date();
   const rows: CalendarRow[] = [
     { when: 'Aujourd’hui', what: 'Pourcentage calculé, dossier prérempli' },
-    { when: a.choice === 'rappel' && a.moment !== 'now' ? (a.moment === 'afternoon' ? 'Cet après-midi' : 'Demain matin') : 'Dans l’heure (9 h–18 h)', what: 'Elena vous rappelle' },
+    { when: a.slotLabel ? a.slotLabel : a.choice === 'rappel' && a.moment !== 'now' ? (a.moment === 'afternoon' ? 'Cet après-midi' : 'Demain matin') : 'Dans l’heure (9 h–18 h)', what: 'Elena vous appelle' },
     { when: 'Les jours suivants', what: 'Vous envoyez vos pièces, nous rédigeons le mémoire' },
   ];
   const d = a.deadline ? new Date(a.deadline) : null;

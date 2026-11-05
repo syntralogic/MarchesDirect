@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { COPY, calendarRows, callWhen, formatPhone, momentLabel, type CoordChoice, type CoordValues } from '@/lib/coordonnees';
+import { COPY, calendarRows, callWhen, dossierCallWhen, formatPhone, momentLabel, type CoordChoice, type CoordValues } from '@/lib/coordonnees';
 import type { ApiSiretCompany } from '@/lib/apiClient';
 
 // Screen 5 (CONFIRMATION « Mon dossier »), first half: after DOSSIER, RAPPEL, QUESTION.
@@ -17,6 +17,8 @@ type Props = {
   onAppointment: () => void;
   onBackToMarket: () => void;
   elenaPhoto: ReactNode;
+  // Preuve sociale réelle (dossiers demandés sur 7 jours), masquée sous 2.
+  dossiers?: number | null;
 };
 
 const card = 'rounded-2xl border border-[#22385A] bg-[#12233A] p-4';
@@ -62,7 +64,7 @@ function Dossier({ p, open }: { p: Props; open: boolean }) {
         </section>
 
         <section aria-label="Votre calendrier jusqu’au dépôt"><b className="mb-2 block text-[15px]">Votre calendrier jusqu’au dépôt</b>
-          <ol className="flex flex-col gap-2 text-[14px]">{calendarRows({ deadline: p.market.deadline, choice: p.choice, moment: p.values.moment }).map((r) => <li key={r.when}><b>{r.when}</b> <span className="text-[#D6E0EC]">— {r.what}</span></li>)}</ol>
+          <ol className="flex flex-col gap-2 text-[14px]">{calendarRows({ deadline: p.market.deadline, choice: p.choice, moment: p.values.moment, slotLabel: p.values.slotLabel }).map((r) => <li key={r.when}><b>{r.when}</b> <span className="text-[#D6E0EC]">— {r.what}</span></li>)}</ol>
         </section>
       </div>
     </details>
@@ -87,18 +89,45 @@ export default function ConfirmationScreen(p: Props) {
       <button type="button" onClick={p.onBackToMarket} className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à ce marché</button>
     </div>
   );
+  if (p.choice === 'dossier') {
+    const when = dossierCallWhen(p.values);
+    const cal = calendarRows({ deadline: p.market.deadline, choice: p.choice, moment: p.values.moment, slotLabel: p.values.slotLabel });
+    return (
+      <div className="flex flex-col gap-4 pb-10">
+        <ol className="flex gap-2 text-[13px] text-[#B4C1D3]" aria-label="Étapes"><li>1 · Vos marchés</li><li>2 · Mon analyse</li><li className="font-bold text-[#F2F5F9]">3 · Mon dossier</li></ol>
+        <section role="status" className="rounded-2xl border border-[#1E6B4A] bg-[#123B2A] p-4">
+          <h1 className="text-[21px] font-extrabold leading-tight text-[#6EE7B7]">✓ {hasPdf ? 'Dossier prêt.' : 'Demande enregistrée.'} Elena vous appelle {when}.</h1>
+          <p className="mt-2 text-[15px] text-[#E8FFF4]">Au {phone} · 30 minutes offertes · si l’horaire ne convient plus, dites-le lui, elle s’adapte.</p>
+        </section>
+        {hasPdf
+          ? <button type="button" onClick={p.onDownload} className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#C2410C] px-4 text-[16px] font-extrabold text-white">⬇ Télécharger mon dossier prérempli (PDF)</button>
+          : <p className={`${card} text-[15px]`}>{p.pdf === 'loading' ? 'Préparation de votre dossier…' : 'Votre dossier prérempli vous est remis lors de l’appel.'}</p>}
+        <section className={card} aria-label="Ce que vous verrez avec Elena">
+          <b className="mb-2 block text-[16px]">Ce que vous verrez avec Elena</b>
+          <ul className="flex flex-col gap-2 text-[14px] text-[#D6E0EC]">
+            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Vos chances réelles sur ce marché, chiffrées</li>
+            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Ce qu’il faut fournir, écrire, et dans quel ordre</li>
+            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Qui fait quoi si vous décidez d’y aller : vous, nous, ensemble</li>
+          </ul>
+          <ol className="mt-3 flex gap-2" aria-label="Votre calendrier">
+            {cal.slice(0, 3).map((r) => <li key={r.when} className="flex-1 rounded-xl border border-[#22385A] p-2.5 text-[12px] text-[#B4C1D3]"><b className="mb-0.5 block text-[13px] text-[#F2F5F9]">{r.when}</b>{r.what}</li>)}
+          </ol>
+        </section>
+        <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5">{p.elenaPhoto}<p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{c.done.elena}</p></div>
+        {p.dossiers != null && p.dossiers >= 2 && <p className="flex items-center gap-2 text-[13px] text-[#D6E0EC]"><span aria-hidden className="h-2 w-2 rounded-full bg-[#EF4444]" />{p.dossiers} entreprises ont demandé leur dossier ces 7 derniers jours</p>}
+        <Dossier p={p} open={false} />
+        <button type="button" onClick={p.onBackToMarket} className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à ce marché</button>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4 pb-10">
       <ol className="flex gap-2 text-[13px] text-[#B4C1D3]" aria-label="Étapes"><li>1 · Vos marchés</li><li>2 · Mon analyse</li><li className="font-bold text-[#F2F5F9]">3 · Mon dossier</li></ol>
 
       <section role="status" className="rounded-2xl border border-[#1E6B4A] bg-[#123B2A] p-4">
         <h1 className="text-[22px] font-extrabold text-[#6EE7B7]">✓ {c.done.title}</h1>
-        <p className="mt-1.5 text-[15px] text-[#E8FFF4]">{p.choice === 'dossier' ? (hasPdf ? c.done.text : c.done.textNoPdf) : hasPdf ? c.done.text : c.done.textNoPdf}</p>
+        <p className="mt-1.5 text-[15px] text-[#E8FFF4]">{hasPdf ? c.done.text : c.done.textNoPdf}</p>
       </section>
-
-      {p.choice === 'dossier' && (hasPdf
-        ? <button type="button" onClick={p.onDownload} className="flex min-h-[60px] w-full items-center justify-center rounded-[14px] bg-[#C2410C] px-4 text-[17px] font-extrabold text-white">Télécharger mon dossier prérempli (PDF)</button>
-        : <p className="rounded-2xl border border-[#22385A] bg-[#12233A] p-4 text-[15px]">{p.pdf === 'loading' ? 'Préparation de votre dossier…' : 'Votre dossier prérempli sera disponible après l’appel d’Elena.'}</p>)}
 
       {p.choice === 'rappel' && (
         <section className={card}><b className="block text-[13px] uppercase tracking-wide text-[#B4C1D3]">Votre préférence</b>
@@ -117,7 +146,7 @@ export default function ConfirmationScreen(p: Props) {
         <p className="text-center text-[13px] text-[#B4C1D3]">Par téléphone · Sans engagement</p>
       </section>
 
-      <Dossier p={p} open={p.choice === 'dossier'} />
+      <Dossier p={p} open={false} />
       <button type="button" onClick={p.onBackToMarket} className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à ce marché</button>
     </div>
   );
