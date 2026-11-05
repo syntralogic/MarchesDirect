@@ -1846,6 +1846,6 @@ export const messagesApi = {
 
 // SEO v2 (5 nov.) : pages locales à adresse propre, annonces ouvertes réelles.
 export const seoV2Api = {
-  page: async (params: { base: string; city?: string; trade?: string; department?: string }): Promise<import('./seoLocalCopy').SeoV2Page | { redirect: string }> =>
+  page: async (params: { base: string; city?: string; trade?: string; department?: string; page?: string }): Promise<import('./seoLocalCopy').SeoV2Page | { redirect: string }> =>
     (await apiClient.get('/seo/v2/page', { params })).data,
 };

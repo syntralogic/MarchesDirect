@@ -14,7 +14,7 @@
 // Routed by vercel.json rewrites (kind=category|local|opportunity|slug). Keep the category copy in sync
 // with src/pages/CategoryLandingPage.tsx, and the URL structure with api/sitemap.xml.ts.
 
-import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
+import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoSections, seoPagePath, seoExecLine, seoDate, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
 
@@ -214,20 +214,24 @@ async function buildHome(): Promise<Doc> {
 const itemHtml = (i: SeoItem) => `<li style="margin:0 0 1rem"><a href="${esc(i.path)}" style="color:#FF6B00;font-weight:600">${esc(seoItemTitle(i))}</a><br>`
   + `<small>${esc(seoItemLine(i))}</small></li>`;
 
-async function buildLocal(base: string, city: string, trade: string, department: string): Promise<Doc> {
+async function buildLocal(base: string, city: string, trade: string, department: string, pageParam = ''): Promise<Doc> {
   const journey = JOURNEY_BY_BASE[base];
   const asked = department ? `/${base}/departement/${department}${trade ? `/${trade}` : ''}` : `/${base}/${city}${trade ? `/${trade}` : ''}`;
   if (!journey) return notFound(asked);
   const qs = new URLSearchParams({ base });
   if (department) qs.set('department', department); else qs.set('city', city);
   if (trade) qs.set('trade', trade);
+  // Pagination : ?page=2… ; « page=1 » ou une valeur invalide renvoient vers l'adresse nue (une seule adresse par page).
+  const pageNum = pageParam ? Number(pageParam) : 1;
+  if (pageParam && (!Number.isInteger(pageNum) || pageNum < 2)) return { ...notFound(asked), status: 301, redirect: asked };
+  if (pageNum > 1) qs.set('page', String(pageNum));
   const r = await getJson(`/api/seo/v2/page?${qs.toString()}`);
   if (r.status === 404 || r.status === 400) return notFound(asked);
   if (r.status !== 200 || !r.json) return unavailable(asked);
   if (r.json.redirect) return { ...notFound(asked), status: 301, redirect: r.json.redirect };
   const p = r.json as SeoV2Page;
   // Une seule adresse par page : majuscules, accents, synonymes de métier → 301 vers l'adresse canonique.
-  if (p.canonicalPath !== asked) return { ...notFound(asked), status: 301, redirect: p.canonicalPath };
+  if (p.canonicalPath !== asked) return { ...notFound(asked), status: 301, redirect: seoPagePath(p, pageNum) };
 
   const crumbs = seoBreadcrumb(p);
   const others = p.otherTypes.filter(o => o.count > 0).map(o => chip(zonePath({ ...p, base: o.base }, p.trade?.slug), `${SEO_LABEL[o.journey]} · ${o.count}`));
@@ -235,15 +239,16 @@ async function buildLocal(base: string, city: string, trade: string, department:
   const cities = p.cities.map(c => chip(`/${base}/${c.slug}${p.trade ? `/${p.trade.slug}` : ''}`, `${c.name} (${c.count})`));
   const faq = seoFaq(p);
   return {
-    status: 200, path: p.canonicalPath, noindex: !p.indexable, cache: 'public, s-maxage=600, stale-while-revalidate=86400',
+    status: 200, path: seoPagePath(p, p.page), noindex: !p.indexable, cache: 'public, s-maxage=600, stale-while-revalidate=86400',
     title: seoTitle(p), description: seoDescription(p),
     jsonld: [{ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, k) => ({ '@type': 'ListItem', position: k + 1, name: c.name, item: `${PUBLIC_SITE}${c.path}` })) }],
     body: wrap(
       `<nav aria-label="Fil d'Ariane">${crumbs.map((c, k) => k === crumbs.length - 1 ? esc(c.name) : `<a href="${esc(c.path)}" style="color:#FF6B00">${esc(c.name)}</a>`).join(' › ')}</nav>` +
       `<h1>${esc(seoH1(p))}</h1>` + seoIntro(p).map(t => `<p>${esc(t)}</p>`).join('') +
-      (p.items.length ? `<h2>${esc(countText(p.journey, p.count))}</h2><ul style="list-style:none;padding:0">${p.items.map(itemHtml).join('')}</ul>` : '') +
-      (p.count > p.items.length ? `<p><a href="${esc(seoSearchPath(p))}" style="color:#FF6B00;font-weight:600">${esc(seoSearchLabel(p))}</a></p>` : '') +
-      (p.nearby.length ? `<h2>Autres annonces du département</h2><ul style="list-style:none;padding:0">${p.nearby.map(itemHtml).join('')}</ul>` : '') +
+      seoSections(p).map(sec => `<h2>${esc(sec.title)}</h2>${sec.note ? `<p><small>${esc(sec.note)}</small></p>` : ''}<ul style="list-style:none;padding:0">${sec.items.map(itemHtml).join('')}</ul>` +
+        (sec.key === 'main' && p.pages > 1 ? `<nav aria-label="Pages">${Array.from({ length: p.pages }, (_, k) => k + 1).map(n => n === p.page ? `<strong>${n}</strong>` : `<a href="${esc(seoPagePath(p, n))}" style="color:#FF6B00">${n}</a>`).join(' · ')}</nav>` : '')).join('') +
+      (!p.count && !p.buyerCount ? `<p><a href="/question" style="color:#FF6B00;font-weight:600">Être prévenu par Elena dès qu’une annonce paraît</a></p>` : '') +
+      `<p><a href="${esc(seoSearchPath(p))}" style="color:#FF6B00;font-weight:600">${esc(seoSearchLabel(p))}</a></p>` +
       (trades.length ? `<h2>Par métier</h2><ul style="list-style:none;padding:0">${trades.join('')}</ul>` : '') +
       (cities.length ? `<h2>Autres villes du département</h2><ul style="list-style:none;padding:0">${cities.join('')}</ul>` : '') +
       (others.length ? `<h2>Autres types d’opportunités</h2><ul style="list-style:none;padding:0">${others.join('')}</ul>` : '') +
@@ -255,47 +260,47 @@ async function buildLocal(base: string, city: string, trade: string, department:
 
 async function buildOpportunity(id: string): Promise<Doc> {
   const path = `/opportunites/${encodeURIComponent(id)}`;
-  const r = await getJson(`/api/seo-pages/opportunity-meta/${encodeURIComponent(id)}`);
-  if (r.status === 404 || r.status === 400) return notFound(path);
+  const r = await getJson(`/api/seo/v2/annonce/${encodeURIComponent(id)}`);
+  if (r.status === 404 || r.status === 400) return notFound(path); // supprimée : 404 avec liens utiles, jamais l'accueil
   if (r.status !== 200 || !r.json) return unavailable(path);
   const o = r.json;
-
   const label = JOURNEY_LABEL[o.journey] || 'Opportunité';
-  const place = [o.location_city, o.location_department && o.location_department !== o.location_city ? `(${o.location_department})` : ''].filter(Boolean).join(' ');
   const deadline = fmtDate(o.deadline);
-  // Annonce clôturée : la page reste (information utile), clairement marquée, et sort de l'index 30 jours après la clôture.
-  const closedSince = o.deadline && !Number.isNaN(new Date(o.deadline).getTime()) && new Date(o.deadline).getTime() < Date.now() ? Date.now() - new Date(o.deadline).getTime() : null;
+  const exec = seoExecLine({ execution: o.execution } as SeoItem);
+  const stateLine = o.state === 'cancelled' ? 'Consultation annulée : elle n’accepte pas de candidatures.'
+    : o.state === 'closed' ? `Consultation clôturée le ${deadline} : elle n’accepte plus de candidatures.`
+      : o.state === 'open' ? `Date limite de réponse : ${deadline}.` : 'Date limite non indiquée : à vérifier dans l’avis officiel.';
   const facts = [
-    `${label}${o.trade_name ? ` — ${o.trade_name}` : ''}${place ? ` à ${place}` : ''}.`,
-    closedSince !== null ? `Consultation clôturée le ${deadline} : elle n'accepte plus de candidatures.` : deadline ? `Date limite de réponse : ${deadline}.` : '',
-    'Vérifiez la concordance avec votre entreprise et demandez le dossier sur Marchés Direct.',
+    `${label}${o.tradeName ? ` — ${o.tradeName}` : ''}.`, `${exec}.`,
+    o.buyer ? `Acheteur : ${o.buyer}${o.buyerCity ? ` (${o.buyerCity})` : ''}.` : '', stateLine,
+    o.state === 'open' || o.state === 'verify' ? 'Vérifiez la concordance avec votre entreprise et demandez le dossier sur Marchés Direct.' : '',
   ].filter(Boolean).join(' ');
   const journeyBase = Object.keys(JOURNEY_BY_BASE).find((k) => JOURNEY_BY_BASE[k] === o.journey) || 'marches-publics';
+  const similar = (o.similar || []) as { title: string; path: string; deadline: string | null }[];
   return {
     status: 200, path,
-    title: `${clip(String(o.title || label), 90)} | Marchés Direct`,
+    title: `${o.state === 'closed' ? '[Clôturée] ' : o.state === 'cancelled' ? '[Annulée] ' : ''}${clip(String(o.title || label), 90)} | Marchés Direct`,
     description: clip(facts, 300),
-    noindex: !!o.is_demo || (closedSince !== null && closedSince > 30 * 86400000), // démo jamais indexée ; clôturée depuis plus de 30 jours : hors index
+    noindex: !o.indexable, // politique fondée sur la valeur de l'annonce (backend : closedIndexPolicy)
     cache: 'public, s-maxage=600, stale-while-revalidate=86400',
     body: wrap(
       `<nav aria-label="Fil d'Ariane"><a href="/" style="color:#FF6B00">Accueil</a> › <a href="/${journeyBase}" style="color:#FF6B00">${esc(label)}</a></nav>` +
       `<h1>${esc(clip(String(o.title || label), 200))}</h1><p>${esc(facts)}</p>` +
-      `<p><a href="/recherche?journey=${esc(o.journey || '')}" style="color:#FF6B00;font-weight:600">Voir d'autres opportunités</a></p>`
+      (similar.length ? `<h2>${o.state === 'open' ? 'Autres consultations ouvertes' : 'Consultations ouvertes comparables'}</h2><ul style="list-style:none;padding:0">${similar.map(x => `<li><a href="${esc(x.path)}" style="color:#FF6B00">${esc(clip(x.title.replace(/\s+/g, ' '), 140))}</a>${x.deadline ? ` <small>— date limite ${esc(fmtDate(x.deadline) || '')}</small>` : ''}</li>`).join('')}</ul>` : '') +
+      `<p><a href="/${journeyBase}" style="color:#FF6B00;font-weight:600">Voir les ${esc(label.toLowerCase())} par département</a></p>`
     ),
   };
 }
 
 async function buildSlug(slug: string): Promise<Doc> {
+  // Anciennes pages générées (/pages/:slug) : 301 vers la page canonique correspondante (commune, département ou
+  // catégorie), calculée par le serveur. La page d'origine n'est pas supprimée en base.
   const path = `/pages/${encodeURIComponent(slug)}`;
-  const r = await getJson(`/api/seo-pages/${encodeURIComponent(slug)}`);
-  if (r.status === 404) return notFound(path);
+  const r = await getJson(`/api/seo/v2/legacy?slug=${encodeURIComponent(slug)}`);
   if (r.status !== 200 || !r.json) return unavailable(path);
-  const p = r.json;
-  return {
-    status: 200, path, title: p.page_title || 'Marchés Direct', description: p.page_meta_description || '',
-    cache: 'public, s-maxage=600, stale-while-revalidate=86400',
-    body: wrap(`<h1>${esc(p.page_title || '')}</h1>${p.page_content ? `<p>${esc(p.page_content)}</p>` : ''}<p><a href="/recherche" style="color:#FF6B00;font-weight:600">Voir les opportunités</a></p>`),
-  };
+  const row = (r.json.rows || [])[0];
+  if (!row) return notFound(path);
+  return { ...notFound(path), status: 301, redirect: row.target };
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +331,7 @@ export default async function handler(req: any, res: any) {
       const base = param(q.base);
       const city = param(q.city);
       if (JOURNEY_BY_BASE[base] === 'subcontracting' && RESERVED_SEGMENTS.has(city)) return plain();
-      doc = await buildLocal(base, city, param(q.trade), param(q.department));
+      doc = await buildLocal(base, city, param(q.trade), param(q.department), param(q.page));
     } else if (kind === 'home') {
       if (Object.keys(q).some(k => k !== 'kind')) return plain(); // paramètres de suivi ou de recherche : la page d'accueil normale
       doc = await buildHome();
