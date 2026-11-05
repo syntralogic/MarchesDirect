@@ -8,6 +8,7 @@ import { MiniProgress, stateLine } from '@/components/suivi/DossierTimeline';
 import InstallOffer from '@/components/pwa/InstallOffer';
 import DocumentsTab from '@/components/espace/DocumentsTab';
 import SecurityCard from '@/components/espace/SecurityCard';
+import SavedSearchesTab from '@/components/espace/SavedSearchesTab';
 
 // « Mon espace » (5 nov.) : mes dossiers suivis, mes favoris, et l'accès aux nouveaux marchés.
 // Fonctionne sans compte (ce navigateur) ; une fois connecté par lien e-mail, on retrouve aussi les dossiers liés à
@@ -25,7 +26,7 @@ export default function MonEspacePage() {
   const { isAuthenticated, company } = useAuth();
   const { savedIds } = useFavorites();
   const [params, setParams] = useSearchParams();
-  const tab = params.get('onglet') === 'favoris' ? 'favoris' : params.get('onglet') === 'documents' ? 'documents' : 'dossiers';
+  const tab = params.get('onglet') === 'favoris' ? 'favoris' : params.get('onglet') === 'documents' ? 'documents' : params.get('onglet') === 'recherches' ? 'recherches' : 'dossiers';
   const [dossiers, setDossiers] = useState<SuiviDossier[] | null>(null);
   const [favs, setFavs] = useState<ApiOpportunity[] | null>(null);
   const [name, setName] = useState<string | null>(null);
@@ -53,9 +54,9 @@ export default function MonEspacePage() {
       </div>
 
       <div className="flex gap-1.5" role="tablist">
-        {([['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Favoris${favs ? ' · ' + favs.length : ''}`], ['documents', 'Documents']] as const).map(([k, l]) => (
+        {([['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Favoris${favs ? ' · ' + favs.length : ''}`], ['recherches', 'Recherches'], ['documents', 'Documents']] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setParams(k === 'dossiers' ? {} : { onglet: k })}
-            className={`min-h-[44px] flex-1 rounded-[10px] border text-[13.5px] font-bold ${tab === k ? 'border-[#3B5A86] bg-[#1E3352] text-white' : 'border-[#2B4468] text-[#B4C1D3]'}`}>{l}</button>))}
+            className={`min-h-[44px] flex-1 rounded-[10px] border px-1 text-[12.5px] font-bold ${tab === k ? 'border-[#3B5A86] bg-[#1E3352] text-white' : 'border-[#2B4468] text-[#B4C1D3]'}`}>{l}</button>))}
       </div>
 
       {tab === 'dossiers' && (dossiers == null ? <Skeleton /> : dossiers.length === 0 ? (
@@ -81,6 +82,8 @@ export default function MonEspacePage() {
           <b className="text-[14.5px] leading-tight">{o.title}</b>
           <small className="block text-[12px] text-[#B4C1D3]">{[o.buyer_name, o.location_city, o.deadline ? `remise le ${new Date(o.deadline as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ')}</small>
         </Link>)))}
+
+      {tab === 'recherches' && <SavedSearchesTab sessionId={sessionId} />}
 
       {tab === 'documents' && (isAuthenticated ? <DocumentsTab /> : (
         <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>

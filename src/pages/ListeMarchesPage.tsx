@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { opportunitiesApi, siretApi, type ApiSiretStatus } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent } from '@/lib/visitorTracking';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
+import { isSaved as searchIsSaved, saveSearch, markViewed } from '@/lib/savedSearches';
 import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, type Journey } from '@/components/liste/RefinePanel';
 import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
@@ -133,6 +134,11 @@ export default function ListeMarchesPage() {
   useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ranked = useMemo(() => (cards ? (done ? rank(cards, scores) : cards) : []), [cards, scores, done]);
+  // Recherche sauvegardée : on garde les marchés vus pour compter ensuite les « nouveaux ».
+  const searchKey = useMemo(() => { const p = new URLSearchParams(params); p.delete('source'); return p.toString(); }, [refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [savedSearch, setSavedSearch] = useState(false);
+  useEffect(() => { setSavedSearch(searchIsSaved(searchKey)); }, [searchKey]);
+  useEffect(() => { if (cards && cards.length && savedSearch) markViewed(searchKey, cards.map(c => c.id)); }, [cards, savedSearch, searchKey]);
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
   const byType = useMemo(() => !known || type === 'all' ? ranked : ranked.filter(c => c.journey === type), [ranked, type, known]);
   const typeCounts = useMemo(() => known
@@ -187,6 +193,11 @@ export default function ListeMarchesPage() {
         <h1 className="text-[22px] font-extrabold leading-tight">{cards ? title : 'Vos marchés'}</h1>
         {cards && <p className="text-[14px] text-[#B4C1D3]">{sub}</p>}
         {known && cards && !done && pending > 0 && <p className="text-[13px] text-[#FDBA74]" role="status">Calcul des pourcentages… {total - pending} / {total}</p>}
+        {cards && cards.length > 0 && (savedSearch
+          ? <p className="text-[13px] text-[#6EE7B7]">✓ Recherche sauvegardée · retrouvez les nouveaux marchés dans <Link to="/mon-espace?onglet=recherches" className="font-bold underline">Mon espace</Link></p>
+          : <button type="button" onClick={() => { saveSearch(title, searchKey, known, cards.map(c => c.id)); setSavedSearch(true); }}
+              className="mt-1 flex min-h-[44px] items-center gap-2 self-start rounded-full border border-[#2B4468] px-3.5 text-[13.5px] font-bold text-[#D6E0EC]">
+              <span aria-hidden>☆</span> Sauvegarder cette recherche</button>)}
       </header>
 
       {!known && status !== undefined && (q || dept || tradeId || refine.where === 'near') && (
