@@ -710,10 +710,18 @@ export const siretApi = {
   // already seen the score/why-it-matches, gating the fuller breakdown.
   // opportunityId links the CRM lead to the specific opportunity being
   // viewed so the account manager knows why to call.
-  captureLead: async (phone: string, email: string | undefined, sessionId: string, opportunityId?: string, lot?: string | null): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean }> => {
+  captureLead: async (
+    phone: string, email: string | undefined, sessionId: string, opportunityId?: string, lot?: string | null,
+    // 5 Nov (un clic = dossier + appel) : créneau souhaité (ISO, parmi ceux du serveur) ou rappel « dès que possible ».
+    call?: { slotAt?: string | null; callbackMoment?: 'maintenant' | null },
+  ): Promise<{ leadCaptured: boolean; dossierEmailed?: boolean; slotAt?: string; slotLabel?: string; callbackMoment?: string }> => {
     // The visitor's "Préférences de contact" choice (if made before giving their details) travels with them.
     const contactMode = getStoredContactMode();
-    const { data } = await apiClient.post('/siret/lead', { phone, ...(email ? { email } : {}), sessionId, opportunityId, ...(lot ? { lot } : {}), ...(contactMode ? { contactMode } : {}), ...utmFromSession() });
+    const { data } = await apiClient.post('/siret/lead', {
+      phone, ...(email ? { email } : {}), sessionId, opportunityId, ...(lot ? { lot } : {}), ...(contactMode ? { contactMode } : {}),
+      ...(call?.slotAt ? { slotAt: call.slotAt } : call?.callbackMoment ? { callbackMoment: call.callbackMoment } : {}),
+      ...utmFromSession(),
+    });
     return data;
   },
   // 25 Sep audit, point 5: "Télécharger mon exemplaire" / "Me le renvoyer"

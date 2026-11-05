@@ -223,25 +223,20 @@ export default function FicheMarchePage() {
       const phone = normalizeFrPhoneDigits(coords.phone);
       const requestId = idem.key();
       if (choice === 'dossier') {
-        await siretApi.captureLead(phone, coords.email.trim() || undefined, sessionId, id);
-        trackRequestSubmitted('dossier_request', { requestId });
-        // Un clic = dossier + appel : le créneau choisi (rendez-vous à confirmer par Elena) ou un rappel dès que possible.
-        if (brandId) {
-          try {
-            const r = await crmApi.submitLead({
-              brandId, phone, email: coords.email.trim() || undefined, companyName: company || undefined, opportunityId: id, sessionId, idempotencyKey: `${requestId}:appel`,
-              ...(coords.slotAt ? { leadSource: 'appointment_modal', slotAt: coords.slotAt, message: 'Dossier demandé · appel de 30 minutes au créneau choisi' }
-                : { leadSource: 'callback_modal', message: 'Dossier demandé · rappel dès que possible (dans l’heure, 9 h–18 h)', callbackMoment: 'maintenant' }),
-            });
-            if (coords.slotAt) { if (r.slotLabel) setCoords(v => ({ ...v, slotLabel: r.slotLabel || v.slotLabel })); trackRequestSubmitted('appointment', { requestId: `${requestId}:appel` }); }
-            else trackRequestSubmitted('callback', { requestId: `${requestId}:appel` });
-          } catch (err) {
-            // Créneau pris entre-temps : le dossier est acquis, on le dit et on propose « dès que possible ».
-            const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
-            if (code === 'slot_taken' || code === 'slot_invalid') { setCoordErrors({ moment: 'Ce créneau vient d’être pris. Choisissez-en un autre ou « Dès que possible ».' }); loadSlots(); idem.reset(); return; }
-            throw err;
-          }
+        // Un clic = dossier + appel : une seule demande, qui porte le créneau choisi (rendez-vous à confirmer par
+        // Elena, jamais annoncé « réservé ») ou le rappel dès que possible.
+        let r: Awaited<ReturnType<typeof siretApi.captureLead>>;
+        try {
+          r = await siretApi.captureLead(phone, coords.email.trim() || undefined, sessionId, id, null, coords.slotAt ? { slotAt: coords.slotAt } : { callbackMoment: 'maintenant' });
+        } catch (err) {
+          // Créneau pris entre-temps : rien n'est enregistré, le visiteur choisit un autre créneau ou « dès que possible ».
+          const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+          if (code === 'slot_taken' || code === 'slot_invalid') { setCoordErrors({ moment: 'Ce créneau vient d’être pris. Choisissez-en un autre ou « Dès que possible ».' }); setCoords(v => ({ ...v, slotAt: null, slotLabel: null, moment: 'now' })); loadSlots(); idem.reset(); return; }
+          throw err;
         }
+        if (r.slotLabel) setCoords(v => ({ ...v, slotLabel: r.slotLabel || v.slotLabel }));
+        trackRequestSubmitted('dossier_request', { requestId });
+        trackRequestSubmitted(coords.slotAt ? 'appointment' : 'callback', { requestId: `${requestId}:appel` });
       } else if (choice === 'alerte') {
         // The alert is about FUTURE markets: no market is linked to the request, only the company, trade and zone.
         if (!brandId) throw new Error('Impossible de contacter le serveur, réessayez.');
