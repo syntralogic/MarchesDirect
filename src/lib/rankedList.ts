@@ -10,6 +10,8 @@ export interface RankedCard {
   location_city: string | null;
   location_department: string | null;
   deadline: string | null;
+  estimated_value?: number | null;
+  distance_km?: number | null;
 }
 // undefined = still being computed, null = the engine cannot compare yet ("à confirmer"), number = percentage
 export type ScoreMap = Record<string, number | null | undefined>;

@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { opportunitiesApi, siretApi, type ApiSiretStatus } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent } from '@/lib/visitorTracking';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
+import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, type Journey } from '@/components/liste/RefinePanel';
 import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
   type Filter, type RankedCard, type ScoreMap,
@@ -14,7 +15,6 @@ const RING = { hi: '#34D399', mid: '#FDBA74', lo: '#6B7A90' } as const;
 const CHIPS: { key: Filter; label: string }[] = [{ key: 'all', label: 'Tous' }, { key: 'hi', label: 'Très adaptés' }, { key: 'mid', label: 'À étudier' }, { key: 'lo', label: 'Peu adaptés' }];
 // 5 Nov (retour client) : le visiteur doit voir qu'il n'y a pas que du marché public.
 // Filtre par type, visible dès la recherche simple comme sur la liste par entreprise.
-type Journey = 'all' | 'public_procurement' | 'tender' | 'subcontracting';
 const TYPE_CHIPS: { key: Journey; label: string }[] = [
   { key: 'all', label: 'Tous les types' }, { key: 'public_procurement', label: 'Marchés publics' },
   { key: 'tender', label: 'Appels d’offres privés' }, { key: 'subcontracting', label: 'Sous-traitance' },
@@ -52,11 +52,11 @@ function Card({ c, score, withScore }: { c: RankedCard; score: number | null | u
       {withScore ? <Ring score={score} /> : <div className="flex w-[76px] shrink-0 flex-col items-center gap-1.5"><div className="flex h-[64px] w-[64px] items-center justify-center rounded-full border-4 border-[#1E3352] text-[15px] font-extrabold">— %</div><span className="text-center text-[12px] font-bold text-[#FB923C]">Voir mon %</span></div>}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-          <span className="text-[#FDBA74]">{TYPE_LABEL[c.journey || ''] || 'MARCHÉ'}</span>
+          <span className="text-[#FDBA74]">{TYPE_LABEL[c.journey || ''] || 'MARCHÉ'}{c.distance_km != null ? ` · ${Math.round(c.distance_km)} km` : ''}</span>
           {isClosingSoon(c.deadline) && <span className="rounded-full bg-[#3A2312] px-2 py-0.5 text-[#FDBA74]">Bientôt clos</span>}
         </div>
         <h3 className="line-clamp-3 text-[16px] font-extrabold leading-snug">{c.title}</h3>
-        <p className="text-[13px] text-[#B4C1D3]">{[buyer, place].filter(Boolean).join(' · ')}</p>
+        <p className="text-[13px] text-[#B4C1D3]">{[buyer, place, c.estimated_value && c.estimated_value >= 100 ? `${Math.round(c.estimated_value).toLocaleString('fr-FR')} €` : null].filter(Boolean).join(' · ')}</p>
         <p className="text-[13px] text-[#D6E0EC]">{formatDeadlineExact(c.deadline) ? `Réponse avant le ${formatDeadlineExact(c.deadline)}${n != null && n >= 0 ? ` · J-${n}` : ''}` : 'Date limite non précisée'}</p>
         <span className="text-[14px] font-bold text-[#FB923C]">Voir le marché ›</span>
       </div>
@@ -77,9 +77,12 @@ export default function ListeMarchesPage() {
   const [cards, setCards] = useState<RankedCard[] | null>(null);
   const [scores, setScores] = useState<ScoreMap>({});
   const [filter, setFilter] = useState<Filter>('all');
-  const typeParam = params.get('journey');
-  const type: Journey = typeParam === 'public_procurement' || typeParam === 'tender' || typeParam === 'subcontracting' ? typeParam : 'all';
-  const setType = (t: Journey) => { const p = new URLSearchParams(params); if (t === 'all') p.delete('journey'); else p.set('journey', t); setParams(p, { replace: true }); };
+  // Filtres du volet « Affiner » (type, où, budget, réponse attendue, tri), tous dans l'adresse.
+  const refineKey = params.toString();
+  const refine = useMemo(() => refineFromParams(params), [refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const type: Journey = refine.journey;
+  const setType = (t: Journey) => setParams(paramsWithRefine(params, { ...refine, journey: t }), { replace: true });
+  const applyRefine = (r: typeof refine) => setParams(paramsWithRefine(params, r), { replace: true });
   // Recherche simple : totaux réels par type (le serveur filtre et compte), pas un comptage sur la première page.
   const [typeTotals, setTypeTotals] = useState<Record<string, number> | null>(null);
   const [searchTotal, setSearchTotal] = useState<number | null>(null);
@@ -113,22 +116,21 @@ export default function ListeMarchesPage() {
           catch { setScores(p => ({ ...p, [c.id]: null })); }
         }, stop);
         if (!stop()) setDone(true);
-      } else if (tradeId || q || dept) {
-        const base = { ...(tradeId ? { trade_id: tradeId } : {}), ...(q ? { q } : {}), ...(dept ? { department: dept } : {}), status: 'active' as const };
-        const r = await opportunitiesApi.search({ ...base, ...(type !== 'all' ? { journey: type } : {}), limit: 40 });
+      } else if (tradeId || q || dept || refine.where === 'near') {
+        const r = await opportunitiesApi.search(searchParamsFor(q, refine, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 40 }));
         if (stop()) return;
-        setZoneLabel(dept ? `Département ${dept}` : 'Toute la France');
+        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
         setSearchTotal(r.pagination?.total ?? r.results.length);
-        setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline })));
-        // Totaux par type, en parallèle, pour que le visiteur voie qu'il n'y a pas que du marché public.
+        setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null })));
+        // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
-        const totals = await Promise.all(journeys.map(j => opportunitiesApi.search({ ...base, journey: j, limit: 1 }).then(x => x.pagination?.total ?? 0).catch(() => 0)));
+        const totals = await Promise.all(journeys.map(j => opportunitiesApi.search(searchParamsFor(q, { ...refine, journey: j }, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 1 })).then(x => x.pagination?.total ?? 0).catch(() => 0)));
         if (stop()) return;
         setTypeTotals(Object.fromEntries(journeys.map((j, i) => [j, totals[i]])));
       } else setCards([]);
     } catch { if (!stop()) setError(true); }
-  }, [known, sessionId, zoneParam, tradeId, q, dept, type]);
-  useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, dept, type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [known, sessionId, zoneParam, tradeId, q, dept, refine]);
+  useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const ranked = useMemo(() => (cards ? (done ? rank(cards, scores) : cards) : []), [cards, scores, done]);
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
@@ -187,7 +189,10 @@ export default function ListeMarchesPage() {
         {known && cards && !done && pending > 0 && <p className="text-[13px] text-[#FDBA74]" role="status">Calcul des pourcentages… {total - pending} / {total}</p>}
       </header>
 
-      {cards && (cards.length > 0 || (!known && type !== 'all')) && (
+      {!known && status !== undefined && (q || dept || tradeId || refine.where === 'near') && (
+        <RefinePanel q={q} value={refine} typeCounts={typeTotals} onApply={applyRefine} />)}
+
+      {known && cards && cards.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtrer par type de marché">
           {TYPE_CHIPS.map(ch => {
             const count = ch.key === 'all' ? typeAll : (typeCounts[ch.key] ?? (known ? 0 : null));
@@ -228,7 +233,7 @@ export default function ListeMarchesPage() {
             <Link to={`/question?q=${encodeURIComponent(`Prévenez-moi des ${type === 'tender' ? 'appels d’offres privés' : 'missions de sous-traitance'}${q ? ` en ${q}` : ''}${dept ? ` (département ${dept})` : ''}.`)}`} className={btn}>Être prévenu par Elena</Link>)}
           {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className="min-h-[44px] text-[14px] font-semibold text-[#FB923C] underline">Voir tous les types</button>}
           <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
-          {((known && zoneParam !== 'france') || dept) && !tradeUnknown && <button type="button" onClick={() => { const p = new URLSearchParams(params); p.set('zone', 'france'); p.delete('department'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
+          {((known && zoneParam !== 'france') || dept || refine.where === 'near') && !tradeUnknown && <button type="button" onClick={() => { const p = paramsWithRefine(params, { ...refine, where: 'france', department: '', lat: null, lng: null, sort: refine.sort === 'distance' ? 'match' : refine.sort }); p.set('zone', 'france'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {known && <p className="text-[13px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/contact" className="font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
           {known || q || dept
             ? <Link to="/?mode=metier" className="min-h-[44px] py-3 text-[14px] font-semibold text-[#FB923C] underline">Changer de métier ou de zone</Link>
