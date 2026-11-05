@@ -251,3 +251,7 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+/* Point rouge « activité sur cette annonce » : il grossit et rétrécit doucement (2 s), sauf si l'utilisateur a réglé « réduire les animations ». */
+@keyframes md-live-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .65; } }
+.md-live-dot { animation: md-live-pulse 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .md-live-dot { animation: none; } }

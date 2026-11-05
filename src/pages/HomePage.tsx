@@ -2,7 +2,7 @@
 // trois étapes → accompagnement → équipe → témoignages → questions → dernier appel. Le pied de page est celui du site.
 // Retirés de l'accueil : « Marchés ouverts / Futurs chantiers », « Conseils et actualités ».
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import DemoVideoModal from '@/components/DemoVideoModal';
 import PageMeta from '@/components/common/PageMeta';
@@ -115,7 +115,7 @@ function SimpleSearch() {
       </select>
       <button type="submit" className={BTN}>Rechercher des marchés</button>
       <p className="text-center text-[13px] font-bold text-[#FDBA74]">Marchés publics · Appels d’offres privés · Sous-traitance</p>
-      <p className="text-center text-[13px] text-[#B4C1D3]">Filtrez par type dans la liste. Indiquez ensuite votre entreprise pour voir le pourcentage de chaque marché.</p>
+      <p className="text-center text-[15px] text-[#B4C1D3]">Indiquez ensuite votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché</p>
     </form>
   );
 }
@@ -255,6 +255,14 @@ export default function HomePage() {
   const [mode, setMode] = useState<'company' | 'simple'>(params.get('mode') === 'metier' ? 'simple' : 'company');
   const [callbackOpen, setCallbackOpen] = useState(false);
   const companyRef = useRef<CompanySearchHandle>(null);
+  // « Modifier » depuis la liste (2.1) : retour ici, onglet « Par entreprise », champ vide et curseur dedans.
+  const location = useLocation();
+  useEffect(() => {
+    if (!(location.state as { focusCompany?: boolean } | null)?.focusCompany) return;
+    setMode('company');
+    const t = window.setTimeout(() => companyRef.current?.clear(), 50);
+    return () => window.clearTimeout(t);
+  }, [location.state]);
   const hasTeam = !!ELENA.photo;
 
   const focusCompany = () => {
@@ -262,7 +270,7 @@ export default function HomePage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     window.setTimeout(() => companyRef.current?.focus(), 300);
   };
-  const tabCls = (on: boolean) => `min-h-[46px] min-w-0 flex-1 rounded-[10px] px-1.5 text-center text-[15px] font-bold leading-tight transition-colors ${on ? 'bg-[#C2410C] text-white' : 'text-[#D6E0EC]'}`;
+  const tabCls = (on: boolean) => `min-h-[48px] min-w-0 flex-1 rounded-[10px] px-1.5 text-center text-[15px] font-bold leading-tight transition-colors ${on ? 'bg-[#C2410C] text-white' : 'text-[#D6E0EC]'}`;
 
   return (
     <div className="page-fade-in">
