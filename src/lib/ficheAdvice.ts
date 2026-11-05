@@ -1,6 +1,6 @@
 // Fiche marché (maquette v26, écran 3): pure rules, no network, no AI.
 // Everything here is derived from the real match-score response and the visitor's answers.
-import type { ApiMatchCriterion } from '@/lib/apiClient';
+import type { ApiMatchCriterion, ApiMatchFacts, ApiMatchUpgrade } from '@/lib/apiClient';
 
 export type FicheQuestion = 'zone' | 'dispo' | 'moyens' | 'refs';
 export type FicheAnswers = Partial<Record<FicheQuestion, 0 | 1>>;
@@ -124,3 +124,105 @@ export function criterionStatus(c: ApiMatchCriterion | undefined): CriterionStat
   return c.evidence === 'unknown' ? 'unknown' : 'tbc';
 }
 export const STATUS_TEXT: Record<CriterionStatus, string> = { ok: 'Correspond', tbc: 'À confirmer', no: 'Ne correspond pas', unknown: 'Non précisé' };
+
+// ============================================================================
+// v28 (validé le 5 nov.) — repères à côté du pourcentage et conseil d'Elena, par règles fixes (aucune IA).
+// Très positif mais toujours vrai : on parle d'atouts réels et de ce que l'équipe fait, jamais de « chances de gagner ».
+// ============================================================================
+export type Highlight = { text: string; tone: 'ok' | 'warn' | 'info' };
+export type BuyerKind = 'collectivite' | 'sante' | 'etat' | 'etablissement' | 'prive' | null;
+
+export function buyerKind(buyer: string | null | undefined, journey: string | null | undefined): BuyerKind {
+  if (journey === 'tender' || journey === 'subcontracting') return 'prive';
+  const b = (buyer || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (!b) return null;
+  if (/(hopital|chu\b|centre hospitalier|\bght\b|ehpad|clinique)/.test(b)) return 'sante';
+  if (/(ministere|prefecture|\betat\b|\bdga\b|\besid\b|gendarmerie|armee|douane)/.test(b)) return 'etat';
+  if (/(mairie|commune|ville de|metropole|communaute|departement|region|conseil (departemental|regional)|syndicat|sivom|sivu)/.test(b)) return 'collectivite';
+  if (/(lycee|college|universite|\binp\b|rectorat|ecole|office|cnrs|inrae|crous)/.test(b)) return 'etablissement';
+  return null;
+}
+// Délais de paiement légaux (Code de la commande publique, R. 2192-10 et suivants).
+const PAYMENT: Partial<Record<NonNullable<BuyerKind>, string>> = {
+  collectivite: 'Collectivité : paiement sous 30 jours', etat: 'État : paiement sous 30 jours',
+  etablissement: 'Acheteur public : paiement sous 30 jours', sante: 'Hôpital : paiement sous 50 jours',
+};
+
+export interface V28Input {
+  score: number;
+  company: string;
+  companyCity: string | null;
+  facts: ApiMatchFacts | null | undefined;
+  criteria: ApiMatchCriterion[];
+  buyer: string | null | undefined;
+  journey: string | null | undefined;
+  deadlineText: string | null;   // « 12 novembre »
+  tradeLabel: string | null;     // « chauffage et climatisation » (métier de l'entreprise, en clair)
+}
+
+export function buildHighlights(i: V28Input): Highlight[] {
+  const out: Highlight[] = [];
+  const f = i.facts;
+  if (f?.metierLevel === 'exact') out.push({ text: '✓ Votre métier exact', tone: 'ok' });
+  else if (f?.metierLevel === 'secondary') out.push({ text: '✓ Une de vos activités', tone: 'ok' });
+  else if (f?.metierLevel === 'general') out.push({ text: 'Bâtiment général : à confirmer', tone: 'warn' });
+  if (f?.km != null) out.push(f.km <= f.radiusKm ? { text: `✓ À ${f.km.toLocaleString('fr-FR')} km`, tone: 'ok' } : { text: `À ${f.km.toLocaleString('fr-FR')} km`, tone: 'warn' });
+  if (f?.revenueRatio != null && f.revenueRatio <= 0.6) out.push({ text: '✓ Montant à votre mesure', tone: 'ok' });
+  const k = buyerKind(i.buyer, i.journey);
+  if (i.journey === 'subcontracting') out.push({ text: 'Sous-traitance : pour une entreprise générale', tone: 'info' });
+  else if (i.journey === 'tender') out.push({ text: 'Appel d’offres privé', tone: 'info' });
+  else if (k && PAYMENT[k]) out.push({ text: PAYMENT[k]!, tone: 'info' });
+  const d = f?.daysLeft;
+  if (d != null && d > 0) out.push(d >= 21 ? { text: `✓ J-${d} : le temps de bien faire`, tone: 'ok' } : d > 3 ? { text: `⏱ J-${d} : on accélère`, tone: 'warn' } : { text: `⏱ J-${d} : très serré`, tone: 'warn' });
+  return out.slice(0, 5);
+}
+
+export function buildEliteAdvice(i: V28Input): { text: string; suggestBetter: boolean } {
+  const f = i.facts;
+  const co = i.company || 'Votre entreprise';
+  const near = i.companyCity ? `près de ${i.companyCity}` : 'près de chez vous';
+  const metier = i.tradeLabel ? `de ${i.tradeLabel}` : 'de votre métier';
+  const strengths: string[] = [];
+  if (f?.metierLevel === 'exact') strengths.push('c’est votre métier exact');
+  else if (f?.metierLevel === 'secondary') strengths.push('c’est l’une de vos activités');
+  if (f?.km != null && f.km <= Math.max(40, f.radiusKm / 2)) strengths.push(`à ${f.km} km de chez vous`);
+  else if (f?.km != null && f.km <= f.radiusKm) strengths.push(`à ${f.km} km, dans votre secteur`);
+  if (f?.revenueRatio != null && f.revenueRatio <= 0.6) strengths.push('avec un montant à votre mesure');
+  if (f?.daysLeft != null && f.daysLeft >= 21) strengths.push(`avec ${f.daysLeft} jours pour bien préparer`);
+  // Le point à gérer = le critère connu qui perd le plus de points, transformé en ce que l'équipe fait pour lui.
+  const byGap = i.criteria.filter(c => (c.maxPoints || 0) > 0).map(c => ({ c, gap: (c.maxPoints || 0) - (c.points || 0) })).sort((a, b) => b.gap - a.gap);
+  const issueOf = (c: ApiMatchCriterion): string | null => {
+    if (c.key === 'disponibilite' && f?.daysLeft != null && f.daysLeft > 0 && f.daysLeft < 21) return `le délai : on prépare le mémoire technique avec vous pour tenir le ${i.deadlineText || 'délai'}`;
+    if (c.key === 'moyens') return f?.revenueRatio != null ? 'le montant : on regarde ensemble comment le porter, seul ou en groupement' : 'le montant n’est pas publié : on le vérifie ensemble';
+    if (c.key === 'experience') return 'vos références : on vous aide à présenter vos chantiers sous leur meilleur jour';
+    if (c.key === 'zone' && f?.km != null && f.km > f.radiusKm) return 'la distance : un partenaire local ou un groupement peut ouvrir la porte';
+    if (c.key === 'qualifications') return 'les qualifications demandées : on vérifie ensemble ce qu’il faut fournir';
+    return null;
+  };
+  const issue = byGap.map(x => issueOf(x.c)).find(Boolean) || null;
+  const s = i.score;
+  const metierOff = f?.metierLevel === 'none' || f?.metierLevel === 'unknown';
+  const far = f?.km != null && f.km > 2 * f.radiusKm;
+
+  if (s >= 65) {
+    const a = strengths.length ? ` : ${strengths.slice(0, 3).join(', ')}` : '';
+    return { text: `${co} a de sérieux atouts pour remporter ce marché${a}. ${issue ? `Le seul point à gérer, c’est ${issue}.` : 'Il ne reste qu’à soigner le dossier, et on le fait avec vous.'} Prenez votre créneau, on lance ce dossier ensemble.`, suggestBetter: false };
+  }
+  if (s >= 40) {
+    const a = strengths.length ? ` : ${strengths.slice(0, 2).join(', ')}` : '';
+    return { text: `${co} a de vrais atouts sur ce marché${a}. ${issue ? `Le point à travailler, c’est ${issue}.` : 'Quelques points restent à préciser, on les voit ensemble.'} On regarde ensemble comment le préparer au mieux.`, suggestBetter: false };
+  }
+  if (!metierOff && far) {
+    return { text: `C’est loin pour ${co}, mais c’est pile votre métier : un partenariat avec une entreprise locale peut ouvrir la porte. Et j’ai sûrement des marchés plus proches ${i.companyCity ? `de ${i.companyCity}` : 'de chez vous'} : je vous les montre pendant l’appel.`, suggestBetter: true };
+  }
+  if (f?.metierLevel === 'unknown') {
+    return { text: `Je n’ai pas pu rattacher ce marché à votre métier avec certitude : on vérifie ensemble en deux minutes s’il est pour ${co}. Et j’ai des marchés ${metier} ouverts ${near} : je vous les montre pendant l’appel.`, suggestBetter: true };
+  }
+  if (metierOff) {
+    return { text: `Ce marché-là n’est pas fait pour ${co}, mais votre recherche montre que vous êtes prêt à vous lancer : j’ai des marchés ${metier} ouverts ${near}. Je vous les sélectionne et on en parle.`, suggestBetter: true };
+  }
+  return { text: `${co} a des atouts sur ce marché, et quelques points à éclaircir${issue ? ` : ${issue}` : ''}. On en parle, et je vous montre aussi les marchés qui vous correspondent le mieux.`, suggestBetter: true };
+}
+
+// Clé de réponse du moteur -> question de la fiche (pour répondre « oui » directement depuis « Ce qui ferait monter »).
+export const UPGRADE_QUESTION: Record<ApiMatchUpgrade['key'], FicheQuestion> = { experience: 'refs', capacity: 'moyens', location: 'zone', calendar: 'dispo' };
