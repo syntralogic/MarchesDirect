@@ -37,12 +37,21 @@ function OpenCounter() {
     opportunitiesApi.getOpenToday().then(r => { if (live && Number.isFinite(r.total) && r.total > 0) setN(r.total); }).catch(() => {});
     return () => { live = false; };
   }, []);
-  if (n === null) return null;
+  // v28 : bande de chiffres (vrais), au niveau visuel du moteur et de la carte. Le compteur reste réel ; sans chiffre, la tuile est absente.
+  const tiles: { big: string; small: string; hot?: boolean }[] = [
+    ...(n !== null ? [{ big: new Intl.NumberFormat('fr-FR').format(n), small: 'marchés ouverts aujourd’hui, mis à jour chaque matin', hot: true }] : []),
+    { big: '3 types', small: 'marchés publics, appels d’offres privés, sous-traitance' },
+    { big: '6 critères', small: 'pour votre pourcentage : activité, zone, calendrier, moyens, références, qualifications' },
+    { big: '30 min', small: 'offertes avec notre équipe pour faire le point sur un marché' },
+  ];
   return (
-    <p className="text-center text-[15px] text-[#D6E0EC]">
-      <strong className="text-[18px] text-[#FB923C]">{new Intl.NumberFormat('fr-FR').format(n)}</strong> marchés ouverts aujourd’hui en France
-      <span className="text-[#B4C1D3]"> · chiffre mis à jour chaque matin</span>
-    </p>
+    <div className="mt-7 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+      {tiles.map(t => (
+        <div key={t.big} className={`rounded-2xl border p-3.5 ${t.hot ? 'border-[#C2410C]' : 'border-[#22385A]'}`} style={{ background: 'linear-gradient(160deg,#142B4A,#0F1F35)' }}>
+          <b className={`block text-[26px] leading-none ${t.hot ? 'text-[#FDBA74]' : 'text-white'}`}>{t.big}</b>
+          <span className="mt-1.5 block text-[13px] leading-snug text-[#B4C1D3]">{t.small}</span>
+        </div>))}
+    </div>
   );
 }
 
@@ -266,9 +275,10 @@ export default function HomePage() {
         {/* ===== 1. PREMIER ÉCRAN : promesse courte + moteur. Rien d'autre avant le champ. ===== */}
         <section className="mx-auto grid w-full max-w-[1100px] gap-5 px-4 pt-4 md:grid-cols-[1fr_1.15fr] md:items-start md:gap-10 md:px-6 md:pt-14">
           <div className="flex flex-col gap-2 md:gap-4 md:pt-6">
-            <Eyebrow>Artisans, TPE et PME · tous métiers</Eyebrow>
-            <h1 className="text-[24px] font-extrabold leading-[1.15] md:text-[40px]">Trouvez les marchés adaptés à votre entreprise.</h1>
-            <p className="text-[15px] text-[#B4C1D3] md:text-[18px]">Découvrez vos marchés et faites le point avec notre équipe.</p>
+            {/* v28 (5 Nov, client) : le B2B doit sauter aux yeux — pas un site d'artisans pour particuliers. */}
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#FB923C] px-3 py-1.5 text-[12px] font-extrabold uppercase tracking-wider text-[#FDBA74]"><span aria-hidden className="h-2 w-2 rounded-full bg-[#F97316]" />Réservé aux professionnels · B2B</span>
+            <h1 className="text-[25px] font-extrabold leading-[1.15] md:text-[40px]">Les appels d’offres et marchés faits pour votre entreprise.</h1>
+            <p className="text-[15px] text-[#B4C1D3] md:text-[18px]">Marchés publics, appels d’offres privés, sous-traitance : les contrats des collectivités, des donneurs d’ordre et des entreprises générales. Aucune demande de particulier.</p>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -282,7 +292,7 @@ export default function HomePage() {
               <SavedBanner />
             </section>
             <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-center text-[13px] font-bold text-[#6EE7B7]">
-              <span>✓ Gratuit</span><span>✓ Sans inscription</span><span>✓ Réponse immédiate</span>
+              <span>✓ Gratuit</span><span>✓ Réservé aux entreprises</span><span>✓ Réponse immédiate</span>
             </p>
             <div className="flex items-center gap-3 px-1">
               <ElenaAvatar size={44} />
@@ -307,15 +317,16 @@ export default function HomePage() {
           <Block>
             <Eyebrow>Comment ça marche</Eyebrow>
             <h2 className="text-[22px] font-extrabold leading-tight">Trois étapes, en quelques minutes</h2>
-            <ol className="mt-1 flex flex-col gap-4">
+            <ol className="mt-1 flex flex-col gap-2.5 md:flex-row">
               {[
                 ['Indiquez votre entreprise', 'Son nom ou son SIRET : nous l’identifions dans les registres officiels.'],
-                ['Comparez vos marchés', 'Chaque marché affiche son pourcentage de correspondance, analysé sur six critères : activité, zone, calendrier, moyens, références, qualifications.'],
-                ['Obtenez votre dossier prérempli', 'À votre nom, prêt tout de suite. Puis notre équipe vous rappelle pour préparer la suite avec vous.'],
+                ['Comparez vos marchés', 'Chaque marché affiche son pourcentage de correspondance, analysé sur six critères.'],
+                ['Recevez votre dossier et faites le point', 'Dossier prérempli à votre nom tout de suite, puis 30 minutes avec Elena pour mesurer vos chances.'],
               ].map(([t, d], i) => (
-                <li key={t} className="flex gap-4">
-                  <b className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[#C2410C] text-[16px] font-extrabold text-white">{i + 1}</b>
-                  <div><h3 className="text-[17px] font-bold">{t}</h3><p className="mt-0.5 text-[15px] leading-relaxed text-[#B4C1D3]">{d}</p></div>
+                <li key={t} className="relative flex flex-1 gap-3.5 overflow-hidden rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5 pl-4">
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-[#F97316]" />
+                  <b className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-[#C2410C] text-[20px] font-extrabold text-white">{i + 1}</b>
+                  <div><h3 className="text-[16px] font-bold leading-tight">{t}</h3><p className="mt-1 text-[14px] leading-snug text-[#D6E0EC]">{d}</p></div>
                 </li>
               ))}
             </ol>
@@ -324,13 +335,20 @@ export default function HomePage() {
           <Block>
             <Eyebrow>Ce que nous faisons avec vous</Eyebrow>
             <h2 className="text-[22px] font-extrabold leading-tight">Vous n’êtes pas seul face au dossier</h2>
-            <ul className="mt-1 flex flex-col gap-3 text-[15px] leading-relaxed text-[#D6E0EC]">
-              {[
-                ['Gratuit :', ' la recherche, le pourcentage par marché et votre dossier prérempli à votre nom.'],
-                ['Un premier échange offert de 30 minutes', ' pour faire le point sur le marché et sur votre entreprise.'],
-                ['Si vous le souhaitez, nous préparons la candidature avec vous :', ' formulaires, mémoire technique, dépôt.'],
-              ].map(([b, r]) => (
-                <li key={b} className="flex gap-3"><span className="mt-0.5 text-[18px] font-bold text-[#6EE7B7]" aria-hidden>✓</span><span><strong className="text-[#F2F5F9]">{b}</strong>{r}</span></li>
+            <ul className="mt-1 grid grid-cols-1 gap-2.5 md:grid-cols-2">
+              {([
+                ['🔎', 'Gratuit', 'La recherche et votre pourcentage', 'Tous les marchés de votre métier, classés pour votre entreprise.'],
+                ['📄', 'Gratuit', 'Votre dossier prérempli, à votre nom', 'Téléchargé tout de suite, prêt à compléter.'],
+                ['📞', 'Offert', '30 minutes avec notre équipe', 'Pour faire le point sur le marché et sur votre entreprise.'],
+                ['🤝', 'Sur devis', 'La candidature préparée avec vous', 'Formulaires, mémoire technique, dépôt. Vous décidez après l’échange.'],
+              ] as const).map(([ico, tag, t, d]) => (
+                <li key={t} className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5">
+                  <span aria-hidden className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-[#1E3352] text-[22px]">{ico}</span>
+                  <div>
+                    <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-extrabold ${tag === 'Sur devis' ? 'bg-[#3A2312] text-[#FDBA74]' : 'bg-[#123B2A] text-[#6EE7B7]'}`}>{tag}</span>
+                    <b className="block text-[16px] leading-tight">{t}</b><span className="text-[14px] leading-snug text-[#D6E0EC]">{d}</span>
+                  </div>
+                </li>
               ))}
             </ul>
           </Block>
@@ -339,10 +357,12 @@ export default function HomePage() {
             <Block>
               <Eyebrow>Notre équipe</Eyebrow>
               <h2 className="text-[22px] font-extrabold leading-tight">De vraies personnes, du premier appel au dépôt</h2>
-              <div className="mt-1 flex flex-col gap-4">
-                <div className="flex items-center gap-4"><ElenaAvatar size={72} /><div><h3 className="text-[17px] font-bold">{ELENA.name}</h3><p className="text-[15px] text-[#B4C1D3]">{ELENA.role}, votre premier contact. Elle vous rappelle, répond à vos questions et vous oriente vers la bonne personne.</p></div></div>
-                {TEAM.map(m => (
-                  <div key={m.name} className="flex items-center gap-4"><img src={m.photo} alt={m.name} width={72} height={72} loading="lazy" className="h-[72px] w-[72px] shrink-0 rounded-full object-cover" /><div><h3 className="text-[17px] font-bold">{m.name}</h3><p className="text-[15px] text-[#B4C1D3]">{m.role}. {m.bio}</p></div></div>
+              <div className="mt-1 grid grid-cols-3 gap-2.5">
+                {[{ name: ELENA.name, role: `${ELENA.role} · votre premier contact`, photo: ELENA.photo || '' }, ...TEAM.map(m => ({ name: m.name, role: m.role, photo: m.photo }))].map(m => (
+                  <Link key={m.name} to={`/team-profile?member=${encodeURIComponent(m.name)}`} className="overflow-hidden rounded-2xl border border-[#22385A] bg-[#12233A]">
+                    <img src={m.photo} alt={m.name} loading="lazy" className="aspect-[4/5] w-full object-cover object-top" />
+                    <div className="p-2.5"><b className="block text-[14px] leading-tight">{m.name}</b><span className="mt-0.5 block text-[12px] leading-snug text-[#B4C1D3]">{m.role}</span></div>
+                  </Link>
                 ))}
               </div>
             </Block>
