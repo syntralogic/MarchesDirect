@@ -123,7 +123,7 @@ export const CompanySearchForm = forwardRef<CompanySearchHandle>(function Compan
         </ul>
       )}
       {c && (
-        <div className="flex items-start gap-2 rounded-xl bg-[#123B2A] p-3 text-[14px] font-semibold text-[#6EE7B7]" role="status">
+        <div className="flex items-start gap-2 rounded-xl bg-[#123B2A] p-3 text-[15px] font-semibold text-[#6EE7B7]" role="status">
           <Check size={20} strokeWidth={2.5} className="mt-0.5 shrink-0" aria-hidden />
           <span>{line(c.name, c.activity, c.city, c.postal)}</span>
         </div>
@@ -134,8 +134,8 @@ export const CompanySearchForm = forwardRef<CompanySearchHandle>(function Compan
         {busy ? 'Recherche…' : 'Voir les marchés qui me correspondent'}
       </button>
       <details className="group">
-        <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-[#FB923C] [&::-webkit-details-marker]:hidden">Pourquoi le nom ou le SIRET ?<span aria-hidden className="text-[16px] group-open:hidden">+</span><span aria-hidden className="hidden text-[16px] group-open:inline">–</span></summary>
-        <p className="pb-1 text-[13px] text-[#D6E0EC]">Pour identifier votre entreprise dans les registres officiels. Nous y retrouvons votre activité, votre zone et votre taille pour vous montrer les marchés qui vous correspondent. Rien d’autre.</p>
+        <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-1.5 text-[15px] font-semibold text-[#FB923C] [&::-webkit-details-marker]:hidden">Pourquoi le nom ou le SIRET ?<span aria-hidden className="text-[16px] group-open:hidden">+</span><span aria-hidden className="hidden text-[16px] group-open:inline">–</span></summary>
+        <p className="pb-1 text-[15px] text-[#D6E0EC]">Pour identifier votre entreprise dans les registres officiels. Nous y retrouvons votre activité, votre zone et votre taille pour vous montrer les marchés qui vous correspondent. Rien d’autre.</p>
       </details>
     </form>
   );

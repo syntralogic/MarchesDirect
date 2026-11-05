@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { opportunitiesApi, siretApi, type ApiSiretStatus } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent } from '@/lib/visitorTracking';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
+import { deptFromPostal } from '@/components/home/CompanySearchForm';
 import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, type Journey } from '@/components/liste/RefinePanel';
 import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
@@ -179,8 +180,8 @@ export default function ListeMarchesPage() {
       {known && c && (
         <div className="flex items-center gap-2 rounded-xl bg-[#123B2A] px-3 py-2 text-[13px] text-[#6EE7B7]">
           <span aria-hidden>✓</span>
-          <span className="min-w-0 flex-1">{[c.name, c.activity && c.activity.length <= 40 ? c.activity : null, c.city ? `${c.city}${c.postal ? ` (${c.postal.slice(0, 2)})` : ''}` : null].filter(Boolean).join(' · ')}</span>
-          <button type="button" onClick={() => navigate('/', { state: { focusCompany: true } })} className="min-h-[44px] min-w-[44px] font-bold underline">Modifier</button>
+          <span className="min-w-0 flex-1">{[c.name, c.activity && c.activity.length <= 40 ? c.activity : null, c.city ? `${c.city}${deptFromPostal(c.postal) ? ` (${deptFromPostal(c.postal)})` : ''}` : null].filter(Boolean).join(' · ')}</span>
+          <button type="button" onClick={() => navigate('/', { state: { focusCompany: true } })} className="min-h-[48px] min-w-[48px] font-bold underline">Modifier</button>
         </div>)}
 
       <header className="flex flex-col gap-1">

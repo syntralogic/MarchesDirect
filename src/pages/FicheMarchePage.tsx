@@ -12,6 +12,7 @@ import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { useBrand } from '@/hooks/use-brand';
 import { useIdempotency } from '@/lib/useIdempotency';
 import { normalizeFrPhoneDigits } from '@/lib/utils';
+import { deptFromPostal } from '@/components/home/CompanySearchForm';
 import { loadCoords, saveCoords, validateCoords, leadMessage, pdfFileName, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
 import ConfirmationScreen, { type PdfState } from '@/components/fiche/ConfirmationScreen';
@@ -378,7 +379,7 @@ export default function FicheMarchePage() {
           <span className={`rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold ${days != null && days <= 7 ? 'text-[#FDBA74]' : 'text-[#D6E0EC]'}`}>{formatDeadlineExact(opp?.deadline) ? `Réponse avant le ${deadlineTxt}${days != null && days >= 0 ? ` · J-${days}` : ''}` : 'Date limite non précisée'}</span>
         </div>
         <h1 className="text-[23px] font-extrabold leading-tight">{title}</h1>
-        {consult && <p className="flex items-center gap-2 text-[14px] text-[#D6E0EC]"><span className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden />{consult}</p>}
+        {consult && <p className="flex items-center gap-2 text-[14px] text-[#D6E0EC]"><span className="md-live-dot h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden />{consult}</p>}
       </section>
 
       {!known && (<>
@@ -415,8 +416,8 @@ export default function FicheMarchePage() {
             ) : <div className="h-24 animate-pulse rounded-xl bg-[#0F1F35]" aria-busy="true" />}
             {sc != null && <p className="text-[14px] text-[#D6E0EC]">{summaryFor(sc)}</p>}
             <div className="flex items-center gap-2 rounded-xl bg-[#123B2A] px-3 py-2 text-[13px] text-[#6EE7B7]">
-              <span aria-hidden>✓</span><span className="min-w-0 flex-1">{['Pour ' + company, status?.company?.activity && status.company.activity.length <= 40 ? status.company.activity : null, status?.company?.city ? `${status.company.city}${status.company.postal ? ` (${status.company.postal.slice(0, 2)})` : ''}` : null].filter(Boolean).join(' · ')}</span>
-              <button type="button" onClick={() => { setEditing(true); setQuery(company); }} className="min-h-[44px] min-w-[44px] font-bold underline">Modifier</button>
+              <span aria-hidden>✓</span><span className="min-w-0 flex-1">{['Pour ' + company, status?.company?.activity && status.company.activity.length <= 40 ? status.company.activity : null, status?.company?.city ? `${status.company.city}${deptFromPostal(status.company.postal) ? ` (${deptFromPostal(status.company.postal)})` : ''}` : null].filter(Boolean).join(' · ')}</span>
+              <button type="button" onClick={() => { setEditing(true); setQuery(company); }} className="min-h-[48px] min-w-[48px] font-bold underline">Modifier</button>
             </div>
             <p className="text-[13px] text-[#B4C1D3]">Pourcentage de correspondance calculé à partir des informations publiques de votre entreprise. Il ne mesure pas vos chances de gagner. Répondez aux 4 questions ci-dessous pour l’affiner.</p>
           </section>
@@ -460,6 +461,7 @@ export default function FicheMarchePage() {
 
           <section className="flex flex-col gap-3">
             <h2 className="text-[20px] font-extrabold">La suite, en un clic</h2>
+            <p className="text-[14px] text-[#D6E0EC]">Une question avant de choisir ? <button type="button" onClick={() => choose('info')} className="min-h-[48px] font-bold text-[#FB923C] underline">Demandez à Elena</button>, elle vous rappelle dans l’heure.</p>
             {/* 5 Nov (décision client) : un seul bouton. Le dossier et l'appel de 30 minutes ne font qu'une action :
                 SIRET = froid, dossier seul = moyen, appel planifié = chaud. */}
             <button ref={mainBtn} type="button" onClick={() => choose('dossier')} className={`${choiceBase} relative border-[#F97316] bg-[#C2410C] text-white shadow-[0_6px_18px_rgba(249,115,22,.35)]`}>
