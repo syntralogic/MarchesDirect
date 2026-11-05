@@ -1,8 +1,9 @@
+import type { PlaceFields } from './noticePlace';
 // Écran 2 « Vos marchés » (maquette v26): pure rules for ranking, filters and card texts. No network, no AI.
 export type Tone = 'hi' | 'mid' | 'lo';
 export type Filter = 'all' | Tone;
 
-export interface RankedCard {
+export interface RankedCard extends PlaceFields {
   id: string;
   title: string;
   journey: string | null;

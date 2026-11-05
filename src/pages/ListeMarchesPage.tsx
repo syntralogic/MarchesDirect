@@ -19,6 +19,7 @@ import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
   type Filter, type RankedCard, type ScoreMap,
 } from '@/lib/rankedList';
+import { execLabel, buyerPlace, execOf } from '@/lib/noticePlace';
 
 const RING = { hi: '#34D399', mid: '#FDBA74', lo: '#6B7A90' } as const;
 const CHIPS: { key: Filter; label: string }[] = [{ key: 'all', label: 'Tous' }, { key: 'hi', label: 'Très adaptés' }, { key: 'mid', label: 'À étudier' }, { key: 'lo', label: 'Peu adaptés' }];
@@ -49,24 +50,30 @@ function Ring({ score }: { score: number | null | undefined }) {
 }
 
 function Card({ c, score, withScore }: { c: RankedCard; score: number | null | undefined; withScore: boolean }) {
-  const n = daysLeft(c.deadline);
+  const dl = c.deadline_checked || c.deadline;
+  const n = daysLeft(dl);
   const dept = c.location_department ? ` (${c.location_department})` : '';
   // Un acheteur réduit à son SIREN (« 110068012 ») n'aide pas le visiteur ;
   // et quand l'acheteur et la ville sont le même libellé (« Mairie d'Izon ·
   // Mairie d'Izon (33) »), on ne l'écrit qu'une fois.
   const buyer = c.buyer_name && !/^\d{9,14}$/.test(c.buyer_name.trim()) ? c.buyer_name.trim() : null;
-  const place = c.location_city && c.location_city.trim() !== buyer ? `${c.location_city.trim()}${dept}` : dept.trim();
+  // v2 : lieu d'exécution relu dans l'avis ; l'adresse de l'acheteur n'est montrée que s'il n'y a pas de commune d'exécution.
+  const exec = execLabel(c);
+  const place = exec != null
+    ? `Lieu d’exécution : ${exec}${buyerPlace(c) && !(execOf(c)?.communes || []).length ? ` · acheteur à ${buyerPlace(c)}` : ''}`
+    : c.location_city && c.location_city.trim() !== buyer ? `${c.location_city.trim()}${dept}` : dept.trim();
   return (
     <Link to={`/opportunites/${c.id}`} className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5 text-[#F2F5F9]">
       {withScore ? <Ring score={score} /> : <div className="flex w-[76px] shrink-0 flex-col items-center gap-1.5"><div className="flex h-[64px] w-[64px] items-center justify-center rounded-full border-4 border-[#1E3352] text-[15px] font-extrabold">— %</div><span className="text-center text-[12px] font-bold text-[#FB923C]">Voir mon %</span></div>}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
           <span className="text-[#FDBA74]">{TYPE_LABEL[c.journey || ''] || 'MARCHÉ'}{c.distance_km != null ? ` · ${Math.round(c.distance_km)} km` : ''}</span>
-          {isClosingSoon(c.deadline) && <span className="rounded-full bg-[#3A2312] px-2 py-0.5 text-[#FDBA74]">Bientôt clos</span>}
+          {c.open_state === 'verify' && <span className="rounded-full bg-[#1E3352] px-2 py-0.5 text-[#D6E0EC]">Date limite à vérifier</span>}
+          {isClosingSoon(dl) && <span className="rounded-full bg-[#3A2312] px-2 py-0.5 text-[#FDBA74]">Bientôt clos</span>}
         </div>
         <h3 className="line-clamp-3 text-[16px] font-extrabold leading-snug">{c.title}</h3>
         <p className="text-[13px] text-[#B4C1D3]">{[buyer, place, c.estimated_value && c.estimated_value >= 100 ? `${Math.round(c.estimated_value).toLocaleString('fr-FR')} €` : null].filter(Boolean).join(' · ')}</p>
-        <p className="text-[13px] text-[#D6E0EC]">{formatDeadlineExact(c.deadline) ? `Réponse avant le ${formatDeadlineExact(c.deadline)}${n != null && n >= 0 ? ` · J-${n}` : ''}` : 'Date limite non précisée'}</p>
+        <p className="text-[13px] text-[#D6E0EC]">{formatDeadlineExact(dl) ? `Réponse avant le ${formatDeadlineExact(dl)}${n != null && n >= 0 ? ` · J-${n}` : ''}` : 'Date limite non précisée'}</p>
         <span className="text-[14px] font-bold text-[#FB923C]">Voir le marché ›</span>
       </div>
     </Link>
@@ -84,6 +91,7 @@ export default function ListeMarchesPage() {
 
   const [status, setStatus] = useState<ApiSiretStatus | null | undefined>(undefined);
   const [cards, setCards] = useState<RankedCard[] | null>(null);
+  const [rankedTotal, setRankedTotal] = useState<number | null>(null);
   const [scores, setScores] = useState<ScoreMap>({});
   const [filter, setFilter] = useState<Filter>('all');
   // Filtres du volet « Affiner » (type, où, budget, réponse attendue, tri), tous dans l'adresse.
@@ -135,7 +143,7 @@ export default function ListeMarchesPage() {
         if (stop()) return;
         setZoneLabel(r.zone === 'france' ? 'Toute la France' : `Département ${r.zone}`);
         setTradeUnknown(r.reason === 'trade_unknown');
-        setCards(r.items);
+        setCards(r.items); setRankedTotal(typeof r.total === 'number' ? r.total : null);
         await mapLimit(r.items, 4, async c => {
           try { const s = await opportunitiesApi.getMatchScore(c.id, sessionId); setScores(p => ({ ...p, [c.id]: s.score })); }
           catch { setScores(p => ({ ...p, [c.id]: null })); }
@@ -146,7 +154,7 @@ export default function ListeMarchesPage() {
         if (stop()) return;
         setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
         setSearchTotal(r.pagination?.total ?? r.results.length);
-        setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null })));
+        setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, deadline_checked: o.deadline_checked ?? null, open_state: o.open_state ?? null, location_level: o.location_level ?? null, exec_status: o.exec_status, exec_communes: o.exec_communes, exec_departments: o.exec_departments, exec_text: o.exec_text, buyer_city: o.buyer_city, buyer_department: o.buyer_department, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null })));
         // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
         const totals = await Promise.all(journeys.map(j => opportunitiesApi.search(searchParamsFor(q, { ...refine, journey: j }, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 1 })).then(x => x.pagination?.total ?? 0).catch(() => 0)));
@@ -192,6 +200,8 @@ export default function ListeMarchesPage() {
   };
 
   const total = known ? (cards?.length ?? 0) : (searchTotal ?? cards?.length ?? 0);
+  // Total réel du périmètre (la liste classée n'en charge que 40) : dit à part, pour que le nombre affiché corresponde à la liste.
+  const beyond = known && rankedTotal != null && cards && rankedTotal > cards.length ? rankedTotal - cards.length : 0;
   // No company and no trade chosen: nothing to count yet, so no "0 marché".
   const { title, sub } = known && total === 0 ? { title: 'Vos marchés', sub: `${zoneLabel} · mis à jour aujourd’hui` } : known || total > 0 ? titleFor(total, known, q, zoneLabel) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
   const c = status?.company;
@@ -291,6 +301,7 @@ export default function ListeMarchesPage() {
       {cards === null && !error && <div className="flex flex-col gap-2.5" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="h-[150px] animate-pulse rounded-2xl bg-[#12233A]" />)}</div>}
 
       {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} />)}</div>}
+      {beyond > 0 && <p className="text-[13px] text-[#B4C1D3]">{cards!.length} marchés affichés sur {rankedTotal} correspondant à votre métier et à votre zone : ce sont ceux dont la date limite est la plus proche, classés ici par pourcentage. Affinez la zone pour voir les autres.</p>}
       {known && cards && cards.length > 0 && (
         <section className="flex flex-col gap-2 rounded-2xl border border-[#22385A] bg-[#12233A] p-4" aria-label="Être prévenu des prochains marchés">
           <h2 className="text-[18px] font-extrabold">Être prévenu des prochains marchés</h2>

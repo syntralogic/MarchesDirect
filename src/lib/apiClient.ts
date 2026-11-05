@@ -26,6 +26,9 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Recherche v2 (aperçu, 6 nov.) : lieux séparés, états relus, classement explicite. Sans ce paramètre, le serveur
+  // garde l'ancien comportement : c'est ce qui permet de valider l'aperçu sans rien changer à la production.
+  if ((config.method || 'get').toLowerCase() === 'get' && (/^\/opportunities(\/|\?|$)/.test(config.url || '') || /^\/siret\/lead\/dossier-pdf/.test(config.url || ''))) config.params = { ...(config.params || {}), loc: '2' };
   const token = tokenStorage.getAccessToken();
   if (token) {
     config.headers = config.headers ?? {};
@@ -190,7 +193,7 @@ export async function getBlobApiErrorMessage(err: unknown, fallback = 'Une erreu
 // through it.
 // ============================================================================
 
-export type ApiOpportunity = {
+export type ApiOpportunity = import('./noticePlace').PlaceFields & {
   id: string;
   title: string;
   description?: string;
@@ -484,7 +487,7 @@ export const opportunitiesApi = {
   // 403 company_not_identified until a SIRET lookup is done for this session.
   rankedCandidates: async (sessionId: string, zone?: string) => {
     const { data } = await apiClient.get<{
-      items: { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null }[];
+      items: (import('./noticePlace').PlaceFields & { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null })[];
       total: number; zone: string; reason?: 'trade_unknown';
       company?: { name: string | null; activity: string | null; city: string | null; department: string | null };
     }>('/opportunities/ranked/candidates', { params: { sessionId, ...(zone ? { zone } : {}) } });

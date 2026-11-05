@@ -1,3 +1,4 @@
+import { daysLeft } from '@/lib/rankedList';
 import { useOpenOpportunity } from '@/contexts/OpportunityTransitionContext';
 import { useLang } from '@/contexts/LangContext';
 import { SaveButton } from '@/components/SaveButton';
@@ -66,7 +67,8 @@ function getDeadlineInfo(
   if (lifecycle && lifecycle !== 'active') {
     return { value: LIFECYCLE_BADGE[lifecycle].text, label: t('listingStatusLabel') };
   }
-  const days = deadline ? Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000) : NaN;
+  // Jours calendaires à l'heure de Paris (même calcul que la fiche et la liste « Vos marchés »).
+  const days = deadline ? (daysLeft(deadline) ?? NaN) : NaN;
   if (Number.isNaN(days)) return { value: t('listingNoDeadline'), label: t('listingDeadlineLabel') };
   // Past the exact hour counts as closed (a deadline earlier today is not "0 jour").
   if (new Date(deadline as string).getTime() < Date.now()) return { value: t('listingClosedLabel'), label: t('listingStatusLabel') };
