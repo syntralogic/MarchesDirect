@@ -1,3 +1,4 @@
+import InstallOffer from '@/components/pwa/InstallOffer';
 import type { ReactNode } from 'react';
 import { COPY, calendarRows, callWhen, dossierCallWhen, formatPhone, momentLabel, type CoordChoice, type CoordValues } from '@/lib/coordonnees';
 import type { ApiSiretCompany } from '@/lib/apiClient';
@@ -119,6 +120,7 @@ export default function ConfirmationScreen(p: Props) {
         <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5">{p.elenaPhoto}<p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{c.done.elena}</p></div>
         {p.dossiers != null && p.dossiers >= 2 && <p className="flex items-center gap-2 text-[13px] text-[#D6E0EC]"><span aria-hidden className="h-2 w-2 rounded-full bg-[#EF4444]" />{p.dossiers} entreprises ont demandé leur dossier ces 7 derniers jours</p>}
         <Dossier p={p} open={false} />
+        <InstallOffer context="dossier" />
         <button type="button" onClick={p.onBackToMarket} className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à ce marché</button>
       </div>
     );

@@ -4,18 +4,20 @@ import { Heart, Download, Send } from 'lucide-react';
 import { suiviApi, siretApi, getApiErrorMessage, type SuiviStep } from '@/lib/apiClient';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import DossierTimeline from './DossierTimeline';
+import { pushState, subscribePush } from '@/lib/pwa';
 
 // « Votre parcours sur ce marché » : favori, dossier, confier à Elena, puis la frise commune (5 nov.).
 // Rien n'est inventé : la frise vient du serveur (demande réelle, suivi HubSpot) ; tant qu'elle charge, on affiche
 // seulement ce que la page sait déjà (entreprise reconnue, marché analysé).
-type Props = { opportunityId: string; sessionId: string; analysed: boolean; onDossier: () => void; fileName: string; refreshKey?: unknown; compact?: boolean };
+type Props = { opportunityId: string; sessionId: string; analysed: boolean; onDossier: () => void; fileName: string; refreshKey?: unknown; compact?: boolean; light?: boolean };
 
-export default function MarketSuivi({ opportunityId, sessionId, analysed, onDossier, fileName, refreshKey, compact }: Props) {
+export default function MarketSuivi({ opportunityId, sessionId, analysed, onDossier, fileName, refreshKey, compact, light }: Props) {
   const { isSaved, toggle } = useFavorites();
   const [steps, setSteps] = useState<SuiviStep[] | null>(null);
   const [entrusted, setEntrusted] = useState(false);
   const [busy, setBusy] = useState<null | 'pdf' | 'confier'>(null);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+  const [push, setPush] = useState<'offer' | 'busy' | 'ok' | 'denied' | null>(null);
 
   const load = useCallback(() => {
     suiviApi.forMarket(opportunityId, sessionId)
@@ -53,6 +55,7 @@ export default function MarketSuivi({ opportunityId, sessionId, analysed, onDoss
     try {
       const d = await suiviApi.confier(opportunityId, sessionId);
       if (d) { setSteps(d.steps); setEntrusted(true); }
+      if (pushState() === 'default') setPush('offer');
       setMsg({ tone: 'ok', text: 'C’est noté : Elena reprend votre dossier et vous contacte. Suivez son avancement ici et dans votre espace.' });
     } catch (e) { setMsg({ tone: 'err', text: getApiErrorMessage(e, 'L’envoi à Elena a échoué. Réessayez.') }); }
     finally { setBusy(null); }
@@ -63,7 +66,8 @@ export default function MarketSuivi({ opportunityId, sessionId, analysed, onDoss
     <section className="flex flex-col gap-3" aria-label="Votre parcours sur ce marché">
       {!compact && <div><span className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FB923C]">Ce marché et vous</span>
         <h2 className="mt-0.5 text-[19px] font-extrabold leading-tight">Votre parcours sur ce marché</h2></div>}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Fiche, avant le dossier : le bouton principal est juste au-dessus, on n'en remet pas (pas de surcharge). */}
+      {!(light && !hasDossier) && <div className="grid grid-cols-3 gap-2">
         <button type="button" onClick={() => toggle(opportunityId)} aria-pressed={saved}
           className={`${act} ${saved ? 'border-[#FB923C] bg-[rgba(194,65,12,.22)] text-white' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
           <Heart size={18} fill={saved ? 'currentColor' : 'none'} aria-hidden />{saved ? 'Dans mes favoris' : 'Mettre en favori'}
@@ -75,10 +79,16 @@ export default function MarketSuivi({ opportunityId, sessionId, analysed, onDoss
           className={`${act} ${entrusted ? 'border-[#1E6B4A] bg-[#123B2A] text-[#6EE7B7]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
           <Send size={18} aria-hidden />{entrusted ? 'Confié à Elena ✓' : busy === 'confier' ? 'Envoi…' : 'Confier à Elena'}
         </button>
-      </div>
+      </div>}
       {msg && <p role="status" className={`rounded-xl px-3 py-2 text-[13.5px] ${msg.tone === 'ok' ? 'bg-[#123B2A] text-[#6EE7B7]' : 'bg-[#2A1212] text-[#FCA5A5]'}`}>{msg.text}</p>}
+      {(push === 'offer' || push === 'busy') && (
+        <button type="button" disabled={push === 'busy'} onClick={async () => { setPush('busy'); const r = await subscribePush(sessionId); setPush(r === 'ok' ? 'ok' : r === 'denied' ? 'denied' : null); }}
+          className="flex min-h-[46px] items-center justify-center gap-2 rounded-xl border-2 border-[#FB923C] px-3 text-[14px] font-extrabold text-white disabled:opacity-60">
+          🔔 Être prévenu sur ce téléphone quand mon dossier avance</button>)}
+      {push === 'ok' && <p role="status" className="rounded-xl bg-[#123B2A] px-3 py-2 text-[13.5px] text-[#6EE7B7]">C’est activé : vous recevrez une notification à chaque étape.</p>}
+      {push === 'denied' && <p className="text-[12.5px] text-[#B4C1D3]">Notifications refusées : vous pourrez les activer plus tard dans les réglages du téléphone.</p>}
       <div className="rounded-[18px] border border-[#22385A] bg-[#12233A] p-3.5">
-        <DossierTimeline steps={shown} renderAction={s => s.key === 'dossier' && s.state === 'current'
+        <DossierTimeline steps={shown} renderAction={s => s.key === 'dossier' && s.state === 'current' && !light
           ? <button type="button" onClick={onDossier} className="flex min-h-[46px] w-full items-center justify-center rounded-xl bg-[#F97316] px-3 text-[14.5px] font-extrabold text-white">Recevoir mon dossier et faire le point</button>
           : s.key === 'entrusted' && s.state === 'current' && !entrusted && hasDossier
             ? <button type="button" onClick={confier} className="flex min-h-[44px] w-full items-center justify-center rounded-xl border-2 border-[#FB923C] px-3 text-[14px] font-extrabold text-white">Confier mon dossier à Elena</button>
