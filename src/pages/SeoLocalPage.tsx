@@ -4,7 +4,7 @@ import { ChevronRight, MapPin, Search } from 'lucide-react';
 import PageMeta from '@/components/common/PageMeta';
 import { seoV2Api } from '@/lib/apiClient';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
-import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '@/lib/seoLocalCopy';
+import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '@/lib/seoLocalCopy';
 
 // Pages locales SEO (5 nov., mandat référencement) : mêmes textes que le pré-rendu serveur (src/lib/seoLocalCopy.ts),
 // alimentés par /api/seo/v2/page. Adresse canonique unique (minuscules, sans accents) : toute autre écriture est
@@ -15,7 +15,7 @@ function Item({ i }: { i: SeoItem }) {
   return (
     <li className="rounded-[14px] border border-[#22385A] bg-[#12233A] p-3">
       <Link to={i.path} className="block text-[15px] font-bold leading-snug text-white hover:text-[#FDBA74]">{i.title}</Link>
-      <p className="mt-1 text-[12.5px] text-[#B4C1D3]">{[i.city ? `Lieu : ${i.city}` : null, i.deadline ? `Date limite : ${seoDate(i.deadline)}` : 'Date limite non communiquée', i.buyer, i.reference ? `réf. ${i.reference}` : null].filter(Boolean).join(' · ')}</p>
+      <p className="mt-1 text-[12.5px] text-[#B4C1D3]">{seoItemLine(i)}</p>
     </li>
   );
 }

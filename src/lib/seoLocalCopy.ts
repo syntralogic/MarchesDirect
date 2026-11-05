@@ -53,7 +53,7 @@ export function seoIntro(p: SeoV2Page): string[] {
   const out: string[] = [];
   const asOf = seoDate(p.generatedAt);
   if (p.count > 0) {
-    out.push(`Au ${asOf}, Marchés Direct recense ${countText(p.journey, p.count)}${tradeIn(p)} ${zoneIn(p)}${p.zone.type === 'city' ? ' (annonces dont le lieu d’exécution est la commune)' : ''}.`);
+    out.push(`Au ${asOf}, Marchés Direct recense ${countText(p.journey, p.count)}${tradeIn(p)} ${zoneIn(p)}${p.zone.type === 'city' ? ' (acheteurs dont l’adresse est dans la commune ; le lieu d’exécution précis figure dans chaque avis)' : ''}.`);
     const next = seoDate(p.nextDeadline); if (next) out.push(`La prochaine date limite de réponse est le ${next}.`);
     if (p.buyers.length) out.push(`${p.journey === 'public_procurement' ? 'Acheteurs publics' : 'Donneurs d’ordre'} les plus actifs : ${p.buyers.slice(0, 3).map(b => `${b.name} (${b.count})`).join(', ')}.`);
     if (!p.trade && p.trades.length) out.push(`Métiers les plus représentés : ${p.trades.slice(0, 4).map(t => `${t.name} (${t.count})`).join(', ')}.`);
@@ -88,6 +88,9 @@ export function seoBreadcrumb(p: SeoV2Page): { name: string; path: string }[] {
   return b.filter((x, i, arr) => arr.findIndex(y => y.path === x.path) === i);
 }
 /** Lien vers la recherche complète. La recherche filtre par département (pas par commune) : le libellé le dit. */
+/** Ligne de détail d'une annonce, identique côté robot et côté visiteur. */
+export const seoItemLine = (i: SeoItem) => [i.buyer ? `Acheteur : ${i.buyer}${i.city && !i.buyer.toLowerCase().includes(i.city.toLowerCase()) ? ` (${i.city})` : ''}` : (i.city ? `Commune de l’acheteur : ${i.city}` : null),
+  i.deadline ? `date limite : ${seoDate(i.deadline)}` : 'date limite non communiquée', i.reference ? `réf. ${i.reference}` : null].filter(Boolean).join(' · ');
 export const seoSearchPath = (p: SeoV2Page) => {
   const q = new URLSearchParams({ journey: p.journey });
   if (p.zone.department) q.set('department', p.zone.department);

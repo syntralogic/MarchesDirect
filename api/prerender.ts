@@ -14,7 +14,7 @@
 // Routed by vercel.json rewrites (kind=category|local|opportunity|slug). Keep the category copy in sync
 // with src/pages/CategoryLandingPage.tsx, and the URL structure with api/sitemap.xml.ts.
 
-import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy';
+import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
 
@@ -212,7 +212,7 @@ async function buildHome(): Promise<Doc> {
 }
 
 const itemHtml = (i: SeoItem) => `<li style="margin:0 0 1rem"><a href="${esc(i.path)}" style="color:#FF6B00;font-weight:600">${esc(clip(i.title, 160))}</a><br>`
-  + `<small>${esc([i.city ? `Lieu : ${i.city}` : null, i.deadline ? `date limite : ${seoDate(i.deadline)}` : 'date limite non communiquée', i.buyer ? `acheteur : ${i.buyer}` : null, i.reference ? `réf. ${i.reference}` : null].filter(Boolean).join(' · '))}</small></li>`;
+  + `<small>${esc(seoItemLine(i))}</small></li>`;
 
 async function buildLocal(base: string, city: string, trade: string, department: string): Promise<Doc> {
   const journey = JOURNEY_BY_BASE[base];
