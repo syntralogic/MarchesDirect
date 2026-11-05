@@ -14,7 +14,7 @@
 // Routed by vercel.json rewrites (kind=category|local|opportunity|slug). Keep the category copy in sync
 // with src/pages/CategoryLandingPage.tsx, and the URL structure with api/sitemap.xml.ts.
 
-import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy';
+import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
 
