@@ -9,6 +9,8 @@ export const MOMENTS: { id: Moment; label: string }[] = [
 ];
 // 5 Nov (décision client : « un clic = dossier + créneau d'appel ») : pour le dossier, le visiteur choisit
 // « dès que possible » (moment = 'now') ou un créneau proposé par le serveur (slotAt, ISO) ; slotLabel = son libellé.
+// What the server stores / shows Elena for the callback moment (backend CALLBACK_MOMENTS).
+export const MOMENT_API: Record<Moment, 'maintenant' | 'apres_midi' | 'demain_matin'> = { now: 'maintenant', afternoon: 'apres_midi', tomorrow: 'demain_matin' };
 export type CoordValues = { phone: string; email: string; question: string; moment: Moment | null; slotAt: string | null; slotLabel: string | null };
 export const EMPTY_COORDS: CoordValues = { phone: '', email: '', question: '', moment: null, slotAt: null, slotLabel: null };
 

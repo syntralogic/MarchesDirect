@@ -15,7 +15,7 @@ import { normalizeFrPhoneDigits } from '@/lib/utils';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import MarketSuivi from '@/components/suivi/MarketSuivi';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
-import { loadCoords, saveCoords, validateCoords, leadMessage, pdfFileName, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
+import { loadCoords, MOMENT_API, saveCoords, validateCoords, leadMessage, pdfFileName, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
 import ConfirmationScreen, { type PdfState } from '@/components/fiche/ConfirmationScreen';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -282,6 +282,8 @@ export default function FicheMarchePage() {
         await crmApi.submitLead({
           brandId, phone, companyName: company || undefined, opportunityId: id, sessionId, idempotencyKey: requestId,
           leadSource: choice === 'rappel' ? 'callback_modal' : 'contact_form', message: leadMessage(choice, coords),
+          ...(choice === 'rappel' && coords.moment ? { callbackMoment: MOMENT_API[coords.moment] } : {}),
+          ...(choice === 'info' ? { visitorChoice: 'info' as const } : {}),
         });
         trackRequestSubmitted(choice === 'rappel' ? 'callback' : 'contact', { requestId });
       }

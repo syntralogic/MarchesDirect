@@ -942,6 +942,14 @@ function utmFromSession(): { utmSource?: string; utmCampaign?: string } {
   try { return JSON.parse(sessionStorage.getItem('md_utm') || '{}'); } catch { return {}; }
 }
 
+// Requests made from a Vercel preview, a local run or a build flagged VITE_MARK_AS_TEST=1 are test data (md_is_test in
+// HubSpot): the client validates on a preview and must never mix those requests with real prospects.
+export function isPreviewOrTestSite(): boolean {
+  if (import.meta.env.VITE_MARK_AS_TEST === '1') return true;
+  const h = typeof window !== 'undefined' ? window.location.hostname : '';
+  return h === 'localhost' || h === '127.0.0.1' || h.endsWith('.vercel.app');
+}
+
 export const crmApi = {
   getAppointmentSlots: async (): Promise<{ timezone: string; days: { date: string; label: string; slots: { slotAt: string; time: string }[] }[] }> => {
     const { data } = await axios.get(`${API_URL}/api/opportunities/appointment-slots`, { timeout: 15000 });
@@ -965,8 +973,9 @@ export const crmApi = {
     callbackMoment?: 'maintenant' | 'apres_midi' | 'demain_matin';
     opportunityId?: string;
     lotLabel?: string;
+    visitorChoice?: 'info';
   }) => {
-    const { data } = await axios.post(`${API_URL}/api/crm/leads`, { ...utmFromSession(), ...payload }, {
+    const { data } = await axios.post(`${API_URL}/api/crm/leads`, { ...utmFromSession(), ...(isPreviewOrTestSite() ? { isTest: true } : {}), ...payload }, {
       headers: payload.idempotencyKey ? { 'Idempotency-Key': payload.idempotencyKey } : undefined,
       timeout: 20000,
     });

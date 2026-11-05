@@ -40,7 +40,7 @@ export default function QuestionPage() {
       const requestId = idem.key();
       await crmApi.submitLead({
         brandId, phone: normalizeFrPhoneDigits(coords.phone), sessionId: getSessionId(), idempotencyKey: requestId,
-        leadSource: 'contact_form', message: leadMessage('info', coords),
+        leadSource: 'contact_form', message: leadMessage('info', coords), visitorChoice: 'info',
       });
       trackRequestSubmitted('contact', { requestId });
       idem.reset(); saveCoords({ ...coords, question: '' });
