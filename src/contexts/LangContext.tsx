@@ -443,7 +443,7 @@ const frTranslations: Translations = {
   privacySecurityText: "Marchés Direct met en œuvre des mesures techniques et organisationnelles adaptées pour protéger vos données : chiffrement en transit (TLS), chiffrement au repos, authentification à deux facteurs disponible, audit de sécurité régulier et hébergement conforme ISO 27001.",
   privacyCookies: 'Cookies',
   privacyCookiesText: "Nous utilisons des cookies et stockages strictement nécessaires au fonctionnement du service (session, préférences). Les statistiques de visite (pages consultées, étapes du parcours) ne sont enregistrées qu'avec votre accord, et vous pouvez le refuser ou le modifier à tout moment ; le site fonctionne de la même façon dans les deux cas. Aucun cookie publicitaire tiers n'est utilisé.",
-  consentTitle: 'Statistiques de visite.',
+  consentTitle: 'Votre parcours sur le site.',
   consentText: "Acceptez-vous que nous enregistrions les annonces que vous consultez et les étapes de votre parcours ? Cela nous sert à améliorer le site et, si vous nous laissez votre entreprise, à ce que votre chargée de relation sache quels marchés vous intéressent. Le site fonctionne de la même façon si vous refusez.",
   consentLearnMore: 'En savoir plus',
   consentAccept: 'Accepter',
