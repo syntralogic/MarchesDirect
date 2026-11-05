@@ -4,7 +4,7 @@ import { ChevronRight, MapPin, Search } from 'lucide-react';
 import PageMeta from '@/components/common/PageMeta';
 import { seoV2Api } from '@/lib/apiClient';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
-import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '@/lib/seoLocalCopy';
+import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '@/lib/seoLocalCopy';
 
 // Pages locales SEO (5 nov., mandat référencement) : mêmes textes que le pré-rendu serveur (src/lib/seoLocalCopy.ts),
 // alimentés par /api/seo/v2/page. Adresse canonique unique (minuscules, sans accents) : toute autre écriture est
@@ -14,7 +14,7 @@ const BASES: Record<string, string> = { public_procurement: 'marches-publics', t
 function Item({ i }: { i: SeoItem }) {
   return (
     <li className="rounded-[14px] border border-[#22385A] bg-[#12233A] p-3">
-      <Link to={i.path} className="block text-[15px] font-bold leading-snug text-white hover:text-[#FDBA74]">{i.title}</Link>
+      <Link to={i.path} className="block text-[15px] font-bold leading-snug text-white hover:text-[#FDBA74]">{seoItemTitle(i)}</Link>
       <p className="mt-1 text-[12.5px] text-[#B4C1D3]">{seoItemLine(i)}</p>
     </li>
   );
@@ -69,7 +69,7 @@ export default function SeoLocalPage({ journey }: { journey: 'public_procurement
       {p.items.length === 0 && (<div className="mt-5 rounded-[14px] border border-[#22385A] bg-[#12233A] p-3 text-[14px] text-[#D6E0EC]">
         Rien d’ouvert ici aujourd’hui. <Link to="/question" className="font-bold text-[#FB923C] underline">Être prévenu par Elena</Link> dès qu’une annonce paraît, ou regardez à proximité.
       </div>)}
-      {p.nearby.length > 0 && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">À proximité, ailleurs dans le département</h2>
+      {p.nearby.length > 0 && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Autres annonces du département</h2>
         <ul className="flex flex-col gap-2">{p.nearby.map(i => <Item key={i.id} i={i} />)}</ul></section>)}
       {p.trades.filter(t => t.slug !== p.trade?.slug).length > 0 && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Par métier</h2>
         <div className="flex flex-wrap gap-2">{p.trades.filter(t => t.slug !== p.trade?.slug).map(t => <Link key={t.slug} to={zonePath(p, t.slug)} className={chip}>{t.name} ({t.count})</Link>)}</div></section>)}

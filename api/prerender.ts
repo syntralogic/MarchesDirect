@@ -14,7 +14,7 @@
 // Routed by vercel.json rewrites (kind=category|local|opportunity|slug). Keep the category copy in sync
 // with src/pages/CategoryLandingPage.tsx, and the URL structure with api/sitemap.xml.ts.
 
-import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
+import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoDate, countText, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
 
@@ -211,7 +211,7 @@ async function buildHome(): Promise<Doc> {
   };
 }
 
-const itemHtml = (i: SeoItem) => `<li style="margin:0 0 1rem"><a href="${esc(i.path)}" style="color:#FF6B00;font-weight:600">${esc(clip(i.title, 160))}</a><br>`
+const itemHtml = (i: SeoItem) => `<li style="margin:0 0 1rem"><a href="${esc(i.path)}" style="color:#FF6B00;font-weight:600">${esc(seoItemTitle(i))}</a><br>`
   + `<small>${esc(seoItemLine(i))}</small></li>`;
 
 async function buildLocal(base: string, city: string, trade: string, department: string): Promise<Doc> {
@@ -243,7 +243,7 @@ async function buildLocal(base: string, city: string, trade: string, department:
       `<h1>${esc(seoH1(p))}</h1>` + seoIntro(p).map(t => `<p>${esc(t)}</p>`).join('') +
       (p.items.length ? `<h2>${esc(countText(p.journey, p.count))}</h2><ul style="list-style:none;padding:0">${p.items.map(itemHtml).join('')}</ul>` : '') +
       (p.count > p.items.length ? `<p><a href="${esc(seoSearchPath(p))}" style="color:#FF6B00;font-weight:600">${esc(seoSearchLabel(p))}</a></p>` : '') +
-      (p.nearby.length ? `<h2>À proximité, ailleurs dans le département</h2><ul style="list-style:none;padding:0">${p.nearby.map(itemHtml).join('')}</ul>` : '') +
+      (p.nearby.length ? `<h2>Autres annonces du département</h2><ul style="list-style:none;padding:0">${p.nearby.map(itemHtml).join('')}</ul>` : '') +
       (trades.length ? `<h2>Par métier</h2><ul style="list-style:none;padding:0">${trades.join('')}</ul>` : '') +
       (cities.length ? `<h2>Autres villes du département</h2><ul style="list-style:none;padding:0">${cities.join('')}</ul>` : '') +
       (others.length ? `<h2>Autres types d’opportunités</h2><ul style="list-style:none;padding:0">${others.join('')}</ul>` : '') +

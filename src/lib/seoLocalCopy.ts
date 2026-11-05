@@ -60,7 +60,7 @@ export function seoIntro(p: SeoV2Page): string[] {
   } else {
     out.push(`Aucune ${NOUN[p.journey][0]}${tradeIn(p)} ${zoneIn(p)} au ${asOf}. Les annonces sont mises à jour chaque jour ; cette page affichera les prochaines dès leur publication.`);
   }
-  if (p.zone.type === 'city' && p.nearbyCount > 0 && p.zone.departmentName) out.push(`${countText(p.journey, p.nearbyCount)} ailleurs dans le département ${p.zone.departmentName} (${p.zone.department}), présentées séparément ci-dessous.`);
+  if (p.zone.type === 'city' && p.nearbyCount > 0 && p.zone.departmentName) out.push(`Autres annonces du département ${p.zone.departmentName} (${p.zone.department}) : ${countText(p.journey, p.nearbyCount)}, dont l’acheteur est situé dans une autre commune ou n’a pas de commune précisée. Elles sont présentées séparément ci-dessous.`);
   return out;
 }
 export function seoFaq(p: SeoV2Page): { q: string; a: string }[] {
@@ -88,9 +88,12 @@ export function seoBreadcrumb(p: SeoV2Page): { name: string; path: string }[] {
   return b.filter((x, i, arr) => arr.findIndex(y => y.path === x.path) === i);
 }
 /** Lien vers la recherche complète. La recherche filtre par département (pas par commune) : le libellé le dit. */
+/** Majuscules d'avis (« PAUILLAC ») remises en casse normale ; titres multi-lignes ramenés à une ligne. */
+const unshout = (v: string) => (/[a-zà-ÿ]/.test(v) ? v : v.toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase()).replace(/-(De|Du|Des|La|Le|Les|Sur|Sous|En|Et|Lès|Lez|Aux)-/g, (m) => m.toLowerCase()));
+export const seoItemTitle = (i: SeoItem) => { const t = i.title.replace(/\s+/g, ' ').trim(); return t.length > 160 ? `${t.slice(0, 157).trimEnd()}…` : t; };
 /** Ligne de détail d'une annonce, identique côté robot et côté visiteur. */
-export const seoItemLine = (i: SeoItem) => [i.buyer ? `Acheteur : ${i.buyer}${i.city && !i.buyer.toLowerCase().includes(i.city.toLowerCase()) ? ` (${i.city})` : ''}` : (i.city ? `Commune de l’acheteur : ${i.city}` : null),
-  i.deadline ? `date limite : ${seoDate(i.deadline)}` : 'date limite non communiquée', i.reference ? `réf. ${i.reference}` : null].filter(Boolean).join(' · ');
+export const seoItemLine = (i0: SeoItem) => { const i = { ...i0, city: i0.city ? unshout(i0.city) : null }; return [i.buyer ? `Acheteur : ${i.buyer}${i.city && !i.buyer.toLowerCase().includes(i.city.toLowerCase()) ? ` (${i.city})` : ''}` : (i.city ? `Commune de l’acheteur : ${i.city}` : null),
+  i.deadline ? `date limite : ${seoDate(i.deadline)}` : 'date limite non communiquée', i.reference ? `réf. ${i.reference}` : null].filter(Boolean).join(' · '); };
 export const seoSearchPath = (p: SeoV2Page) => {
   const q = new URLSearchParams({ journey: p.journey });
   if (p.zone.department) q.set('department', p.zone.department);
