@@ -275,8 +275,8 @@ export default function HomePage() {
   return (
     <div className="page-fade-in">
       <PageMeta
-        title="Marchés Direct — Les marchés faits pour votre entreprise"
-        description="Indiquez le nom de votre entreprise ou son SIRET : nous trouvons les marchés publics et privés qui vous correspondent, et nous vous accompagnons jusqu’au dépôt."
+        title="Marchés publics et appels d’offres pour artisans et PME | Marchés Direct"
+        description="Marchés publics, appels d’offres privés et sous-traitance du bâtiment près de chez vous. Indiquez votre SIRET : nous trouvons les marchés faits pour votre entreprise et vous accompagnons jusqu’au dépôt."
       />
       <main className="w-full bg-[#0A1628] pb-16 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
 

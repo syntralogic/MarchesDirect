@@ -6,12 +6,24 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/api/prerender?kind=home"
+    },
+    {
+      "source": "/sitemap-:part.xml",
+      "destination": "/api/sitemap.xml?part=:part"
+    },
+    {
       "source": "/sitemap.xml",
       "destination": "/api/sitemap.xml"
     },
     {
       "source": "/:base(marches-publics|appels-doffres|sous-traitance)",
       "destination": "/api/prerender?kind=category&base=:base"
+    },
+    {
+      "source": "/:base(marches-publics|appels-doffres|sous-traitance)/departement/:department/:trade",
+      "destination": "/api/prerender?kind=local&base=:base&department=:department&trade=:trade"
     },
     {
       "source": "/:base(marches-publics|appels-doffres|sous-traitance)/departement/:department",
