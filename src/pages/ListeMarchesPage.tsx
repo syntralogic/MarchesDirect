@@ -193,7 +193,7 @@ export default function ListeMarchesPage() {
 
   const total = known ? (cards?.length ?? 0) : (searchTotal ?? cards?.length ?? 0);
   // No company and no trade chosen: nothing to count yet, so no "0 marché".
-  const { title, sub } = known || total > 0 ? titleFor(total, known, q, zoneLabel) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
+  const { title, sub } = known && total === 0 ? { title: 'Vos marchés', sub: `${zoneLabel} · mis à jour aujourd’hui` } : known || total > 0 ? titleFor(total, known, q, zoneLabel) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
   const c = status?.company;
   const scope = known && c
     ? [c.activity && c.activity.length <= 40 ? c.activity : null, c.city ? `${c.city}${deptFromPostal(c.postal) ? ` (${deptFromPostal(c.postal)})` : ''} et alentours` : null].filter(Boolean).join(' · ')
@@ -312,7 +312,7 @@ export default function ListeMarchesPage() {
           {!known && type !== 'all' && (type === 'tender' || type === 'subcontracting') && (
             <Link to={`/question?q=${encodeURIComponent(`Prévenez-moi des ${type === 'tender' ? 'appels d’offres privés' : 'missions de sous-traitance'}${q ? ` en ${q}` : ''}${dept ? ` (département ${dept})` : ''}.`)}`} className={btn}>Être prévenu par Elena</Link>)}
           {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className="min-h-[44px] text-[14px] font-semibold text-[#FB923C] underline">Voir tous les types</button>}
-          <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
+          <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known && zoneParam !== 'france' ? `Aucun marché ouvert dans votre zone (${zoneLabel.replace('Département ', 'département ')}) pour votre activité. Élargissez à toute la France ou demandez à être prévenu.` : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
           {((known && zoneParam !== 'france') || dept || refine.where === 'near') && !tradeUnknown && <button type="button" onClick={() => { const p = paramsWithRefine(params, { ...refine, where: 'france', department: '', lat: null, lng: null, sort: refine.sort === 'distance' ? 'match' : refine.sort }); p.set('zone', 'france'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {(known || q || dept) && <button type="button" onClick={openAlert} className="min-h-[48px] text-[15px] font-semibold text-[#FB923C] underline">Être prévenu dès qu’un marché correspond</button>}
           {known && <p className="text-[14px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/question" className="inline-flex min-h-[48px] items-center font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
