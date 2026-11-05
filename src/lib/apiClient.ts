@@ -210,6 +210,7 @@ export type ApiOpportunity = {
   deadline_time?: string | null;
   publication_date: string | null;
   estimated_value: number | null;
+  distance_km?: number | string | null;
   currency: string | null;
   location_city: string | null;
   location_region: string | null;
@@ -338,7 +339,11 @@ export type OpportunitySearchParams = {
   // R08 (client audit): explicit sort control. 'match' only has an effect
   // when q is also set (nothing to rank relevance against otherwise) -
   // backend falls back to the default order in that case.
-  sort?: 'time_left' | 'recent' | 'match' | 'deadline';
+  sort?: 'time_left' | 'recent' | 'match' | 'deadline' | 'distance' | 'amount';
+  // 5 Nov (volet « Affiner ») : réponse attendue sous 7/30 jours ou au-delà ; garder les marchés sans montant
+  // annoncé quand min/max_value sont posés ; le serveur renvoie distance_km avec lat/lng/radius_km.
+  deadline_within?: '7' | '30' | 'later';
+  include_unknown_value?: '1';
   // DEV-05: cards per load (default 100); the search page uses 24.
   pageSize?: number;
   page?: number;
