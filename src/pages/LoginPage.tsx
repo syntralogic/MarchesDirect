@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiClient, tokenStorage } from '@/lib/apiClient';
 import { useLang } from '@/contexts/LangContext';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
-import { BTN, FIELD, LinkOutcome, NEXT_KEY, requestLink, useResendTimer, type LinkState } from '@/components/auth/MagicLinkShared';
+import { BTN, FIELD, LinkOutcome, NEXT_KEY, requestLink, useMagicLinkAvailable, useResendTimer, type LinkState } from '@/components/auth/MagicLinkShared';
 
 // 4 Nov (mandat lien magique) : la connexion se fait par e-mail seul.
 // Le visiteur saisit son adresse, reçoit un lien sécurisé (1 h, usage
@@ -27,6 +27,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [link, setLink] = useState<LinkState>({ kind: 'idle' });
   const resendLeft = useResendTimer(link.kind === 'sent');
+  const linkAvailable = useMagicLinkAvailable();
+  const shown: LinkState = link.kind === 'idle' && linkAvailable === false ? { kind: 'closed' } : link;
 
   const [withPassword, setWithPassword] = useState(false);
   const [password, setPassword] = useState('');
@@ -66,22 +68,29 @@ export default function LoginPage() {
     <div className="page-fade-in mx-auto min-h-screen w-full max-w-[440px] px-4 py-8 md:py-14 text-white">
       <div className="mb-5">
         <span className="mb-1 block text-[12px] font-bold uppercase tracking-widest text-[#FB923C]">Mon espace</span>
-        <h1 className="text-[24px] font-extrabold leading-tight md:text-[30px]">Recevez votre lien de connexion</h1>
-        <p className="mt-2 text-[15px] leading-snug text-[#D6E0EC]">Pas de mot de passe : indiquez votre e-mail, vous recevez un lien sécurisé valable 1 heure. Pas encore de compte ? Il est créé à l'ouverture du lien.</p>
+        <h1 className="text-[24px] font-extrabold leading-tight md:text-[30px]">{linkAvailable === false ? 'Votre espace' : 'Recevez votre lien de connexion'}</h1>
+        {linkAvailable !== false && <p className="mt-2 text-[15px] leading-snug text-[#D6E0EC]">Pas de mot de passe : indiquez votre e-mail, vous recevez un lien sécurisé valable 1 heure. Pas encore de compte ? Il est créé à l'ouverture du lien.</p>}
       </div>
 
       {mfa ? (
         <MfaStep mfaToken={mfa.token} onDone={done} />
       ) : (
         <div className="rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-4 shadow-[0_18px_40px_rgba(0,0,0,.35)] md:p-5">
-          {link.kind === 'sent' || link.kind === 'paused' || link.kind === 'failed' ? (
+          {!withPassword && (shown.kind === 'sent' || shown.kind === 'paused' || shown.kind === 'closed' || shown.kind === 'failed') ? (
+            <>
             <LinkOutcome
-              state={link}
+              state={shown}
               resendLeft={resendLeft}
               onRetry={() => void sendLink()}
               onFix={() => setLink({ kind: 'idle' })}
               onContinue={continueWithout}
             />
+            {shown.kind === 'closed' && (
+              <button type="button" onClick={() => setWithPassword(true)} className="mt-3 w-full py-1 text-center text-[13px] font-semibold text-[#B4C1D3] underline underline-offset-4">
+                J'ai un mot de passe
+              </button>
+            )}
+            </>
           ) : !withPassword ? (
             <form onSubmit={sendLink} className="space-y-3">
               <label htmlFor="login-email" className="block text-[17px] font-extrabold">Votre e-mail</label>
@@ -118,9 +127,11 @@ export default function LoginPage() {
               <button type="submit" disabled={submitting} className={BTN}>
                 <LogIn size={18} /> {submitting ? (t('loginConnecting') || 'Connexion…') : 'Me connecter'}
               </button>
+              {linkAvailable !== false && (
               <button type="button" onClick={() => setWithPassword(false)} className="w-full py-1 text-center text-[13px] font-semibold text-[#B4C1D3] underline underline-offset-4">
                 Recevoir plutôt un lien par e-mail
               </button>
+              )}
             </form>
           )}
         </div>

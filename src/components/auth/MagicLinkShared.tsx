@@ -15,6 +15,7 @@ export type LinkState =
   | { kind: 'sending' }
   | { kind: 'sent'; email: string }
   | { kind: 'paused' }
+  | { kind: 'closed' }
   | { kind: 'failed'; message: string };
 
 export const FIELD = 'h-[54px] w-full rounded-xl border-2 border-[#C9D6E8] bg-white px-3.5 text-[16px] text-[#0A1628] placeholder:text-[#8A97A8] focus:border-[#F97316] focus:outline-none';
@@ -34,6 +35,25 @@ export async function requestLink(email: string): Promise<LinkState> {
     if (status === 400) return { kind: 'failed', message: 'Cette adresse e-mail ne semble pas valide. Vérifiez-la.' };
     return { kind: 'failed', message: "L'envoi a échoué. Vérifiez votre connexion et réessayez." };
   }
+}
+
+// 5 nov. (contrôle client) : on vérifie AVANT d'afficher le formulaire que
+// l'envoi d'e-mails est réellement configuré, pour ne jamais proposer un
+// formulaire qui n'aboutit pas. En cas d'erreur réseau on laisse le
+// formulaire : la réponse de POST /auth/magic-link reste la seule vérité.
+let availabilityCache: Promise<boolean> | null = null;
+export function useMagicLinkAvailable(): boolean | null {
+  const [v, setV] = useState<boolean | null>(null);
+  useEffect(() => {
+    const pending: Promise<boolean> = availabilityCache ?? apiClient.get<{ available?: boolean }>('/auth/magic-link/status')
+      .then(r => r.data?.available !== false)
+      .catch(() => { availabilityCache = null; return true; });
+    availabilityCache = pending;
+    let alive = true;
+    pending.then(x => { if (alive) setV(x); });
+    return () => { alive = false; };
+  }, []);
+  return v;
 }
 
 export function useResendTimer(active: boolean) {
@@ -71,6 +91,18 @@ export function LinkOutcome({ state, onRetry, onFix, onContinue, resendLeft }: {
         <div className="rounded-xl border-2 border-[#F59E0B] bg-[#2A2012] px-4 py-3">
           <p className="text-[17px] font-extrabold text-white">Nous n'avons pas pu envoyer le lien</p>
           <p className="mt-1 text-[14px] leading-snug text-[#D6E0EC]">L'envoi d'e-mails est en pause pour le moment : aucun message n'est parti. Vous pouvez continuer sans compte, la recherche et votre dossier restent accessibles.</p>
+        </div>
+        <button type="button" onClick={onContinue} className={BTN}>Continuer sans compte</button>
+        <Link to="/question" className={GHOST}>Poser ma question à {ELENA.name.split(' ')[0]}</Link>
+      </div>
+    );
+  }
+  if (state.kind === 'closed') {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-xl border-2 border-[#F59E0B] bg-[#2A2012] px-4 py-3">
+          <p className="text-[17px] font-extrabold text-white">La connexion par e-mail ouvre très bientôt</p>
+          <p className="mt-1 text-[14px] leading-snug text-[#D6E0EC]">Vous n'en avez pas besoin pour avancer : la recherche de marchés, l'analyse et votre dossier prérempli sont accessibles sans compte.</p>
         </div>
         <button type="button" onClick={onContinue} className={BTN}>Continuer sans compte</button>
         <Link to="/question" className={GHOST}>Poser ma question à {ELENA.name.split(' ')[0]}</Link>
