@@ -1835,3 +1835,11 @@ export const suiviApi = {
     return data.dossier;
   },
 };
+
+export type SuiviMessage = { id: string; author: 'client' | 'elena'; body: string; at: string };
+export const messagesApi = {
+  list: async (opportunityId: string, sessionId: string): Promise<SuiviMessage[]> =>
+    (await apiClient.get<{ messages: SuiviMessage[] }>(`/suivi/${opportunityId}/messages`, { params: { sessionId } })).data.messages || [],
+  send: async (opportunityId: string, sessionId: string, body: string): Promise<SuiviMessage[]> =>
+    (await apiClient.post<{ messages: SuiviMessage[] }>(`/suivi/${opportunityId}/messages`, { sessionId, body })).data.messages || [],
+};
