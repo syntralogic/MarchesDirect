@@ -23,12 +23,15 @@ export const installDismissed = () => { try { return !!localStorage.getItem(DISM
 export const dismissInstall = () => { try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* */ } listeners.forEach(l => l()); };
 
 /** 'android' = vrai bouton Installer ; 'ios' = bulle d'aide ; null = rien à proposer. */
-export function installMode(): 'android' | 'ios' | null {
-  if (isStandalone() || installDismissed() || !isMobile()) return null;
+// force = entrée permanente « Installer l'appli » (Mon espace) : montrée même après « Plus tard », sur tout navigateur.
+export function installMode(force = false): 'android' | 'ios' | 'manual' | null {
+  if (isStandalone() || (!force && (installDismissed() || !isMobile()))) return null;
   if (deferred) return 'android';
-  if (isIos()) return 'ios';
-  return null;
+  if (isAppleMobile()) return 'ios';
+  return force ? 'manual' : null;
 }
+const isAppleMobile = () => typeof navigator !== 'undefined' && (/iphone|ipad|ipod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && (navigator as any).maxTouchPoints > 1));
+export const isIosChrome = () => typeof navigator !== 'undefined' && /crios|fxios|edgios/i.test(navigator.userAgent);
 export async function promptInstall(): Promise<boolean> {
   if (!deferred) return false;
   await deferred.prompt(); const r = await deferred.userChoice; deferred = null;
@@ -40,7 +43,7 @@ export async function promptInstall(): Promise<boolean> {
 // ---------------------------------------------------------------- notifications
 export function pushSupported(): boolean {
   return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && import.meta.env.PROD
-    && (!isIos() || isStandalone()); // iPhone : uniquement une fois l'appli ajoutée à l'écran d'accueil
+    && (!isAppleMobile() || isStandalone()); // iPhone : uniquement une fois l'appli ajoutée à l'écran d'accueil
 }
 export const pushState = (): 'granted' | 'denied' | 'default' | 'unsupported' => (pushSupported() ? Notification.permission : 'unsupported');
 
