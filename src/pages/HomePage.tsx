@@ -1,1500 +1,295 @@
-import { OpportunityLink } from '@/contexts/OpportunityTransitionContext';
-import { useState, useEffect, useRef } from 'react';
+// Accueil v26 (maquette v26, écran 1). Ordre des blocs (fonctionnalités détaillées, 1.7) :
+// moteur (2 onglets) → Elena → compteur → trois étapes → six critères → accompagnement → équipe → témoignages
+// → questions → carte (chargée après le premier écran) → dernier appel. Le pied de page légal est celui du site.
+// Retirés de l'accueil : « Marchés ouverts / Futurs chantiers », « Conseils et actualités ».
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Building2, Handshake, ChevronRight, Globe, ArrowRight, Search, MousePointerClick, Locate, MapPin, Loader2, AlertCircle, X, PlayCircle, ChevronLeft, ChevronUp, Plus, Users, ArrowUpRight, Euro, FileText, Clock, Lock, Shield, Calendar, Trophy } from 'lucide-react';
-import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
-import { geoCentroid, geoMercator } from 'd3-geo';
-import { mockArticles } from '@/data/mockData';
-import { useLang } from '@/contexts/LangContext';
 import PageMeta from '@/components/common/PageMeta';
-import { AppointmentModal } from '@/components/AppointmentModal';
-import DemoVideoModal from '@/components/DemoVideoModal';
-import XhDemo from '@/components/xh/XhDemo';
-import MdHero from '@/components/home/MdHero';
 import { CallbackModal } from '@/components/CallbackModal';
-import { frenchCitiesGeo, type CityGeo } from '@/data/frenchCitiesGeo';
-import { opportunitiesApi, type ApiOpportunity } from '@/lib/apiClient';
-import { useOpportunityCounts } from '@/hooks/use-opportunity-counts';
-import { DEFAULT_CITY_RADIUS_KM } from '@/lib/searchRadius';
+import { CompanySearchForm, type CompanySearchHandle } from '@/components/home/CompanySearchForm';
+import { DEPARTMENTS } from '@/data/departments';
+import { ELENA, TEAM, VIDEO_TESTIMONIALS } from '@/data/homeContent';
+import { opportunitiesApi } from '@/lib/apiClient';
 
-import mem1 from "@/assets/1.jpeg";
+const GeographicSection = lazy(() => import('@/components/home/GeographicSection'));
+const SAVED_KEY = 'md_saved_markets';
 
-interface GeoFeatureProps { code: string; nom: string }
-interface GeoFeature { rsmKey: string; properties: GeoFeatureProps }
-interface GeoJsonData { type: string; features: unknown[] }
+const Eyebrow = ({ children }: { children: React.ReactNode }) => (
+  <div className="text-[13px] font-bold uppercase tracking-[0.06em] text-[#FB923C]">{children}</div>
+);
+const Block = ({ children }: { children: React.ReactNode }) => <section className="flex flex-col gap-3">{children}</section>;
 
-function touchAwareZoomFilter(event: { type: string; touches?: TouchList; ctrlKey?: boolean; button?: number }) {
-  if (event.type === 'touchstart' || event.type === 'touchmove' || event.type === 'touchend') {
-    return !!(event.touches && event.touches.length > 1);
-  }
-  return !event.ctrlKey && !event.button;
+function ElenaAvatar({ size = 48 }: { size?: number }) {
+  return ELENA.photo
+    ? <img src={ELENA.photo} alt={ELENA.name} width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />
+    : <div aria-hidden className="flex shrink-0 items-center justify-center rounded-full bg-[#1C2433] text-[15px] font-bold text-[#FB923C]" style={{ width: size, height: size }}>EP</div>;
 }
 
-function normalizeFr(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-'’]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-
-// 4 Oct client brief: page anchors. A click scrolls smoothly to the section
-// further down the same page (targets carry scroll-mt-16 to clear the sticky
-// header); the URL hash is updated without a jump so the back button still works.
-
-// ---------------------------------------------------------------------------
-// HERO
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// TESTIMONIALS ("Des entrepreneurs racontent leur candidature.")
-// ---------------------------------------------------------------------------
-function TestimonialsSection() {
-  // 30 Sep, client over WhatsApp: "Ca c'est la 1ere video temoignage avec la
-  // miniature ... En tout il y aura 8 video temoignage." 4 Oct: 2nd video (Nico,
-  // gérant chauffage & climatisation) added. The clips are NOT chained: the
-  // visitor moves from one thumbnail to the next with the arrows, and a video
-  // only plays when its own thumbnail is tapped ("Non du tout - tu as une
-  // flèche pour aller à la miniature suivante"). Adding a clip = one more entry
-  // in this array (+ its .mp4 and .jpeg in public/testimonials).
-  const slides = [
-    {
-      title: '10 mois de planning rempli — Bordeaux Élec.',
-      image: '/testimonials/temoignage-didier-bourdon.jpeg',
-      alt: 'Témoignage client : Didier Bourdon, directeur de Bordeaux Élec, 10 mois de planning rempli',
-      videoUrl: '/testimonials/temoignage-didier-bourdon.mp4',
-    },
-    {
-      title: 'Nico — gérant, chauffage & climatisation.',
-      image: '/testimonials/temoignage-nico.jpeg',
-      alt: 'Témoignage client : Nico, gérant dans le chauffage et la climatisation',
-      videoUrl: '/testimonials/temoignage-nico.mp4',
-    },
-  ];
-  const [i, setI] = useState(0);
-  const [videoOpen, setVideoOpen] = useState(false);
-  const slide = slides[i];
-  const arrow = 'w-9 h-9 shrink-0 rounded-full border border-[#17334D] bg-[#061D32] flex items-center justify-center text-[#B9BBC8] hover:text-orange hover:border-orange/50 transition-colors';
-  return (
-    <section id="mdh-temoignages" className="scroll-mt-16 px-4 md:px-6 py-5 md:py-10 max-w-3xl mx-auto w-full">
-      <span className="text-[11px] font-bold text-orange uppercase tracking-widest">
-        Leur expérience, avec leurs mots
-      </span>
-      <h2 className="text-xl md:text-2xl font-bold text-white mt-1 mb-3 leading-tight">
-        Des entrepreneurs racontent leur candidature.
-      </h2>
-
-      {/* 4 Oct, client: "Réduire la taille car ça prend trop de place ... comme la
-          partie démo niveau taille". The portrait thumbnail is now capped in height
-          (about the height of the demo thumbnail just above) and the arrows sit
-          on each side of it instead of on a row of their own. */}
-      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-3 md:p-4">
-        {/* 4 Oct (evening), client: the video block looked small, with empty space on
-            both sides. The thumbnail is larger (width-driven, portrait ratio kept) and
-            the arrows now sit over its left/right edges instead of taking room beside it. */}
-        <div className="relative mx-auto w-full max-w-[300px] md:max-w-[380px]">
-          <button
-            onClick={() => setVideoOpen(true)}
-            className="relative rounded-xl border border-[#17334D] overflow-hidden block group w-full"
-            aria-label={`Lire la vidéo : ${slide.title}`}
-          >
-            <img src={slide.image} alt={slide.alt} loading="lazy" className="w-full h-auto block" />
-            <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
-              <span className="w-12 h-12 rounded-full bg-orange/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                <PlayCircle size={24} className="text-white" />
-              </span>
-            </span>
-          </button>
-          {slides.length > 1 && (
-            <>
-              <button onClick={() => setI((i - 1 + slides.length) % slides.length)} className={`${arrow} absolute left-2 top-1/2 -translate-y-1/2 bg-[#061D32]/85`} aria-label="Témoignage précédent">
-                <ChevronLeft size={16} />
-              </button>
-              <button onClick={() => setI((i + 1) % slides.length)} className={`${arrow} absolute right-2 top-1/2 -translate-y-1/2 bg-[#061D32]/85`} aria-label="Témoignage suivant">
-                <ChevronRight size={16} />
-              </button>
-            </>
-          )}
-        </div>
-        {slides.length > 1 && (
-          <p className="text-[11px] text-[#B9BBC8] text-center mt-2">
-            Témoignage {i + 1} sur {slides.length}
-          </p>
-        )}
-      </div>
-
-      <DemoVideoModal open={videoOpen} onClose={() => setVideoOpen(false)} videoUrl={slide.videoUrl || ''} title={slide.title} />
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// TEAM ("Une équipe pour préparer votre candidature.")
-// ---------------------------------------------------------------------------
-function TeamSection() {
-  // 4 Oct (evening), client: after seeing the compact version on the live site -
-  // "plus gros ... pareil pour la partie notre équipe, ça paraît trop petit".
-  // Same content and link as before; the block is wider on screen (same width as
-  // the demo section) with a larger portrait and larger text.
-  // "Découvrir notre équipe" still lands on the portraits (#mdq-team) of /a-propos.
-  return (
-    <section className="px-4 md:px-6 py-5 md:py-10 max-w-3xl md:max-w-5xl mx-auto w-full">
-      <div className="rounded-2xl border border-[#17334D] bg-[#061D32] p-4 md:p-7">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] md:text-xs font-bold text-[#B9BBC8] uppercase tracking-widest">Notre équipe</span>
-          <Users size={20} className="text-[#B9BBC8]" />
-        </div>
-        <h2 className="text-2xl md:text-4xl font-extrabold leading-tight mb-2">
-          <span className="text-white">Une équipe pour </span>
-          <span className="text-orange">préparer votre candidature.</span>
-        </h2>
-        <p className="text-[#B9BBC8] text-sm md:text-lg leading-snug mb-4 md:mb-5">
-          Votre chargé d'affaires prépare le dossier. Vous le validez avant son dépôt.
-        </p>
-
-        <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-3 md:p-5 flex gap-4 md:gap-6">
-          <div className="w-[110px] h-[144px] md:w-[170px] md:h-[224px] rounded-lg border-2 border-orange overflow-hidden shrink-0">
-            <img src={mem1} alt="Elena Popescu" className="w-full h-full object-cover" />
-          </div>
-          <div className="min-w-0 self-center">
-            <div className="text-xs md:text-sm text-[#B9BBC8]">Votre premier contact</div>
-            <div className="text-xl md:text-3xl font-extrabold text-white leading-tight">Elena Popescu</div>
-            <div className="text-sm md:text-base text-[#B9BBC8] mb-1.5">Assistante de direction</div>
-            <p className="text-sm md:text-base text-[#B9BBC8] leading-snug">
-              Elena accueille votre demande et vous oriente vers le bon interlocuteur.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#17334D]">
-          <span className="text-base md:text-lg font-semibold text-orange">Découvrir notre équipe</span>
-          <Link
-            to="/a-propos#mdq-team"
-            className="w-11 h-11 rounded-full border border-orange text-orange flex items-center justify-center hover:bg-orange/10 transition-colors"
-            aria-label="Découvrir notre équipe"
-          >
-            <ArrowUpRight size={20} />
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SITUATION ("Quelle est votre situation ?") - added 16 Oct from the client's
-// home preview (Marches-Direct-accueil-avec-analyse.html). One of the two
-// blocks that were missing from the live home; nothing else on the page moved.
-// ---------------------------------------------------------------------------
-function SituationSection({ onAppt }: { onAppt: () => void }) {
-  const [sit, setSit] = useState(-1);
-  const navigate = useNavigate();
-  const items = [
-    { q: 'Je n’ai jamais répondu à un marché', a: 'Commencez par une opportunité : nous vous aidons à comprendre les critères, les documents demandés et les étapes de candidature.', cta: 'Voir comment ça marche', go: () => navigate('/how-it-works') },
-    { q: 'Je manque de temps pour les dossiers', a: 'Votre chargé d’affaires prépare le dossier avec vous : vous apportez vos documents et vos prix, il structure le reste.', cta: 'Parler à un chargé d’affaires', go: onAppt },
-    { q: 'Je veux trouver de nouvelles opportunités', a: 'Marchés publics, appels d’offres privés et sous-traitance au même endroit, et les projets professionnels à suivre dans votre zone.', cta: 'Voir les marchés', go: () => navigate('/parcours') },
-  ];
-  const cur = sit >= 0 ? items[sit] : null;
-  return (
-    <section className="px-4 md:px-6 py-3 md:py-6 max-w-3xl md:max-w-5xl mx-auto w-full" aria-label="Votre situation">
-      <div className="rounded-2xl bg-[#061D32] border border-[#17334D] p-4 md:p-6">
-        <h2 className="text-xl md:text-2xl font-extrabold text-white leading-tight mb-3">Quelle est votre situation ?</h2>
-        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Votre situation">
-          {items.map((x, i) => (
-            <button
-              key={x.q}
-              type="button"
-              role="radio"
-              aria-checked={sit === i}
-              onClick={() => setSit(sit === i ? -1 : i)}
-              className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-left text-[15px] font-bold transition-colors ${sit === i ? 'border-orange bg-orange/15 text-white' : 'border-[#17334D] bg-[#031B30] text-[#E2E8F0] hover:border-orange/50'}`}
-            >
-              {x.q}
-            </button>
-          ))}
-        </div>
-        {cur && (
-          <div className="mt-3 pt-3 border-t border-[#17334D]">
-            <p className="text-[15px] md:text-base leading-snug text-[#CBD5E1] mb-1">{cur.a}</p>
-            <button type="button" onClick={cur.go} className="text-[15px] font-bold text-orange hover:underline min-h-[44px]">{cur.cta} →</button>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// TARIFS ("Un abonnement pour l'accompagnement...") - second block added 16 Oct
-// from the same client preview. Figures are the client's own, copied as-is.
-// ---------------------------------------------------------------------------
-function PricingSection() {
-  return (
-    <section id="mdh-tarifs" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <div className="text-[15px] font-bold text-[#9DB8DE]">Tarifs</div>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-4 leading-tight">Un abonnement pour l'accompagnement. Une commission seulement si vous signez.</h2>
-      <div className="rounded-2xl bg-[#0B1A31] border border-[#1E2E4A] p-4">
-        <div className="flex justify-between gap-2.5 py-2 border-b border-[#1E2E4A] text-[15px]">
-          <span className="text-[#9DB8DE]">Consulter les marchés publics</span>
-          <strong className="text-white">Libre</strong>
-        </div>
-        <div className="py-2.5 border-b border-[#1E2E4A]">
-          <div className="flex justify-between gap-2.5 flex-wrap text-[15px]">
-            <span className="text-white font-bold">Accompagnement</span>
-            <strong className="text-white">169 € HT/mois · 12 mois</strong>
-          </div>
-          <div className="text-sm text-[#9DB8DE]">ou 1 800 € HT, payable en 4 fois. Dû même sans marché signé.</div>
-          <div className="mt-2">
-            <div className="text-sm font-bold text-[#9DB8DE]">Ce que nous préparons avec vous</div>
-            <ul className="mt-1.5 grid gap-1.5">
-              {[
-                'Choisir les bons marchés, selon votre activité, votre zone et vos moyens',
-                'Comprendre les exigences : pièces, critères et délais',
-                'Préparer votre candidature : pièces, mémoire technique, dépôt',
-              ].map(li => (
-                <li key={li} className="relative pl-[22px] text-[14.5px] leading-snug text-[#E2E8F0]">
-                  <span className="absolute left-0.5 top-0 text-[13px] font-extrabold text-[#4ADE80]" aria-hidden="true">✓</span>{li}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-sm text-slate-400">Vous gardez la main : vos prix, vos engagements et la validation finale.</p>
-          </div>
-        </div>
-        <div className="pt-2.5">
-          <div className="flex justify-between gap-2.5 flex-wrap text-[15px]">
-            <span className="text-white font-bold">Commission de succès</span>
-            <strong className="text-orange">5 % à 0,5 %</strong>
-          </div>
-          <div className="text-sm text-[#9DB8DE]">Uniquement si vous signez un marché, selon votre contrat.</div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// GEOGRAPHIC ("Des opportunités partout en France.")
-// ---------------------------------------------------------------------------
-interface GeographicSectionProps {
-  tab: 'regions' | 'departments' | 'cities';
-  setTab: (t: 'regions' | 'departments' | 'cities') => void;
-  selectedRegions: GeoFeatureProps[];
-  setSelectedRegions: React.Dispatch<React.SetStateAction<GeoFeatureProps[]>>;
-  selectedDepts: GeoFeatureProps[];
-  setSelectedDepts: React.Dispatch<React.SetStateAction<GeoFeatureProps[]>>;
-}
-
-// 26 Sep client audit, point 7: tab/selectedRegions/selectedDepts now come
-// from HomePage (shared with SectorsSection - see HomePage's own comment)
-// instead of being this component's own useState. Everything else below
-// (map rendering, zoom, cities/city-radius search, counts) stays local -
-// only the three pieces SectorsSection actually needs to agree with are
-// lifted, to keep this change as small as the bug it fixes.
-function GeographicSection({ tab, setTab, selectedRegions, setSelectedRegions, selectedDepts, setSelectedDepts }: GeographicSectionProps) {
-  const { t } = useLang();
-  const navigate = useNavigate();
-  const { counts: siteWideCounts } = useOpportunityCounts();
-  const [search, setSearch] = useState('');
-  const [selectedCities, setSelectedCities] = useState<{name: string; coords: [number, number]}[]>([]);
-  const [, setHovered] = useState<string | null>(null);
-  const [cityQuery, setCityQuery] = useState('');
-  const [cityResult, setCityResult] = useState<{ name: string; coords: [number, number] | null } | null>(null);
-  const [cityOpportunities, setCityOpportunities] = useState<ApiOpportunity[]>([]);
-  const [cityTotal, setCityTotal] = useState(0);
-  // Perimeter the cityTotal above was actually computed with: DEFAULT_CITY_RADIUS_KM
-  // when the city resolved to coordinates (real distance filter, same as
-  // /recherche), null when it fell back to a plain city-name match.
-  const [cityRadiusKm, setCityRadiusKm] = useState<number | null>(null);
-  // Exact coordinates cityTotal above was computed with (25 Sep audit) -
-  // handed off to /recherche via the URL so it reuses this point instead
-  // of re-geocoding the city name a second time and risking a different
-  // (or failed) result. Null whenever coords couldn't be resolved, same
-  // as cityRadiusKm.
-  const [cityApiCoords, setCityApiCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [cityLoading, setCityLoading] = useState(false);
-  // Counter shown on the "Voir les opportunités autour de …" button - always
-  // computed for the whole selection with the same rule /recherche applies
-  // (one city -> real radius; several cities -> plain name match), so the
-  // announced perimeter and the number can never disagree.
-  const [selectionCount, setSelectionCount] = useState<{ total: number; radiusKm: number | null; coords: { lat: number; lng: number } | null } | null>(null);
-  const selectionRequestId = useRef(0);
-  const [position, setPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
-  const [citiesPosition, setCitiesPosition] = useState({ coordinates: [2.4, 46.6] as [number, number], zoom: 1 });
-  // G09 (contre-audit 15 Sep): "10 noms à faible zoom, 57 à fort zoom... les
-  // quatre villes signalées absentes des marqueurs" - Angoulême, Périgueux,
-  // Bergerac et Marmande stayed missing "au niveau élevé testé" even though
-  // the total count (57) was already correct.
-  //
-  // Root cause: citiesPosition.zoom was doing two unrelated jobs at once -
-  // (1) how many city labels to reveal (the tier system below), which the
-  // client's own wording treats as a country-wide density dial ("57" is a
-  // constant regardless of where you're looking, per the audit's repeated
-  // identical count), and (2) the ZoomableGroup's actual optical
-  // magnification, which shrinks the visible geographic area around
-  // whatever citiesPosition.coordinates happens to be. Clicking "+"
-  // repeatedly (with coordinates still at the default center) increases
-  // both at once - at zoom 8 the visible viewport is a small fraction of
-  // France around that fixed point, so any tier-3 city far from it (all
-  // four flagged cities sit ~200-280km southwest, near Bordeaux) is
-  // logically "in" the 57-city count but physically clipped off-screen by
-  // the SVG viewport - invisible no matter how far past its own tier
-  // threshold you zoom, unless you'd also happened to drag/search/click
-  // your way over there first.
-  //
-  // Client audit (19 Sep), point 3: "les boutons + / − ajoutent ou
-  // retirent des noms de villes sans agrandir ou réduire réellement la
-  // carte. Ces boutons doivent modifier le véritable zoom." The G09 fix
-  // above (decoupling label density from citiesPosition.zoom) solved that
-  // bug but created this one - the buttons stopped touching the map's
-  // actual optical zoom at all, which reads as broken zoom controls (and
-  // is: a "+" that doesn't visually enlarge anything is not a zoom
-  // control). Re-merged, but the G09 root cause (a city geographically far
-  // from citiesPosition.coordinates being "revealed" by tier yet clipped
-  // off-screen by a narrow high-zoom viewport) is fixed properly this time
-  // instead of by decoupling: visibleCities below now also checks whether
-  // a city actually falls within the currently visible area (derived from
-  // citiesPosition itself), so the reveal-by-tier and what's physically
-  // on-screen can never disagree again - the buttons drive real zoom, and
-  // "which cities show" adapts to both the zoom level AND the visible part
-  // of the map, per the client's own wording for this point.
-  const labelDensity = citiesPosition.zoom;
-
-  const [regionCounts, setRegionCounts] = useState<Record<string, number>>({});
-  const [deptCounts, setDeptCounts] = useState<Record<string, number>>({});
-  // Nationwide rows with no resolved region/department at all (26 Sep fix -
-  // see the fetch effect below for why these get a proportional per-region/
-  // department display share instead of staying invisible or being folded
-  // identically into every single one).
-  const [unlocatedRegionCount, setUnlocatedRegionCount] = useState(0);
-  const [unlocatedDeptCount, setUnlocatedDeptCount] = useState(0);
-  const [regionsGeoJson, setRegionsGeoJson] = useState<GeoJsonData | null>(null);
-  const [departementsGeoJson, setDepartementsGeoJson] = useState<GeoJsonData | null>(null);
-  const [geoLoadError, setGeoLoadError] = useState(false);
-
+// 1.5 : « [N] marchés ouverts aujourd'hui en France ». Valeur réelle (une requête par jour côté serveur), jamais de valeur fixe : en cas d'échec, toute la ligne disparaît.
+function OpenCounter() {
+  const [n, setN] = useState<number | null>(null);
   useEffect(() => {
-    import('@/data/geo/regions.json')
-      .then(m => setRegionsGeoJson(m.default as GeoJsonData))
-      .catch(err => { console.error('Failed to load regions.json', err); setGeoLoadError(true); });
-    import('@/data/geo/departements.json')
-      .then(m => setDepartementsGeoJson(m.default as GeoJsonData))
-      .catch(err => { console.error('Failed to load departements.json', err); setGeoLoadError(true); });
+    let live = true;
+    opportunitiesApi.getOpenToday().then(r => { if (live && Number.isFinite(r.total) && r.total > 0) setN(r.total); }).catch(() => {});
+    return () => { live = false; };
   }, []);
+  if (n === null) return null;
+  return (
+    <p className="text-center text-[15px] text-[#D6E0EC]">
+      <strong className="text-[18px] text-[#FB923C]">{new Intl.NumberFormat('fr-FR').format(n)}</strong> marchés ouverts aujourd’hui en France
+      <span className="text-[#B4C1D3]"> · chiffre mis à jour chaque matin</span>
+    </p>
+  );
+}
 
+// 1.6 : lecture de localStorage uniquement, aucun appel réseau tant que le visiteur ne déplie pas la liste.
+function SavedBanner() {
+  const [ids, setIds] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const [titles, setTitles] = useState<Record<string, string>>({});
   useEffect(() => {
-    // 26 Sep fix (client: "wo divide kr do khe konse region mein display
-    // honge, phir original data ke baad display krwana") - unlocatedCount
-    // still must never be folded INTO any single region/department's own
-    // count (see getRegionCount/getDeptCount below - that's the exact
-    // duplication bug this fixed a few hours ago). But leaving it
-    // completely invisible per-region meant selecting just 2 of 13 regions
-    // showed 253 while selecting all 13 jumped to 70 330 with nothing in
-    // between explaining the gap. Each region/department badge now also
-    // shows its own proportional share of that nationwide pool - "228
-    // opportunités disponibles" (real, resolved) followed by "+ ~1 780
-    // estimées (non localisées, réparties au prorata)" (a display-only
-    // estimate, weighted by that region's share of all resolved rows) -
-    // appended after, visually distinct, never merged into the first
-    // number so it can't be mistaken for a verified count.
-    opportunitiesApi.statsByRegion()
-      .then(({ regions, unlocatedCount }) => {
-        const map: Record<string, number> = {};
-        // G13: was `map[key] = r.count`, which silently overwrote an
-        // earlier variant's count instead of adding to it if two rows ever
-        // normalized to the same key here (the real fix is upstream - see
-        // /stats/regions - which now sums server-side and returns one row
-        // per region; this is a defensive fallback so a future upstream
-        // slip degrades to double-counting rather than losing counts again).
-        regions.forEach(r => { const key = normalizeFr(r.region); map[key] = (map[key] || 0) + r.count; });
-        setRegionCounts(map);
-        setUnlocatedRegionCount(unlocatedCount || 0);
-      })
-      .catch(() => setRegionCounts({}));
-    opportunitiesApi.statsByDepartment()
-      .then(({ departments, unlocatedCount }) => {
-        const map: Record<string, number> = {};
-        departments.forEach(d => { map[d.department] = (map[d.department] || 0) + d.count; });
-        setDeptCounts(map);
-        setUnlocatedDeptCount(unlocatedCount || 0);
-      })
-      .catch(() => setDeptCounts({}));
-  }, []);
-
-  // A region/department filter now deliberately keeps opportunities whose
-  // corresponding location field is NULL (see backend fix), so the map's
-  // displayed count for any single region/department needs to include that
-  // same unknown-location pool to match what clicking through to /recherche
-  // will actually show.
-  // 26 Sep fix ("ek element select karne pe 9200+, pura map select karne pe
-  // sirf 11k+"): these used to add unlocatedRegionCount/unlocatedDeptCount
-  // (the entire nationwide un-located pool) to EVERY single region/
-  // department's badge, so one region could show more opportunities than
-  // the whole, unfiltered country - mostly unrelated data with no real
-  // connection to that region. The backend's region/department filter no
-  // longer folds that pool into a single zone's results (see
-  // routes/opportunities.ts), so this must match: a zone's badge is just
-  // its own real, resolved matches.
-  const getRegionCount = (name: string) => regionCounts[normalizeFr(name)] ?? 0;
-  const getDeptCount = (code: string, name: string) => deptCounts[code] ?? deptCounts[normalizeFr(name)] ?? 0;
-  // Proportional (display-only, never merged into getRegionCount/getDeptCount
-  // above) share of the nationwide un-located pool: weighted by this one
-  // region/department's share of every resolved row, so the 13 shares add
-  // up to unlocatedRegionCount exactly once in total, not once per region.
-  const resolvedRegionTotal = Object.values(regionCounts).reduce((sum, n) => sum + n, 0);
-  const resolvedDeptTotal = Object.values(deptCounts).reduce((sum, n) => sum + n, 0);
-  const getRegionUnlocatedShare = (name: string) => {
-    if (unlocatedRegionCount <= 0 || resolvedRegionTotal <= 0) return 0;
-    return Math.round(unlocatedRegionCount * (getRegionCount(name) / resolvedRegionTotal));
-  };
-  const getDeptUnlocatedShare = (code: string, name: string) => {
-    if (unlocatedDeptCount <= 0 || resolvedDeptTotal <= 0) return 0;
-    return Math.round(unlocatedDeptCount * (getDeptCount(code, name) / resolvedDeptTotal));
-  };
-
-  // Same rule as /recherche (RecherchePage): a single city is resolved to
-  // coordinates through the backend geocoder and searched with a real
-  // DEFAULT_CITY_RADIUS_KM distance filter; if it can't be resolved we fall
-  // back to the plain city-name match and report radiusKm = null so the UI
-  // doesn't announce a perimeter it didn't apply.
-  const searchAroundCity = async (name: string, limit: number) => {
-    const coords = await opportunitiesApi.geocodeCity(name);
-    const data = coords
-      ? await opportunitiesApi.search({ journey: undefined, lat: coords.lat, lng: coords.lng, radius_km: DEFAULT_CITY_RADIUS_KM, limit })
-      : await opportunitiesApi.search({ journey: undefined, city: name, limit });
-    // 25 Sep audit: the "Voir toutes les opportunités..." link below only
-    // ever sent `city=<name>`, never the lat/lng this count was actually
-    // computed with - so /recherche re-geocoded the same city name from
-    // scratch. Usually landed on the same point, but not guaranteed to
-    // (a second, independent call to the same external geocoder), and if
-    // that second call ever failed, silently fell back to a plain
-    // city-name text match with no radius applied at all - a card here
-    // could say "123 dans un rayon de 50 km" while the link it sits next
-    // to showed 90 (fewer, since the destination text-match won't return
-    // registered communes near Bordeaux, only ones literally named
-    // "Bordeaux"), including at a wider radius since a null cityCoords
-    // downstream never sends radius_km at all no matter what's selected.
-    // Returning the exact coordinates this total was computed with (see
-    // callers below) lets the link hand them off directly instead.
-    return { results: data.results, total: data.pagination.total, radiusKm: coords ? DEFAULT_CITY_RADIUS_KM : null, coords };
-  };
-
-  const handleCitySearch = async (override?: string) => {
-    const raw = override ?? cityQuery;
-    if (!raw.trim()) return;
-    if (override) setCityQuery(override);
-    setCityLoading(true);
-    const query = raw.trim();
     try {
-      const [around, geo] = await Promise.all([
-        searchAroundCity(query, 5),
-        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=1`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null),
-      ]);
-      setCityOpportunities(around.results);
-      setCityTotal(around.total);
-      setCityRadiusKm(around.radiusKm);
-      setCityApiCoords(around.coords);
-      const feature = geo?.features?.[0];
-      const coords: [number, number] | null = feature ? [feature.geometry.coordinates[0], feature.geometry.coordinates[1]] : null;
-      const resolvedName = feature?.properties?.city || query;
-      setCityResult({ name: resolvedName, coords });
-      // Client's audit (20 Sep, location point 5): typing a city into this
-      // box updated cityOpportunities/cityTotal/cityResult but never
-      // touched selectedCities - which is what the "Voir les opportunités
-      // autour de ..." button's label AND its /recherche?city= link are
-      // built from (see the tab==='cities' href below and the button
-      // around line ~1015). So after picking Libourne on the map (setting
-      // selectedCities) and then typing "Périgueux" here, the button kept
-      // reading "autour de Libourne" with Périgueux's count grafted onto
-      // it, and its link still pointed at Libourne (empty results). Only
-      // do this for a text-box search (no override) - selectMapCity
-      // passes an override and manages selectedCities itself for its own
-      // multi-marker toggle behaviour, which this must not clobber.
-      if (override === undefined) setSelectedCities(coords ? [{ name: resolvedName, coords }] : []);
-      // Client's audit (15 Sep): "il faut... centrer la carte sur la ville
-      // recherchée" - typing a city into the search box (as opposed to
-      // clicking a marker, which already did this via selectMapCity) found
-      // opportunities but never moved the map at all, so the map stayed
-      // wherever it happened to be while the results below it were for a
-      // totally different city.
-      if (coords) setCitiesPosition(p => ({ coordinates: coords, zoom: Math.max(p.zoom, 4) }));
-    } catch {
-      setCityResult({ name: query, coords: null });
-      setCityOpportunities([]);
-      setCityTotal(0);
-      setCityRadiusKm(null);
-      setCityApiCoords(null);
-      if (override === undefined) setSelectedCities([]);
-    } finally {
-      setCityLoading(false);
-    }
-  };
-
-  // Count for the "Voir les opportunités autour de …" button: recomputed
-  // whenever the selection changes so it always describes exactly what the
-  // /recherche link will show (see buildSearchUrl / RecherchePage).
+      const list = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') as { id?: string }[];
+      setIds(list.map(s => s?.id).filter((x): x is string => typeof x === 'string'));
+    } catch { setIds([]); }
+  }, []);
   useEffect(() => {
-    const names = selectedCities.map(c => c.name);
-    if (names.length === 0) { setSelectionCount(null); return; }
-    const requestId = ++selectionRequestId.current;
-    setSelectionCount(null);
-    (async () => {
-      try {
-        if (names.length === 1) {
-          const { total, radiusKm, coords } = await searchAroundCity(names[0], 1);
-          if (selectionRequestId.current === requestId) setSelectionCount({ total, radiusKm, coords });
-        } else {
-          const data = await opportunitiesApi.search({ journey: undefined, city: names.join(','), limit: 1 });
-          if (selectionRequestId.current === requestId) setSelectionCount({ total: data.pagination.total, radiusKm: null, coords: null });
-        }
-      } catch {
-        if (selectionRequestId.current === requestId) setSelectionCount(null);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCities]);
-
-  const selectMapCity = (city: { name: string; coords: [number, number] }) => {
-    setCitiesPosition(p => ({ coordinates: city.coords, zoom: Math.max(p.zoom, 4) }));
-    setSelectedCities(prev => {
-      const exists = prev.some(c => c.name === city.name);
-      return exists ? prev.filter(c => c.name !== city.name) : [...prev, city];
+    if (!open) return;
+    ids.slice(0, 10).forEach(id => {
+      opportunitiesApi.getById(id).then(o => setTitles(t => ({ ...t, [id]: o.title }))).catch(() => {});
     });
-    handleCitySearch(city.name);
-  };
-
-  // Rough (non-Mercator-accurate, but this codebase already treats
-  // coordinates as plain lng/lat everywhere, not a real GIS projection) half
-  // -span of what's visible around citiesPosition.coordinates at the
-  // current zoom. BASE_HALF_* sized so zoom=1 comfortably covers mainland
-  // France (~-5 to 9.5° lng, ~41 to 51° lat) end to end from the default
-  // center - a city genuinely tier-revealed can only fail the bounds check
-  // once you've actually zoomed/panned in far enough that it's realistically
-  // off-screen, not before.
-  const BASE_HALF_LNG = 8;
-  const BASE_HALF_LAT = 6;
-  const [centerLng, centerLat] = citiesPosition.coordinates;
-  const halfLng = BASE_HALF_LNG / citiesPosition.zoom;
-  const halfLat = BASE_HALF_LAT / citiesPosition.zoom;
-  const visibleCities = frenchCitiesGeo.filter(c => {
-    const tierRevealed = c.tier === 1 || (c.tier === 2 && labelDensity >= 2) || (c.tier === 3 && labelDensity >= 4);
-    if (!tierRevealed) return false;
-    const [lng, lat] = c.coords;
-    return Math.abs(lng - centerLng) <= halfLng && Math.abs(lat - centerLat) <= halfLat;
-  });
-  // Client (19/20 Sep): "afficher trois ou quatre villes principales par
-  // département... Bordeaux, Mérignac et Pessac se chevauchent." Tier
-  // filtering above has no notion of department - once tier 3 opens up,
-  // every close-together small town in the same département (Bordeaux +
-  // Mérignac + Pessac sit within ~8km of each other) appears at once. Cap
-  // each département to 4 markers: always keep its highest-tier city
-  // (the anchor), then greedily add whichever remaining candidate is
-  // farthest from what's already picked, so the picks spread across the
-  // département (e.g. Bordeaux, Libourne, Langon, Arcachon) instead of
-  // clustering around the first one found.
-  const MAX_CITIES_PER_DEPARTMENT = 4;
-  const visibleCitiesCapped = (() => {
-    const byDept = new Map<string, CityGeo[]>();
-    for (const c of visibleCities) {
-      const list = byDept.get(c.department) || [];
-      list.push(c);
-      byDept.set(c.department, list);
-    }
-    const distSq = (a: [number, number], b: [number, number]) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
-    const result: CityGeo[] = [];
-    for (const list of byDept.values()) {
-      if (list.length <= MAX_CITIES_PER_DEPARTMENT) { result.push(...list); continue; }
-      const sortedByTier = [...list].sort((a, b) => a.tier - b.tier);
-      const chosen: CityGeo[] = [sortedByTier[0]];
-      const remaining = sortedByTier.slice(1);
-      while (chosen.length < MAX_CITIES_PER_DEPARTMENT && remaining.length > 0) {
-        let bestIdx = 0, bestMinDist = -1;
-        remaining.forEach((cand, i) => {
-          const minDist = Math.min(...chosen.map(ch => distSq(ch.coords, cand.coords)));
-          if (minDist > bestMinDist) { bestMinDist = minDist; bestIdx = i; }
-        });
-        chosen.push(remaining[bestIdx]);
-        remaining.splice(bestIdx, 1);
-      }
-      result.push(...chosen);
-    }
-    return result;
-  })();
-  // 20 Sep audit (location point 1): "Bordeaux/Libourne et Langon/Marmande
-  // se chevauchent au zoom." Two separate causes:
-  //  1. Markers sat inside <ZoomableGroup>, which scales its children, so
-  //     dots and labels grew with the zoom exactly as fast as the distances
-  //     between cities did - zooming in could never pull neighbours apart.
-  //     They are now counter-scaled (1 / zoom) so a marker keeps a constant
-  //     on-screen size and zooming genuinely separates close cities.
-  //  2. The per-département cap above knows nothing about cities of
-  //     *different* départements sitting next to each other (Langon 33 /
-  //     Marmande 47). Labels are now decluttered in screen space: cities
-  //     are placed by priority (selected first, then tier) and any city
-  //     whose label box would touch an already-placed one is hidden until
-  //     the visitor zooms in far enough to have room for it.
-  // Same projection ComposableMap is configured with below (react-simple-maps
-  // translates to width/2, height/2 by default).
-  const cityProjection = geoMercator().center([2.454, 46.6]).scale(2600).translate([390, 310]);
-  const visibleCitiesDeclutter = (() => {
-    const zoom = citiesPosition.zoom;
-    const centerPx = cityProjection(citiesPosition.coordinates) || [390, 310];
-    const toScreen = (coords: [number, number]): [number, number] | null => {
-      const p = cityProjection(coords);
-      return p ? [(p[0] - centerPx[0]) * zoom, (p[1] - centerPx[1]) * zoom] : null;
-    };
-    const LABEL_CHAR_W = 5.6; // ~9px semi-bold
-    const PAD = 4;
-    const boxFor = (c: CityGeo, [x, y]: [number, number]) => {
-      const w = c.name.length * LABEL_CHAR_W + 8;
-      return { l: x - w / 2 - PAD, r: x + w / 2 + PAD, t: y - 20 - PAD, b: y + 6 + PAD };
-    };
-    const isSel = (c: CityGeo) => selectedCities.some(sc => sc.name === c.name);
-    const ordered = [...visibleCitiesCapped].sort((a, b) => Number(isSel(b)) - Number(isSel(a)) || a.tier - b.tier || a.name.localeCompare(b.name));
-    const placed: { l: number; r: number; t: number; b: number }[] = [];
-    const result: CityGeo[] = [];
-    for (const c of ordered) {
-      const px = toScreen(c.coords);
-      if (!px) continue;
-      const box = boxFor(c, px);
-      const collides = placed.some(o => box.l < o.r && box.r > o.l && box.t < o.b && box.b > o.t);
-      if (collides && !isSel(c)) continue;
-      placed.push(box);
-      result.push(c);
-    }
-    return result;
-  })();
-  const zoomLevelLabel = labelDensity >= 4 ? 'Élevé' : labelDensity >= 2 ? 'Moyen' : 'Faible';
-
-  // BUG (found in user testing, 29 Sep): typing a name letter-by-letter can
-  // pass through an intermediate string that uniquely (if briefly) matches a
-  // *different* region/department than the one being typed - e.g. "Cotes d
-  // Armor" passes through "cote", which uniquely substring-matches
-  // "Provence-Alpes-Côte d'Azur". That got auto-added to selectedRegions and,
-  // because this effect only ever added and never removed, it stayed
-  // selected (and got searched on Enter) even once further typing made it no
-  // longer match anything. These refs remember which region/department (if
-  // any) THIS effect auto-added for the current tab, so a later run can undo
-  // that specific auto-add when it's no longer the unique match - without
-  // touching a region/department the user selected by clicking the map.
-  const autoMatchedRegionCode = useRef<string | null>(null);
-  const autoMatchedDeptCode = useRef<string | null>(null);
-  useEffect(() => {
-    if (!search.trim()) {
-      if (autoMatchedRegionCode.current) {
-        const staleCode = autoMatchedRegionCode.current;
-        setSelectedRegions(prev => prev.filter(r => r.code !== staleCode));
-        autoMatchedRegionCode.current = null;
-      }
-      if (autoMatchedDeptCode.current) {
-        const staleCode = autoMatchedDeptCode.current;
-        setSelectedDepts(prev => prev.filter(d => d.code !== staleCode));
-        autoMatchedDeptCode.current = null;
-      }
-      return;
-    }
-    const query = normalizeFr(search);
-    if (tab === 'regions' && regionsGeoJson) {
-      const matches = (regionsGeoJson.features as { properties: GeoFeatureProps }[]).filter(f =>
-        normalizeFr(f.properties.nom).includes(query)
-      );
-      // An exact name wins over a substring hit ("Rhône" also matches
-      // "Bouches-du-Rhône"), otherwise typing the full name never selected.
-      const exact = matches.filter(f => normalizeFr(f.properties.nom) === query);
-      const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
-      const newCode = picked.length === 1 ? picked[0].properties.code : null;
-      if (autoMatchedRegionCode.current && autoMatchedRegionCode.current !== newCode) {
-        const staleCode = autoMatchedRegionCode.current;
-        setSelectedRegions(prev => prev.filter(r => r.code !== staleCode));
-      }
-      if (newCode && newCode !== autoMatchedRegionCode.current) {
-        const match = picked[0].properties;
-        setSelectedRegions(prev => (prev.some(r => r.code === match.code) ? prev : [...prev, match]));
-      }
-      autoMatchedRegionCode.current = newCode;
-    } else if (tab === 'departments' && departementsGeoJson) {
-      const matches = (departementsGeoJson.features as { properties: GeoFeatureProps }[]).filter(
-        f => normalizeFr(f.properties.nom).includes(query) || f.properties.code?.includes(search.trim())
-      );
-      const exact = matches.filter(f => normalizeFr(f.properties.nom) === query || f.properties.code === search.trim());
-      const picked = matches.length === 1 ? matches : exact.length === 1 ? exact : [];
-      const newCode = picked.length === 1 ? picked[0].properties.code : null;
-      if (autoMatchedDeptCode.current && autoMatchedDeptCode.current !== newCode) {
-        const staleCode = autoMatchedDeptCode.current;
-        setSelectedDepts(prev => prev.filter(d => d.code !== staleCode));
-      }
-      if (newCode && newCode !== autoMatchedDeptCode.current) {
-        const match = picked[0].properties;
-        setSelectedDepts(prev => (prev.some(d => d.code === match.code) ? prev : [...prev, match]));
-      }
-      autoMatchedDeptCode.current = newCode;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, tab, regionsGeoJson, departementsGeoJson]);
-
-  const getSelectedItems = () => {
-    if (tab === 'regions') return selectedRegions;
-    if (tab === 'departments') return selectedDepts;
-    return selectedCities;
-  };
-  const removeSelection = (item: any) => {
-    if (tab === 'regions') setSelectedRegions(prev => prev.filter(r => r.code !== item.code));
-    else if (tab === 'departments') setSelectedDepts(prev => prev.filter(d => d.code !== item.code));
-    else setSelectedCities(prev => prev.filter(c => c.name !== item.name));
-  };
-
-  const selected = getSelectedItems();
-  const selectedCount = selected.length;
-
-  // Lifted out of buildSearchUrl (below) so combinedSelectedTotal can use
-  // the exact same "is this literally everything" check the click-through
-  // URL already uses - see that function's own comment for why "all
-  // selected" must be treated as "no location filter at all".
-  const regionFeaturesAll = (regionsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
-  const departmentFeaturesAll = (departementsGeoJson?.features as { properties?: { code?: string } }[] | undefined) ?? [];
-  const selectedRegionCodesAll = new Set(selectedRegions.map(r => r.code));
-  const selectedDepartmentCodesAll = new Set(selectedDepts.map(d => d.code));
-  const allRegionsSelected = regionFeaturesAll.length > 0 && selectedRegions.length > 0
-    && regionFeaturesAll.every(feature => feature.properties?.code && selectedRegionCodesAll.has(feature.properties.code));
-  const allDeptsSelected = departmentFeaturesAll.length > 0 && selectedDepts.length > 0
-    && departmentFeaturesAll.every(feature => feature.properties?.code && selectedDepartmentCodesAll.has(feature.properties.code));
-
-  // Client report (26 Sep, WhatsApp screenshots): "Marchés publics" tile
-  // says 70 695 opportunités, but selecting the whole map (every region
-  // circled) shows "Total combiné 2 319". Cause: /stats/regions (and
-  // /stats/departments) only ever counts status='active' rows that DO have
-  // a resolved location_region/department (see that route's own 25/26 Sep
-  // comments) - summing every single region therefore always undercounts
-  // by (a) every non-active-status row and (b) the entire un-geocoded
-  // pool, neither of which any region/department count can ever include.
-  // Selecting literally every region/department is semantically "no
-  // location filter at all" - buildSearchUrl already treats it that way
-  // and sends a bare, unfiltered /recherche?status=all - so the number
-  // shown here must match that same unfiltered universe instead of a sum
-  // of necessarily-partial per-region counts. siteWideCounts.total (from
-  // /stats/counts, the same source the homepage tiles above already use)
-  // is exactly that: every status, every location, every journey.
-  const combinedSelectedTotal = selectedCount === 0 ? 0
-    : (tab === 'regions' && allRegionsSelected) || (tab === 'departments' && allDeptsSelected)
-      ? siteWideCounts.total
-      : tab === 'regions'
-        // 26 Sep fix: was a bare sum of regionCounts (resolved rows only),
-        // which is exactly the "253 for 2 regions, 70 330 once all 13 are
-        // selected, nothing in between" jump the client flagged - the
-        // un-located pool's proportional share (see getRegionUnlocatedShare
-        // above) is now folded in here too, so this line always matches
-        // what the per-region badges above it add up to.
-        ? selectedRegions.reduce((sum, r) => sum + (regionCounts[normalizeFr(r.nom)] ?? 0) + getRegionUnlocatedShare(r.nom), 0)
-        : tab === 'departments'
-          ? selectedDepts.reduce((sum, d) => sum + (deptCounts[d.code] ?? deptCounts[normalizeFr(d.nom)] ?? 0) + getDeptUnlocatedShare(d.code, d.nom), 0)
-          : 0;
-
-    const buildSearchUrl = () => {
-    // BUG (client report, 25 Sep - "pura map select karo to total bohot kam
-    // ata hai"): the backend's region/department filters are a strict
-    // `location_region ILIKE ANY(...)` / `location_department = ANY(...)`
-    // match (see opportunities.ts) with no "OR IS NULL" fallback the way the
-    // nature filter has - a row whose location wasn't resolved during
-    // ingestion (geocodingService.ts's coverage gap) is silently dropped by
-    // *any* region/department filter, selected-all included. Selecting every
-    // region individually therefore undercounted the true nationwide total
-    // by however many rows have no location_region at all - the ~2 500 the
-    // client saw instead of the real, much larger, count. Selecting literally
-    // every region/department on the map is semantically "no location filter
-    // at all" (the visitor isn't narrowing anything), so send no region/
-    // department params in that case and let /recherche's default
-    // (unfiltered) view carry every opportunity, no-location rows included.
-    // A genuine partial selection (1..n-1 regions) is left exactly as before -
-    // widening that case to include no-location rows would reintroduce the
-    // G13 map-vs-list count mismatch this filter was already fixed for.
-    // Compares feature codes rather than raw feature/selection counts: some
-    // GeoJSON sources represent one region/department as more than one
-    // feature (multi-part geometries), which a plain length check can get
-    // wrong in either direction. Checking that every feature's code is in
-    // the selected set is correct regardless of how many features share a
-    // code.
-    //
-    // allRegionsSelected/allDeptsSelected are computed once, above (next to
-    // combinedSelectedTotal), and reused here so the displayed total and
-    // this link can never disagree about what "everything" means.
-
-    // Edge case: if the region/department GeoJSON hasn't finished loading
-    // yet, allRegionsSelected/allDeptsSelected stay false no matter how many
-    // regions/departments are selected (there's nothing to compare the count
-    // against), so a "select all" click made before the GeoJSON loads would
-    // still send a strict region=/department= filter instead of the bare,
-    // unfiltered /recherche it should. Treat "GeoJSON not loaded" the same
-    // as "everything selected".
-    if (tab === 'regions' && selectedRegions.length > 0)
-      return (allRegionsSelected || !regionsGeoJson) ? '/recherche?status=all' : `/recherche?status=all&${selectedRegions.map(r => `region=${encodeURIComponent(r.nom)}`).join('&')}`;
-    if (tab === 'departments' && selectedDepts.length > 0)
-      return (allDeptsSelected || !departementsGeoJson) ? '/recherche?status=all' : `/recherche?status=all&${selectedDepts.map(d => `department=${encodeURIComponent(d.code)}`).join('&')}`;
-    if (tab === 'cities' && selectedCities.length > 0) {
-      const cityParams = selectedCities.map(c => `city=${encodeURIComponent(c.name)}`).join('&');
-      // 25 Sep audit: hand off the exact coordinates + radius selectionCount
-      // was just computed with (single-city case only - see searchAroundCity)
-      // so /recherche shows the same total this button just promised instead
-      // of silently re-geocoding and possibly landing on a plain city-name
-      // text match with no radius applied.
-      if (selectedCities.length === 1 && selectionCount?.coords) {
-        return `/recherche?${cityParams}&lat=${selectionCount.coords.lat}&lng=${selectionCount.coords.lng}&radius_km=${selectionCount.radiusKm ?? DEFAULT_CITY_RADIUS_KM}`;
-      }
-      return `/recherche?${cityParams}`;
-    }
-    return '/recherche';
-  };
-
+  }, [open, ids]);
+  if (ids.length === 0) return null;
   return (
-    <section id="mdh-zones" className="scroll-mt-16 px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('nearYou')}</span>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-2">
-        Des opportunités partout en France.
-      </h2>
-      <p className="text-[#B9BBC8] text-sm mb-5">
-        Explorez les marchés par région, département ou ville, puis précisez votre métier.
-      </p>
-
-      <div className="border border-[#17334D] rounded-2xl bg-[#061D32] p-4 md:p-5">
-        <div className="grid grid-cols-3 gap-1 border border-[#17334D] rounded-xl p-1 w-full mb-4">
-          {(['regions', 'departments', 'cities'] as const).map(k => (
-            <button
-              key={k}
-              onClick={() => { setTab(k); setSearch(''); }}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                tab === k ? 'bg-orange/15 text-orange border border-orange' : 'text-[#B9BBC8] hover:text-white border border-transparent'
-              }`}
-            >
-              {t(k)}
-            </button>
+    <div className="rounded-xl bg-[#123B2A] px-3.5 py-3 text-[15px] text-[#6EE7B7]">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-semibold">{ids.length === 1 ? '1 marché enregistré' : `${ids.length} marchés enregistrés`} sur ce téléphone</span>
+        {ids.length === 1
+          ? <Link to={`/opportunites/${ids[0]}`} className="flex min-h-[48px] items-center font-bold underline">Le retrouver</Link>
+          : <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex min-h-[48px] items-center font-bold underline">{open ? 'Masquer' : 'Les retrouver'}</button>}
+      </div>
+      {open && (
+        <ul className="mt-1 flex flex-col gap-1">
+          {ids.slice(0, 10).map(id => (
+            <li key={id}><Link to={`/opportunites/${id}`} className="flex min-h-[48px] items-center underline">{titles[id] || 'Marché enregistré'}</Link></li>
           ))}
-        </div>
-
-        {tab !== 'cities' ? (
-          <>
-            <label className="block text-xs text-[#B9BBC8] mb-2">
-              {tab === 'regions' ? 'Rechercher une région' : 'Rechercher un département'}
-            </label>
-            <div className="flex gap-2 mb-3">
-              <div className="relative flex-1">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  // 28 Sep user test: Enter did nothing in this field (and the
-                  // arrow next to it was a no-op), so typing "Bretagne" only
-                  // highlighted the map - the visitor had to scroll below it to
-                  // find the real CTA. Same destination as that CTA.
-                  onKeyDown={e => {
-                    if (e.key !== 'Enter') return;
-                    e.preventDefault();
-                    if ((tab === 'regions' ? selectedRegions : selectedDepts).length > 0) navigate(buildSearchUrl());
-                  }}
-                  placeholder={tab === 'regions' ? 'Grand Est' : 'Bas-Rhin'}
-                  className="w-full bg-[#031B30] border border-[#17334D] rounded-xl pl-9 pr-3 py-3 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  if ((tab === 'regions' ? selectedRegions : selectedDepts).length > 0) navigate(buildSearchUrl());
-                }}
-                className="w-12 h-12 rounded-xl bg-orange text-white flex items-center justify-center hover:bg-orange/90 transition-colors"
-                aria-label="Rechercher"
-              >
-                <ArrowRight size={18} />
-              </button>
-            </div>
-            <p className="text-[11px] text-[#B9BBC8] flex items-center gap-1.5 mb-3">
-              <MousePointerClick size={12} /> Sélectionnez une région sur la carte ou dans la recherche.
-            </p>
-
-            <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[300px] md:h-[420px]" style={{ touchAction: 'pan-y' }}>
-              {geoLoadError ? (
-                <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
-                  <AlertCircle size={20} className="text-red-400 mb-2" />
-                  <p className="text-xs text-[#B9BBC8]">Impossible de charger la carte. Rechargez la page.</p>
-                </div>
-              ) : !regionsGeoJson || !departementsGeoJson ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Loader2 size={22} className="animate-spin text-orange" />
-                </div>
-              ) : (
-                <ComposableMap
-                  projection="geoMercator"
-                  projectionConfig={{ center: [2.454, 46.6], scale: 2600 }}
-                  width={780}
-                  height={720}
-                  style={{ width: '100%', height: '100%' }}
-                >
-                  <ZoomableGroup center={position.coordinates} zoom={position.zoom} onMoveEnd={setPosition} minZoom={1} maxZoom={8} filterZoomEvent={touchAwareZoomFilter as unknown as (element: SVGElement) => boolean}>
-                    <Geographies geography={tab === 'regions' ? regionsGeoJson : departementsGeoJson}>
-                      {({ geographies }: { geographies: GeoFeature[] }) =>
-                        geographies.map(geo => {
-                          const isSelected = tab === 'regions'
-                            ? selectedRegions.some(r => r.code === geo.properties.code)
-                            : tab === 'departments'
-                            ? selectedDepts.some(d => d.code === geo.properties.code)
-                            : false;
-                          const isSearchMatch =
-                            search !== '' &&
-                            (normalizeFr(geo.properties.nom).includes(normalizeFr(search)) ||
-                              (geo.properties.code?.includes(search) ?? false));
-                          const labelText = tab === 'regions' ? geo.properties.nom : geo.properties.code;
-                          const centroid = geoCentroid(geo as unknown as Parameters<typeof geoCentroid>[0]);
-                          return (
-                            <g key={geo.rsmKey}>
-                              <Geography
-                                geography={geo}
-                                onMouseEnter={() => setHovered(geo.properties.nom)}
-                                onMouseLeave={() => setHovered(null)}
-                                onClick={() => {
-                                  if (tab === 'regions') {
-                                    setSelectedRegions(prev => {
-                                      const exists = prev.some(r => r.code === geo.properties.code);
-                                      return exists ? prev.filter(r => r.code !== geo.properties.code) : [...prev, geo.properties];
-                                    });
-                                  } else {
-                                    setSelectedDepts(prev => {
-                                      const exists = prev.some(d => d.code === geo.properties.code);
-                                      return exists ? prev.filter(d => d.code !== geo.properties.code) : [...prev, geo.properties];
-                                    });
-                                  }
-                                }}
-                                style={{
-                                  default: { fill: isSelected || isSearchMatch ? '#FF6500' : '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
-                                  hover: { fill: isSelected || isSearchMatch ? '#FF6500' : '#5A7893', stroke: '#031B30', strokeWidth: 0.75, outline: 'none', cursor: 'pointer' },
-                                  pressed: { fill: '#FF6500', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                                }}
-                              />
-                              {labelText && centroid && !isNaN(centroid[0]) && !isNaN(centroid[1]) && (
-                                <Marker coordinates={centroid} style={{ default: { pointerEvents: 'none' }, hover: { pointerEvents: 'none' }, pressed: { pointerEvents: 'none' } }}>
-                                  <text
-                                    textAnchor="middle"
-                                    style={{
-                                      fontSize: tab === 'regions' ? 7.5 : 8,
-                                      fill: '#fff',
-                                      fontWeight: isSelected || isSearchMatch ? 700 : 500,
-                                      pointerEvents: 'none',
-                                      paintOrder: 'stroke',
-                                      stroke: '#031B30',
-                                      strokeWidth: 2,
-                                      strokeLinejoin: 'round',
-                                    }}
-                                  >
-                                    {labelText}
-                                  </text>
-                                </Marker>
-                              )}
-                            </g>
-                          );
-                        })
-                      }
-                    </Geographies>
-                  </ZoomableGroup>
-                </ComposableMap>
-              )}
-
-              <div className="absolute top-3 right-3 flex flex-col gap-2">
-                <button onClick={() => setPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
-                <button onClick={() => setPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
-                <button onClick={() => setPosition({ coordinates: [2.4, 46.6], zoom: 1 })} className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
-              </div>
-
-              {selectedCount > 0 && (
-                <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-3 py-2 max-h-32 overflow-y-auto min-w-[150px] max-w-[250px]">
-                  {selected.map((item, index) => {
-                    const isRegion = 'nom' in item && 'code' in item;
-                    const name = isRegion ? item.nom : (item as any).name;
-                    const code = isRegion ? item.code : undefined;
-                    const count = isRegion
-                      ? (tab === 'regions' ? getRegionCount(item.nom) : getDeptCount(item.code, item.nom))
-                      : undefined;
-                    const unlocatedShare = isRegion
-                      ? (tab === 'regions' ? getRegionUnlocatedShare(item.nom) : getDeptUnlocatedShare(item.code, item.nom))
-                      : 0;
-                    return (
-                      <div key={code || name || index} className="flex items-center justify-between gap-2 py-1 border-b border-[#17334D]/50 last:border-0">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-white truncate">{name}</p>
-                          {count !== undefined && (
-                            <p className="text-[10px] text-orange font-medium">
-                              {count.toLocaleString('fr-FR')} {count > 1 ? 'opportunités disponibles' : 'opportunité disponible'}
-                            </p>
-                          )}
-                          {/* 26 Sep fix: appended AFTER the real, resolved
-                              count above, never merged into it - a
-                              proportional, clearly-labelled estimate of
-                              this region/département's share of the
-                              nationwide un-located pool, not a verified
-                              number. */}
-                          {unlocatedShare > 0 && (
-                            <p className="text-[9px] text-[#B9BBC8]">
-                              + {unlocatedShare.toLocaleString('fr-FR')} estimées (non localisées)
-                            </p>
-                          )}
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); removeSelection(item); }} aria-label={`Retirer ${name}`} className="text-red-400 hover:text-red-300 shrink-0 ml-1">
-                          <X size={12} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {selectedCount > 1 && (tab === 'regions' || tab === 'departments') && (
-                    <div className="flex items-center justify-between gap-2 pt-1.5 mt-0.5 border-t border-[#17334D]">
-                      <p className="text-[10px] font-bold text-white">Total combiné</p>
-                      <p className="text-[10px] font-bold text-orange">
-                        {combinedSelectedTotal.toLocaleString('fr-FR')} {combinedSelectedTotal > 1 ? 'opportunités' : 'opportunité'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <p className="text-[10px] text-[#B9BBC8] text-center mt-3">
-              Contours régionaux : IGN / France GeoJSON
-            </p>
-
-            {selectedCount > 0 ? (
-              <Link
-                to={buildSearchUrl()}
-                className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 px-3 rounded-xl hover:bg-orange/10 transition-colors text-center"
-              >
-                <span className="flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5 min-w-0">
-                  <span>Voir les opportunités en </span>
-                  {selected.slice(0, 2).map((item, i) => (
-                    <span key={i}>
-                      {i > 0 && ', '}
-                      {'nom' in item ? item.nom : (item as any).name}
-                    </span>
-                  ))}
-                  {selected.length > 2 && <span>+{selected.length - 2} autres</span>}
-                </span>
-                <ArrowRight size={14} className="shrink-0" />
-              </Link>
-            ) : (
-              <div className="mt-3 flex flex-col items-center text-center py-4">
-                <Globe size={26} className="text-orange mb-2" />
-                <p className="text-sm font-bold text-white">Sélectionnez une zone</p>
-                <p className="text-xs text-[#B9BBC8] mt-1">Touchez une région ou un département sur la carte.</p>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="flex gap-2 mb-3">
-              <div className="relative flex-1">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B9BBC8]" />
-                <input
-                  value={cityQuery}
-                  onChange={e => { setCityQuery(e.target.value); setCityResult(null); }}
-                  onKeyDown={e => e.key === 'Enter' && handleCitySearch()}
-                  placeholder={t('mapSearchCity') || 'Rechercher une ville'}
-                  className="w-full bg-[#031B30] border border-[#17334D] rounded-xl pl-9 pr-3 py-3 text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-orange"
-                />
-              </div>
-              <button
-                onClick={() => handleCitySearch()}
-                disabled={cityLoading || !cityQuery.trim()}
-                className="px-4 bg-orange text-white font-semibold text-sm rounded-xl hover:bg-orange/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {cityLoading && <Loader2 size={14} className="animate-spin" />} Rechercher
-              </button>
-            </div>
-            <p className="text-[11px] text-[#B9BBC8] flex items-center gap-1.5 mb-3">
-              <MousePointerClick size={12} /> Touchez une ville sur la carte, ou zoomez pour en voir davantage.
-            </p>
-
-            <div className="relative rounded-xl overflow-hidden border border-[#17334D] bg-[#031B30] h-[240px] md:h-[320px] mb-3" style={{ touchAction: 'pan-y' }}>
-              {geoLoadError ? (
-                <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
-                  <AlertCircle size={20} className="text-red-400 mb-2" />
-                  <p className="text-xs text-[#B9BBC8]">Impossible de charger la carte. Rechargez la page.</p>
-                </div>
-              ) : !regionsGeoJson ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Loader2 size={22} className="animate-spin text-orange" />
-                </div>
-              ) : (
-                <ComposableMap projection="geoMercator" projectionConfig={{ center: [2.454, 46.6], scale: 2600 }} width={780} height={620} style={{ width: '100%', height: '100%' }}>
-                  <ZoomableGroup center={citiesPosition.coordinates} zoom={citiesPosition.zoom} onMoveEnd={setCitiesPosition} minZoom={1} maxZoom={8} filterZoomEvent={touchAwareZoomFilter as unknown as (element: SVGElement) => boolean}>
-                    <Geographies geography={regionsGeoJson}>
-                      {({ geographies }: { geographies: GeoFeature[] }) =>
-                        geographies.map(geo => (
-                          <Geography key={geo.rsmKey} geography={geo} style={{
-                            default: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                            hover: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                            pressed: { fill: '#3E5872', stroke: '#031B30', strokeWidth: 0.75, outline: 'none' },
-                          }} />
-                        ))
-                      }
-                    </Geographies>
-                    {visibleCitiesDeclutter.map(city => {
-                      const isSelected = selectedCities.some(c => c.name === city.name);
-                      return (
-                        <Marker key={city.name} coordinates={city.coords} onClick={() => selectMapCity(city)} style={{ default: { cursor: 'pointer' } }}>
-                          <g transform={`scale(${1 / citiesPosition.zoom})`}>
-                          {/* Client (19/20 Sep): "cliquer sur le texte «Libourne»
-                              ne sélectionnait pas la ville, alors que cliquer sur
-                              son point fonctionnait" + "surface suffisante pour
-                              une sélection au doigt." onClick already sits on
-                              the whole <Marker> group, so in principle the text
-                              should fire it too - but an invisible, generously
-                              sized hit-target spanning both the dot and the
-                              label removes any doubt (small text glyphs are an
-                              unreliable tap target on their own, especially on
-                              mobile) rather than relying on SVG event bubbling
-                              through a 9-11px <text> element. */}
-                          <rect x={-24} y={-22} width={48} height={30} fill="transparent" style={{ cursor: 'pointer' }} />
-                          {isSelected && <circle r={11} fill="#FF6500" fillOpacity={0.25} />}
-                          <circle r={isSelected ? 6 : 4} fill="#FF6500" stroke="#fff" strokeWidth={1.2} />
-                          <text textAnchor="middle" y={-9} style={{ fontSize: isSelected ? 11 : 9, fill: '#fff', fontWeight: isSelected ? 700 : 600, cursor: 'pointer', pointerEvents: 'none' }}>
-                            {city.name}
-                          </text>
-                          </g>
-                        </Marker>
-                      );
-                    })}
-                  </ZoomableGroup>
-                </ComposableMap>
-              )}
-
-              <div className="absolute top-3 right-3 flex flex-col gap-2">
-                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.min(p.zoom * 1.5, 8) }))} aria-label="Zoomer" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">+</button>
-                <button onClick={() => setCitiesPosition(p => ({ ...p, zoom: Math.max(p.zoom / 1.5, 1) }))} aria-label="Dézoomer" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors text-lg font-bold">−</button>
-                <button onClick={() => setCitiesPosition({ coordinates: [2.4, 46.6], zoom: 1 })} aria-label="Recentrer la carte" className="w-9 h-9 bg-[#061D32] border border-[#17334D] rounded-lg text-white hover:bg-orange/20 transition-colors flex items-center justify-center"><Locate size={14} /></button>
-              </div>
-
-              <div className="absolute bottom-3 left-3 bg-[#061D32]/95 border border-[#17334D] rounded-lg px-2.5 py-1.5">
-                <p className="text-[10px] font-semibold text-white">Niveau de zoom : {zoomLevelLabel}</p>
-              </div>
-            </div>
-            <p className="text-[11px] text-[#B9BBC8] mb-3">Plus vous zoomez, plus les villes apparaissent.</p>
-
-            {cityLoading ? (
-              <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-8 flex items-center justify-center">
-                <Loader2 size={20} className="animate-spin text-orange" />
-              </div>
-            ) : !cityResult ? (
-              <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-6 flex flex-col items-center text-center">
-                <Globe size={24} className="text-orange mb-2" />
-                <p className="text-sm font-bold text-white">Sélectionnez une ville</p>
-                <p className="text-xs text-[#B9BBC8] mt-1">Touchez une ville sur la carte ou lancez une recherche.</p>
-              </div>
-            ) : cityOpportunities.length === 0 ? (
-              <div className="rounded-xl border border-[#17334D] bg-[#031B30] p-6 text-center">
-                <p className="text-sm font-semibold text-white">{cityResult.name}</p>
-                <p className="text-xs text-[#B9BBC8] mt-1">
-                  {cityRadiusKm ? `Aucune opportunité dans un rayon de ${cityRadiusKm} km.` : 'Aucune opportunité pour le moment.'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {/* Client's audit (15 Sep): "ajouter le nombre de résultats et
-                    'Voir toutes les opportunités de cette ville'" - a text
-                    search here only ever showed its capped 5-result preview
-                    with no total and no way to reach the rest, and gave no
-                    way to tell an open opportunity from an expired one. */}
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-xs text-[#B9BBC8]">
-                    <span className="text-orange font-semibold">{cityTotal}</span> opportunité{cityTotal !== 1 ? 's' : ''}{' '}
-                    {cityRadiusKm ? `dans un rayon de ${cityRadiusKm} km autour de ${cityResult.name}` : `à ${cityResult.name}`}
-                  </p>
-                  <Link
-                    to={
-                      cityApiCoords
-                        ? `/recherche?city=${encodeURIComponent(cityResult.name)}&lat=${cityApiCoords.lat}&lng=${cityApiCoords.lng}&radius_km=${cityRadiusKm ?? DEFAULT_CITY_RADIUS_KM}`
-                        : `/recherche?city=${encodeURIComponent(cityResult.name)}`
-                    }
-                    className="text-[11px] text-orange font-semibold hover:underline"
-                  >
-                    Voir toutes les opportunités {cityRadiusKm ? `dans ces ${cityRadiusKm} km` : 'de cette ville'}
-                  </Link>
-                </div>
-                {cityOpportunities.map(opp => {
-                  const isExpired = opp.status === 'expired' || opp.status === 'cancelled' || opp.status === 'awarded';
-                  return (
-                    <OpportunityLink key={opp.id} to={`/opportunites/${opp.id}`} className="block bg-[#031B30] border border-[#17334D] rounded-xl p-3 hover:border-orange/40 transition-colors">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="text-sm font-semibold text-white leading-snug">{opp.title}</p>
-                        <span className={`shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${isExpired ? 'bg-[#17334D] text-[#B9BBC8]' : 'bg-orange/15 text-orange'}`}>
-                          {opp.status === 'expired' ? 'Expirée' : opp.status === 'cancelled' ? 'Annulée' : opp.status === 'awarded' ? 'Attribuée' : 'Ouverte'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-3 text-[10px] text-[#B9BBC8]">
-                        {opp.location_city && <span className="flex items-center gap-1"><MapPin size={10} /> {opp.location_city}</span>}
-                        {opp.deadline && <span>{new Date(opp.deadline).toLocaleDateString('fr-FR')}</span>}
-                      </div>
-                    </OpportunityLink>
-                  );
-                })}
-              </div>
-            )}
-
-            {selectedCities.length > 0 && (
-              <Link to={buildSearchUrl()} className="mt-3 w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold text-sm py-3 rounded-xl hover:bg-orange/10 transition-colors">
-                {selectedCities.length === 1 && selectionCount?.radiusKm ? 'Voir les opportunités autour de ' : 'Voir les opportunités à '}
-                {selectedCities.map((c, i) => (<span key={i}>{i > 0 && ', '}{c.name}</span>))}
-                {selectedCities.length === 1 && selectionCount?.radiusKm ? ` (${selectionCount.radiusKm} km)` : ''}
-                {selectionCount ? ` — ${selectionCount.total}` : ''} <ArrowRight size={14} />
-              </Link>
-            )}
-          </>
-        )}
-      </div>
-    </section>
+        </ul>
+      )}
+    </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// BLOG ("Répondre à un marché : les premiers repères.")
-// ---------------------------------------------------------------------------
-function BlogSection() {
-  // Each card opens its own article (/actualites/:id), same data as /actualites.
-  const posts = (['a4', 'a1', 'a2'] as const)
-    .map(id => mockArticles.find(x => x.id === id))
-    .filter((x): x is (typeof mockArticles)[number] => Boolean(x))
-    .map((x, i) => ({ id: x.id, category: x.category, title: x.title, icon: [CompassIcon, DocIcon, TrendIcon][i] }));
+function SimpleSearch() {
+  const navigate = useNavigate();
+  const [metier, setMetier] = useState('');
+  const [dept, setDept] = useState('FR');
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const p = new URLSearchParams();
+    if (metier.trim()) p.set('q', metier.trim());
+    if (dept !== 'FR') p.append('department', dept);
+    p.set('status', 'all');
+    navigate(`/recherche?${p.toString()}`);
+  };
+  const field = 'h-[52px] w-full rounded-xl border border-[#2B4468] bg-[#0A1628] px-3.5 text-[16px] text-[#F2F5F9]';
   return (
-    <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <span className="text-[11px] font-bold text-orange uppercase tracking-widest">Le blog Marchés Direct</span>
-          <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 leading-tight">
-            Répondre à un marché : les premiers repères.
-          </h2>
-        </div>
-        <Link to="/actualites" className="text-orange font-semibold text-xs whitespace-nowrap flex items-center gap-1 ml-3">
-          Tous les articles <ArrowRight size={14} />
-        </Link>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {posts.map(p => (
-          <Link key={p.id} to={`/actualites/${p.id}`} className="border border-[#17334D] rounded-xl bg-[#061D32] p-4 flex items-center gap-4 hover:border-orange/50 transition-colors group">
-            <span className="shrink-0 w-12 h-12 rounded-full border-2 border-orange text-orange flex items-center justify-center group-hover:bg-orange/10 transition-colors">
-              <p.icon />
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-bold text-orange uppercase tracking-widest mb-1">{p.category}</div>
-              <h3 className="text-sm font-bold text-white group-hover:text-orange transition-colors leading-snug">{p.title}</h3>
-            </div>
-            <ArrowRight size={16} className="text-[#B9BBC8] group-hover:text-orange transition-colors shrink-0" />
-          </Link>
-        ))}
-      </div>
-    </section>
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <label htmlFor="md-metier" className="text-[15px] font-semibold">Votre métier</label>
+      <input id="md-metier" value={metier} onChange={e => setMetier(e.target.value)} placeholder="Ex. : nettoyage, peinture, sécurité, architecte…" className={`${field} placeholder:text-[#7F93AE]`} />
+      <label htmlFor="md-zone" className="text-[15px] font-semibold">Votre zone</label>
+      <select id="md-zone" value={dept} onChange={e => setDept(e.target.value)} className={field}>
+        <option value="FR">Toute la France</option>
+        {DEPARTMENTS.map(d => <option key={d.code} value={d.code}>{d.code} – {d.name}</option>)}
+      </select>
+      <button type="submit" className="min-h-[52px] w-full rounded-xl bg-[#C2410C] px-4 text-[16px] font-bold text-white">Rechercher des marchés</button>
+      <p className="text-[15px] text-[#B4C1D3]">Indiquez ensuite votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché</p>
+    </form>
   );
 }
 
-function CompassIcon() {
+function Faq() {
+  const items: [string, string][] = [
+    ['Qu’est-ce qui est gratuit ?', 'La recherche, le pourcentage par marché, le premier échange de 30 minutes et votre dossier prérempli. L’accompagnement à la candidature (mémoire technique, formulaires, dépôt) est sur devis, présenté lors de cet échange. Vous décidez ensuite.'],
+    ['Je ne connais pas les marchés publics. C’est pour moi ?', 'Oui. La plupart des entreprises que nous accompagnons répondent pour la première fois. Nous expliquons chaque étape et nous préparons les pièces avec vous.'],
+    ['Que fait Marchés Direct à ma place ?', 'La recherche des marchés, le pourcentage de correspondance, le dossier prérempli et, si vous le souhaitez, les formulaires de candidature, le mémoire technique et le dépôt. Vous fournissez vos références et vos pièces, vous validez.'],
+    ['Mes informations restent-elles confidentielles ?', 'Oui. Vos coordonnées servent à préparer votre dossier et à vous appeler au sujet de vos marchés. Vous pouvez demander à ne plus être appelé à tout moment.'],
+  ];
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <polygon points="16 8 14 14 8 16 10 10 16 8" />
-    </svg>
-  );
-}
-function DocIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 3v14a2 2 0 0 0 2 2h8" /><path d="M6 3h8l3 3v11" /><path d="M9 8h5M9 11h5" />
-    </svg>
-  );
-}
-function TrendIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 20V10M10 20V6M16 20v-8" /><path d="M4 12l6-5 6 4 6-8" /><path d="M18 5h4v4" />
-    </svg>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// FAQ ("Utiliser Marchés Direct.")
-// Mirrors InfoPage's FAQ_SECTIONS exactly so both pages show identical content.
-// ---------------------------------------------------------------------------
-const HOME_FAQ_SECTIONS = [
-  {
-    titleKey: 'faqService',
-    items: [
-      { icon: Euro,      qKey: 'faqCostQ',         aKey: 'faqCostA' },
-      { icon: FileText,  qKey: 'faqTakeCareQ',     aKey: 'faqTakeCareA' },
-      { icon: Clock,     qKey: 'faqTimeQ',         aKey: 'faqTimeA' },
-      { icon: Lock,      qKey: 'faqConfidentialQ', aKey: 'faqConfidentialA' },
-    ],
-  },
-  {
-    titleKey: 'faqOpportunities',
-    items: [
-      { icon: Search,    qKey: 'faqFindQ',         aKey: 'faqFindA' },
-      { icon: Handshake, qKey: 'faqWhyUsQ',        aKey: 'faqWhyUsA' },
-      { icon: Building2, qKey: 'faqFitQ',          aKey: 'faqFitA' },
-    ],
-  },
-  {
-    titleKey: 'faqResults',
-    items: [
-      { icon: Trophy,    qKey: 'faqChancesQ',      aKey: 'faqChancesA' },
-      { icon: Shield,    qKey: 'faqNoWinQ',        aKey: 'faqNoWinA' },
-      { icon: Calendar,  qKey: 'faqTimelineQ',     aKey: 'faqTimelineA' },
-    ],
-  },
-];
-
-function HomeFaqSection() {
-  const { t } = useLang();
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [openSection, setOpenSection] = useState<string | null>(null);
-  const [activeFaqTab, setActiveFaqTab] = useState(HOME_FAQ_SECTIONS[0].titleKey);
-
-  return (
-    <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <span className="text-[11px] font-bold text-orange uppercase tracking-widest">{t('faqTag')}</span>
-      <h2 className="text-2xl md:text-3xl font-bold text-white mt-1 mb-3">{t('faqTitle')}</h2>
-      <p className="text-[#B9BBC8] text-sm mb-5">{t('faqSub')}</p>
-
-      <div className="flex flex-wrap gap-1 border border-[#17334D] rounded-xl p-1 w-fit mb-5">
-        {HOME_FAQ_SECTIONS.map((section) => (
-          <button
-            key={section.titleKey}
-            onClick={() => {
-              setActiveFaqTab(section.titleKey);
-              setOpenFaq(null);
-              setOpenSection(null);
-            }}
-            className={`px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
-              activeFaqTab === section.titleKey
-                ? 'bg-orange/15 text-orange border border-orange'
-                : 'text-[#B9BBC8] hover:text-white'
-            }`}
-          >
-            {t(section.titleKey)}
-          </button>
-        ))}
-      </div>
-
-      {HOME_FAQ_SECTIONS.filter((s) => s.titleKey === activeFaqTab).map((section) => (
-        <div key={section.titleKey} className="space-y-3">
-          {section.items.map((item, itemIndex) => {
-            const isOpen = openFaq === itemIndex && openSection === section.titleKey;
-            return (
-              <div key={item.qKey} className="bg-[#061D32] border border-[#17334D] rounded-xl overflow-hidden">
-                <button
-                  onClick={() => {
-                    setOpenSection(section.titleKey);
-                    setOpenFaq(isOpen ? null : itemIndex);
-                  }}
-                  className="w-full flex items-center justify-between p-4 text-left gap-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon size={20} className="text-orange shrink-0" />
-                    <span className="text-sm font-semibold text-white leading-snug">{t(item.qKey)}</span>
-                  </div>
-                  {isOpen
-                    ? <ChevronUp size={18} className="text-orange shrink-0" />
-                    : <Plus size={18} className="text-orange shrink-0" />}
-                </button>
-                {isOpen && (
-                  <div className="px-4 pb-4 pl-12 border-t border-[#17334D]">
-                    <p className="text-sm text-[#B9BBC8] leading-relaxed pt-4 whitespace-pre-line">
-                      {t(item.aKey)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+    <Block>
+      <h2 className="text-[19px] font-bold">Vos questions</h2>
+      {items.map(([q, a]) => (
+        <details key={q} className="group rounded-2xl border border-[#22385A] bg-[#12233A]">
+          <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[16px] font-bold [&::-webkit-details-marker]:hidden">
+            {q}<span className="text-[22px] font-semibold text-[#FB923C] group-open:hidden">+</span><span className="hidden text-[22px] font-semibold text-[#FB923C] group-open:inline">–</span>
+          </summary>
+          <p className="px-4 pb-4 text-[15px] text-[#D6E0EC]">{a}</p>
+        </details>
       ))}
-
-      <div className="mt-4">
-        <Link to="/faq" className="inline-flex items-center gap-2 text-orange font-semibold text-sm hover:gap-3 transition-all">
-          Toutes les questions pratiques <ArrowRight size={14} />
-        </Link>
-      </div>
-    </section>
+    </Block>
   );
 }
 
-// ---------------------------------------------------------------------------
-// FINAL CTA
-// ---------------------------------------------------------------------------
-function FinalCTA({ onAppt, onCallback }: { onAppt: () => void; onCallback: () => void }) {
+// 1.8 : la carte ne se charge (code et données) qu'à l'approche du bas de page, jamais avant le premier écran.
+function DeferredMap() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [show, setShow] = useState(false);
+  const [geoTab, setGeoTab] = useState<'regions' | 'departments' | 'cities'>('departments');
+  const [regions, setRegions] = useState<{ code: string; nom: string }[]>([]);
+  const [depts, setDepts] = useState<{ code: string; nom: string }[]>([]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || show) return;
+    if (!('IntersectionObserver' in window)) { setShow(true); return; }
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { setShow(true); io.disconnect(); } }, { rootMargin: '300px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [show]);
   return (
-    <section className="px-4 md:px-6 py-8 md:py-14 max-w-3xl mx-auto w-full">
-      <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 md:p-8 text-center orange-glow-sm">
-        <span className="text-[11px] font-bold text-[#B9BBC8] uppercase tracking-widest">
-          Et si votre prochain marché était ici ?
-        </span>
-        <h2 className="text-2xl md:text-3xl font-extrabold text-white mt-2 mb-3">
-          Commencez par une opportunité.
-        </h2>
-        <p className="text-[#B9BBC8] text-sm md:text-base mb-6 max-w-md mx-auto leading-relaxed">
-          Découvrez le besoin, vérifiez son intérêt pour votre entreprise, puis décidez de la suite.
-        </p>
-        <div className="flex flex-col gap-3">
-          <Link to="/marches-publics" className="bg-orange text-white font-semibold py-3.5 rounded-xl hover:bg-orange/90 transition-colors text-sm">
-            Explorer les marchés publics
-          </Link>
-          <Link to="/appels-doffres" className="border border-[#17334D] text-white font-semibold py-3.5 rounded-xl hover:border-orange/50 transition-colors text-sm">
-            Appels d'offres privés
-          </Link>
-          <Link to="/sous-traitance" className="border border-[#17334D] text-white font-semibold py-3.5 rounded-xl hover:border-orange/50 transition-colors text-sm">
-            Missions de sous-traitance
-          </Link>
-        </div>
-        <p className="text-xs text-[#B9BBC8] mt-5">Vous ne savez pas par où commencer ?</p>
-        <div className="flex justify-center gap-2 mt-2">
-          <button onClick={onCallback} className="text-orange font-semibold text-sm hover:underline">
-            Être rappelé
-          </button>
-          <button onClick={onAppt} className="text-[#B9BBC8] text-sm hover:text-white transition-colors">
-            · Prendre rendez-vous
-          </button>
-        </div>
-      </div>
-    </section>
+    <div ref={ref} className="-mx-4 min-h-[180px]">
+      {show && (
+        <Suspense fallback={<p className="px-4 text-[15px] text-[#B4C1D3]">Chargement de la carte…</p>}>
+          <GeographicSection tab={geoTab} setTab={setGeoTab} selectedRegions={regions} setSelectedRegions={setRegions} selectedDepts={depts} setSelectedDepts={setDepts} />
+        </Suspense>
+      )}
+    </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// HOME PAGE
-// ---------------------------------------------------------------------------
 export default function HomePage() {
-  const [appointmentOpen, setAppointmentOpen] = useState(false);
+  const [mode, setMode] = useState<'company' | 'simple'>('company');
   const [callbackOpen, setCallbackOpen] = useState(false);
-  // 26 Sep client audit, point 7 ("le bloc métiers affiche toujours 'Zone :
-  // Grand Est'... cliquer sur CVC ouvre une recherche sans la Gironde"):
-  // GeographicSection (the map) and SectorsSection (the métiers cards) used
-  // to be two fully independent sibling components, each with zero
-  // knowledge of the other - the map's selectedRegions/selectedDepts were
-  // local state that never left GeographicSection, so SectorsSection had
-  // nothing real to show and hardcoded a placeholder zone instead. Lifted
-  // here, to the one common ancestor, so a region/department picked on the
-  // map is the same selection SectorsSection reads for its own zone label
-  // and its trade links - not two components independently guessing at the
-  // same thing.
-  const [geoTab, setGeoTab] = useState<'regions' | 'departments' | 'cities'>('regions');
-  const [selectedRegions, setSelectedRegions] = useState<GeoFeatureProps[]>([]);
-  const [selectedDepts, setSelectedDepts] = useState<GeoFeatureProps[]>([]);
+  const companyRef = useRef<CompanySearchHandle>(null);
+  const hasTeam = !!ELENA.photo;
+
+  const focusCompany = () => {
+    setMode('company');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.setTimeout(() => companyRef.current?.focus(), 300);
+  };
+  const tabCls = (on: boolean) => `min-h-[48px] flex-1 rounded-lg px-3 text-[16px] font-bold ${on ? 'bg-[#C2410C] text-white' : 'text-[#D6E0EC]'}`;
 
   return (
     <div className="page-fade-in">
       <PageMeta
-        title="Marchés Direct — Marchés publics, appels d'offres privés et sous-traitance"
-        description="Trouvez et candidatez aux marchés publics, appels d'offres privés et missions de sous-traitance partout en France. Analyse IA du DCE, scoring de compatibilité et génération de dossier."
+        title="Marchés Direct — Les marchés faits pour votre entreprise"
+        description="Indiquez le nom de votre entreprise ou son SIRET : nous trouvons les marchés publics et privés qui vous correspondent, et nous vous accompagnons jusqu’au dépôt."
       />
-      <MdHero onAppt={() => setAppointmentOpen(true)} />
-      <XhDemo onReserve={() => setAppointmentOpen(true)} />
-      <SituationSection onAppt={() => setAppointmentOpen(true)} />
-      <TestimonialsSection />
-      <TeamSection />
-      <GeographicSection
-        tab={geoTab} setTab={setGeoTab}
-        selectedRegions={selectedRegions} setSelectedRegions={setSelectedRegions}
-        selectedDepts={selectedDepts} setSelectedDepts={setSelectedDepts}
-      />
-      <BlogSection />
-      <PricingSection />
-      <HomeFaqSection />
-      <FinalCTA onAppt={() => setAppointmentOpen(true)} onCallback={() => setCallbackOpen(true)} />
-      <AppointmentModal open={appointmentOpen} onClose={() => setAppointmentOpen(false)} />
+      <main className="mx-auto flex w-full max-w-[560px] flex-col gap-8 bg-[#0A1628] px-4 pb-16 pt-4 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
+        <Block>
+          <Eyebrow>Artisans, TPE et PME · tous métiers</Eyebrow>
+          <h1 className="text-[25px] font-extrabold leading-tight">Les marchés faits pour votre entreprise, et une équipe pour y répondre.</h1>
+          <p className="text-[16px] text-[#B4C1D3]">Indiquez le nom de votre entreprise ou son SIRET : nous trouvons les marchés publics et privés qui vous correspondent, et nous vous accompagnons jusqu’au dépôt.</p>
+          <div className="flex flex-wrap gap-2 text-[14px] font-bold text-[#6EE7B7]">
+            <span className="rounded-full bg-[#123B2A] px-3 py-1.5">✓ Recherche et dossier prérempli gratuits</span>
+            <span className="rounded-full bg-[#123B2A] px-3 py-1.5">✓ Sans inscription</span>
+          </div>
+          <p className="text-[14px] text-[#B4C1D3]">Accompagnement à la candidature sur devis.</p>
+        </Block>
+
+        <section className="flex flex-col gap-4 rounded-2xl border border-[#22385A] bg-[#12233A] p-4">
+          <div role="tablist" aria-label="Mode de recherche" className="flex gap-1 rounded-xl bg-[#0F1F35] p-1">
+            <button type="button" role="tab" aria-selected={mode === 'company'} onClick={() => setMode('company')} className={tabCls(mode === 'company')}>Par entreprise</button>
+            <button type="button" role="tab" aria-selected={mode === 'simple'} onClick={() => setMode('simple')} className={tabCls(mode === 'simple')}>Recherche simple</button>
+          </div>
+          <div hidden={mode !== 'company'}><CompanySearchForm ref={companyRef} /></div>
+          {mode === 'simple' && <SimpleSearch />}
+          <SavedBanner />
+          <div className="flex items-start gap-3">
+            <ElenaAvatar />
+            <div>
+              <h3 className="text-[15px] font-bold">{ELENA.name} <span className="font-medium text-[#B4C1D3]">· {ELENA.role}</span></h3>
+              <p className="text-[15px] text-[#B4C1D3]">« Une question avant de commencer ? Je vous rappelle, de 9 h à 18 h. »{' '}
+                <Link to="/question" className="inline-flex min-h-[48px] items-center font-bold text-[#FB923C] underline">Poser ma question</Link>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <OpenCounter />
+        <p className="text-center text-[15px] text-[#B4C1D3]">Tous métiers : nettoyage, électricité, peinture, sécurité, architecture, énergie, maintenance, espaces verts, informatique… Marchés publics issus des publications officielles (BOAMP, JOUE) et marchés privés de nos partenaires, mis à jour chaque jour.</p>
+
+        <Block>
+          <Eyebrow>Comment ça marche</Eyebrow>
+          <h2 className="text-[21px] font-bold">Trois étapes, en quelques minutes</h2>
+          <ol className="flex flex-col gap-3 rounded-2xl border border-[#22385A] bg-[#0F1F35] p-4">
+            {[
+              ['Indiquez votre entreprise', 'Son nom ou son SIRET : nous l’identifions dans les registres officiels.'],
+              ['Comparez vos marchés', 'Chaque marché affiche son pourcentage de correspondance avec votre entreprise, analysé sur six critères.'],
+              ['Obtenez votre dossier prérempli', 'À votre nom, prêt tout de suite. Puis notre équipe vous rappelle pour préparer la suite avec vous.'],
+            ].map(([t, d], i) => (
+              <li key={t} className="flex gap-3">
+                <b className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C2410C] text-[15px] text-white">{i + 1}</b>
+                <div><h3 className="text-[16px] font-bold">{t}</h3><p className="text-[15px] text-[#B4C1D3]">{d}</p></div>
+              </li>
+            ))}
+          </ol>
+        </Block>
+
+        <Block>
+          <Eyebrow>Le moteur de correspondance</Eyebrow>
+          <h2 className="text-[21px] font-bold">Six critères analysés sur chaque marché</h2>
+          <p className="text-[15px] text-[#B4C1D3]">Ce que demande l’acheteur, face à ce que nous savons de votre entreprise.</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[['Activité', 'Vos métiers face aux prestations demandées.'], ['Zone', 'Le lieu d’exécution face à votre secteur.'], ['Calendrier', 'Date limite, démarrage, durée.'], ['Moyens', 'Équipe et matériel nécessaires.'], ['Références', 'Chantiers similaires à présenter.'], ['Qualifications', 'Certifications, assurances, labels exigés.']].map(([t, d]) => (
+              <div key={t} className="rounded-xl border border-[#22385A] bg-[#12233A] p-3"><h3 className="text-[16px] font-bold">{t}</h3><p className="text-[15px] text-[#B4C1D3]">{d}</p></div>
+            ))}
+          </div>
+        </Block>
+
+        <Block>
+          <Eyebrow>Ce que nous faisons avec vous</Eyebrow>
+          <h2 className="text-[21px] font-bold">Vous n’êtes pas seul face au dossier</h2>
+          <div className="flex flex-col gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-4 text-[15px]">
+            {[
+              ['Gratuit :', ' la recherche, le pourcentage par marché et votre dossier prérempli à votre nom.'],
+              ['Un premier échange offert de 30 minutes', ' pour faire le point sur le marché et sur votre entreprise.'],
+              ['Si vous le souhaitez, nous préparons la candidature avec vous :', ' formulaires, mémoire technique, dépôt. Sur devis, après l’échange.'],
+            ].map(([b, r]) => (
+              <div key={b} className="flex gap-2"><span className="font-bold text-[#6EE7B7]" aria-hidden>✓</span><span><strong>{b}</strong>{r}</span></div>
+            ))}
+          </div>
+        </Block>
+
+        {hasTeam && (
+          <Block>
+            <Eyebrow>Notre équipe</Eyebrow>
+            <h2 className="text-[21px] font-bold">De vraies personnes, du premier appel au dépôt</h2>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3"><ElenaAvatar size={64} /><div><h3 className="text-[16px] font-bold">{ELENA.name}</h3><p className="text-[15px] text-[#B4C1D3]">{ELENA.role}, votre premier contact. Elle vous rappelle, répond à vos questions et vous oriente vers la bonne personne.</p></div></div>
+              {TEAM.map(m => (
+                <div key={m.name} className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3"><img src={m.photo} alt={m.name} width={64} height={64} loading="lazy" className="h-16 w-16 shrink-0 rounded-full object-cover" /><div><h3 className="text-[16px] font-bold">{m.name}</h3><p className="text-[15px] text-[#B4C1D3]">{m.role}. {m.bio}</p></div></div>
+              ))}
+            </div>
+          </Block>
+        )}
+
+        {VIDEO_TESTIMONIALS.length > 0 && (
+          <Block>
+            <Eyebrow>Leur expérience, avec leurs mots</Eyebrow>
+            <h2 className="text-[21px] font-bold">Des entrepreneurs racontent leur candidature</h2>
+            {VIDEO_TESTIMONIALS.map(v => (
+              <figure key={v.src} className="flex flex-col gap-2">
+                <video controls preload="none" poster={v.poster} src={v.src} className="w-full rounded-2xl bg-[#12233A]" />
+                <figcaption className="text-[15px]"><span className="rounded-full bg-[#1E3352] px-2.5 py-1 text-[13px] font-semibold text-[#D6E0EC]">{v.trade}</span><strong className="mt-1 block text-[17px]">{v.result}</strong><span className="text-[#B4C1D3]">{v.who} · {v.duration} · sous-titré</span></figcaption>
+              </figure>
+            ))}
+          </Block>
+        )}
+
+        <Faq />
+
+        <Block>
+          <Eyebrow>Vous préférez regarder par département ?</Eyebrow>
+          <h2 className="text-[19px] font-bold">Explorer la carte des marchés</h2>
+          <DeferredMap />
+        </Block>
+
+        <section className="flex flex-col items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-5 text-center">
+          <h2 className="text-[21px] font-bold">Voyez les marchés qui vous correspondent</h2>
+          <button type="button" onClick={focusCompany} className="min-h-[52px] w-full rounded-xl bg-[#C2410C] px-4 text-[16px] font-bold text-white">Indiquer mon entreprise</button>
+          <button type="button" onClick={() => setCallbackOpen(true)} className="min-h-[48px] text-[15px] font-bold text-[#FB923C] underline">Vous préférez qu’on vous appelle ?</button>
+        </section>
+      </main>
       <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
   );
