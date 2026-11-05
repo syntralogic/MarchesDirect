@@ -87,7 +87,7 @@ export default function MonEspacePage() {
 
       {tab === 'documents' && (isAuthenticated ? <DocumentsTab /> : (
         <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>
-          Kbis, attestation URSSAF, assurances : déposez-les une fois et vous êtes prévenu avant qu’ils expirent. Il faut pour cela <Link to="/connexion?next=/mon-espace?onglet=documents" className="font-bold text-[#FB923C] underline">vous connecter avec votre e-mail</Link>, pour que vos documents restent privés.
+          Kbis, attestation URSSAF, assurances : déposez-les une fois, Elena les reprend dans vos dossiers et vous voyez ici quand les renouveler. Il faut pour cela <Link to="/connexion?next=/mon-espace?onglet=documents" className="font-bold text-[#FB923C] underline">vous connecter avec votre e-mail</Link>, pour que vos documents restent privés.
         </div>))}
 
       <Link to="/vos-marches" className="flex min-h-[48px] items-center justify-center rounded-xl border-2 border-[#2B4468] text-[14.5px] font-bold">Voir les nouveaux marchés</Link>
