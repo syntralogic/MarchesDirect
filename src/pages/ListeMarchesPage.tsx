@@ -2,8 +2,15 @@
 // (match-score), jamais par l'IA ; les cartes apparaissent tout de suite, les pourcentages se remplissent ensuite.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { opportunitiesApi, siretApi, type ApiSiretStatus } from '@/lib/apiClient';
-import { getSessionId, trackVisitorEvent } from '@/lib/visitorTracking';
+import { opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus } from '@/lib/apiClient';
+import { getSessionId, trackVisitorEvent, trackRequestSubmitted } from '@/lib/visitorTracking';
+import { useBrand } from '@/hooks/use-brand';
+import { useIdempotency } from '@/lib/useIdempotency';
+import { normalizeFrPhoneDigits } from '@/lib/utils';
+import { ELENA } from '@/data/homeContent';
+import { loadCoords, saveCoords, validateCoords, leadMessage, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
+import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
+import ConfirmationScreen from '@/components/fiche/ConfirmationScreen';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
 import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, type Journey } from '@/components/liste/RefinePanel';
@@ -98,6 +105,22 @@ export default function ListeMarchesPage() {
   const run = useRef(0); // a newer load (zone widened, company changed) makes the older one stop writing
   const known = !!status?.companyKnown;
 
+  // 4.5 / 5.5 : l'alerte « nouveaux marchés » se demande depuis la liste (sans marché précis). Aucun envoi automatique : Elena appelle.
+  const [view, setView] = useState<'list' | 'alerte' | 'done'>('list');
+  const [coords, setCoords] = useState<CoordValues>(() => loadCoords());
+  const [coordErrors, setCoordErrors] = useState<CoordErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const idem = useIdempotency();
+  const { brandId } = useBrand();
+  useEffect(() => {
+    const onPop = () => setView('list');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const openAlert = () => { setSubmitError(null); setCoordErrors({}); window.history.pushState({ md: 'alerte' }, ''); setView('alerte'); window.scrollTo({ top: 0 }); };
+  const backToList = () => { setView('list'); window.scrollTo({ top: 0 }); };
+
   useEffect(() => { siretApi.status(sessionId).then(setStatus).catch(() => setStatus(null)); }, [sessionId]);
 
   // Cards first (SQL only), then one percentage at a time from the rules engine, 4 in flight.
@@ -166,6 +189,45 @@ export default function ListeMarchesPage() {
   // No company and no trade chosen: nothing to count yet, so no "0 marché".
   const { title, sub } = known || total > 0 ? titleFor(total, known, q, zoneLabel) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
   const c = status?.company;
+  const scope = known && c
+    ? [c.activity && c.activity.length <= 40 ? c.activity : null, c.city ? `${c.city}${deptFromPostal(c.postal) ? ` (${deptFromPostal(c.postal)})` : ''} et alentours` : null].filter(Boolean).join(' · ')
+    : [q, zoneLabel].filter(Boolean).join(' · ');
+  const submitAlert = async () => {
+    const errs = validateCoords('alerte', coords);
+    setCoordErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    if (!idem.begin()) return;
+    setSubmitting(true); setSubmitError(null);
+    try {
+      if (!brandId) throw new Error('Impossible de contacter le serveur, réessayez.');
+      const requestId = idem.key();
+      await crmApi.submitLead({
+        brandId, phone: normalizeFrPhoneDigits(coords.phone), companyName: c?.name || undefined, industryTrade: c?.activity || q || undefined,
+        locationCity: c?.city || undefined, sessionId, idempotencyKey: requestId, leadSource: 'alert_signup', message: leadMessage('alerte', coords, scope),
+      });
+      trackRequestSubmitted('alert', { requestId });
+      idem.reset(); saveCoords(coords);
+      window.history.replaceState({ md: 'done' }, '');
+      setView('done'); window.scrollTo({ top: 0 });
+    } catch (err) {
+      setSubmitError(`${getApiErrorMessage(err, 'Échec de l’envoi.')} Vous pouvez réessayer.`);
+    } finally { idem.end(); setSubmitting(false); }
+  };
+  const elena = ELENA.photo
+    ? <img src={ELENA.photo} alt={ELENA.name} width={48} height={48} className="h-12 w-12 shrink-0 rounded-full object-cover" />
+    : <div aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#22385A] text-[13px] font-bold text-[#D6E0EC]">EP</div>;
+  if (view !== 'list') {
+    const context = [c?.name, scope].filter(Boolean).join(' · ');
+    return (
+      <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-10 pt-3 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
+        {view === 'alerte'
+          ? <CoordonneesScreen choice="alerte" context={context} values={coords} errors={coordErrors} submitting={submitting} submitError={submitError} hideSteps backLabel="Retour à vos marchés"
+              onChange={patch => { setCoords(v => ({ ...v, ...patch })); setCoordErrors({}); }} onSubmit={submitAlert} onBack={backToList} elenaPhoto={elena} />
+          : <ConfirmationScreen choice="alerte" values={coords} company={c} pdf="unavailable" onDownload={() => {}} onAppointment={() => {}} onBackToMarket={backToList} elenaPhoto={elena}
+              market={{ shortTitle: '', reference: null, deadline: null, deadlineText: '', daysLeft: null, officialUrl: null }} />}
+      </main>
+    );
+  }
   const pending = cards ? cards.filter(x => scores[x.id] === undefined).length : 0;
 
   return (
@@ -218,6 +280,12 @@ export default function ListeMarchesPage() {
       {cards === null && !error && <div className="flex flex-col gap-2.5" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="h-[150px] animate-pulse rounded-2xl bg-[#12233A]" />)}</div>}
 
       {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} />)}</div>}
+      {known && cards && cards.length > 0 && (
+        <section className="flex flex-col gap-2 rounded-2xl border border-[#22385A] bg-[#12233A] p-4" aria-label="Être prévenu des prochains marchés">
+          <h2 className="text-[18px] font-extrabold">Être prévenu des prochains marchés</h2>
+          <p className="text-[15px] text-[#D6E0EC]">De nouveaux marchés arrivent chaque jour. Elena vous appelle dès qu’un marché correspond à votre entreprise.</p>
+          <button type="button" onClick={openAlert} className={btn}>Être prévenu des nouveaux marchés</button>
+        </section>)}
       {cards && cards.length > 0 && visible.length === 0 && (
         <p className="text-[14px] text-[#B4C1D3]">
           {type !== 'all' && byType.length === 0 ? `Aucun ${type === 'tender' ? 'appel d’offres privé' : type === 'subcontracting' ? 'marché de sous-traitance' : 'marché public'} pour cette recherche aujourd’hui. ` : 'Aucun marché dans cette catégorie pour le moment. '}
@@ -235,7 +303,8 @@ export default function ListeMarchesPage() {
           {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className="min-h-[44px] text-[14px] font-semibold text-[#FB923C] underline">Voir tous les types</button>}
           <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
           {((known && zoneParam !== 'france') || dept || refine.where === 'near') && !tradeUnknown && <button type="button" onClick={() => { const p = paramsWithRefine(params, { ...refine, where: 'france', department: '', lat: null, lng: null, sort: refine.sort === 'distance' ? 'match' : refine.sort }); p.set('zone', 'france'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
-          {known && <p className="text-[13px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/contact" className="font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
+          {(known || q || dept) && <button type="button" onClick={openAlert} className="min-h-[48px] text-[15px] font-semibold text-[#FB923C] underline">Être prévenu dès qu’un marché correspond</button>}
+          {known && <p className="text-[14px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/question" className="inline-flex min-h-[48px] items-center font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
           {known || q || dept
             ? <Link to="/?mode=metier" className="min-h-[44px] py-3 text-[14px] font-semibold text-[#FB923C] underline">Changer de métier ou de zone</Link>
             : <Link to="/?mode=metier" className={btn}>Chercher par métier et par zone</Link>}
