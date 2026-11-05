@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { MiniProgress, stateLine } from '@/components/suivi/DossierTimeline';
 import InstallOffer from '@/components/pwa/InstallOffer';
+import DocumentsTab from '@/components/espace/DocumentsTab';
+import SecurityCard from '@/components/espace/SecurityCard';
 
 // « Mon espace » (5 nov.) : mes dossiers suivis, mes favoris, et l'accès aux nouveaux marchés.
 // Fonctionne sans compte (ce navigateur) ; une fois connecté par lien e-mail, on retrouve aussi les dossiers liés à
@@ -13,12 +15,17 @@ import InstallOffer from '@/components/pwa/InstallOffer';
 const daysLeft = (d: string | null) => { if (!d) return null; const n = Math.ceil((new Date(d).getTime() - Date.now()) / 86400000); return Number.isFinite(n) ? n : null; };
 const JOURNEY: Record<string, string> = { public_procurement: 'Marché public', tender: 'Appel d’offres privé', subcontracting: 'Sous-traitance' };
 
+// Cartes grises pendant le chargement (comme une appli bancaire), plutôt qu'un texte « Chargement… ».
+function Skeleton() {
+  return <div className="flex flex-col gap-2" aria-hidden>{[0, 1].map(i => <div key={i} className="h-[92px] animate-pulse rounded-[14px] border border-[#22385A] bg-[#12233A]" />)}</div>;
+}
+
 export default function MonEspacePage() {
   const sessionId = useMemo(() => getSessionId(), []);
   const { isAuthenticated, company } = useAuth();
   const { savedIds } = useFavorites();
   const [params, setParams] = useSearchParams();
-  const tab = params.get('onglet') === 'favoris' ? 'favoris' : 'dossiers';
+  const tab = params.get('onglet') === 'favoris' ? 'favoris' : params.get('onglet') === 'documents' ? 'documents' : 'dossiers';
   const [dossiers, setDossiers] = useState<SuiviDossier[] | null>(null);
   const [favs, setFavs] = useState<ApiOpportunity[] | null>(null);
   const [name, setName] = useState<string | null>(null);
@@ -41,17 +48,17 @@ export default function MonEspacePage() {
       <div>
         <span className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FB923C]">Mon espace</span>
         <h1 className="mt-0.5 text-[22px] font-extrabold leading-tight">{who ? `Bonjour, ${who}` : 'Votre espace'}</h1>
-        <p className="mt-1 text-[14px] text-[#B4C1D3]">{dossiers == null ? 'Chargement…' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
+        {who && <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#123B2A] px-2.5 py-1 text-[12px] font-bold text-[#6EE7B7]">✓ Entreprise identifiée par son SIRET</span>}
+        <p className="mt-1 text-[14px] text-[#B4C1D3]">{dossiers == null ? '\u00a0' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
       </div>
 
       <div className="flex gap-1.5" role="tablist">
-        {([['dossiers', `Mes dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Favoris${favs ? ' · ' + favs.length : ''}`]] as const).map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setParams(k === 'favoris' ? { onglet: 'favoris' } : {})}
+        {([['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Favoris${favs ? ' · ' + favs.length : ''}`], ['documents', 'Documents']] as const).map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setParams(k === 'dossiers' ? {} : { onglet: k })}
             className={`min-h-[44px] flex-1 rounded-[10px] border text-[13.5px] font-bold ${tab === k ? 'border-[#3B5A86] bg-[#1E3352] text-white' : 'border-[#2B4468] text-[#B4C1D3]'}`}>{l}</button>))}
-        <Link to="/vos-marches" className="flex min-h-[44px] flex-1 items-center justify-center rounded-[10px] border border-[#2B4468] text-[13.5px] font-bold text-[#B4C1D3]">Nouveaux</Link>
       </div>
 
-      {tab === 'dossiers' && (dossiers == null ? null : dossiers.length === 0 ? (
+      {tab === 'dossiers' && (dossiers == null ? <Skeleton /> : dossiers.length === 0 ? (
         <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>
           Aucun dossier suivi pour l’instant. Sur la fiche d’un marché, recevez votre dossier puis touchez <b>« Confier à Elena »</b> : son avancement s’affichera ici.
           <Link to="/vos-marches" className="mt-3 flex min-h-[46px] items-center justify-center rounded-xl bg-[#F97316] font-extrabold text-white">Voir mes marchés</Link>
@@ -67,7 +74,7 @@ export default function MonEspacePage() {
           </Link>);
       }))}
 
-      {tab === 'favoris' && (favs == null ? null : favs.length === 0 ? (
+      {tab === 'favoris' && (favs == null ? <Skeleton /> : favs.length === 0 ? (
         <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>Aucun favori. Touchez le cœur sur un marché pour le retrouver ici.</div>
       ) : favs.map(o => (
         <Link key={o.id} to={`/opportunites/${o.id}`} className={`${card} border-[#22385A]`}>
@@ -75,6 +82,14 @@ export default function MonEspacePage() {
           <small className="block text-[12px] text-[#B4C1D3]">{[o.buyer_name, o.location_city, o.deadline ? `remise le ${new Date(o.deadline as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ')}</small>
         </Link>)))}
 
+      {tab === 'documents' && (isAuthenticated ? <DocumentsTab /> : (
+        <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>
+          Kbis, attestation URSSAF, assurances : déposez-les une fois et vous êtes prévenu avant qu’ils expirent. Il faut pour cela <Link to="/connexion?next=/mon-espace?onglet=documents" className="font-bold text-[#FB923C] underline">vous connecter avec votre e-mail</Link>, pour que vos documents restent privés.
+        </div>))}
+
+      <Link to="/vos-marches" className="flex min-h-[48px] items-center justify-center rounded-xl border-2 border-[#2B4468] text-[14.5px] font-bold">Voir les nouveaux marchés</Link>
+
+      {isAuthenticated && <SecurityCard />}
       {!isAuthenticated && (
         <p className="rounded-[14px] border border-[#22385A] bg-[#0F1F35] p-3 text-[13px] text-[#B4C1D3]">
           Votre espace est gardé sur ce téléphone. Pour le retrouver sur un autre appareil, <Link to="/connexion?next=/mon-espace" className="font-bold text-[#FB923C] underline">connectez-vous avec votre e-mail</Link>.
