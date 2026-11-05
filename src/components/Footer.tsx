@@ -99,7 +99,7 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
       { label: 'Trouver mes marchés', href: '/' },
       { label: 'Marchés par zone', href: '/#mdh-zones' },
       { label: 'Poser ma question', href: '/question' },
-      { label: 'Mon espace', href: '/tableau-de-bord' },
+      { label: 'Mon espace', href: '/mon-espace' },
     ],
   },
   {

@@ -19,6 +19,8 @@ type Props = {
   elenaPhoto: ReactNode;
   // Preuve sociale réelle (dossiers demandés sur 7 jours), masquée sous 2.
   dossiers?: number | null;
+  // 5 nov. : favori, « Confier à Elena » et la frise de suivi commune.
+  suivi?: ReactNode;
 };
 
 const card = 'rounded-2xl border border-[#22385A] bg-[#12233A] p-4';
@@ -113,6 +115,7 @@ export default function ConfirmationScreen(p: Props) {
             {cal.slice(0, 3).map((r) => <li key={r.when} className="flex-1 rounded-xl border border-[#22385A] p-2.5 text-[12px] text-[#B4C1D3]"><b className="mb-0.5 block text-[13px] text-[#F2F5F9]">{r.when}</b>{r.what}</li>)}
           </ol>
         </section>
+        {p.suivi}
         <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5">{p.elenaPhoto}<p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{c.done.elena}</p></div>
         {p.dossiers != null && p.dossiers >= 2 && <p className="flex items-center gap-2 text-[13px] text-[#D6E0EC]"><span aria-hidden className="h-2 w-2 rounded-full bg-[#EF4444]" />{p.dossiers} entreprises ont demandé leur dossier ces 7 derniers jours</p>}
         <Dossier p={p} open={false} />

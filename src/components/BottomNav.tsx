@@ -8,14 +8,14 @@ const NAV_ITEMS = [
   { label: 'Accueil', href: '/', icon: Home },
   { label: 'Vos marchés', href: '/vos-marches', icon: Search },
   { label: 'Une question', href: '/question', icon: MessageCircle },
-  { label: 'Mon espace', href: '/tableau-de-bord', icon: User },
+  { label: 'Mon espace', href: '/mon-espace', icon: User },
 ];
 
 export function BottomNav() {
   const location = useLocation();
 
   const isActive = (href: string) =>
-    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href) || (href === '/tableau-de-bord' && (location.pathname.startsWith('/connexion') || location.pathname.startsWith('/profil')));
+    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href) || (href === '/mon-espace' && (location.pathname.startsWith('/connexion') || location.pathname.startsWith('/profil') || location.pathname.startsWith('/mon-dossier') || location.pathname.startsWith('/tableau-de-bord')));
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0A1628] border-t border-[#1E3352]">
