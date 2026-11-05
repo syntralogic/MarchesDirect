@@ -19,6 +19,7 @@ import { AppointmentModal } from '@/components/AppointmentModal';
 import {
   QUESTIONS, CRITERIA_ORDER, STATUS_TEXT, answersToParam, buildAdvice, criterionStatus, daysLeft,
   scoreLabel, scoreTone, shortTitle, summaryFor, type CriterionStatus, type FicheAnswers,
+  buildHighlights, buildEliteAdvice, UPGRADE_QUESTION,
 } from '@/lib/ficheAdvice';
 
 const TYPE_LABEL: Record<string, string> = { public_procurement: 'MARCHÉ PUBLIC', subcontracting: 'SOUS-TRAITANCE', tender: 'APPEL D’OFFRES PRIVÉ' };
@@ -181,11 +182,20 @@ export default function FicheMarchePage() {
   const title = opp ? shortTitle(opp.title, city) : '';
   const crit = (k: string) => score?.matchCriteria?.find(c => c.key === k);
   const sc = score?.score ?? null;
-  const advice = known && sc != null && opp ? buildAdvice({
+  // v28 : repères et conseil d'Elena calculés à partir des faits chiffrés du moteur (aucune IA).
+  const v28 = known && sc != null && opp && score?.matchFacts ? {
+    score: sc, company: company || 'Votre entreprise', companyCity: status?.company?.city || null,
+    facts: score.matchFacts, criteria: score.matchCriteria || [], buyer: opp.buyer_name, journey: opp.journey,
+    deadlineText: opp.deadline ? new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }).format(new Date(opp.deadline)) : null,
+    tradeLabel: score.matchFacts.metierLevel === 'exact' || score.matchFacts.metierLevel === 'secondary' ? (opp.trade_name || '').toLowerCase() || null : null,
+  } : null;
+  const highlights = v28 ? buildHighlights(v28) : [];
+  const advice = v28 ? buildEliteAdvice(v28) : known && sc != null && opp ? buildAdvice({
     score: sc, activity: (crit('metier')?.status ?? 'confirm') as 'match' | 'confirm' | 'mismatch',
     nature: opp.trade_name ? `de ${opp.trade_name.toLowerCase()}` : `« ${title.replace(/\s+—\s+[^—]+$/, '')} »`,
     city, company: company || 'votre entreprise', answers,
   }) : null;
+  const fmtPts = (n: number | undefined) => (n == null ? '0' : (Math.round(n * 10) / 10).toLocaleString('fr-FR', { maximumFractionDigits: 1 }));
 
   // --- choices: no network call and no event here, the request itself fires events once saved ---
   const loadSlots = () => {
@@ -406,14 +416,18 @@ export default function FicheMarchePage() {
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <h2 className="text-[19px] font-extrabold">Ce marché vous correspond à {sc} %</h2>
                   <span className="w-fit rounded-full px-2.5 py-1 text-[13px] font-bold" style={{ background: tone === 'hi' ? '#123B2A' : tone === 'mid' ? '#3A2312' : '#1E3352', color: tone === 'hi' ? '#6EE7B7' : tone === 'mid' ? '#FDBA74' : '#D6E0EC' }}>{scoreLabel(sc)}</span>
-                  <span className="text-[13px] text-[#B4C1D3]">Correspondance estimée · à préciser avec vos réponses</span>
+                  <span className="text-[13px] text-[#B4C1D3]">{score?.criteriaDocumented != null ? `Fiabilité : ${score.criteriaDocumented} critère${score.criteriaDocumented > 1 ? 's' : ''} sur ${(score.criteriaDocumented || 0) + (score.criteriaToConfirm || 0)} vérifiés par les données` : 'Correspondance estimée · à préciser avec vos réponses'}</span>
                 </div>
               </div>
             ) : score ? (
               <div className="flex flex-col gap-1.5"><h2 className="text-[19px] font-extrabold">Correspondance à confirmer</h2>
                 <p className="text-[14px] text-[#D6E0EC]">Nous ne savons pas encore comparer votre entreprise à ce marché. Répondez aux 4 questions ci-dessous : aucun pourcentage n’est inventé.</p></div>
             ) : <div className="h-24 animate-pulse rounded-xl bg-[#0F1F35]" aria-busy="true" />}
-            {sc != null && <p className="text-[14px] text-[#D6E0EC]">{summaryFor(sc)}</p>}
+            {highlights.length > 0 ? (
+              <ul className="flex flex-wrap gap-1.5" aria-label="Vos repères sur ce marché">
+                {highlights.map(h => <li key={h.text} className={`rounded-full px-2.5 py-1 text-[12.5px] font-bold ${h.tone === 'ok' ? 'bg-[#123B2A] text-[#6EE7B7]' : h.tone === 'warn' ? 'bg-[#3A2312] text-[#FDBA74]' : 'bg-[#1E3352] text-[#D6E0EC]'}`}>{h.text}</li>)}
+              </ul>
+            ) : sc != null && <p className="text-[14px] text-[#D6E0EC]">{summaryFor(sc)}</p>}
             <div className="flex items-center gap-2 rounded-xl bg-[#123B2A] px-3 py-2 text-[13px] text-[#6EE7B7]">
               <span aria-hidden>✓</span><span className="min-w-0 flex-1">{['Pour ' + company, status?.company?.activity && status.company.activity.length <= 40 ? status.company.activity : null, status?.company?.city ? `${status.company.city}${status.company.postal ? ` (${status.company.postal.slice(0, 2)})` : ''}` : null].filter(Boolean).join(' · ')}</span>
               <button type="button" onClick={() => { setEditing(true); setQuery(company); }} className="min-h-[44px] min-w-[44px] font-bold underline">Modifier</button>
@@ -425,21 +439,44 @@ export default function FicheMarchePage() {
             <section className="flex flex-col gap-3 rounded-2xl border-l-4 border-[#C2410C] bg-[#1C2433] p-4" aria-label="Votre conseil personnalisé">
               <div className="flex items-center gap-3">
                 <ElenaPhoto />
-                <div className="flex flex-col"><b>Votre conseil personnalisé</b><span className="text-[13px] text-[#B4C1D3]">Elena Popescu · Chargée de relation</span></div>
+                <div className="flex flex-col"><b>Le conseil d’Elena</b><span className="text-[13px] text-[#B4C1D3]">Elena Popescu · Chargée de relation</span></div>
               </div>
-              <p className="text-[15px]">{advice.text}</p>
+              <p className="text-[15px] leading-relaxed">{advice.text}</p>
+              <button type="button" onClick={() => choose('dossier')} className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#F97316] px-3 text-center text-[15px] font-extrabold text-white">Recevoir mon dossier et faire le point avec Elena</button>
               {advice.suggestBetter && <Link to="/vos-marches" className="text-[14px] font-semibold text-[#FB923C]">Voir les marchés qui me correspondent mieux ›</Link>}
-              <p className="text-[12px] text-[#B4C1D3]">Synthèse automatique, à confirmer avec Elena.</p>
+              <p className="text-[12px] text-[#B4C1D3]">Synthèse automatique à partir de votre entreprise et du marché, à confirmer avec Elena.</p>
             </section>)}
 
           <section className="flex flex-col gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-4">
-            <h3 className="text-[17px] font-extrabold">Analysé sur six critères</h3>
+            <h3 className="text-[17px] font-extrabold">D’où vient votre {sc != null ? `${sc} %` : 'pourcentage'}</h3>
             {score ? CRITERIA_ORDER.map(({ key, label }) => {
               const c = crit(key); const st = criterionStatus(c);
+              // v28 : points réellement gagnés / maximum (somme = pourcentage). Critère hors calcul : une ligne d'explication.
+              if (c && c.maxPoints != null) {
+                if (!c.maxPoints) return <p key={key} className="border-t border-[#22385A] pt-3 text-[13px] text-[#B4C1D3]"><b className="text-[#D6E0EC]">{label}</b> · {c.detail} (non compté)</p>;
+                const ratio = Math.max(0, Math.min(1, (c.points || 0) / c.maxPoints));
+                const color = ratio >= 0.75 ? '#34D399' : ratio >= 0.4 ? '#FDBA74' : '#FB923C';
+                return (<div key={key} className="flex flex-col gap-1 border-t border-[#22385A] pt-3 first:border-0 first:pt-0">
+                  <div className="flex justify-between gap-3"><b className="text-[15px]">{label}</b><span className="text-[14px] font-extrabold">{fmtPts(c.points)} / {fmtPts(c.maxPoints)}</span></div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#1E3352]" aria-hidden><div className="h-full rounded-full" style={{ width: `${Math.round(ratio * 100)}%`, background: color }} /></div>
+                  {c.detail && <p className="text-[13px] text-[#B4C1D3]">{c.detail}</p>}</div>);
+              }
               return (<div key={key} className="flex flex-col gap-0.5 border-t border-[#22385A] pt-3 first:border-0 first:pt-0">
                 <div className="flex justify-between gap-3"><b className="text-[15px]">{label}</b><span className={`text-[13px] font-bold ${STATUS_CLASS[st]}`}>{STATUS_TEXT[st]}</span></div>
                 {c?.detail && <p className="text-[14px] text-[#D6E0EC]">{c.detail}</p>}</div>);
             }) : <div className="h-32 animate-pulse rounded-xl bg-[#0F1F35]" aria-busy="true" />}
+            {score?.adjustment && <p className="rounded-xl bg-[#2A2012] px-3 py-2 text-[13px] text-[#FDBA74]">{score.adjustment}</p>}
+            {score?.upgrades && score.upgrades.length > 0 && (
+              <div className="rounded-xl border border-dashed border-[#FB923C] p-3">
+                <b className="text-[14px] text-[#FDBA74]">Ce qui ferait monter votre pourcentage</b>
+                <ul className="mt-1.5 flex flex-col gap-1.5">
+                  {score.upgrades.map(u => (
+                    <li key={u.key} className="flex items-center justify-between gap-3 text-[14px] text-[#D6E0EC]">
+                      <span>{u.label} <b className="whitespace-nowrap text-[#6EE7B7]">+ {u.points} pts</b></span>
+                      <button type="button" onClick={() => answer(UPGRADE_QUESTION[u.key], 1)} className="min-h-[40px] shrink-0 rounded-lg border border-[#2B4468] px-3 text-[13px] font-bold text-white">C’est le cas</button>
+                    </li>))}
+                </ul>
+              </div>)}
             <details className="group">
               <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 text-[14px] font-semibold text-[#FB923C] [&::-webkit-details-marker]:hidden">Affiner mon pourcentage · 4 questions · 1 minute</summary>
               <div className="flex flex-col gap-3 pt-2">
@@ -452,7 +489,7 @@ export default function FicheMarchePage() {
                           className={`min-h-[48px] flex-1 rounded-xl border px-3 font-bold ${answers[q.key] === v ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468]'}`}>{v ? 'Oui' : 'Non'}</button>))}
                     </div>
                   </div>))}
-                <p className="text-[13px] text-[#B4C1D3]">Le pourcentage se met à jour à chaque réponse. Une information que nous n’avons pas n’est jamais comptée comme acquise, ni contre vous.</p>
+                <p className="text-[13px] text-[#B4C1D3]">Le pourcentage se met à jour à chaque réponse. Une information que nous n’avons pas compte pour une valeur neutre, ni acquise ni contre vous.</p>
               </div>
             </details>
           </section>

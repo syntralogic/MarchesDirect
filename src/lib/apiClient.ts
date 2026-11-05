@@ -366,7 +366,17 @@ export type ApiMatchCriterion = {
   evidence?: 'verified_match' | 'declared_match' | 'mismatch' | 'unknown' | 'not_applicable';
   mandatory?: boolean;
   conflict?: boolean;
+  // v28 : valeur continue 0..1, points gagnés et maximum sur 100 (somme des points = pourcentage).
+  value?: number;
+  points?: number;
+  maxPoints?: number;
 };
+
+export type ApiMatchFacts = {
+  km: number | null; radiusKm: number; radiusDeclared: boolean; daysLeft: number | null;
+  metierLevel: 'exact' | 'secondary' | 'general' | 'none' | 'unknown'; revenueRatio: number | null;
+};
+export type ApiMatchUpgrade = { key: 'experience' | 'capacity' | 'location' | 'calendar'; label: string; points: number };
 
 export type ApiMatchVerdict = {
   code: 'MARKET_CLOSED' | 'MANDATORY_UNMET' | 'REVIEW_REQUIRED' | 'ACTIVITY_MATCH' | 'ACTIVITY_UNCLEAR';
@@ -388,6 +398,9 @@ export type ApiMatchScore = {
   criteriaToConfirm?: number;
   // Company-vs-market comparison, one entry per criterion.
   matchCriteria: ApiMatchCriterion[];
+  matchFacts?: ApiMatchFacts | null;
+  upgrades?: ApiMatchUpgrade[];
+  adjustment?: string | null;
   warning: string | null;
   criteria: { label: string; weight: number | null }[];
   criteriaSource?: 'notice' | 'unknown';
