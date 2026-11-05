@@ -45,8 +45,8 @@ export function seoH1(p: SeoV2Page): string {
 }
 export function seoDescription(p: SeoV2Page): string {
   const next = seoDate(p.nextDeadline);
-  if (p.count > 0) return `${countText(p.journey, p.count)}${tradeIn(p)} ${zoneIn(p)}${next ? `, prochaine date limite le ${next}` : ''}. Lieu, acheteur, date limite et lien vers chaque annonce ; vérifiez gratuitement si le marché correspond à votre entreprise.`.slice(0, 300);
-  return `Aucune ${NOUN[p.journey][0].split(' ')[0]}${tradeIn(p)} n’est ouverte ${zoneIn(p)} aujourd’hui. Consultez les annonces ouvertes à proximité et soyez prévenu des prochaines.`;
+  if (p.count > 0) return `${countText(p.journey, p.count)}${tradeIn(p)} ${zoneIn(p)}${next ? `, prochaine date limite le ${next}` : ''}. Acheteur, date limite et lien vers chaque avis ; vérifiez gratuitement si le marché correspond à votre entreprise.`.slice(0, 300);
+  return `Aucune ${NOUN[p.journey][0].split(' ')[0]}${tradeIn(p)} n’est ouverte ${zoneIn(p)} aujourd’hui. Consultez les autres annonces du département et soyez prévenu des prochaines.`;
 }
 /** Introduction construite à partir des données de la zone (jamais un texte où seul le nom de ville change). */
 export function seoIntro(p: SeoV2Page): string[] {
@@ -60,7 +60,7 @@ export function seoIntro(p: SeoV2Page): string[] {
   } else {
     out.push(`Aucune ${NOUN[p.journey][0]}${tradeIn(p)} ${zoneIn(p)} au ${asOf}. Les annonces sont mises à jour chaque jour ; cette page affichera les prochaines dès leur publication.`);
   }
-  if (p.zone.type === 'city' && p.nearbyCount > 0 && p.zone.departmentName) out.push(`Autres annonces du département ${p.zone.departmentName} (${p.zone.department}) : ${countText(p.journey, p.nearbyCount)}, dont l’acheteur est situé dans une autre commune ou n’a pas de commune précisée. Elles sont présentées séparément ci-dessous.`);
+  if (p.zone.type === 'city' && p.nearbyCount > 0 && p.zone.departmentName) out.push(`Autres annonces du département ${p.zone.departmentName} (${p.zone.department}) : ${countText(p.journey, p.nearbyCount)}. L’acheteur y est situé dans une autre commune, ou sa commune n’est pas précisée : liste à part ci-dessous.`);
   return out;
 }
 export function seoFaq(p: SeoV2Page): { q: string; a: string }[] {
