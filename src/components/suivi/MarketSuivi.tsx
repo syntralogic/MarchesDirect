@@ -94,6 +94,7 @@ export default function MarketSuivi({ opportunityId, sessionId, analysed, onDoss
             ? <button type="button" onClick={confier} className="flex min-h-[44px] w-full items-center justify-center rounded-xl border-2 border-[#FB923C] px-3 text-[14px] font-extrabold text-white">Confier mon dossier à Elena</button>
             : null} />
       </div>
+      {entrusted && <Link to={`/mon-dossier/${opportunityId}`} className="flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#2B4468] text-[14px] font-bold">Suivre mon dossier et écrire à Elena</Link>}
       <p className="text-[12px] leading-snug text-[#B4C1D3]">Le même suivi continue dans <Link to="/mon-espace" className="font-bold text-[#FB923C] underline">votre espace</Link> : pas besoin d’appeler pour savoir où en est votre dossier.</p>
     </section>
   );

@@ -4,6 +4,7 @@ import { suiviApi, opportunitiesApi, type SuiviDossier, type SuiviStep, type Api
 import { getSessionId } from '@/lib/visitorTracking';
 import DossierTimeline from '@/components/suivi/DossierTimeline';
 import { ELENA } from '@/data/homeContent';
+import DossierMessages from '@/components/suivi/DossierMessages';
 
 // « Mon dossier » (5 nov.) : la frise d'un dossier suivi, avec ses dates réelles. C'est aussi la cible du QR code du
 // dossier PDF. Accès : ce navigateur, ou le compte connecté par e-mail. Sinon : lien vers la fiche du marché.
@@ -34,6 +35,7 @@ export default function MonDossierPage() {
         <>
           {action && <div role="status" className="rounded-[14px] border border-[#B45309] bg-[#2A2012] p-3 text-[14px]"><b className="text-[#FCD34D]">À faire : {action.label}</b><br /><span className="text-[#D6E0EC]">{action.detail}</span></div>}
           <div className="rounded-[18px] border border-[#22385A] bg-[#12233A] p-3.5"><DossierTimeline steps={steps} /></div>
+          {d && <DossierMessages opportunityId={id} sessionId={sessionId} />}
           {d && <p className="text-[12px] text-[#B4C1D3]">Dernière mise à jour le {new Date(d.updatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })}.</p>}
           <div className="flex items-center gap-3 rounded-[14px] border border-[#22385A] bg-[#12233A] p-3">
             {ELENA.photo && <img src={ELENA.photo} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
