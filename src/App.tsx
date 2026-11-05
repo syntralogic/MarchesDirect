@@ -35,6 +35,8 @@ import FicheMarchePage from '@/pages/FicheMarchePage';
 import { OpportunityTransitionProvider } from '@/contexts/OpportunityTransitionContext';
 import BidWorkspacePage from '@/pages/BidWorkspacePage';
 import TableauDeBordPage from '@/pages/TableauDeBordPage';
+import MonEspacePage from '@/pages/MonEspacePage';
+import MonDossierPage from '@/pages/MonDossierPage';
 import ProfilPage from '@/pages/ProfilPage';
 import CompanyVaultPage from '@/pages/CompanyVaultPage';
 import EquipePage from '@/pages/EquipePage';
@@ -220,6 +222,8 @@ const App: React.FC = () => {
               <Route path="/opportunites/:id" element={<PageErrorBoundary><KeyedOpportunityDetail /></PageErrorBoundary>} />
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />
+              <Route path="/mon-espace" element={<MonEspacePage />} />
+              <Route path="/mon-dossier/:id" element={<MonDossierPage />} />
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
               <Route path="/profil/dossier-entreprise" element={<RequireAuth><CompanyVaultPage /></RequireAuth>} />
               <Route path="/equipe" element={<EquipePage />} />

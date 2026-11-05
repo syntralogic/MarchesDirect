@@ -23,7 +23,7 @@ export function Header() {
   const { isAuthenticated } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const space = isAuthenticated ? '/tableau-de-bord' : '/connexion';
+  const space = '/mon-espace';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -115,7 +115,7 @@ export function Header() {
                 Poser ma question à {ELENA.name.split(' ')[0]}
               </Link>
               <Link to={space} onClick={() => setMenuOpen(false)} className="flex min-h-[48px] w-full items-center justify-center rounded-xl border-2 border-[#2A4A74] text-[15px] font-bold text-white">
-                {isAuthenticated ? 'Mon espace' : 'Me connecter par e-mail'}
+                Mon espace
               </Link>
             </div>
           </nav>

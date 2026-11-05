@@ -1,0 +1,84 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { suiviApi, favoritesApi, opportunitiesApi, siretApi, type SuiviDossier, type ApiOpportunity } from '@/lib/apiClient';
+import { getSessionId } from '@/lib/visitorTracking';
+import { useAuth } from '@/contexts/AuthContext';
+import { useFavorites } from '@/contexts/FavoritesContext';
+import { MiniProgress, stateLine } from '@/components/suivi/DossierTimeline';
+
+// « Mon espace » (5 nov.) : mes dossiers suivis, mes favoris, et l'accès aux nouveaux marchés.
+// Fonctionne sans compte (ce navigateur) ; une fois connecté par lien e-mail, on retrouve aussi les dossiers liés à
+// son adresse vérifiée, depuis n'importe quel appareil.
+const daysLeft = (d: string | null) => { if (!d) return null; const n = Math.ceil((new Date(d).getTime() - Date.now()) / 86400000); return Number.isFinite(n) ? n : null; };
+const JOURNEY: Record<string, string> = { public_procurement: 'Marché public', tender: 'Appel d’offres privé', subcontracting: 'Sous-traitance' };
+
+export default function MonEspacePage() {
+  const sessionId = useMemo(() => getSessionId(), []);
+  const { isAuthenticated, company } = useAuth();
+  const { savedIds } = useFavorites();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('onglet') === 'favoris' ? 'favoris' : 'dossiers';
+  const [dossiers, setDossiers] = useState<SuiviDossier[] | null>(null);
+  const [favs, setFavs] = useState<ApiOpportunity[] | null>(null);
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => { suiviApi.list(sessionId).then(setDossiers).catch(() => setDossiers([])); }, [sessionId]);
+  useEffect(() => { if (!isAuthenticated) siretApi.status(sessionId).then(s => setName(s?.company?.name || null)).catch(() => {}); }, [isAuthenticated, sessionId]);
+  useEffect(() => {
+    let live = true;
+    (isAuthenticated ? favoritesApi.list() : Promise.all([...savedIds].slice(0, 20).map(id => opportunitiesApi.getById(id).catch(() => null))).then(r => r.filter(Boolean) as ApiOpportunity[]))
+      .then(r => { if (live) setFavs(r); }).catch(() => { if (live) setFavs([]); });
+    return () => { live = false; };
+  }, [isAuthenticated, savedIds]);
+
+  const who = (isAuthenticated ? company?.name : name) || null;
+  const actions = (dossiers || []).filter(d => d.steps.some(s => s.state === 'action')).length;
+  const card = 'block rounded-[14px] border bg-[#12233A] p-3';
+
+  return (
+    <main className="mx-auto flex w-full max-w-[560px] flex-col gap-4 bg-[#0A1628] px-4 pb-28 pt-4 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
+      <div>
+        <span className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FB923C]">Mon espace</span>
+        <h1 className="mt-0.5 text-[22px] font-extrabold leading-tight">{who ? `Bonjour, ${who}` : 'Votre espace'}</h1>
+        <p className="mt-1 text-[14px] text-[#B4C1D3]">{dossiers == null ? 'Chargement…' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
+      </div>
+
+      <div className="flex gap-1.5" role="tablist">
+        {([['dossiers', `Mes dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Favoris${favs ? ' · ' + favs.length : ''}`]] as const).map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setParams(k === 'favoris' ? { onglet: 'favoris' } : {})}
+            className={`min-h-[44px] flex-1 rounded-[10px] border text-[13.5px] font-bold ${tab === k ? 'border-[#3B5A86] bg-[#1E3352] text-white' : 'border-[#2B4468] text-[#B4C1D3]'}`}>{l}</button>))}
+        <Link to="/vos-marches" className="flex min-h-[44px] flex-1 items-center justify-center rounded-[10px] border border-[#2B4468] text-[13.5px] font-bold text-[#B4C1D3]">Nouveaux</Link>
+      </div>
+
+      {tab === 'dossiers' && (dossiers == null ? null : dossiers.length === 0 ? (
+        <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>
+          Aucun dossier suivi pour l’instant. Sur la fiche d’un marché, recevez votre dossier puis touchez <b>« Confier à Elena »</b> : son avancement s’affichera ici.
+          <Link to="/vos-marches" className="mt-3 flex min-h-[46px] items-center justify-center rounded-xl bg-[#F97316] font-extrabold text-white">Voir mes marchés</Link>
+        </div>
+      ) : dossiers.map(d => {
+        const st = stateLine(d.steps); const n = daysLeft(d.deadline);
+        return (
+          <Link key={d.id} to={`/mon-dossier/${d.opportunityId}`} className={`${card} ${st.tone === 'action' ? 'border-[#B45309]' : 'border-[#22385A]'}`}>
+            <div className="flex justify-between gap-2"><b className="text-[14.5px] leading-tight">{d.title}</b>{n != null && <small className="shrink-0 whitespace-nowrap text-[12px] text-[#B4C1D3]">{n >= 0 ? `J-${n}` : 'Clôturé'}</small>}</div>
+            <small className="text-[12px] text-[#B4C1D3]">{[JOURNEY[d.journey || ''] , d.buyer, d.city].filter(Boolean).join(' · ')}</small>
+            <MiniProgress steps={d.steps} />
+            <div className={`mt-1.5 text-[12.5px] font-extrabold ${st.tone === 'action' ? 'text-[#FCD34D]' : st.tone === 'done' ? 'text-[#6EE7B7]' : 'text-[#FDBA74]'}`}>● {st.text}</div>
+          </Link>);
+      }))}
+
+      {tab === 'favoris' && (favs == null ? null : favs.length === 0 ? (
+        <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>Aucun favori. Touchez le cœur sur un marché pour le retrouver ici.</div>
+      ) : favs.map(o => (
+        <Link key={o.id} to={`/opportunites/${o.id}`} className={`${card} border-[#22385A]`}>
+          <b className="text-[14.5px] leading-tight">{o.title}</b>
+          <small className="block text-[12px] text-[#B4C1D3]">{[o.buyer_name, o.location_city, o.deadline ? `remise le ${new Date(o.deadline as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ')}</small>
+        </Link>)))}
+
+      {!isAuthenticated && (
+        <p className="rounded-[14px] border border-[#22385A] bg-[#0F1F35] p-3 text-[13px] text-[#B4C1D3]">
+          Votre espace est gardé sur ce téléphone. Pour le retrouver sur un autre appareil, <Link to="/connexion?next=/mon-espace" className="font-bold text-[#FB923C] underline">connectez-vous avec votre e-mail</Link>.
+        </p>)}
+      {isAuthenticated && <Link to="/tableau-de-bord" className="text-center text-[13.5px] font-bold text-[#FB923C] underline">Mon compte et mes documents</Link>}
+    </main>
+  );
+}

@@ -12,6 +12,8 @@ import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { useBrand } from '@/hooks/use-brand';
 import { useIdempotency } from '@/lib/useIdempotency';
 import { normalizeFrPhoneDigits } from '@/lib/utils';
+import { useFavorites } from '@/contexts/FavoritesContext';
+import MarketSuivi from '@/components/suivi/MarketSuivi';
 import { loadCoords, saveCoords, validateCoords, leadMessage, pdfFileName, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
 import ConfirmationScreen, { type PdfState } from '@/components/fiche/ConfirmationScreen';
@@ -70,7 +72,7 @@ export default function FicheMarchePage() {
   const [dossiers, setDossiers] = useState<number | null>(null);
   // 5 Nov (un clic = dossier + créneau) : trois créneaux réels du serveur pour l'appel d'Elena.
   const [slots, setSlots] = useState<{ slotAt: string; label: string }[] | undefined>(undefined);
-  const [saved, setSaved] = useState(false);
+  const { isSaved: favIsSaved, toggle: favToggle } = useFavorites();
   const [apptOpen, setApptOpen] = useState(false);
   const [mainVisible, setMainVisible] = useState(false);
   const [fieldActive, setFieldActive] = useState(false);
@@ -91,6 +93,7 @@ export default function FicheMarchePage() {
   const { brandId } = useBrand();
 
   const known = !!status?.companyKnown && !editing;
+  const saved = favIsSaved(id);
   const company = status?.company?.name || '';
 
   // Saisie conservée au fil de l'eau (téléphone, e-mail, créneau) : un retour arrière qui quitte la page la retrouve.
@@ -122,7 +125,6 @@ export default function FicheMarchePage() {
     siretApi.status(sessionId).then(s => { if (live) setStatus(s); }).catch(() => {});
     getConsultationIndicator(id).then(v => { if (live) setConsult(v && (v.value ?? 2) >= 2 ? v.label : null); });
     getDossierRequestsCount(id).then(n => { if (live) setDossiers(n); });
-    try { setSaved((JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') as { id: string }[]).some(s => s.id === id)); } catch { setSaved(false); }
     return () => { live = false; };
   }, [id, sessionId]);
 
@@ -300,13 +302,14 @@ export default function FicheMarchePage() {
   };
 
   // --- save on this phone (3.10): localStorage only, no network ---
+  // 5 nov. : le favori est celui du site (session puis compte), pour le retrouver dans « Mon espace ».
   const toggleSave = () => {
     try {
       const list = (JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') as { id: string; siret?: string }[]).filter(s => s.id !== id);
       if (!saved) list.push({ id, siret: status?.siret });
       localStorage.setItem(SAVED_KEY, JSON.stringify(list));
-      setSaved(!saved);
-    } catch { /* storage unavailable: nothing to save, nothing to claim */ }
+    } catch { /* storage unavailable */ }
+    void favToggle(id);
   };
 
   // --- fixed bar (3.11): hidden while the main button is on screen or a field is being typed in ---
@@ -362,6 +365,7 @@ export default function FicheMarchePage() {
             onChange={(patch) => { setCoords((c) => ({ ...c, ...patch })); setCoordErrors({}); }} onSubmit={() => submitCoords(view.choice)} onBack={back} elenaPhoto={<ElenaPhoto />} slots={slots} />
         ) : (
           <ConfirmationScreen choice={view.choice} values={coords} company={status?.company} pdf={pdf} onDownload={downloadPdf} onAppointment={() => setApptOpen(true)} onBackToMarket={back} elenaPhoto={<ElenaPhoto />} dossiers={dossiers}
+            suivi={view.choice === 'dossier' ? <MarketSuivi compact opportunityId={id} sessionId={sessionId} analysed onDossier={back} fileName={pdfFileName(company, opp?.source_reference)} refreshKey={pdf} /> : null}
             market={{ shortTitle: title, reference: opp.source_reference || null, deadline: (opp.deadline as string | null) || null, deadlineText: deadlineTxt, daysLeft: days, officialUrl: opp.official_url || null }} />
         )}
         <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} opportunityId={opp.id}
@@ -524,6 +528,8 @@ export default function FicheMarchePage() {
             </button>
             <div className="text-center text-[13px] text-[#B4C1D3]">Gratuit · Sans engagement · <button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">J’ai juste une question</button></div>
           </section>
+
+          <MarketSuivi opportunityId={id} sessionId={sessionId} analysed={sc != null} onDossier={() => choose('dossier')} fileName={pdfFileName(company, opp?.source_reference)} />
         </div>)}
 
       <section className="flex flex-col gap-4">

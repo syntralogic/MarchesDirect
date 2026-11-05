@@ -1813,3 +1813,25 @@ export const contactApi = {
     return { saved: data?.saved === true };
   },
 };
+
+// ---------------------------------------------------------------- Suivi des dossiers (5 nov.)
+// Frise client : la même sur la fiche marché, dans l'espace et sur la page d'un dossier. L'avancement vient du
+// pipeline HubSpot « Dossiers en cours » que tient Elena ; le serveur le traduit en 6 étapes.
+export type SuiviStep = { key: string; label: string; detail: string; state: 'done' | 'current' | 'action' | 'todo'; at: string | null };
+export type SuiviDossier = { id: string; opportunityId: string; title: string; buyer: string | null; city: string | null; deadline: string | null; journey: string | null;
+  stage: string; updatedAt: string; createdAt: string; steps: SuiviStep[] };
+const suiviSession = () => { try { return localStorage.getItem('md_visitor_session_id') || undefined; } catch { return undefined; } };
+export const suiviApi = {
+  forMarket: async (opportunityId: string, sessionId?: string): Promise<{ dossier: SuiviDossier | null; steps?: SuiviStep[] }> => {
+    const { data } = await apiClient.get(`/suivi/${opportunityId}`, { params: { sessionId: sessionId || suiviSession() } });
+    return data;
+  },
+  list: async (sessionId?: string): Promise<SuiviDossier[]> => {
+    const { data } = await apiClient.get<{ dossiers: SuiviDossier[] }>('/suivi', { params: { sessionId: sessionId || suiviSession() } });
+    return data.dossiers || [];
+  },
+  confier: async (opportunityId: string, sessionId?: string): Promise<SuiviDossier | null> => {
+    const { data } = await apiClient.post<{ dossier: SuiviDossier | null }>(`/suivi/${opportunityId}/confier`, { sessionId: sessionId || suiviSession() });
+    return data.dossier;
+  },
+};
