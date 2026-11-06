@@ -17,6 +17,7 @@
 import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoSections, seoPagePath, seoExecLine, seoDate, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
 import { GUIDES, GUIDE_CATEGORIES, GUIDES_INTRO, guideBySlug } from '../src/content/guides/index.js';
 import { localGuides } from '../src/content/guides/catalog.js';
+import { BARO_METHOD, BARO_PATH, baroDate, baroTime, baroDescription, baroTitle, euros, n as nfmt, pct, type Barometre } from '../src/lib/barometre.js';
 import { guideBodyHtml, guideJsonLd, guideMetaTitle, guidePath, GUIDES_BASE } from '../src/content/guideModel.js';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
@@ -149,6 +150,30 @@ const unavailable = (path: string): Doc => ({
   status: 503, title: 'Marchés Direct', description: '', path, noindex: true, cache: 'no-store',
   body: '',
 });
+
+// Baromètre des marchés publics (6 nov.) : chiffres du jour dans la première réponse, méthode comprise.
+async function buildBarometre(): Promise<Doc> {
+  const r = await getJson('/api/seo/v2/barometre');
+  if (r.status !== 200 || !r.json) return unavailable(BARO_PATH);
+  const b = r.json as Barometre; const N = b.national;
+  const row = (cells: string[]) => `<tr>${cells.map(c => `<td>${c}</td>`).join('')}</tr>`;
+  const body = [
+    `<p>Baromètre · ${esc(baroDate(b.generatedAt))} à ${esc(baroTime(b.generatedAt))}</p>`,
+    '<h1>Baromètre des marchés publics en France</h1>',
+    `<p>${nfmt(N.open)} consultations ouvertes ; ${nfmt(N.published30)} publiées sur 30 jours ; ${nfmt(N.horizon.under7)} se terminent dans moins de 7 jours ; montant médian estimé ${N.medianEstimatedValue != null ? esc(euros(N.medianEstimatedValue)) : 'non disponible'} (${nfmt(N.withEstimatedValue)} avis chiffrés).</p>`,
+    '<h2>Temps restant pour répondre</h2><table>' + [['Moins de 7 jours', N.horizon.under7], ['7 à 14 jours', N.horizon.d7to14], ['15 à 30 jours', N.horizon.d15to30], ['Plus de 30 jours', N.horizon.over30]].map(([l, v]) => row([String(l), nfmt(Number(v)), pct(Number(v), N.open)])).join('') + '</table>',
+    '<h2>Départements avec le plus de consultations ouvertes</h2><table><tr><th>Département</th><th>Ouvertes</th><th>Publiées 30 j</th><th>Acheteurs les plus actifs</th></tr>'
+      + b.departments.slice(0, 20).map(d => row([`<a href="/marches-publics/departement/${esc(d.code.toLowerCase())}" style="color:#FF6B00">${esc(d.name)} (${esc(d.code)})</a>`, nfmt(d.open), nfmt(d.published30), esc(d.topBuyers.map(x => `${x.name} (${x.count})`).join(' · '))])).join('') + '</table>',
+    `<h2>Métiers les plus demandés</h2><p>${nfmt(N.openWithoutTrade)} consultations ouvertes n’ont pas de métier reconnu dans leur intitulé.</p><table><tr><th>Métier</th><th>Ouvertes</th><th>Publiées 30 j</th></tr>`
+      + b.trades.slice(0, 25).map(t => row([esc(t.name), nfmt(t.open), nfmt(t.published30)])).join('') + '</table>',
+    `<h2>Méthode</h2><ul>${BARO_METHOD.map(m => `<li>${esc(m)}</li>`).join('')}</ul>`,
+    '<p><a href="/" style="color:#FF6B00">Trouver les marchés pour mon entreprise</a> · <a href="/guides" style="color:#FF6B00">Guides pour répondre</a></p>',
+  ].join('');
+  return { status: 200, title: baroTitle(b), description: baroDescription(b), path: BARO_PATH, body: wrap(body), cache: 'public, s-maxage=900, stale-while-revalidate=3600',
+    jsonld: [{ '@context': 'https://schema.org', '@type': 'Dataset', name: 'Baromètre des marchés publics en France (Marchés Direct)', description: baroDescription(b),
+      url: `${PUBLIC_SITE}${BARO_PATH}`, dateModified: b.generatedAt, inLanguage: 'fr-FR', creator: { '@type': 'Organization', name: 'Marchés Direct', url: PUBLIC_SITE },
+      isBasedOn: ['https://www.data.gouv.fr/datasets/boamp/'], spatialCoverage: 'France' }] };
+}
 
 // Guides pratiques (6 nov.) : contenu statique du dépôt, texte complet dans la première réponse.
 function buildGuides(): Doc {
@@ -367,6 +392,8 @@ export default async function handler(req: any, res: any) {
       doc = await buildOpportunity(param(q.id));
     } else if (kind === 'slug') {
       doc = await buildSlug(param(q.slug));
+    } else if (kind === 'barometre') {
+      doc = await buildBarometre();
     } else if (kind === 'guides') {
       doc = buildGuides();
     } else if (kind === 'guide') {

@@ -13,7 +13,7 @@ import { guidePath, GUIDES_BASE } from '../src/content/guideModel.js';
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
 const CHUNK = 10000;
 // Les anciennes « actualités » (/actualites/aN) sont redirigées vers les guides depuis le 6 nov. : retirées d'ici.
-const STATIC = ['/', '/marches-publics', '/appels-doffres', '/sous-traitance', '/tarifs', '/a-propos', '/how-it-works', '/faq', '/contact'];
+const STATIC = ['/', '/marches-publics', '/appels-doffres', '/sous-traitance', '/tarifs', '/a-propos', '/how-it-works', '/faq', '/contact', '/barometre-marches-publics'];
 
 const xmlEsc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const day = (d?: string | null) => { if (!d) return undefined; const t = new Date(d); return Number.isNaN(t.getTime()) ? undefined : t.toISOString().slice(0, 10); };

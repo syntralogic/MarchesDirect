@@ -24,6 +24,7 @@ import SeoLandingPage from '@/pages/SeoLandingPage';
 import SeoLocalPage from '@/pages/SeoLocalPage';
 const GuidesPage = lazy(() => import('@/pages/GuidesPage'));
 const GuidePage = lazy(() => import('@/pages/GuidePage'));
+const BarometrePage = lazy(() => import('@/pages/BarometrePage'));
 // Anciennes « actualités » (textes de remplissage, remplacés le 6 nov. par les guides) : renvoi vers le guide équivalent.
 function LegacyArticleRedirect() { const { id = '' } = useParams<{ id: string }>(); return <Navigate to={ACTU_REDIRECTS[id] || '/guides'} replace />; }
 import MissionDetailPage from '@/pages/sous-traitance/MissionDetailPage';
@@ -233,6 +234,7 @@ const App: React.FC = () => {
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
               <Route path="/profil/dossier-entreprise" element={<RequireAuth><CompanyVaultPage /></RequireAuth>} />
               <Route path="/equipe" element={<EquipePage />} />
+              <Route path="/barometre-marches-publics" element={<Suspense fallback={null}><BarometrePage /></Suspense>} />
               <Route path="/guides" element={<Suspense fallback={null}><GuidesPage /></Suspense>} />
               <Route path="/guides/:slug" element={<Suspense fallback={null}><GuidePage /></Suspense>} />
               <Route path="/actualites" element={<Navigate to="/guides" replace />} />
