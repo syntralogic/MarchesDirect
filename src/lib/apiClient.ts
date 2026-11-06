@@ -453,6 +453,8 @@ export const opportunitiesApi = {
   },
 
   // Accueil v26 (1.5): real count of open markets, one query a day on the server (24 h cache). Throws on failure (503): the home page then hides the line.
+  // 6 nov. : compteur vivant (même définition que la recherche v2) + date du dernier import réel.
+  getLiveCounter: async () => (await apiClient.get<{ open: number; verify: number; new24h: number; lastImportAt: string | null; computedAt: string }>('/seo/v2/compteur')).data,
   getOpenToday: async () => {
     const { data } = await apiClient.get<{ total: number; date: string }>('/opportunities/stats/open-today');
     return data;
