@@ -46,6 +46,14 @@
       "destination": "/api/prerender?kind=slug&slug=:slug"
     },
     {
+      "source": "/guides",
+      "destination": "/api/prerender?kind=guides"
+    },
+    {
+      "source": "/guides/:slug",
+      "destination": "/api/prerender?kind=guide&slug=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -76,6 +84,48 @@
           "value": "public, max-age=3600"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/actualites",
+      "destination": "/guides",
+      "statusCode": 301
+    },
+    {
+      "source": "/actualites/a1",
+      "destination": "/guides/dc1-dc2-dume",
+      "statusCode": 301
+    },
+    {
+      "source": "/actualites/a2",
+      "destination": "/guides",
+      "statusCode": 301
+    },
+    {
+      "source": "/actualites/a3",
+      "destination": "/marches-publics",
+      "statusCode": 301
+    },
+    {
+      "source": "/actualites/a4",
+      "destination": "/guides/dc1-dc2-dume",
+      "statusCode": 301
+    },
+    {
+      "source": "/actualites/a5",
+      "destination": "/guides/memoire-technique",
+      "statusCode": 301
+    },
+    {
+      "source": "/actualites/a6",
+      "destination": "/guides",
+      "statusCode": 301
+    },
+    {
+      "source": "/actualites/:id",
+      "destination": "/guides",
+      "statusCode": 301
     }
   ]
 }

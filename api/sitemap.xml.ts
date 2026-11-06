@@ -7,10 +7,13 @@
 //   /sitemap-pages.xml        pages fixes + pages locales INDEXABLES (au moins une annonce ouverte), adresses canoniques
 //   /sitemap-annonces-N.xml   fiches d'annonces ouvertes, par lots de 10 000
 // lastmod = dernière mise à jour réelle des annonces de la page (jamais la date du jour par défaut).
+import { GUIDES } from '../src/content/guides/index.js';
+import { guidePath, GUIDES_BASE } from '../src/content/guideModel.js';
+
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
 const CHUNK = 10000;
-const STATIC = ['/', '/marches-publics', '/appels-doffres', '/sous-traitance', '/tarifs', '/a-propos', '/how-it-works', '/faq', '/contact', '/actualites',
-  ...['a1', 'a2', 'a3', 'a4', 'a5', 'a6'].map((id) => `/actualites/${id}`)];
+// Les anciennes « actualités » (/actualites/aN) sont redirigées vers les guides depuis le 6 nov. : retirées d'ici.
+const STATIC = ['/', '/marches-publics', '/appels-doffres', '/sous-traitance', '/tarifs', '/a-propos', '/how-it-works', '/faq', '/contact'];
 
 const xmlEsc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const day = (d?: string | null) => { if (!d) return undefined; const t = new Date(d); return Number.isNaN(t.getTime()) ? undefined : t.toISOString().slice(0, 10); };
@@ -33,7 +36,9 @@ export default async function handler(req: any, res: any) {
     const data = await getJson(`${apiUrl}/api/seo/v2/sitemap`);
     const local = ((data && data.pages) || []).map((p: { path: string; lastmod: string }) => ({ loc: `${PUBLIC_SITE}${p.path}`, lastmod: day(p.lastmod) }));
     if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
-    return send(urlset([...STATIC.map((p) => ({ loc: `${PUBLIC_SITE}${p}` })), ...local].slice(0, 50000)));
+    const guides = [{ loc: `${PUBLIC_SITE}${GUIDES_BASE}`, lastmod: GUIDES.map(g => g.updated).sort().pop() },
+      ...GUIDES.map(g => ({ loc: `${PUBLIC_SITE}${guidePath(g.slug)}`, lastmod: g.updated }))];
+    return send(urlset([...STATIC.map((p) => ({ loc: `${PUBLIC_SITE}${p}` })), ...guides, ...local].slice(0, 50000)));
   }
   const m = part.match(/^annonces-(\d+)$/);
   if (m) {

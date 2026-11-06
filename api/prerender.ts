@@ -11,10 +11,13 @@
 // 404 (it used to be "Page introuvable" with status 200, i.e. a soft 404), and 503 when the backend is
 // down, so a crawler retries later instead of recording an empty page.
 //
-// Routed by vercel.json rewrites (kind=category|local|opportunity|slug). Keep the category copy in sync
+// Routed by vercel.json rewrites (kind=category|local|opportunity|slug|guides|guide). Keep the category copy in sync
 // with src/pages/CategoryLandingPage.tsx, and the URL structure with api/sitemap.xml.ts.
 
 import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoSections, seoPagePath, seoExecLine, seoDate, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
+import { GUIDES, GUIDE_CATEGORIES, GUIDES_INTRO, guideBySlug } from '../src/content/guides/index.js';
+import { localGuides } from '../src/content/guides/catalog.js';
+import { guideBodyHtml, guideJsonLd, guideMetaTitle, guidePath, GUIDES_BASE } from '../src/content/guideModel.js';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
 
@@ -113,7 +116,7 @@ async function getShell(): Promise<string | null> {
 // ---------------------------------------------------------------------------
 // HTML assembly
 // ---------------------------------------------------------------------------
-interface Doc { status: number; title: string; description: string; path: string; noindex?: boolean; body: string; cache?: string; redirect?: string; jsonld?: object[] }
+interface Doc { status: number; title: string; description: string; path: string; noindex?: boolean; body: string; cache?: string; redirect?: string; jsonld?: object[]; ogType?: string }
 
 const link = (href: string, label: string): string => `<li style="display:inline-block;margin:0 .5rem .5rem 0"><a href="${esc(href)}" style="color:#FF6B00">${esc(label)}</a></li>`;
 const wrap = (inner: string): string =>
@@ -127,7 +130,7 @@ function render(shell: string, d: Doc): string {
     `<meta property="og:title" content="${esc(d.title)}" data-rh="true">`,
     `<meta property="og:description" content="${esc(d.description)}" data-rh="true">`,
     `<meta property="og:url" content="${esc(url)}" data-rh="true">`,
-    '<meta property="og:type" content="website" data-rh="true">',
+    `<meta property="og:type" content="${d.ogType || 'website'}" data-rh="true">`,
     ...(d.jsonld || []).map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`),
   ].join('');
   return shell
@@ -146,6 +149,22 @@ const unavailable = (path: string): Doc => ({
   status: 503, title: 'Marchés Direct', description: '', path, noindex: true, cache: 'no-store',
   body: '',
 });
+
+// Guides pratiques (6 nov.) : contenu statique du dépôt, texte complet dans la première réponse.
+function buildGuides(): Doc {
+  const body = [`<h1>${esc(GUIDES_INTRO.h1)}</h1>`, `<p>${esc(GUIDES_INTRO.text)}</p>`,
+    ...GUIDE_CATEGORIES.map(cat => { const list = GUIDES.filter(g => g.category === cat); return list.length
+      ? `<section><h2>${esc(cat)}</h2><ul>${list.map(g => `<li><a href="${guidePath(g.slug)}" style="color:#FF6B00">${esc(g.title)}</a> — ${esc(g.description)}</li>`).join('')}</ul></section>` : ''; })].join('');
+  return { status: 200, title: GUIDES_INTRO.metaTitle, description: GUIDES_INTRO.description, path: GUIDES_BASE, body: wrap(body), cache: 'public, s-maxage=3600',
+    jsonld: [{ '@context': 'https://schema.org', '@type': 'CollectionPage', name: GUIDES_INTRO.h1, url: `${PUBLIC_SITE}${GUIDES_BASE}`, inLanguage: 'fr-FR' }] };
+}
+function buildGuide(slug: string): Doc {
+  const g = guideBySlug(slug);
+  if (!g) return notFound(`${GUIDES_BASE}/${slug}`);
+  const related = g.related.map(guideBySlug).filter(Boolean) as typeof GUIDES;
+  return { status: 200, title: guideMetaTitle(g), description: g.description, path: guidePath(g.slug), body: wrap(guideBodyHtml(g, related)),
+    cache: 'public, s-maxage=3600', jsonld: guideJsonLd(g, PUBLIC_SITE), ogType: 'article' };
+}
 
 const localPath = (base: string, p: { filter_city?: string | null; filter_department?: string | null; filter_trade_name?: string | null }): { to: string; label: string } | null => {
   const e = encodeURIComponent;
@@ -260,6 +279,7 @@ async function buildLocal(base: string, city: string, trade: string, department:
       (trades.length ? `<h2>Par métier</h2><ul style="list-style:none;padding:0">${trades.join('')}</ul>` : '') +
       (cities.length ? `<h2>Autres villes du département</h2><ul style="list-style:none;padding:0">${cities.join('')}</ul>` : '') +
       (others.length ? `<h2>Autres types d’opportunités</h2><ul style="list-style:none;padding:0">${others.join('')}</ul>` : '') +
+      `<h2>Guides pour répondre</h2><ul>${localGuides(journey).map(g => `<li><a href="${guidePath(g.slug)}" style="color:#FF6B00">${esc(g.title)}</a></li>`).join('')}</ul>` +
       `<h2>Questions fréquentes</h2>${faq.map(f => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}` +
       `<p><small>Données issues des avis publiés par les acheteurs, mises à jour le ${esc(seoDate(p.generatedAt) || '')}. Marchés Direct est une plateforme indépendante.</small></p>`
     ),
@@ -347,6 +367,10 @@ export default async function handler(req: any, res: any) {
       doc = await buildOpportunity(param(q.id));
     } else if (kind === 'slug') {
       doc = await buildSlug(param(q.slug));
+    } else if (kind === 'guides') {
+      doc = buildGuides();
+    } else if (kind === 'guide') {
+      doc = buildGuide(param(q.slug));
     }
     if (!doc) return plain();
 

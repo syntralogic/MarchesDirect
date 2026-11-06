@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'reac
 import { ChevronRight, MapPin, Search } from 'lucide-react';
 import PageMeta from '@/components/common/PageMeta';
 import { seoV2Api } from '@/lib/apiClient';
+import { localGuides } from '@/content/guides/catalog';
+import { guidePath } from '@/content/guideModel';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
 import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoSections, seoPagePath, seoDate, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '@/lib/seoLocalCopy';
 
@@ -90,6 +92,8 @@ export default function SeoLocalPage({ journey }: { journey: 'public_procurement
         <div className="flex flex-wrap gap-2">{p.cities.map(c => <Link key={c.slug} to={`/${p.base}/${c.slug}${p.trade ? `/${p.trade.slug}` : ''}`} className={chip}>{c.name} ({c.count})</Link>)}</div></section>)}
       {p.otherTypes.some(o => o.count > 0) && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Autres types d’opportunités</h2>
         <div className="flex flex-wrap gap-2">{p.otherTypes.filter(o => o.count > 0).map(o => <Link key={o.base} to={zonePath({ ...p, base: o.base }, p.trade?.slug)} className={chip}>{SEO_LABEL[o.journey]} ({o.count})</Link>)}</div></section>)}
+      <section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Guides pour répondre</h2>
+        <ul className="flex flex-col gap-1.5 text-[14px]">{localGuides(journey).map(g => <li key={g.slug}><Link to={guidePath(g.slug)} className="font-semibold text-[#FB923C] underline">{g.title}</Link></li>)}</ul></section>
       <section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Questions fréquentes</h2>
         <div className="flex flex-col gap-2">{faq.map(f => <details key={f.q} className="rounded-[14px] border border-[#22385A] bg-[#12233A] p-3"><summary className="cursor-pointer text-[14px] font-bold">{f.q}</summary><p className="mt-2 text-[13.5px] leading-relaxed text-[#D6E0EC]">{f.a}</p></details>)}</div></section>
       <p className="mt-6 text-[12px] text-[#B4C1D3]">Données issues des avis publiés par les acheteurs, mises à jour le {seoDate(p.generatedAt)}. Marchés Direct est une plateforme indépendante.</p>

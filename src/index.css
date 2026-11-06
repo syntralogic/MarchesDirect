@@ -255,3 +255,20 @@
 @keyframes md-live-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .65; } }
 .md-live-dot { animation: md-live-pulse 2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .md-live-dot { animation: none; } }
+
+/* Guides pratiques (6 nov.) : texte éditorial lisible sur mobile. */
+.guide-prose { font-size: 15px; line-height: 1.7; color: #D6E0EC; }
+.guide-prose p { margin: 0 0 .85rem; }
+.guide-prose h3 { margin: 1.1rem 0 .4rem; font-size: 16.5px; font-weight: 800; color: #fff; }
+.guide-prose ul, .guide-prose ol { margin: 0 0 .9rem; padding-left: 1.25rem; }
+.guide-prose ul { list-style: disc; }
+.guide-prose ol { list-style: decimal; }
+.guide-prose li { margin: .25rem 0; }
+.guide-prose strong { color: #fff; font-weight: 700; }
+.guide-prose a { color: #FB923C; text-decoration: underline; text-underline-offset: 2px; }
+.guide-prose .guide-note { margin: 0 0 1rem; border-left: 3px solid #FB923C; background: #12233A; border-radius: 0 12px 12px 0; padding: .7rem .9rem; }
+.guide-prose .guide-note p { margin: 0; }
+.guide-prose .guide-table { overflow-x: auto; margin: 0 0 1rem; -webkit-overflow-scrolling: touch; }
+.guide-prose table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 460px; }
+.guide-prose th, .guide-prose td { border: 1px solid #22385A; padding: .45rem .6rem; text-align: left; vertical-align: top; }
+.guide-prose th { background: #12233A; color: #fff; font-weight: 700; }

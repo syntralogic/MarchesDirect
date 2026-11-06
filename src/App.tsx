@@ -1,6 +1,6 @@
 import { PageErrorBoundary } from '@/components/PageErrorBoundary';
 import NotFound from '@/pages/NotFound';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useParams } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -22,6 +22,10 @@ import InfoPage from '@/pages/InfoPage';
 import TeamProfilePage from '@/pages/TeamProfilePage'; // <-- Added import
 import SeoLandingPage from '@/pages/SeoLandingPage';
 import SeoLocalPage from '@/pages/SeoLocalPage';
+const GuidesPage = lazy(() => import('@/pages/GuidesPage'));
+const GuidePage = lazy(() => import('@/pages/GuidePage'));
+// Anciennes « actualités » (textes de remplissage, remplacés le 6 nov. par les guides) : renvoi vers le guide équivalent.
+function LegacyArticleRedirect() { const { id = '' } = useParams<{ id: string }>(); return <Navigate to={ACTU_REDIRECTS[id] || '/guides'} replace />; }
 import MissionDetailPage from '@/pages/sous-traitance/MissionDetailPage';
 import MissionProfilPage from '@/pages/sous-traitance/MissionProfilPage';
 import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
@@ -40,8 +44,7 @@ import MonDossierPage from '@/pages/MonDossierPage';
 import ProfilPage from '@/pages/ProfilPage';
 import CompanyVaultPage from '@/pages/CompanyVaultPage';
 import EquipePage from '@/pages/EquipePage';
-import ActualitesPage from '@/pages/ActualitesPage';
-import ArticleDetailPage from '@/pages/ArticleDetailPage';
+import { ACTU_REDIRECTS } from '@/content/guides/redirects';
 import ZonesPage from '@/pages/ZonesPage';
 import SecteursPage from '@/pages/SecteursPage';
 import InternationalPage from '@/pages/InternationalPage';
@@ -230,8 +233,10 @@ const App: React.FC = () => {
               <Route path="/profil" element={<RequireAuth><ProfilPage /></RequireAuth>} />
               <Route path="/profil/dossier-entreprise" element={<RequireAuth><CompanyVaultPage /></RequireAuth>} />
               <Route path="/equipe" element={<EquipePage />} />
-              <Route path="/actualites" element={<ActualitesPage />} />
-              <Route path="/actualites/:id" element={<ArticleDetailPage />} />
+              <Route path="/guides" element={<Suspense fallback={null}><GuidesPage /></Suspense>} />
+              <Route path="/guides/:slug" element={<Suspense fallback={null}><GuidePage /></Suspense>} />
+              <Route path="/actualites" element={<Navigate to="/guides" replace />} />
+              <Route path="/actualites/:id" element={<LegacyArticleRedirect />} />
               <Route path="/zones" element={<ZonesPage />} />
               <Route path="/secteurs" element={<SecteursPage />} />
               <Route path="/international" element={<InternationalPage />} />
