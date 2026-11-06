@@ -40,6 +40,11 @@ export default async function handler(req: any, res: any) {
       ...GUIDES.map(g => ({ loc: `${PUBLIC_SITE}${guidePath(g.slug)}`, lastmod: g.updated }))];
     return send(urlset([...STATIC.map((p) => ({ loc: `${PUBLIC_SITE}${p}` })), ...guides, ...local].slice(0, 50000)));
   }
+  if (part === 'acheteurs') {
+    const data = await getJson(`${apiUrl}/api/seo/v2/acheteurs`);
+    if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
+    return send(urlset(((data.pages || []) as { path: string; lastmod: string }[]).slice(0, 50000).map(p => ({ loc: `${PUBLIC_SITE}${p.path}`, lastmod: day(p.lastmod) }))));
+  }
   const m = part.match(/^annonces-(\d+)$/);
   if (m) {
     const data = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap`, 25000);
@@ -55,7 +60,7 @@ export default async function handler(req: any, res: any) {
   // Index
   const opp = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap`, 25000);
   const chunks = Math.max(1, Math.ceil((((opp && opp.opportunities) || []).length) / CHUNK));
-  const files = ['sitemap-pages.xml', ...Array.from({ length: chunks }, (_, k) => `sitemap-annonces-${k + 1}.xml`)];
+  const files = ['sitemap-pages.xml', 'sitemap-acheteurs.xml', ...Array.from({ length: chunks }, (_, k) => `sitemap-annonces-${k + 1}.xml`)];
   return send(`<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${files.map((f) => `  <sitemap><loc>${PUBLIC_SITE}/${f}</loc></sitemap>`).join('\n')}

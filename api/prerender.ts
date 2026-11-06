@@ -18,6 +18,7 @@ import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSe
 import { GUIDES, GUIDE_CATEGORIES, GUIDES_INTRO, guideBySlug } from '../src/content/guides/index.js';
 import { localGuides } from '../src/content/guides/catalog.js';
 import { BARO_METHOD, BARO_PATH, baroDate, baroTime, baroDescription, baroTitle, euros, n as nfmt, pct, type Barometre } from '../src/lib/barometre.js';
+import { buyerDescription, buyerIntro, buyerPath, buyerTitle, frDay, type BuyerCard, type BuyerData } from '../src/lib/acheteur.js';
 import { guideBodyHtml, guideJsonLd, guideMetaTitle, guidePath, GUIDES_BASE } from '../src/content/guideModel.js';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
@@ -357,6 +358,38 @@ async function buildSlug(slug: string): Promise<Doc> {
 }
 
 // ---------------------------------------------------------------------------
+
+// Page acheteur (7 nov.) : mêmes textes que src/pages/AcheteurPage.tsx.
+const JOURNEY_FR: Record<string, string> = { public_procurement: 'Marché public', tender: 'Appel d’offres privé', subcontracting: 'Sous-traitance' };
+async function buildAcheteur(slug: string): Promise<Doc> {
+  const path = buyerPath(slug);
+  if (!/^[a-z0-9-]{3,120}$/.test(slug)) return notFound(path);
+  const r = await getJson(`/api/seo/v2/acheteur/${encodeURIComponent(slug)}`);
+  if (r.status === 404) return notFound(path);
+  if (r.status !== 200 || !r.json) return unavailable(path);
+  const b = r.json as BuyerData;
+  const li = (c: BuyerCard) => `<li><a href="${esc(c.path)}" style="color:#FF6B00">${esc(c.title)}</a> — ${esc(JOURNEY_FR[c.journey] || 'Consultation')}${c.place ? ` · ${esc(c.place)}` : ''}${c.state === 'open' && c.deadline ? ` · date limite le ${esc(frDay(c.deadline))}` : c.state === 'closed' ? ' · clôturée' : ' · date limite à vérifier'}${c.trades.length ? ` · ${esc(c.trades.map(t => t.name).join(', '))}` : ''}</li>`;
+  const crumbs = [{ name: 'Accueil', path: '/' }, { name: 'Marchés publics', path: '/marches-publics' }, ...(b.dept ? [{ name: `${b.deptName} (${b.dept})`, path: `/marches-publics/departement/${b.dept.toLowerCase()}` }] : []), { name: b.name, path }];
+  const body = [
+    `<nav aria-label="Fil d'Ariane">${crumbs.map((c, k) => k === crumbs.length - 1 ? esc(c.name) : `<a href="${esc(c.path)}" style="color:#FF6B00">${esc(c.name)}</a>`).join(' › ')}</nav>`,
+    `<h1>${esc(b.name)} : marchés publics et appels d’offres</h1>`,
+    `<p>${esc(buyerIntro(b))}</p>`,
+    `<h2>Consultations ouvertes (${b.counts.open})</h2>`,
+    b.open.length ? `<ul>${b.open.map(li).join('')}</ul>` : '<p>Aucune consultation ouverte aujourd’hui.</p>',
+    b.verify.length ? `<h2>Date limite à vérifier (${b.counts.verify})</h2><ul>${b.verify.map(li).join('')}</ul>` : '',
+    b.topTrades.length ? `<h2>Métiers recherchés par cet acheteur</h2><p>${esc(b.topTrades.map(t => `${t.name} (${t.count})`).join(' · '))}</p>` : '',
+    b.closed.length ? `<h2>Consultations des six derniers mois (${b.counts.closed} clôturées)</h2><ul>${b.closed.map(li).join('')}</ul>` : '',
+    b.otherBuyers.length ? `<h2>Autres acheteurs publics${b.deptName ? ` en ${esc(b.deptName)}` : ''}</h2><ul style="list-style:none;padding:0">${b.otherBuyers.map(o => link(buyerPath(o.slug), o.name)).join('')}</ul>` : '',
+    '<p><a href="/" style="color:#FF6B00">Trouver les marchés pour mon entreprise</a></p>',
+  ].join('');
+  return { status: 200, title: buyerTitle(b), description: buyerDescription(b), path, noindex: !b.indexable, body: wrap(body),
+    cache: 'public, s-maxage=900, stale-while-revalidate=86400',
+    jsonld: [
+      { '@context': 'https://schema.org', '@type': 'GovernmentOrganization', name: b.name, ...(b.city ? { address: { '@type': 'PostalAddress', addressLocality: b.city, addressCountry: 'FR' } } : {}), url: `${PUBLIC_SITE}${path}` },
+      { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, k) => ({ '@type': 'ListItem', position: k + 1, name: c.name, item: `${PUBLIC_SITE}${c.path}` })) },
+    ] };
+}
+
 export default async function handler(req: any, res: any) {
   const q = req.query || {};
   const kind = param(q.kind);
@@ -392,6 +425,8 @@ export default async function handler(req: any, res: any) {
       doc = await buildOpportunity(param(q.id));
     } else if (kind === 'slug') {
       doc = await buildSlug(param(q.slug));
+    } else if (kind === 'acheteur') {
+      doc = await buildAcheteur(param(q.slug));
     } else if (kind === 'barometre') {
       doc = await buildBarometre();
     } else if (kind === 'guides') {
