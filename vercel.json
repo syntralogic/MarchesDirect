@@ -98,8 +98,8 @@
     },
     {
       "source": "/actualites/a1",
-      "destination": "/guides/dc1-dc2-dume",
-      "statusCode": 301
+      "destination": "/guides",
+      "statusCode": 302
     },
     {
       "source": "/actualites/a2",
@@ -113,8 +113,8 @@
     },
     {
       "source": "/actualites/a4",
-      "destination": "/guides/dc1-dc2-dume",
-      "statusCode": 301
+      "destination": "/guides",
+      "statusCode": 302
     },
     {
       "source": "/actualites/a5",

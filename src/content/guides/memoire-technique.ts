@@ -24,7 +24,6 @@ const guide: Guide = {
         { p: 'Dans la plupart des consultations, l’acheteur ne choisit pas seulement sur le prix. Il annonce plusieurs **critères d’attribution**, avec un poids pour chacun : par exemple « prix 40 %, valeur technique 60 % ». Le mémoire technique est le document qui permet de noter la valeur technique.' },
         { p: 'Concrètement, c’est votre réponse écrite à la question : « Comment allez-vous faire ce travail, avec qui, avec quoi, dans quels délais, et comment garantissez-vous la qualité et la sécurité ? »' },
         { note: 'Lisez toujours les critères et leur pondération dans le règlement de la consultation **avant** d’écrire une ligne. Si la valeur technique compte pour 60 %, un mémoire bâclé peut vous faire perdre face à un concurrent plus cher.' },
-        { p: 'Pour comprendre comment l’acheteur compare les offres, voir notre guide [Critères d’attribution](/guides/criteres-attribution).' },
       ],
     },
     {
