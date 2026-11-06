@@ -305,6 +305,7 @@ async function buildLocal(base: string, city: string, trade: string, department:
       (trades.length ? `<h2>Par métier</h2><ul style="list-style:none;padding:0">${trades.join('')}</ul>` : '') +
       (cities.length ? `<h2>Autres villes du département</h2><ul style="list-style:none;padding:0">${cities.join('')}</ul>` : '') +
       (others.length ? `<h2>Autres types d’opportunités</h2><ul style="list-style:none;padding:0">${others.join('')}</ul>` : '') +
+      (p.buyers.some(b => b.path) ? `<h2>${p.journey === 'public_procurement' ? 'Acheteurs publics' : 'Donneurs d’ordre'} les plus actifs</h2><ul style="list-style:none;padding:0">${p.buyers.filter(b => b.path).map(b => link(b.path!, `${b.name} (${b.count})`)).join('')}</ul>` : '') +
       `<h2>Guides pour répondre</h2><ul>${localGuides(journey).map(g => `<li><a href="${guidePath(g.slug)}" style="color:#FF6B00">${esc(g.title)}</a></li>`).join('')}</ul>` +
       `<h2>Questions fréquentes</h2>${faq.map(f => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}` +
       `<p><small>Données issues des avis publiés par les acheteurs, mises à jour le ${esc(seoDate(p.generatedAt) || '')}. Marchés Direct est une plateforme indépendante.</small></p>`
@@ -341,6 +342,7 @@ async function buildOpportunity(id: string): Promise<Doc> {
       `<nav aria-label="Fil d'Ariane"><a href="/" style="color:#FF6B00">Accueil</a> › <a href="/${journeyBase}" style="color:#FF6B00">${esc(label)}</a></nav>` +
       `<h1>${esc(clip(String(o.title || label), 200))}</h1><p>${esc(facts)}</p>` +
       (similar.length ? `<h2>${o.state === 'open' ? 'Autres consultations ouvertes' : 'Consultations ouvertes comparables'}</h2><ul style="list-style:none;padding:0">${similar.map(x => `<li><a href="${esc(x.path)}" style="color:#FF6B00">${esc(clip(x.title.replace(/\s+/g, ' '), 140))}</a>${x.deadline ? ` <small>— date limite ${esc(fmtDate(x.deadline) || '')}</small>` : ''}</li>`).join('')}</ul>` : '') +
+      (o.buyerPath && o.buyer ? `<p><a href="${esc(o.buyerPath)}" style="color:#FF6B00;font-weight:600">Tous les marchés de ${esc(o.buyer)}</a></p>` : '') +
       `<p><a href="/${journeyBase}" style="color:#FF6B00;font-weight:600">Voir les ${esc(label.toLowerCase())} par département</a></p>`
     ),
   };

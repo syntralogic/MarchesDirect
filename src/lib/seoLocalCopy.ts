@@ -20,7 +20,7 @@ export type SeoV2Page = {
   buyerCount: number; buyerItems: SeoItem[]; verifyCount: number; verifyItems: SeoItem[];
   nearbyCount: number; nearby: SeoItem[]; closedCount: number; closedItems: SeoItem[]; publishedOnlyCount: number;
   trades: { slug: string; name: string; count: number }[]; cities: { slug: string; name: string; count: number }[];
-  buyers: { name: string; count: number }[]; otherTypes: { base: string; journey: string; count: number }[];
+  buyers: { name: string; count: number; path?: string | null }[]; otherTypes: { base: string; journey: string; count: number }[];
   nextDeadline: string | null; lastmod: string | null; generatedAt: string;
 };
 
