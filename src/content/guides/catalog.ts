@@ -25,5 +25,12 @@ const LOCAL: Record<string, string[]> = {
   tender: ['trouver-appels-offres', 'memoire-technique', 'lire-avis-dce', 'groupement-entreprises'],
   subcontracting: ['sous-traitance-dc4-paiement-direct', 'groupement-entreprises', 'delais-paiement-marches-publics', 'repondre-marche-public-artisan'],
 };
-export const localGuides = (journey: string): GuideRef[] =>
-  (LOCAL[journey] || LOCAL.public_procurement).map(s => GUIDE_CATALOG.find(g => g.slug === s)).filter(Boolean) as GuideRef[];
+// Guides réellement publiés (les autres sont prévus mais pas encore rédigés et vérifiés) : seuls ceux-ci reçoivent un lien.
+// À compléter à chaque publication — un test vérifie que chacun existe dans src/content/guides/index.ts.
+export const PUBLISHED_GUIDES = new Set<string>(['memoire-technique']);
+
+export const localGuides = (journey: string): GuideRef[] => {
+  const wanted = (LOCAL[journey] || LOCAL.public_procurement).filter(s => PUBLISHED_GUIDES.has(s));
+  const list = wanted.length ? wanted : [...PUBLISHED_GUIDES];
+  return list.map(s => GUIDE_CATALOG.find(g => g.slug === s)).filter(Boolean) as GuideRef[];
+};

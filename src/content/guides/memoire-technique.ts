@@ -89,7 +89,7 @@ const guide: Guide = {
       blocks: [
         { p: 'Constituez une **bibliothèque** de blocs réutilisables : présentation de l’entreprise, fiches des membres de l’équipe, liste du matériel, procédures sécurité et déchets, références avec photos. Pour chaque consultation, vous n’écrivez plus que les parties propres au chantier : compréhension du besoin, phasage, planning.' },
         { p: 'Les outils d’aide à la rédaction, y compris l’intelligence artificielle, peuvent aider à structurer ou relire. Mais un correcteur repère vite un texte générique : relisez tout, vérifiez chaque engagement et adaptez au chantier.' },
-        { p: 'Après chaque consultation perdue, demandez le **rapport d’analyse des offres** ou au minimum vos notes et les motifs du rejet : l’acheteur doit vous communiquer les motifs du rejet de votre offre si vous le demandez. C’est la meilleure façon de progresser.' },
+        { p: 'Après chaque consultation perdue, demandez à l’acheteur les motifs du rejet de votre offre (il doit vous les communiquer si vous le demandez) et, si possible, vos notes par critère. C’est la meilleure façon de progresser.' },
       ],
     },
   ],
@@ -99,10 +99,9 @@ const guide: Guide = {
     { q: 'Le mémoire technique m’engage-t-il ?', a: 'Souvent oui : beaucoup d’acheteurs le rendent contractuel en l’annexant à l’acte d’engagement. Vérifiez la liste des pièces contractuelles dans le cahier des clauses administratives particulières (CCAP).' },
     { q: 'Peut-on m’aider à le rédiger ?', a: 'Oui. Sur Marchés Direct, Elena peut vous accompagner sur votre dossier ; vous restez seul responsable des engagements pris dans votre offre.' },
   ],
+  // Liens vérifiés le 6 nov. 2026 ; les articles du code (R2152-6, R2152-7, R2181-1 et suivants) sont cités dans le texte.
   sources: [
-    { label: 'Code de la commande publique, articles R2152-6 et R2152-7 (critères d’attribution) — Légifrance', url: 'https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000037701019/LEGISCTA000037730603/' },
-    { label: 'Code de la commande publique, article R2181-1 (information des candidats évincés) — Légifrance', url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037730255' },
-    { label: 'Direction des affaires juridiques (DAJ) — Conseils aux acheteurs et aux entreprises', url: 'https://www.economie.gouv.fr/daj/commande-publique' },
+    { label: 'Direction des affaires juridiques (ministère de l’Économie) — Conseils aux acheteurs, commande publique', url: 'https://www.economie.gouv.fr/daj/commande-publique' },
   ],
   related: ['criteres-attribution', 'lire-avis-dce', 'repondre-marche-public-artisan'],
 };
