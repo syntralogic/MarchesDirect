@@ -5,7 +5,8 @@
 // Maintenant :
 //   /sitemap.xml              index des fichiers ci-dessous
 //   /sitemap-pages.xml        pages fixes + pages locales INDEXABLES (au moins une annonce ouverte), adresses canoniques
-//   /sitemap-annonces-N.xml   fiches d'annonces ouvertes, par lots de 10 000
+//   /sitemap-annonces-N.xml   toutes les fiches d'annonces publiables (ouvertes, sans date, clôturées), par lots de 10 000
+//                             (7 nov. : avant, seulement les ouvertes ; le serveur pagine, une page = un fichier)
 // lastmod = dernière mise à jour réelle des annonces de la page (jamais la date du jour par défaut).
 import { GUIDES } from '../src/content/guides/index.js';
 import { guidePath, GUIDES_BASE } from '../src/content/guideModel.js';
@@ -40,13 +41,17 @@ export default async function handler(req: any, res: any) {
       ...GUIDES.map(g => ({ loc: `${PUBLIC_SITE}${guidePath(g.slug)}`, lastmod: g.updated }))];
     return send(urlset([...STATIC.map((p) => ({ loc: `${PUBLIC_SITE}${p}` })), ...guides, ...local].slice(0, 50000)));
   }
+  if (part === 'acheteurs') {
+    const data = await getJson(`${apiUrl}/api/seo/v2/acheteurs`);
+    if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
+    return send(urlset(((data.pages || []) as { path: string; lastmod: string }[]).slice(0, 50000).map(p => ({ loc: `${PUBLIC_SITE}${p.path}`, lastmod: day(p.lastmod) }))));
+  }
   const m = part.match(/^annonces-(\d+)$/);
   if (m) {
-    const data = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap`, 25000);
-    if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
-    const all = (data.opportunities || []) as { id: string; updated_at?: string }[];
     const n = Number(m[1]);
-    const slice = all.slice((n - 1) * CHUNK, n * CHUNK);
+    const data = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap?page=${n}`, 25000);
+    if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
+    const slice = (data.opportunities || []) as { id: string; updated_at?: string }[];
     if (!slice.length) return res.status(404).send('');
     return send(urlset(slice.map((o) => ({ loc: `${PUBLIC_SITE}/opportunites/${o.id}`, lastmod: day(o.updated_at) }))));
   }
@@ -54,8 +59,9 @@ export default async function handler(req: any, res: any) {
 
   // Index
   const opp = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap`, 25000);
-  const chunks = Math.max(1, Math.ceil((((opp && opp.opportunities) || []).length) / CHUNK));
-  const files = ['sitemap-pages.xml', ...Array.from({ length: chunks }, (_, k) => `sitemap-annonces-${k + 1}.xml`)];
+  if (!opp) return res.status(503).setHeader('Retry-After', '600').send('');
+  const chunks = Math.max(1, Number(opp.pages) || Math.ceil((Number(opp.total) || 0) / CHUNK));
+  const files = ['sitemap-pages.xml', 'sitemap-acheteurs.xml', ...Array.from({ length: chunks }, (_, k) => `sitemap-annonces-${k + 1}.xml`)];
   return send(`<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${files.map((f) => `  <sitemap><loc>${PUBLIC_SITE}/${f}</loc></sitemap>`).join('\n')}

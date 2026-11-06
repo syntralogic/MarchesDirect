@@ -92,6 +92,8 @@ export default function SeoLocalPage({ journey }: { journey: 'public_procurement
         <div className="flex flex-wrap gap-2">{p.cities.map(c => <Link key={c.slug} to={`/${p.base}/${c.slug}${p.trade ? `/${p.trade.slug}` : ''}`} className={chip}>{c.name} ({c.count})</Link>)}</div></section>)}
       {p.otherTypes.some(o => o.count > 0) && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Autres types d’opportunités</h2>
         <div className="flex flex-wrap gap-2">{p.otherTypes.filter(o => o.count > 0).map(o => <Link key={o.base} to={zonePath({ ...p, base: o.base }, p.trade?.slug)} className={chip}>{SEO_LABEL[o.journey]} ({o.count})</Link>)}</div></section>)}
+      {p.buyers.some(b => b.path) && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">{p.journey === 'public_procurement' ? 'Acheteurs publics' : 'Donneurs d’ordre'} les plus actifs</h2>
+        <div className="flex flex-wrap gap-2">{p.buyers.filter(b => b.path).map(b => <Link key={b.path!} to={b.path!} className={chip}>{b.name} ({b.count})</Link>)}</div></section>)}
       <section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Guides pour répondre</h2>
         <ul className="flex flex-col gap-1.5 text-[14px]">{localGuides(journey).map(g => <li key={g.slug}><Link to={guidePath(g.slug)} className="font-semibold text-[#FB923C] underline">{g.title}</Link></li>)}</ul></section>
       <section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Questions fréquentes</h2>

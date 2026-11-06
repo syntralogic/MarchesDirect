@@ -54,6 +54,10 @@
       "destination": "/api/prerender?kind=guides"
     },
     {
+      "source": "/acheteurs/:slug",
+      "destination": "/api/prerender?kind=acheteur&slug=:slug"
+    },
+    {
       "source": "/guides/:slug",
       "destination": "/api/prerender?kind=guide&slug=:slug"
     },

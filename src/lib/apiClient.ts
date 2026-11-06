@@ -1854,4 +1854,5 @@ export const seoV2Api = {
   page: async (params: { base: string; city?: string; trade?: string; department?: string; page?: string }): Promise<import('./seoLocalCopy').SeoV2Page | { redirect: string } | { name: string; choices: { department: string; departmentName: string; path: string }[] }> =>
     (await apiClient.get('/seo/v2/page', { params })).data,
   barometre: async (): Promise<import('./barometre').Barometre> => (await apiClient.get('/seo/v2/barometre')).data,
+  acheteur: async (slug: string): Promise<import('./acheteur').BuyerData> => (await apiClient.get(`/seo/v2/acheteur/${encodeURIComponent(slug)}`)).data,
 };
