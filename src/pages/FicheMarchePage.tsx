@@ -191,6 +191,9 @@ export default function FicheMarchePage() {
   const dlv = (opp as any)?.deadline_checked || opp?.deadline;
   const state: string | null = (opp as any)?.open_state || null;
   const days = daysLeft(dlv);
+  // 7 nov. (audit) : consultation clôturée ou annulée : plus de bouton « dossier », d'invitation ni de barre fixe —
+  // on propose les marchés ouverts à la place.
+  const isOver = state === 'closed' || state === 'cancelled';
   const deadlineTxt = formatDeadlineExact(dlv) || (state === 'verify' ? 'À vérifier dans l’avis' : 'Non précisée');
   const title = opp ? shortTitle(opp.title, city) : '';
   const crit = (k: string) => score?.matchCriteria?.find(c => c.key === k);
@@ -338,14 +341,14 @@ export default function FicheMarchePage() {
 
   // --- "30 minutes offertes" invitation (3.12): once per visit, never after a choice, never mid-typing ---
   const openInvite = useCallback(() => {
-    if (acted.current) return;
+    if (acted.current || isOver) return;
     try { if (sessionStorage.getItem(INVITE_KEY)) return; } catch { return; }
     // Not while the visitor is typing, and not on top of the cookie banner (they have not answered it yet).
     if (document.activeElement?.tagName === 'INPUT' || getAnalyticsConsent() === null) { window.setTimeout(openInvite, 15000); return; }
     try { sessionStorage.setItem(INVITE_KEY, '1'); } catch { return; }
     setInvite(true);
     trackVisitorEvent('invitation_30min_shown', 'Invitation 30 minutes affichée', undefined, { opportunityId: id });
-  }, [id]);
+  }, [id, isOver]);
   const hasScore = known && sc != null;
   useEffect(() => {
     if (!hasScore) return;
@@ -477,7 +480,7 @@ export default function FicheMarchePage() {
                 <div className="flex flex-col"><b>Le conseil d’Elena</b><span className="text-[13px] text-[#B4C1D3]">Elena Popescu · Chargée de relation</span></div>
               </div>
               <p className="text-[15px] leading-relaxed">{advice.text}</p>
-              <button type="button" onClick={() => choose('dossier')} className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#F97316] px-3 text-center text-[15px] font-extrabold text-white">Recevoir mon dossier et faire le point avec Elena</button>
+              {!isOver && <button type="button" onClick={() => choose('dossier')} className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#F97316] px-3 text-center text-[15px] font-extrabold text-white">Recevoir mon dossier et faire le point avec Elena</button>}
               {advice.suggestBetter && <Link to="/vos-marches" className="text-[14px] font-semibold text-[#FB923C]">Voir les marchés qui me correspondent mieux ›</Link>}
               <p className="text-[12px] text-[#B4C1D3]">Synthèse automatique à partir de votre entreprise et du marché, à confirmer avec Elena.</p>
             </section>)}
@@ -530,6 +533,14 @@ export default function FicheMarchePage() {
           </section>
 
 
+          {isOver ? (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-[20px] font-extrabold">Cette consultation n’accepte plus de candidatures</h2>
+            <p className="text-[14px] text-[#D6E0EC]">Elle est {state === 'cancelled' ? 'annulée' : 'clôturée'}. Les consultations ouvertes qui correspondent à votre activité sont dans votre liste.</p>
+            <Link to="/vos-marches" className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#F97316] px-3 text-center text-[15px] font-extrabold text-white">Voir les marchés ouverts pour mon entreprise</Link>
+            <div className="text-center text-[13px] text-[#B4C1D3]"><button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">Poser une question à Elena</button></div>
+          </section>
+          ) : (
           <section className="flex flex-col gap-3">
             <h2 className="text-[20px] font-extrabold">La suite, en un clic</h2>
             <p className="text-[14px] text-[#D6E0EC]">Une question avant de choisir ? <button type="button" onClick={() => choose('info')} className="min-h-[48px] font-bold text-[#FB923C] underline">Demandez à Elena</button>, elle vous rappelle {rappelDelai()}.</p>
@@ -542,6 +553,7 @@ export default function FicheMarchePage() {
             </button>
             <div className="text-center text-[13px] text-[#B4C1D3]">Gratuit · Sans engagement · <button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">J’ai juste une question</button></div>
           </section>
+          )}
 
           <MarketSuivi light opportunityId={id} sessionId={sessionId} analysed={sc != null} onDossier={() => choose('dossier')} fileName={pdfFileName(company, opp?.source_reference)} />
         </div>)}
@@ -567,7 +579,7 @@ export default function FicheMarchePage() {
       </section>
 
       {/* Barre fixe (3.11) */}
-      {!(known && mainVisible) && !fieldActive && !invite && (
+      {!isOver && !(known && mainVisible) && !fieldActive && !invite && (
         <div className="fixed inset-x-0 bottom-[64px] z-30 border-t border-[#22385A] bg-[#0A1628]/95 md:bottom-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
           <div className="mx-auto max-w-[560px]">
             {known

@@ -20,7 +20,7 @@ export const buyerTitle = (b: BuyerData) => {
 };
 export const buyerDescription = (b: BuyerData) => {
   const lead = b.counts.open > 0 ? `${nf.format(b.counts.open)} consultation${b.counts.open > 1 ? 's' : ''} ouverte${b.counts.open > 1 ? 's' : ''}` : 'Aucune consultation ouverte aujourd’hui';
-  return `${b.name}${where(b)} : ${lead}, ${nf.format(b.counts.total)} consultations publiées en 6 mois. Dates limites, lieux, métiers, et alerte pour ses prochains marchés.`.slice(0, 300);
+  return `${b.name}${where(b)} : ${lead}, ${nf.format(b.counts.total)} consultations publiées en 6 mois. Dates limites, lieux, métiers, et accompagnement pour y répondre.`.slice(0, 300);
 };
 export const buyerIntro = (b: BuyerData) =>
   `Les marchés publics publiés par ${b.name}${where(b)} : consultations ouvertes avec leur date limite, puis les consultations des six derniers mois. Données issues des avis officiels (BOAMP, Journal officiel de l’Union européenne), mises à jour plusieurs fois par jour.`;
