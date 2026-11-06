@@ -31,7 +31,7 @@ export default function MarketSuivi({ opportunityId, sessionId, analysed, onDoss
     { key: 'analysis', label: 'Marché analysé', detail: 'Correspondance calculée pour votre entreprise', state: analysed ? 'done' : 'current', at: null },
     { key: 'dossier', label: 'Votre dossier prérempli', detail: 'À votre nom, prêt en un clic, avec un appel d’Elena', state: analysed ? 'current' : 'todo', at: null },
     { key: 'entrusted', label: 'Dossier confié à Elena', detail: 'Elle prépare les pièces et le mémoire technique avec vous', state: 'todo', at: null },
-    { key: 'signature', label: 'Signature et dépôt', detail: 'Vous signez en ligne, nous déposons avant la date limite', state: 'todo', at: null },
+    { key: 'signature', label: 'Signature et dépôt', detail: 'Dépôt avant la date limite (par nous si vous nous confiez la candidature, sur devis)', state: 'todo', at: null },
     { key: 'result', label: 'Résultat', detail: 'Vous êtes prévenu dès la réponse de l’acheteur', state: 'todo', at: null },
   ];
   const shown = steps || fallback;

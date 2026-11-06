@@ -352,7 +352,7 @@ export default function HomePage() {
               {[
                 ['Indiquez votre entreprise', 'Son nom ou son SIRET : nous l’identifions dans les registres officiels.'],
                 ['Comparez vos marchés', 'Chaque marché affiche son pourcentage de correspondance, analysé sur six critères.'],
-                ['Recevez votre dossier et faites le point', 'Dossier prérempli à votre nom tout de suite, puis 30 minutes avec Elena pour mesurer vos chances.'],
+                ['Recevez votre dossier et faites le point', 'Dossier prérempli à votre nom tout de suite, puis 30 minutes avec Elena pour voir si ce marché vaut le coup pour vous.'],
               ].map(([t, d], i) => (
                 <li key={t} className="relative flex flex-1 gap-3.5 overflow-hidden rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5 pl-4">
                   <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-[#F97316]" />

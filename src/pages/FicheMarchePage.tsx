@@ -16,7 +16,7 @@ import { normalizeFrPhoneDigits } from '@/lib/utils';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import MarketSuivi from '@/components/suivi/MarketSuivi';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
-import { loadCoords, saveCoords, validateCoords, leadMessage, pdfFileName, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
+import { loadCoords, saveCoords, validateCoords, leadMessage, pdfFileName, rappelDelai, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
 import ConfirmationScreen, { type PdfState } from '@/components/fiche/ConfirmationScreen';
 import { AppointmentModal } from '@/components/AppointmentModal';
@@ -532,13 +532,13 @@ export default function FicheMarchePage() {
 
           <section className="flex flex-col gap-3">
             <h2 className="text-[20px] font-extrabold">La suite, en un clic</h2>
-            <p className="text-[14px] text-[#D6E0EC]">Une question avant de choisir ? <button type="button" onClick={() => choose('info')} className="min-h-[48px] font-bold text-[#FB923C] underline">Demandez à Elena</button>, elle vous rappelle dans l’heure.</p>
+            <p className="text-[14px] text-[#D6E0EC]">Une question avant de choisir ? <button type="button" onClick={() => choose('info')} className="min-h-[48px] font-bold text-[#FB923C] underline">Demandez à Elena</button>, elle vous rappelle {rappelDelai()}.</p>
             {/* 5 Nov (décision client) : un seul bouton. Le dossier et l'appel de 30 minutes ne font qu'une action :
                 SIRET = froid, dossier seul = moyen, appel planifié = chaud. */}
             <button ref={mainBtn} type="button" onClick={() => choose('dossier')} className={`${choiceBase} relative border-[#F97316] bg-[#C2410C] text-white shadow-[0_6px_18px_rgba(249,115,22,.35)]`}>
               <span className="absolute right-3 top-[-10px] rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold text-[#C2410C]">30 MIN OFFERTES</span>
               <b className="text-[17px] leading-tight">Recevoir mon dossier et faire le point avec Elena</b>
-              <span className="text-[13px] text-[#FFE9DC]">Dossier prérempli à votre nom tout de suite · un appel pour mesurer vos chances et préparer la suite</span>
+              <span className="text-[13px] text-[#FFE9DC]">Dossier prérempli à votre nom tout de suite · un appel pour voir si ce marché vaut le coup pour vous et préparer la suite</span>
             </button>
             <div className="text-center text-[13px] text-[#B4C1D3]">Gratuit · Sans engagement · <button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">J’ai juste une question</button></div>
           </section>

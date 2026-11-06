@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
-import { COPY, EMPTY_COORDS, formatPhone, leadMessage, loadCoords, saveCoords, validateCoords, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
+import { COPY, EMPTY_COORDS, formatPhone, leadMessage, loadCoords, saveCoords, validateCoords, rappelDelai, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
 import { crmApi, getApiErrorMessage } from '@/lib/apiClient';
 import { useBrand } from '@/hooks/use-brand';
 import { useIdempotency } from '@/lib/useIdempotency';
@@ -56,7 +56,7 @@ export default function QuestionPage() {
     <main className={shell} style={font}>
       <section role="status" className="rounded-2xl border border-[#1E6B4A] bg-[#123B2A] p-4">
         <h1 className="text-[22px] font-extrabold text-[#6EE7B7]">✓ {COPY.info.done.title}</h1>
-        <p className="mt-1.5 text-[15px] text-[#E8FFF4]">Rien d’autre à faire : Elena vous rappelle au {formatPhone(coords.phone)} dans l’heure (9 h–18 h) avec la réponse.</p>
+        <p className="mt-1.5 text-[15px] text-[#E8FFF4]">Rien d’autre à faire : Elena vous rappelle au {formatPhone(coords.phone)} {rappelDelai()} avec la réponse.</p>
       </section>
       <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5"><ElenaPhoto /><p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{COPY.info.done.elena}</p></div>
       <Link to="/" className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à l’accueil</Link>

@@ -206,7 +206,9 @@ export function buildEliteAdvice(i: V28Input): { text: string; suggestBetter: bo
 
   if (s >= 65) {
     const a = strengths.length ? ` : ${strengths.slice(0, 3).join(', ')}` : '';
-    return { text: `${co} a de sérieux atouts pour remporter ce marché${a}. ${issue ? `Le seul point à gérer, c’est ${issue}.` : 'Il ne reste qu’à soigner le dossier, et on le fait avec vous.'} Prenez votre créneau, on lance ce dossier ensemble.`, suggestBetter: false };
+    // 6 nov. : jamais « remporter » (le pourcentage ne mesure pas les chances), et « le seul point » seulement s'il n'y a qu'un point à confirmer.
+    const only = i.criteria.filter(c => c.evidence === 'unknown' || c.evidence === 'declared_match').length <= 1;
+    return { text: `${co} a de sérieux atouts sur ce marché${a}. ${issue ? `${only ? 'Le point à gérer' : 'Le premier point à gérer'}, c’est ${issue}.` : 'Il reste à soigner le dossier, et on le fait avec vous.'} Prenez votre créneau, on regarde ce dossier ensemble.`, suggestBetter: false };
   }
   if (s >= 40) {
     const a = strengths.length ? ` : ${strengths.slice(0, 2).join(', ')}` : '';
