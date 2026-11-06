@@ -289,6 +289,9 @@ export default function FicheMarchePage() {
         await crmApi.submitLead({
           brandId, phone, companyName: company || undefined, opportunityId: id, sessionId, idempotencyKey: requestId,
           leadSource: choice === 'rappel' ? 'callback_modal' : 'contact_form', message: leadMessage(choice, coords),
+          // 6 nov. : le moment choisi part aussi en champ structuré (« Cet après-midi », « Demain matin » n'arrivaient
+          // jamais dans HubSpot : seul le texte libre était envoyé, et il n'est affiché que pour une question).
+          ...(choice === 'rappel' && coords.moment ? { callbackMoment: ({ now: 'maintenant', afternoon: 'apres_midi', tomorrow: 'demain_matin' } as const)[coords.moment] } : {}),
         });
         trackRequestSubmitted(choice === 'rappel' ? 'callback' : 'contact', { requestId });
       }
