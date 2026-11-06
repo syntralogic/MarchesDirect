@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { validateCoords, formatPhone, callWhen, leadMessage, calendarRows, pdfFileName, loadCoords, saveCoords, EMPTY_COORDS, COPY } from '../coordonnees';
 
 const ok = { ...EMPTY_COORDS, phone: '06 12 34 56 78' };
+const okDossier = { ...ok, moment: 'now' as const }; // dossier = « dès que possible » ou un créneau (décision client du 5 nov.)
 
 describe('validateCoords', () => {
   it('phone is required everywhere, with a precise message under the field', () => {
@@ -10,10 +11,10 @@ describe('validateCoords', () => {
       expect(validateCoords(c, v).phone).toBe('Indiquez votre numéro de téléphone.');
     }
     expect(validateCoords('dossier', { ...ok, phone: '0612' }).phone).toContain('10 chiffres');
-    expect(validateCoords('dossier', ok)).toEqual({});
+    expect(validateCoords('dossier', okDossier)).toEqual({});
   });
   it('accepts +33 and spaced numbers, refuses 0000000000', () => {
-    expect(validateCoords('dossier', { ...ok, phone: '+33 6 12 34 56 78' })).toEqual({});
+    expect(validateCoords('dossier', { ...okDossier, phone: '+33 6 12 34 56 78' })).toEqual({});
     expect(validateCoords('dossier', { ...ok, phone: '0000000000' }).phone).toBeTruthy();
   });
   it('e-mail is optional for the dossier, validated only when given', () => {

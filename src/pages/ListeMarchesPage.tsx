@@ -1,5 +1,6 @@
 // Écran 2 de la refonte (maquette v26): « Vos marchés », la liste classée. Pourcentages par les règles du moteur existant
 // (match-score), jamais par l'IA ; les cartes apparaissent tout de suite, les pourcentages se remplissent ensuite.
+import ActivityDot from '@/components/ActivityDot';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus } from '@/lib/apiClient';
@@ -72,6 +73,7 @@ function Card({ c, score, withScore }: { c: RankedCard; score: number | null | u
           {isClosingSoon(dl) && <span className="rounded-full bg-[#3A2312] px-2 py-0.5 text-[#FDBA74]">Bientôt clos</span>}
         </div>
         <h3 className="line-clamp-3 text-[16px] font-extrabold leading-snug">{c.title}</h3>
+        <ActivityDot opportunityId={c.id} />
         <p className="text-[13px] text-[#B4C1D3]">{[buyer, place, c.estimated_value && c.estimated_value >= 100 ? `${Math.round(c.estimated_value).toLocaleString('fr-FR')} €` : null].filter(Boolean).join(' · ')}</p>
         <p className="text-[13px] text-[#D6E0EC]">{formatDeadlineExact(dl) ? `Réponse avant le ${formatDeadlineExact(dl)}${n != null && n >= 0 ? ` · J-${n}` : ''}` : 'Date limite non précisée'}</p>
         <span className="text-[14px] font-bold text-[#FB923C]">Voir le marché ›</span>
