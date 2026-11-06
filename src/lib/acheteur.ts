@@ -16,7 +16,9 @@ export const frDay = (iso: string | null) => iso ? new Date(iso).toLocaleDateStr
 const where = (b: BuyerData) => b.deptName ? ` (${b.deptName}, ${b.dept})` : '';
 export const buyerTitle = (b: BuyerData) => {
   const t = `${b.name} : marchés publics et appels d’offres`;
-  return `${t.length > 70 ? b.name.slice(0, 55) + '… : marchés publics' : t} | Marchés Direct`;
+  if (t.length <= 70) return `${t} | Marchés Direct`;
+  const short = b.name.length > 55 ? `${b.name.slice(0, 54).trim()}…` : b.name; // « … » seulement si le nom est vraiment coupé
+  return `${short} : marchés publics | Marchés Direct`;
 };
 export const buyerDescription = (b: BuyerData) => {
   const lead = b.counts.open > 0 ? `${nf.format(b.counts.open)} consultation${b.counts.open > 1 ? 's' : ''} ouverte${b.counts.open > 1 ? 's' : ''}` : 'Aucune consultation ouverte aujourd’hui';
