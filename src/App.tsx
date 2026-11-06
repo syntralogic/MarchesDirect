@@ -194,12 +194,15 @@ const App: React.FC = () => {
               {/* Local SEO landing pages (client brief, gap #4) - clean nested
                   URLs matching real generated content: journey x city,
                   journey x city x trade, journey x department. */}
+              <Route path="/marches-publics/departement/:department/:trade" element={<SeoLocalPage journey="public_procurement" />} />
               <Route path="/marches-publics/departement/:department" element={<SeoLocalPage journey="public_procurement" />} />
               <Route path="/marches-publics/:city/:trade" element={<SeoLocalPage journey="public_procurement" />} />
               <Route path="/marches-publics/:city" element={<SeoLocalPage journey="public_procurement" />} />
+              <Route path="/appels-doffres/departement/:department/:trade" element={<SeoLocalPage journey="tender" />} />
               <Route path="/appels-doffres/departement/:department" element={<SeoLocalPage journey="tender" />} />
               <Route path="/appels-doffres/:city/:trade" element={<SeoLocalPage journey="tender" />} />
               <Route path="/appels-doffres/:city" element={<SeoLocalPage journey="tender" />} />
+              <Route path="/sous-traitance/departement/:department/:trade" element={<SeoLocalPage journey="subcontracting" />} />
               <Route path="/sous-traitance/departement/:department" element={<SeoLocalPage journey="subcontracting" />} />
               <Route path="/sous-traitance/:city/:trade" element={<SeoLocalPage journey="subcontracting" />} />
               <Route path="/sous-traitance/:city" element={<SeoLocalPage journey="subcontracting" />} />

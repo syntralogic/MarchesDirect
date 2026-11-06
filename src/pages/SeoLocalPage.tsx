@@ -1,232 +1,98 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Search, MapPin, ChevronRight, Landmark, Wrench } from 'lucide-react';
+import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { ChevronRight, MapPin, Search } from 'lucide-react';
 import PageMeta from '@/components/common/PageMeta';
-import { seoPagesApi, getApiErrorMessage, type ApiSeoPage } from '@/lib/apiClient';
+import { seoV2Api } from '@/lib/apiClient';
 import { trackVisitorEvent } from '@/lib/visitorTracking';
-import { useLang } from '@/contexts/LangContext';
+import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoSections, seoPagePath, seoDate, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '@/lib/seoLocalCopy';
 
-// Powers the clean local-SEO URL structure the client asked for by exact
-// name: /marches-publics/:city, /marches-publics/:city/:trade,
-// /appels-doffres/:city, /sous-traitance/:city, and the department-level
-// /marches-publics/departement/:department. One component covers all of
-// them - only the journey prop and route params differ.
-//
-// Content follows the client's brief: real H1 for the city/trade, a unique
-// local intro, real open opportunities in the zone (via the CTA into
-// /recherche pre-filtered), real local public buyers, related trades and
-// neighbouring cities as internal links (city -> department -> region,
-// trade -> city), a short local FAQ built from real numbers, and a visible
-// last-updated date. Nothing here is a duplicate template with just the
-// city name swapped - copy comes from the backend's page_content, which is
-// only ever generated where real opportunities exist for that exact combo.
+// Pages locales SEO (5 nov., mandat référencement) : mêmes textes que le pré-rendu serveur (src/lib/seoLocalCopy.ts),
+// alimentés par /api/seo/v2/page. Adresse canonique unique (minuscules, sans accents) : toute autre écriture est
+// remplacée sans recharger. Une zone sans annonce ouverte reste consultable, avec des alternatives, en noindex.
+const BASES: Record<string, string> = { public_procurement: 'marches-publics', tender: 'appels-doffres', subcontracting: 'sous-traitance' };
 
-const JOURNEY_LABEL: Record<string, string> = {
-  public_procurement: 'Marchés publics',
-  tender: "Appels d'offres",
-  subcontracting: 'Sous-traitance',
-};
-
-const JOURNEY_BASE_PATH: Record<string, string> = {
-  public_procurement: '/marches-publics',
-  tender: '/appels-doffres',
-  subcontracting: '/sous-traitance',
-};
-
-interface Props {
-  journey: 'public_procurement' | 'tender' | 'subcontracting';
+function Item({ i }: { i: SeoItem }) {
+  return (
+    <li className="rounded-[14px] border border-[#22385A] bg-[#12233A] p-3">
+      <Link to={i.path} className="block text-[15px] font-bold leading-snug text-white hover:text-[#FDBA74]">{seoItemTitle(i)}</Link>
+      <p className="mt-1 text-[12.5px] text-[#B4C1D3]">{seoItemLine(i)}</p>
+    </li>
+  );
 }
 
-export default function SeoLocalPage({ journey }: Props) {
-  const { t } = useLang();
+export default function SeoLocalPage({ journey }: { journey: 'public_procurement' | 'tender' | 'subcontracting' }) {
   const { city, trade, department } = useParams<{ city?: string; trade?: string; department?: string }>();
-  const [page, setPage] = useState<ApiSeoPage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate(); const location = useLocation(); const [sp] = useSearchParams();
+  const pageParam = sp.get('page') || undefined;
+  const [page, setPage] = useState<SeoV2Page | null | undefined>(undefined);
+  const [choices, setChoices] = useState<{ name: string; choices: { department: string; departmentName: string; path: string }[] } | null>(null);
+  const base = BASES[journey];
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    seoPagesApi
-      .getByFilters({ journey, city, trade, department })
-      .then((data) => {
-        if (!cancelled) {
-          setPage(data);
-          trackVisitorEvent('view_seo_page', data.page_title || journey, undefined, { journey, city, trade, department });
-        }
+    let live = true; setPage(undefined); setChoices(null);
+    seoV2Api.page({ base, city, trade, department, page: pageParam })
+      .then(r => {
+        if (!live) return;
+        if ('redirect' in r) { navigate(r.redirect, { replace: true }); return; }
+        if ('choices' in r) { setChoices(r); setPage(null); return; }
+        if (r.canonicalPath !== location.pathname) { navigate(seoPagePath(r, r.page), { replace: true }); return; }
+        setPage(r);
+        trackVisitorEvent('view_seo_page', seoH1(r), undefined, { journey, city: r.zone.type === 'city' ? r.zone.name : undefined, department: r.zone.department || undefined, trade: r.trade?.name });
       })
-      .catch((err) => {
-        if (!cancelled) setError(getApiErrorMessage(err, t('seoNotFound')));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .catch(() => { if (live) setPage(null); });
+    return () => { live = false; };
+  }, [base, city, trade, department, pageParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return () => { cancelled = true; };
-  }, [journey, city, trade, department, t]);
+  const shell = 'mx-auto w-full max-w-[720px] px-4 pb-24 pt-4 text-[#F2F5F9]';
+  if (page === undefined) return <main className={shell} aria-busy="true"><div className="h-8 w-2/3 animate-pulse rounded bg-[#12233A]" /><div className="mt-4 flex flex-col gap-2">{[0, 1, 2].map(k => <div key={k} className="h-20 animate-pulse rounded-[14px] bg-[#12233A]" />)}</div></main>;
+  if (choices) return (
+    <main className={shell}>
+      <PageMeta title={`${SEO_LABEL[journey]} — ${choices.name} : plusieurs communes | Marchés Direct`} description={`Plusieurs communes s’appellent ${choices.name}.`} noindex />
+      <h1 className="text-[22px] font-extrabold">{choices.name} : plusieurs communes portent ce nom</h1>
+      <p className="mt-2 text-[14px] text-[#D6E0EC]">Choisissez le département :</p>
+      <ul className="mt-3 flex flex-col gap-2">{choices.choices.map(c => <li key={c.path}><Link to={`${c.path}${trade ? `/${trade}` : ''}`} className="font-bold text-[#FB923C] underline">{choices.name} ({c.departmentName}, {c.department})</Link></li>)}</ul>
+    </main>);
+  if (page === null) return (
+    <main className={shell}>
+      <PageMeta title="Page introuvable | Marchés Direct" description="Cette page n’existe pas." noindex />
+      <h1 className="text-[22px] font-extrabold">Page introuvable</h1>
+      <Link to={`/${base}`} className="mt-3 inline-block font-bold text-[#FB923C] underline">Voir les {SEO_LABEL[journey].toLowerCase()}</Link>
+    </main>);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-orange border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (error || !page) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-xl font-bold text-white mb-2">{t('seoNotFound')}</h1>
-        <p className="text-[#B9BBC8] text-sm mb-6">{t('seoNotFoundSub')}</p>
-        <Link to={JOURNEY_BASE_PATH[journey]} className="text-orange font-semibold text-sm hover:underline">
-          {t('seoViewAllOpportunities')}
-        </Link>
-      </div>
-    );
-  }
-
-  const zoneLabel = page.filter_city || page.filter_department || '';
-  const journeyLabel = JOURNEY_LABEL[journey];
-
-  const searchParams = new URLSearchParams();
-  if (page.filter_city) searchParams.set('city', page.filter_city);
-  if (page.filter_department) searchParams.set('department', page.filter_department);
-  if (page.filter_trade_id) searchParams.set('trade_id', String(page.filter_trade_id));
-  searchParams.set('journey', journey);
-
-  const lastUpdated = page.updated_at
-    ? new Date(page.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    : null;
-
-  const faqItems = [
-    {
-      q: `Combien d'opportunités de ${journeyLabel.toLowerCase()} sont ouvertes ${page.filter_city ? `à ${page.filter_city}` : `dans le département ${page.filter_department}`} ?`,
-      a: page.page_content || `Le nombre d'opportunités actives est mis à jour automatiquement chaque jour sur cette page.`,
-    },
-    {
-      q: `Comment candidater à une opportunité ${page.filter_trade_name ? `en ${page.filter_trade_name} ` : ''}${page.filter_city ? `à ${page.filter_city}` : `dans le département ${page.filter_department}`} ?`,
-      a: `Identifiez votre entreprise par SIRET sur la fiche de l'opportunité pour obtenir votre indice de correspondance, puis laissez vos coordonnées pour être accompagné par un chargé d'affaires.`,
-    },
-  ];
-
+  const p = page; const crumbs = seoBreadcrumb(p); const faq = seoFaq(p);
+  const chip = 'rounded-full border border-[#2B4468] px-3 py-1.5 text-[13px] font-semibold text-[#D6E0EC] hover:border-[#FB923C]';
   return (
-    <div className="page-fade-in max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-16">
-      <PageMeta title={page.page_title || `${journeyLabel} ${zoneLabel}`} description={page.page_meta_description || ''} />
-
-      {/* Breadcrumb - city -> department -> region internal linking per spec */}
-      <nav className="flex items-center flex-wrap gap-1 text-xs text-[#5B6B80] mb-5">
-        <Link to="/" className="hover:text-orange">Accueil</Link>
-        <ChevronRight size={11} />
-        <Link to={JOURNEY_BASE_PATH[journey]} className="hover:text-orange">{journeyLabel}</Link>
-        {page.filter_department && page.filter_city && (
-          <>
-            <ChevronRight size={11} />
-            <Link to={`${JOURNEY_BASE_PATH[journey]}/departement/${page.filter_department}`} className="hover:text-orange">
-              {page.filter_department}
-            </Link>
-          </>
-        )}
-        {page.filter_city && (
-          <>
-            <ChevronRight size={11} />
-            <span className="text-white">{page.filter_city}</span>
-          </>
-        )}
+    <main className={shell}>
+      <PageMeta title={seoTitle(p)} description={seoDescription(p)} noindex={!p.indexable} canonicalPath={seoPagePath(p, p.page)} />
+      <nav aria-label="Fil d'Ariane" className="mb-3 flex flex-wrap items-center gap-1 text-[12px] text-[#B4C1D3]">
+        {crumbs.map((c, k) => (<span key={c.path} className="inline-flex items-center gap-1">{k > 0 && <ChevronRight size={11} aria-hidden />}
+          {k === crumbs.length - 1 ? <span className="text-white">{c.name}</span> : <Link to={c.path} className="hover:text-[#FB923C]">{c.name}</Link>}</span>))}
       </nav>
+      <span className="inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FB923C]"><MapPin size={12} aria-hidden />{p.zone.type === 'city' ? p.zone.name : `${p.zone.name} (${p.zone.department})`}</span>
+      <h1 className="mt-1 text-[24px] font-extrabold leading-tight md:text-[30px]">{seoH1(p)}</h1>
+      <div className="mt-2 flex flex-col gap-1.5 text-[14.5px] leading-relaxed text-[#D6E0EC]">{seoIntro(p).map((t, k) => <p key={k}>{t}</p>)}</div>
 
-      <div className="mb-6">
-        <span className="inline-flex items-center gap-1 text-xs font-bold text-orange uppercase tracking-widest mb-3">
-          <MapPin size={12} />
-          {zoneLabel}
-        </span>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-snug">
-          {page.page_title}
-        </h1>
-        {lastUpdated && <p className="text-[11px] text-[#5B6B80] mt-2">Mis à jour le {lastUpdated}</p>}
-      </div>
-
-      <p className="text-[#B9BBC8] text-sm md:text-base leading-relaxed mb-6">
-        {page.page_content}
-      </p>
-
-      <Link
-        to={`/recherche?${searchParams.toString()}`}
-        className="inline-flex items-center gap-2 bg-orange text-white font-semibold text-sm px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors mb-8"
-      >
-        <Search size={16} />
-        {t('seoViewAllOpportunities')}
-      </Link>
-
-      {/* Real local public buyers - public journey only, buyer_name only, never a named contact */}
-      {!!page.local_buyers?.length && (
-        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-6">
-          <h2 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-            <Landmark size={15} className="text-orange" /> Principaux acheteurs publics locaux
-          </h2>
-          <ul className="space-y-1.5">
-            {page.local_buyers.map((b, i) => (
-              <li key={i} className="text-xs text-[#B9BBC8]">{b}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Related trades in the same zone - trade -> city internal linking */}
-      {!!page.related_trades?.length && (
-        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-6">
-          <h2 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-            <Wrench size={15} className="text-orange" /> Métiers concernés {zoneLabel ? `à ${zoneLabel}` : ''}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {page.related_trades.map((rt, i) => (
-              page.filter_city ? (
-                <Link
-                  key={i}
-                  to={`${JOURNEY_BASE_PATH[journey]}/${encodeURIComponent(page.filter_city)}/${encodeURIComponent(rt.name)}`}
-                  className="text-xs text-white bg-[#031B30] border border-[#17334D] rounded-full px-3 py-1.5 hover:border-orange/50 transition-colors"
-                >
-                  {rt.name} ({rt.opp_count})
-                </Link>
-              ) : (
-                <span key={i} className="text-xs text-white bg-[#031B30] border border-[#17334D] rounded-full px-3 py-1.5">
-                  {rt.name} ({rt.opp_count})
-                </span>
-              )
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Neighbouring cities in the same department - city -> department internal linking */}
-      {!!page.neighboring_cities?.length && (
-        <div className="bg-[#061D32] border border-[#17334D] rounded-2xl p-5 mb-6">
-          <h2 className="text-sm font-bold text-white mb-3">Villes voisines</h2>
-          <div className="flex flex-wrap gap-2">
-            {page.neighboring_cities.map((c, i) => (
-              <Link
-                key={i}
-                to={`${JOURNEY_BASE_PATH[journey]}/${encodeURIComponent(c)}`}
-                className="text-xs text-white bg-[#031B30] border border-[#17334D] rounded-full px-3 py-1.5 hover:border-orange/50 transition-colors"
-              >
-                {c}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Short local FAQ, built from real numbers already in page_content - not invented */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold text-white">Questions fréquentes</h2>
-        {faqItems.map((f, i) => (
-          <details key={i} className="bg-[#061D32] border border-[#17334D] rounded-xl p-4">
-            <summary className="text-xs font-semibold text-white cursor-pointer">{f.q}</summary>
-            <p className="text-xs text-[#B9BBC8] mt-2 leading-relaxed">{f.a}</p>
-          </details>
-        ))}
-      </div>
-    </div>
+      {seoSections(p).map(sec => (<section key={sec.key} className="mt-6"><h2 className="mb-1 text-[17px] font-extrabold">{sec.title}</h2>
+        {sec.note && <p className="mb-2 text-[12.5px] text-[#B4C1D3]">{sec.note}</p>}
+        <ul className="flex flex-col gap-2">{sec.items.map(i => <Item key={i.id} i={i} />)}</ul>
+        {sec.key === 'main' && p.pages > 1 && (<nav aria-label="Pages" className="mt-3 flex flex-wrap gap-2 text-[13px]">
+          {Array.from({ length: p.pages }, (_, k) => k + 1).map(n => n === p.page ? <span key={n} className="rounded-full bg-[#FB923C] px-3 py-1 font-bold text-[#0A1628]">{n}</span>
+            : <Link key={n} to={seoPagePath(p, n)} className="rounded-full border border-[#2B4468] px-3 py-1 font-semibold">{n}</Link>)}
+        </nav>)}
+      </section>))}
+      {!p.count && !p.buyerCount && (<div className="mt-5 rounded-[14px] border border-[#22385A] bg-[#12233A] p-3 text-[14px] text-[#D6E0EC]">
+        Rien d’ouvert ici aujourd’hui. <Link to="/question" className="font-bold text-[#FB923C] underline">Être prévenu par Elena</Link> dès qu’une annonce paraît.
+      </div>)}
+      <Link to={seoSearchPath(p)} className="mt-4 inline-flex items-center gap-2 font-bold text-[#FB923C] underline"><Search size={15} aria-hidden />{seoSearchLabel(p)}</Link>
+      {p.trades.filter(t => t.slug !== p.trade?.slug).length > 0 && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Par métier</h2>
+        <div className="flex flex-wrap gap-2">{p.trades.filter(t => t.slug !== p.trade?.slug).map(t => <Link key={t.slug} to={zonePath(p, t.slug)} className={chip}>{t.name} ({t.count})</Link>)}</div></section>)}
+      {p.cities.length > 0 && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Autres villes du département</h2>
+        <div className="flex flex-wrap gap-2">{p.cities.map(c => <Link key={c.slug} to={`/${p.base}/${c.slug}${p.trade ? `/${p.trade.slug}` : ''}`} className={chip}>{c.name} ({c.count})</Link>)}</div></section>)}
+      {p.otherTypes.some(o => o.count > 0) && (<section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Autres types d’opportunités</h2>
+        <div className="flex flex-wrap gap-2">{p.otherTypes.filter(o => o.count > 0).map(o => <Link key={o.base} to={zonePath({ ...p, base: o.base }, p.trade?.slug)} className={chip}>{SEO_LABEL[o.journey]} ({o.count})</Link>)}</div></section>)}
+      <section className="mt-6"><h2 className="mb-2 text-[17px] font-extrabold">Questions fréquentes</h2>
+        <div className="flex flex-col gap-2">{faq.map(f => <details key={f.q} className="rounded-[14px] border border-[#22385A] bg-[#12233A] p-3"><summary className="cursor-pointer text-[14px] font-bold">{f.q}</summary><p className="mt-2 text-[13.5px] leading-relaxed text-[#D6E0EC]">{f.a}</p></details>)}</div></section>
+      <p className="mt-6 text-[12px] text-[#B4C1D3]">Données issues des avis publiés par les acheteurs, mises à jour le {seoDate(p.generatedAt)}. Marchés Direct est une plateforme indépendante.</p>
+    </main>
   );
 }

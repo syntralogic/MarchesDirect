@@ -8,6 +8,7 @@ import {
 } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent, trackRequestSubmitted, getConsultationIndicator, getDossierRequestsCount } from '@/lib/visitorTracking';
 import { getAnalyticsConsent } from '@/lib/consent';
+import { execLabel, buyerPlace, fixSummaryPlace, STATE_LABEL } from '@/lib/noticePlace';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { useBrand } from '@/hooks/use-brand';
 import { useIdempotency } from '@/lib/useIdempotency';
@@ -181,10 +182,16 @@ export default function FicheMarchePage() {
   };
 
   // --- derived view ---
-  const city = opp?.location_city || '';
-  const dept = opp?.location_department ? ` (${opp.location_department})` : '';
-  const days = daysLeft(opp?.deadline);
-  const deadlineTxt = formatDeadlineExact(opp?.deadline) || 'Non précisée';
+  // v2 : lieu d'exécution, acheteur et état relus dans l'avis (recherche v2) ; ancienne colonne en repli seulement.
+  const execTxt = opp ? execLabel(opp as any) : null;
+  const city = execTxt != null ? '' : opp?.location_city || '';
+  const dept = execTxt != null ? '' : opp?.location_department ? ` (${opp.location_department})` : '';
+  const placeChip = execTxt != null ? execTxt : `${city}${dept}`;
+  const buyerTxt = opp ? buyerPlace(opp as any) : null;
+  const dlv = (opp as any)?.deadline_checked || opp?.deadline;
+  const state: string | null = (opp as any)?.open_state || null;
+  const days = daysLeft(dlv);
+  const deadlineTxt = formatDeadlineExact(dlv) || (state === 'verify' ? 'À vérifier dans l’avis' : 'Non précisée');
   const title = opp ? shortTitle(opp.title, city) : '';
   const crit = (k: string) => score?.matchCriteria?.find(c => c.key === k);
   const sc = score?.score ?? null;
@@ -407,8 +414,10 @@ export default function FicheMarchePage() {
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap gap-2 text-[12px] font-bold">
           <span className="rounded-full bg-[#3A2312] px-2.5 py-1 text-[#FDBA74]">{TYPE_LABEL[opp.journey] || 'MARCHÉ'}</span>
-          <span className="rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold text-[#D6E0EC]">{city}{dept}</span>
-          <span className={`rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold ${days != null && days <= 7 ? 'text-[#FDBA74]' : 'text-[#D6E0EC]'}`}>{formatDeadlineExact(opp?.deadline) ? `Réponse avant le ${deadlineTxt}${days != null && days >= 0 ? ` · J-${days}` : ''}` : 'Date limite non précisée'}</span>
+          {placeChip && <span className="rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold text-[#D6E0EC]">{placeChip}</span>}
+          {state && state !== 'open' && state !== 'verify'
+            ? <span className="rounded-full bg-[#3B1D1D] px-2.5 py-1 text-[#FCA5A5]">{STATE_LABEL[state]}{state === 'closed' && formatDeadlineExact(dlv) ? ` le ${formatDeadlineExact(dlv)}` : ''}</span>
+            : <span className={`rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold ${days != null && days <= 7 ? 'text-[#FDBA74]' : 'text-[#D6E0EC]'}`}>{formatDeadlineExact(dlv) ? `Réponse avant le ${deadlineTxt}${days != null && days >= 0 ? ` · J-${days}` : ''}` : state === 'verify' ? 'Date limite à vérifier dans l’avis' : 'Date limite non précisée'}</span>}
         </div>
         <h1 className="text-[23px] font-extrabold leading-tight">{title}</h1>
         {consult && <p className="flex items-center gap-2 text-[14px] text-[#D6E0EC]"><span className="md-live-dot h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden />{consult}</p>}
@@ -538,11 +547,11 @@ export default function FicheMarchePage() {
         <h2 className="text-[18px] font-extrabold">Le marché en détail</h2>
         <p className="text-[14px] text-[#D6E0EC]"><span className="text-[13px] text-[#B4C1D3]">Intitulé officiel</span><br />{opp.title}</p>
         <dl className="grid grid-cols-2 gap-3 text-[14px]">
-          {([['Donneur d’ordre', opp.buyer_name || (opp.identity_unlocked === false ? 'Révélé après un rendez-vous' : 'Non précisé')], ['Lieu d’exécution', `${city}${dept}` || 'Non précisé'], ['Date limite', deadlineTxt], ['Montant', money(opp.estimated_value, opp.currency)], ['Lot', opp.trade_name || 'Non précisé'], ['Référence', opp.source_reference || 'Non précisée']] as const).map(([k, v]) => (
+          {([['Donneur d’ordre', opp.buyer_name || (opp.identity_unlocked === false ? 'Révélé après un rendez-vous' : 'Non précisé')], ['Lieu d’exécution', placeChip || 'Non précisé'], ...(buyerTxt ? [['Adresse de l’acheteur', buyerTxt] as const] : []), ['Date limite', deadlineTxt], ['Montant indiqué', opp.estimated_value != null ? `${money(opp.estimated_value, opp.currency)} (estimation ou plafond, HT/TTC non précisé dans nos données)` : 'Non communiqué'], ['Lot', opp.trade_name || 'Non précisé'], ['Référence', opp.source_reference || 'Non précisée']] as const).map(([k, v]) => (
             <div key={k} className="flex flex-col"><dt className="text-[13px] text-[#B4C1D3]">{k}</dt><dd className="font-bold">{v}</dd></div>))}
         </dl>
         {dossiers != null && dossiers >= 2 && <p className="text-[14px] text-[#D6E0EC]">{dossiers} dossiers préremplis demandés pour ce marché ces 7 derniers jours</p>}
-        {(opp.ai_summary || sections?.presentation) && <div className="rounded-2xl border border-[#22385A] bg-[#12233A] p-4"><h3 className="mb-1 font-extrabold">Le marché en 30 secondes</h3><p className="text-[14px] text-[#D6E0EC]">{opp.ai_summary || sections?.presentation}</p></div>}
+        {(opp.ai_summary || sections?.presentation) && <div className="rounded-2xl border border-[#22385A] bg-[#12233A] p-4"><h3 className="mb-1 font-extrabold">Le marché en 30 secondes</h3><p className="text-[14px] text-[#D6E0EC]">{fixSummaryPlace(opp.ai_summary || sections?.presentation, opp as any)}</p></div>}
         {sections?.conditions && <Details title="Conditions et points à vérifier"><p className="whitespace-pre-line">{sections.conditions}</p></Details>}
         {sections?.presentation && <Details title="Informations techniques"><p className="whitespace-pre-line">{sections.presentation}</p></Details>}
         {sections?.entreprises && <Details title="Entreprises concernées"><p className="whitespace-pre-line">{sections.entreprises}</p></Details>}

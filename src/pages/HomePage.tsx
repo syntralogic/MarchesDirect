@@ -30,22 +30,50 @@ function ElenaAvatar({ size = 48 }: { size?: number }) {
 }
 
 // 1.5 : « [N] marchés ouverts aujourd'hui en France ». Valeur réelle (une requête par jour côté serveur), jamais de valeur fixe : en cas d'échec, toute la ligne disparaît.
-function OpenCounter() {
-  const [n, setN] = useState<number | null>(null);
+/** 6 nov. : compteur vivant dans le moteur de recherche. Point rouge qui pulse, chiffre relu toutes les 5 minutes
+ *  (et au retour sur l'onglet), même définition que la recherche : date limite connue et à venir, non annulée.
+ *  La fraîcheur est dite honnêtement : si le dernier import date de plus de 24 h, on l'écrit au lieu de « en direct ». */
+function LiveCounter() {
+  const [c, setC] = useState<{ open: number; new24h: number; lastImportAt: string | null } | null>(null);
+  const [bump, setBump] = useState(false);
   useEffect(() => {
-    let live = true;
-    opportunitiesApi.getOpenToday().then(r => { if (live && Number.isFinite(r.total) && r.total > 0) setN(r.total); }).catch(() => {});
-    return () => { live = false; };
+    let live = true; let prev: number | null = null;
+    const load = () => opportunitiesApi.getLiveCounter().then(r => {
+      if (!live || !Number.isFinite(r.open) || r.open <= 0) return;
+      if (prev !== null && prev !== r.open) { setBump(true); setTimeout(() => setBump(false), 1200); }
+      prev = r.open; setC(r);
+    }).catch(() => {});
+    load();
+    const t = setInterval(load, 5 * 60000);
+    const vis = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', vis);
+    return () => { live = false; clearInterval(t); document.removeEventListener('visibilitychange', vis); };
   }, []);
+  if (!c) return null;
+  const age = c.lastImportAt ? (Date.now() - Date.parse(c.lastImportAt)) / 3600000 : null;
+  const fresh = age != null && age <= 24;
+  const when = c.lastImportAt ? new Date(c.lastImportAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null;
+  return (
+    <div className="flex items-center gap-2 text-[14px]" aria-live="polite">
+      <span className="relative flex h-2.5 w-2.5" aria-hidden>
+        {fresh && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#EF4444] opacity-75" />}
+        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${fresh ? 'bg-[#EF4444]' : 'bg-[#94A3B8]'}`} />
+      </span>
+      <span><b className={`text-white transition-colors ${bump ? 'text-[#FDBA74]' : ''}`}>{new Intl.NumberFormat('fr-FR').format(c.open)}</b> marchés ouverts
+        <span className="text-[#B4C1D3]">{fresh ? (c.new24h > 0 ? ` · ${new Intl.NumberFormat('fr-FR').format(c.new24h)} nouveaux en 24 h` : ' · en direct') : when ? ` · dernier import le ${when}` : ''}</span></span>
+    </div>
+  );
+}
+
+function OpenCounter() {
   // v28 : bande de chiffres (vrais), au niveau visuel du moteur et de la carte. Le compteur reste réel ; sans chiffre, la tuile est absente.
   const tiles: { big: string; small: string; hot?: boolean }[] = [
-    ...(n !== null ? [{ big: new Intl.NumberFormat('fr-FR').format(n), small: 'marchés ouverts aujourd’hui, mis à jour chaque matin', hot: true }] : []),
     { big: '3 types', small: 'marchés publics, appels d’offres privés, sous-traitance' },
     { big: '6 critères', small: 'pour votre pourcentage : activité, zone, calendrier, moyens, références, qualifications' },
     { big: '30 min', small: 'offertes avec notre équipe pour faire le point sur un marché' },
   ];
   return (
-    <div className="mt-7 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+    <div className="mt-7 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
       {tiles.map(t => (
         <div key={t.big} className={`rounded-2xl border p-3.5 ${t.hot ? 'border-[#C2410C]' : 'border-[#22385A]'}`} style={{ background: 'linear-gradient(160deg,#142B4A,#0F1F35)' }}>
           <b className={`block text-[26px] leading-none ${t.hot ? 'text-[#FDBA74]' : 'text-white'}`}>{t.big}</b>
@@ -106,6 +134,7 @@ function SimpleSearch() {
   };
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      <LiveCounter />
       <label htmlFor="md-metier" className="text-[15px] font-bold">Votre métier</label>
       <input id="md-metier" value={metier} onChange={e => setMetier(e.target.value)} placeholder="Ex. : nettoyage, peinture, sécurité, architecte…" className={`${FIELD} placeholder:text-[#6B7A90]`} />
       <label htmlFor="md-zone" className="text-[15px] font-bold">Votre zone</label>
@@ -275,8 +304,8 @@ export default function HomePage() {
   return (
     <div className="page-fade-in">
       <PageMeta
-        title="Marchés Direct — Les marchés faits pour votre entreprise"
-        description="Indiquez le nom de votre entreprise ou son SIRET : nous trouvons les marchés publics et privés qui vous correspondent, et nous vous accompagnons jusqu’au dépôt."
+        title="Marchés publics et appels d’offres pour artisans et PME | Marchés Direct"
+        description="Marchés publics, appels d’offres privés et sous-traitance du bâtiment près de chez vous. Indiquez votre SIRET : nous trouvons les marchés faits pour votre entreprise et vous accompagnons jusqu’au dépôt."
       />
       <main className="w-full bg-[#0A1628] pb-16 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
 

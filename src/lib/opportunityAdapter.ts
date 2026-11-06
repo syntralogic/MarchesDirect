@@ -1,3 +1,4 @@
+import { execLabel, buyerPlace, execOf } from './noticePlace';
 import type { ApiOpportunity } from './apiClient';
 import type { Opportunity } from '@/data/mockData';
 
@@ -53,15 +54,19 @@ export function apiOpportunityToDisplay(api: ApiOpportunity): Opportunity {
     // BOAMP-sourced records and demo/seed data. Still blank for
     // sources that don't expose it (TED, some PLACE records).
     organization: api.buyer_name || '',
-    location: [api.location_city, api.location_region].filter(Boolean).join(', '),
+    // v2 : lieu d'exécution relu dans l'avis, et l'acheteur seulement s'il est ailleurs ; l'ancienne colonne
+    // location_city (souvent le nom de l'acheteur) ne sert plus que pour les réponses sans données v2.
+    location: execLabel(api) != null
+      ? [`Lieu d’exécution : ${execLabel(api)}`, buyerPlace(api) && (api.location_level === 1 || !execOf(api)?.communes?.length) ? `acheteur à ${buyerPlace(api)}` : null].filter(Boolean).join(' · ')
+      : [api.location_city, api.location_region].filter(Boolean).join(', '),
     department: api.location_department || '',
     distance: '',
     amount: formatAmount(api.estimated_value, api.currency),
     // Raw ISO timestamp straight from the API (see formatDeadline above for
     // why this isn't pre-formatted into a display string here).
-    deadline: formatDeadline(api.deadline),
+    deadline: formatDeadline(api.deadline_checked || api.deadline),
     status: toDisplayStatus(api.ai_classification_status),
-    lifecycleStatus: (api.status as Opportunity['lifecycleStatus']) || 'active',
+    lifecycleStatus: (api.open_state === 'cancelled' ? 'cancelled' : api.open_state === 'awarded' ? 'awarded' : api.open_state === 'closed' ? 'expired' : (api.status as Opportunity['lifecycleStatus'])) || 'active',
     match: api.match_score ?? 0,
     type: JOURNEY_TO_TYPE[api.journey],
     sector: api.trade_name || '',

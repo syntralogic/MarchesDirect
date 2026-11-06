@@ -10,13 +10,16 @@ const PageMeta = ({
   title,
   description,
   noindex = false,
+  canonicalPath,
 }: {
   title: string;
   description: string;
   noindex?: boolean;
+  /** Chemin canonique explicite quand la requête fait partie de l'identité de la page (pagination ?page=2). */
+  canonicalPath?: string;
 }) => {
   const canonical =
-    typeof window !== "undefined" ? `${canonicalBase()}${window.location.pathname}` : undefined;
+    typeof window !== "undefined" ? `${canonicalBase()}${canonicalPath || window.location.pathname}` : undefined;
   return (
     <Helmet>
       <title>{title}</title>

@@ -26,6 +26,9 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Recherche v2 (aperçu, 6 nov.) : lieux séparés, états relus, classement explicite. Sans ce paramètre, le serveur
+  // garde l'ancien comportement : c'est ce qui permet de valider l'aperçu sans rien changer à la production.
+  if ((config.method || 'get').toLowerCase() === 'get' && (/^\/opportunities(\/|\?|$)/.test(config.url || '') || /^\/siret\/lead\/dossier-pdf/.test(config.url || ''))) config.params = { ...(config.params || {}), loc: '2' };
   const token = tokenStorage.getAccessToken();
   if (token) {
     config.headers = config.headers ?? {};
@@ -190,7 +193,7 @@ export async function getBlobApiErrorMessage(err: unknown, fallback = 'Une erreu
 // through it.
 // ============================================================================
 
-export type ApiOpportunity = {
+export type ApiOpportunity = import('./noticePlace').PlaceFields & {
   id: string;
   title: string;
   description?: string;
@@ -450,6 +453,8 @@ export const opportunitiesApi = {
   },
 
   // Accueil v26 (1.5): real count of open markets, one query a day on the server (24 h cache). Throws on failure (503): the home page then hides the line.
+  // 6 nov. : compteur vivant (même définition que la recherche v2) + date du dernier import réel.
+  getLiveCounter: async () => (await apiClient.get<{ open: number; verify: number; new24h: number; lastImportAt: string | null; computedAt: string }>('/seo/v2/compteur')).data,
   getOpenToday: async () => {
     const { data } = await apiClient.get<{ total: number; date: string }>('/opportunities/stats/open-today');
     return data;
@@ -484,7 +489,7 @@ export const opportunitiesApi = {
   // 403 company_not_identified until a SIRET lookup is done for this session.
   rankedCandidates: async (sessionId: string, zone?: string) => {
     const { data } = await apiClient.get<{
-      items: { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null }[];
+      items: (import('./noticePlace').PlaceFields & { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null })[];
       total: number; zone: string; reason?: 'trade_unknown';
       company?: { name: string | null; activity: string | null; city: string | null; department: string | null };
     }>('/opportunities/ranked/candidates', { params: { sessionId, ...(zone ? { zone } : {}) } });
@@ -1842,4 +1847,10 @@ export const messagesApi = {
     (await apiClient.get<{ messages: SuiviMessage[] }>(`/suivi/${opportunityId}/messages`, { params: { sessionId } })).data.messages || [],
   send: async (opportunityId: string, sessionId: string, body: string): Promise<SuiviMessage[]> =>
     (await apiClient.post<{ messages: SuiviMessage[] }>(`/suivi/${opportunityId}/messages`, { sessionId, body })).data.messages || [],
+};
+
+// SEO v2 (5 nov.) : pages locales à adresse propre, annonces ouvertes réelles.
+export const seoV2Api = {
+  page: async (params: { base: string; city?: string; trade?: string; department?: string; page?: string }): Promise<import('./seoLocalCopy').SeoV2Page | { redirect: string } | { name: string; choices: { department: string; departmentName: string; path: string }[] }> =>
+    (await apiClient.get('/seo/v2/page', { params })).data,
 };

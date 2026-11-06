@@ -1,102 +1,58 @@
-// Vercel serverless function -> GET /sitemap.xml
-// Static marketing routes + every published SEO page pulled live from the
-// backend. Links use the clean local-SEO URL structure
-// (/marches-publics/bordeaux, /marches-publics/bordeaux/electricite,
-// /appels-doffres/bordeaux, /sous-traitance/bordeaux,
-// /marches-publics/departement/gironde) per the client's brief, rather than
-// the flat /pages/:slug fallback route - that route still exists and still
-// works for direct visits, but Google should discover the clean paths.
-const JOURNEY_BASE_PATH: Record<string, string> = {
-  public_procurement: '/marches-publics',
-  tender: '/appels-doffres',
-  subcontracting: '/sous-traitance',
-};
+// Vercel serverless function -> /sitemap.xml (index) and /sitemap-<part>.xml (5 nov., mandat référencement)
+//
+// Avant : un seul fichier de 5 000 adresses, dont 4 535 écrites avec majuscules/accents encodés (beaucoup étaient des
+// noms d'acheteurs pris pour des villes), et aucune fiche d'annonce (la requête des annonces n'aboutissait pas).
+// Maintenant :
+//   /sitemap.xml              index des fichiers ci-dessous
+//   /sitemap-pages.xml        pages fixes + pages locales INDEXABLES (au moins une annonce ouverte), adresses canoniques
+//   /sitemap-annonces-N.xml   fiches d'annonces ouvertes, par lots de 10 000
+// lastmod = dernière mise à jour réelle des annonces de la page (jamais la date du jour par défaut).
+const PUBLIC_SITE = 'https://www.marchesdirect.fr';
+const CHUNK = 10000;
+const STATIC = ['/', '/marches-publics', '/appels-doffres', '/sous-traitance', '/tarifs', '/a-propos', '/how-it-works', '/faq', '/contact', '/actualites',
+  ...['a1', 'a2', 'a3', 'a4', 'a5', 'a6'].map((id) => `/actualites/${id}`)];
 
-export default async function handler(req: any, res: any) {
-  // SEO audit 23 Oct, point 1: every sitemap URL pointed at marchesdirect.vercel.app. Always advertise the
-  // public domain; FRONTEND_URL is honoured only when it is not a *.vercel.app address.
-  const PUBLIC_SITE = 'https://www.marchesdirect.fr';
-  const configured = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
-  const siteUrl = configured && !/\.vercel\.app/i.test(configured) ? configured : PUBLIC_SITE;
-  const apiUrl = (process.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
-
-  const staticPaths = [
-    '/', '/recherche', '/marches-publics', '/appels-doffres', '/sous-traitance',
-    '/tarifs', '/a-propos', '/team', '/how-it-works', '/faq', '/contact',
-    '/actualites',
-    // DEV-12: one URL per published article (ids of mockArticles in
-    // src/data/mockData.ts - keep in sync when an article is added/removed).
-    ...['a1', 'a2', 'a3', 'a4', 'a5', 'a6'].map((id) => `/actualites/${id}`),
-  ];
-
-  let seoUrls: { loc: string; lastmod?: string }[] = [];
-  try {
-    const r = await fetch(`${apiUrl}/api/seo-pages`);
-    if (r.ok) {
-      const data = await r.json();
-      seoUrls = (data.pages || []).map((p: {
-        page_slug: string; updated_at: string; page_type?: string;
-        filter_city?: string; filter_department?: string; filter_trade_name?: string; filter_journey?: string;
-      }) => {
-        const lastmod = p.updated_at ? new Date(p.updated_at).toISOString().slice(0, 10) : undefined;
-        const base = p.filter_journey ? JOURNEY_BASE_PATH[p.filter_journey] : undefined;
-
-        // Build the clean nested path from real structured filters when we
-        // have enough of them - city (+trade) or department-only. Anything
-        // that doesn't cleanly map (e.g. the older trade_region page type)
-        // falls back to the flat /pages/:slug route rather than guessing
-        // wrong and linking a 404.
-        let loc: string;
-        if (base && p.filter_city && p.filter_trade_name) {
-          loc = `${siteUrl}${base}/${encodeURIComponent(p.filter_city)}/${encodeURIComponent(p.filter_trade_name)}`;
-        } else if (base && p.filter_city) {
-          loc = `${siteUrl}${base}/${encodeURIComponent(p.filter_city)}`;
-        } else if (base && p.filter_department) {
-          loc = `${siteUrl}${base}/departement/${encodeURIComponent(p.filter_department)}`;
-        } else {
-          loc = `${siteUrl}/pages/${p.page_slug}`;
-        }
-
-        return { loc, lastmod };
-      });
-    }
-  } catch {
-    // Backend unreachable - still serve the static URLs rather than a 500,
-    // so the sitemap keeps working during a backend deploy/outage.
-  }
-
-  // SEO audit 23 Oct, point 3: no /opportunites/ URL was listed. Open, non-demo fiches only (the backend
-  // already filters); they are real <a href> targets now so crawlers can also reach them from the lists.
-  let oppUrls: { loc: string; lastmod?: string }[] = [];
-  try {
-    const r = await fetch(`${apiUrl}/api/seo-pages/opportunities-sitemap`);
-    if (r.ok) {
-      const data = await r.json();
-      oppUrls = (data.opportunities || []).map((o: { id: string; updated_at?: string }) => {
-        const d = o.updated_at ? new Date(o.updated_at) : null;
-        return { loc: `${siteUrl}/opportunites/${o.id}`, lastmod: d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : undefined };
-      });
-    }
-  } catch {
-    // Same policy as above: never fail the whole sitemap because one source is down.
-  }
-
-  const staticUrls: { loc: string; lastmod?: string }[] = staticPaths.map((p) => ({ loc: `${siteUrl}${p}` }));
-  // One sitemap file may hold at most 50,000 URLs.
-  const allUrls = [...staticUrls, ...seoUrls, ...oppUrls].slice(0, 50000);
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+const xmlEsc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const day = (d?: string | null) => { if (!d) return undefined; const t = new Date(d); return Number.isNaN(t.getTime()) ? undefined : t.toISOString().slice(0, 10); };
+async function getJson(url: string, ms = 20000): Promise<any | null> {
+  try { const r = await fetch(url, { signal: AbortSignal.timeout(ms) }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+const urlset = (urls: { loc: string; lastmod?: string }[]) => `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${allUrls
-  .map(
-    (u) => `  <url>
-    <loc>${u.loc.replace(/&/g, '&amp;')}</loc>${u.lastmod ? `\n    <lastmod>${u.lastmod}</lastmod>` : ''}
-  </url>`
-  )
-  .join('\n')}
+${urls.map((u) => `  <url><loc>${xmlEsc(u.loc)}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ''}</url>`).join('\n')}
 </urlset>`;
 
-  res.setHeader('Content-Type', 'application/xml');
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
-  res.status(200).send(xml);
+export default async function handler(req: any, res: any) {
+  const apiUrl = (process.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+  const part = String((req.query && req.query.part) || '');
+  const send = (xml: string, cache = 's-maxage=3600, stale-while-revalidate=86400') => {
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8'); res.setHeader('Cache-Control', cache); res.status(200).send(xml);
+  };
+
+  if (part === 'pages') {
+    const data = await getJson(`${apiUrl}/api/seo/v2/sitemap`);
+    const local = ((data && data.pages) || []).map((p: { path: string; lastmod: string }) => ({ loc: `${PUBLIC_SITE}${p.path}`, lastmod: day(p.lastmod) }));
+    if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
+    return send(urlset([...STATIC.map((p) => ({ loc: `${PUBLIC_SITE}${p}` })), ...local].slice(0, 50000)));
+  }
+  const m = part.match(/^annonces-(\d+)$/);
+  if (m) {
+    const data = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap`, 25000);
+    if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
+    const all = (data.opportunities || []) as { id: string; updated_at?: string }[];
+    const n = Number(m[1]);
+    const slice = all.slice((n - 1) * CHUNK, n * CHUNK);
+    if (!slice.length) return res.status(404).send('');
+    return send(urlset(slice.map((o) => ({ loc: `${PUBLIC_SITE}/opportunites/${o.id}`, lastmod: day(o.updated_at) }))));
+  }
+  if (part) return res.status(404).send('');
+
+  // Index
+  const opp = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap`, 25000);
+  const chunks = Math.max(1, Math.ceil((((opp && opp.opportunities) || []).length) / CHUNK));
+  const files = ['sitemap-pages.xml', ...Array.from({ length: chunks }, (_, k) => `sitemap-annonces-${k + 1}.xml`)];
+  return send(`<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${files.map((f) => `  <sitemap><loc>${PUBLIC_SITE}/${f}</loc></sitemap>`).join('\n')}
+</sitemapindex>`);
 }
