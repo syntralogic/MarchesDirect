@@ -65,6 +65,8 @@ export const frDate = (iso: string) => { const [y, m, d] = iso.split('-').map(Nu
 
 export const guideMetaTitle = (g: Guide) => `${g.metaTitle} | Marchés Direct`;
 
+// Données structurées limitées à ce que Google exploite pour ce type de site (Article, fil d'Ariane). Pas de FAQPage :
+// ses résultats enrichis sont réservés depuis 2023 aux sites officiels et de santé.
 export function guideJsonLd(g: Guide, site: string): object[] {
   const url = `${site}${guidePath(g.slug)}`;
   const org = { '@type': 'Organization', name: 'Marchés Direct', url: site };
@@ -75,8 +77,6 @@ export function guideJsonLd(g: Guide, site: string): object[] {
       { '@type': 'ListItem', position: 1, name: 'Accueil', item: `${site}/` },
       { '@type': 'ListItem', position: 2, name: 'Guides', item: `${site}${GUIDES_BASE}` },
       { '@type': 'ListItem', position: 3, name: g.title, item: url }] },
-    ...(g.faq.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: g.faq.map(f => ({
-      '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: plain(f.a) } })) }] : []),
   ];
 }
 
