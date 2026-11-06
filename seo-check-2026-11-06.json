@@ -1,0 +1,136 @@
+{
+  "base": "https://www.marchesdirect.fr",
+  "at": "2026-11-06T18:31:45.113Z",
+  "rows": [
+    {
+      "path": "/",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/bordeaux",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/Bordeaux",
+      "expected": 301,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/departement/33",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/departement/33?page=2",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/departement/33?page=1",
+      "expected": 301,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/departement/33?page=999",
+      "expected": 404,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/paris",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/lyon",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/toulouse",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/marseille",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/nantes",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/lille",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/la-rochelle",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/angouleme",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/toulouse/electricite",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/paris/climatisation",
+      "expected": 301,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/bordeaux/plomberie",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/sous-traitance/paris/cvc",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/appels-doffres/lyon",
+      "expected": 200,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/marches-publics/CHU-de-Bordeaux",
+      "expected": 301,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/pages/marche-public-departement-de-l-oise",
+      "expected": 301,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/pages/appel-d-offres-agen-cvc",
+      "expected": 301,
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "path": "/opportunites/00000000-0000-0000-0000-000000000000",
+      "expected": 404,
+      "error": "TypeError: fetch failed"
+    }
+  ],
+  "sitemaps": [
+    {
+      "error": "TypeError: fetch failed"
+    }
+  ]
+}

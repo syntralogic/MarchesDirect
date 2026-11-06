@@ -189,13 +189,28 @@ export async function getDossierRequestsCount(opportunityId: string): Promise<nu
 // utm_source / utm_campaign of the first page of the visit, kept for this browser session only (no consent-dependent
 // storage of personal data: just two short campaign labels). Sent with the requests so HubSpot can show where a lead came from.
 const UTM_KEY = 'md_utm';
+const ENGINES: [RegExp, string][] = [
+  [/(^|\.)google\.[a-z.]+$/, 'Google (recherche naturelle)'],
+  [/(^|\.)bing\.com$/, 'Bing (recherche naturelle)'],
+  [/(^|\.)(duckduckgo\.com|qwant\.com|ecosia\.org|search\.yahoo\.com|search\.brave\.com)$/, 'Autre moteur (recherche naturelle)'],
+  [/(^|\.)(chatgpt\.com|chat\.openai\.com)$/, 'ChatGPT'],
+  [/(^|\.)perplexity\.ai$/, 'Perplexity'],
+];
+export function organicEngine(referrer: string): string | null {
+  try { const host = new URL(referrer).hostname.toLowerCase(); return ENGINES.find(([re]) => re.test(host))?.[1] || null; } catch { return null; }
+}
 export function captureUtm(): void {
   try {
     if (sessionStorage.getItem(UTM_KEY)) return;
     const q = new URLSearchParams(window.location.search);
     const source = (q.get('utm_source') || '').trim().slice(0, 100);
     const campaign = (q.get('utm_campaign') || '').trim().slice(0, 150);
-    if (source || campaign) sessionStorage.setItem(UTM_KEY, JSON.stringify({ utmSource: source || undefined, utmCampaign: campaign || undefined }));
+    if (source || campaign) { sessionStorage.setItem(UTM_KEY, JSON.stringify({ utmSource: source || undefined, utmCampaign: campaign || undefined })); return; }
+    // 6 nov. (mesure du référencement) : sans étiquette de campagne, on note seulement le moteur d'origine (nom de domaine
+    // du site précédent, jamais l'adresse complète) et la page d'entrée, pour distinguer les contacts venus de la recherche
+    // naturelle. Rien n'est noté pour une arrivée directe ou depuis un autre site.
+    const engine = q.get('gclid') || q.get('gbraid') || q.get('wbraid') ? 'Google Ads' : organicEngine(document.referrer);
+    if (engine) sessionStorage.setItem(UTM_KEY, JSON.stringify({ utmSource: engine, utmCampaign: `entrée ${window.location.pathname}`.slice(0, 150) }));
   } catch { /* storage unavailable: no source recorded */ }
 }
 export function getUtm(): { utmSource?: string; utmCampaign?: string } {

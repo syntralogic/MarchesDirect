@@ -1,6 +1,6 @@
 import InstallOffer from '@/components/pwa/InstallOffer';
 import type { ReactNode } from 'react';
-import { COPY, calendarRows, callWhen, dossierCallWhen, formatPhone, momentLabel, type CoordChoice, type CoordValues } from '@/lib/coordonnees';
+import { COPY, calendarRows, callWhen, dossierCallWhen, formatPhone, momentLabel, rappelDelai, type CoordChoice, type CoordValues } from '@/lib/coordonnees';
 import type { ApiSiretCompany } from '@/lib/apiClient';
 
 // Screen 5 (CONFIRMATION « Mon dossier »), first half: after DOSSIER, RAPPEL, QUESTION.
@@ -34,7 +34,7 @@ function Dossier({ p, open }: { p: Props; open: boolean }) {
   ];
   const who: [string, string][] = [
     ['Références de chantiers similaires', 'Vous'], ['Moyens humains et matériels', 'Vous'], ['Attestations et pièces administratives', 'Vous'],
-    ['Formulaires de candidature', 'Nous'], ['Mémoire technique', 'Nous'], ['Offre de prix', 'Ensemble'], ['Dépôt de la candidature', 'Nous'],
+    ['Formulaires de candidature', 'Nous (sur devis)'], ['Mémoire technique', 'Nous (sur devis)'], ['Offre de prix', 'Ensemble'], ['Dépôt de la candidature', 'Nous (sur devis)'],
   ];
   return (
     <details open={open} className={`group ${card}`}>
@@ -108,7 +108,7 @@ export default function ConfirmationScreen(p: Props) {
         <section className={card} aria-label="Ce que vous verrez avec Elena">
           <b className="mb-2 block text-[16px]">Ce que vous verrez avec Elena</b>
           <ul className="flex flex-col gap-2 text-[14px] text-[#D6E0EC]">
-            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Vos chances réelles sur ce marché, chiffrées</li>
+            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Vos atouts et vos points faibles sur ce marché</li>
             <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Ce qu’il faut fournir, écrire, et dans quel ordre</li>
             <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Qui fait quoi si vous décidez d’y aller : vous, nous, ensemble</li>
           </ul>
@@ -141,12 +141,12 @@ export default function ConfirmationScreen(p: Props) {
       {p.choice === 'info' && (
         <section className={card}><b className="block text-[13px] uppercase tracking-wide text-[#B4C1D3]">Votre question</b>
           <blockquote className="mt-1 whitespace-pre-line text-[16px]">« {p.values.question.trim()} »</blockquote>
-          <p className="mt-2 text-[15px]">Elena vous rappelle au {phone} dans l’heure (9 h–18 h) avec la réponse.</p></section>)}
+          <p className="mt-2 text-[15px]">Elena vous rappelle au {phone} {rappelDelai()} avec la réponse.</p></section>)}
 
       <section className={`${card} flex flex-col gap-3`} aria-label="30 minutes offertes">
         <div className="flex items-center gap-3">{p.elenaPhoto}<p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{c.done.elena}</p></div>
         <div><b className="text-[16px]">30 minutes offertes avec notre équipe</b>
-          <p className="mt-1 text-[14px] text-[#D6E0EC]">Le point sur ce marché et sur votre situation, les prochaines étapes concrètement. Pour préparer votre candidature avec nous : mémoire technique et formulaires. Vous validez, nous prenons en charge le dépôt.</p></div>
+          <p className="mt-1 text-[14px] text-[#D6E0EC]">Le point sur ce marché et sur votre situation, les prochaines étapes concrètement. Si vous souhaitez préparer votre candidature avec nous (mémoire technique, formulaires, dépôt) : accompagnement sur devis, présenté pendant l’échange.</p></div>
         <button type="button" onClick={p.onAppointment} className="flex min-h-[54px] w-full items-center justify-center rounded-[14px] bg-[#C2410C] px-4 text-[16px] font-extrabold text-white">Demander mes 30 minutes offertes</button>
         <p className="text-center text-[13px] text-[#B4C1D3]">Par téléphone · Sans engagement</p>
       </section>
