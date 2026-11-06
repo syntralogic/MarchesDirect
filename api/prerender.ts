@@ -121,7 +121,7 @@ interface Doc { status: number; title: string; description: string; path: string
 
 const link = (href: string, label: string): string => `<li style="display:inline-block;margin:0 .5rem .5rem 0"><a href="${esc(href)}" style="color:#FF6B00">${esc(label)}</a></li>`;
 const wrap = (inner: string): string =>
-  `<main style="max-width:48rem;margin:0 auto;padding:2rem 1rem;color:#E5E7EB;font-family:Inter,system-ui,sans-serif;line-height:1.6">${inner}</main>`;
+  `<main style="max-width:48rem;margin:0 auto;padding:2rem 1rem;color:#E5E7EB;font-family:Inter,system-ui,sans-serif;line-height:1.6">${inner}<nav aria-label="Ressources" style="margin-top:2rem"><ul style="list-style:none;padding:0">${link('/guides', 'Guides pour répondre aux marchés publics')}${link('/barometre-marches-publics', 'Baromètre des marchés publics')}${link('/marches-publics', 'Tous les marchés publics')}</ul></nav></main>`;
 
 function render(shell: string, d: Doc): string {
   const url = `${PUBLIC_SITE}${d.path}`;

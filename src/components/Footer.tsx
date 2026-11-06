@@ -103,6 +103,15 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
     ],
   },
   {
+    title: 'Ressources',
+    links: [
+      { label: 'Guides pour répondre', href: '/guides' },
+      { label: 'Mémoire technique', href: '/guides/memoire-technique' },
+      { label: 'Baromètre des marchés publics', href: '/barometre-marches-publics' },
+      { label: 'Tous les marchés publics', href: '/marches-publics' },
+    ],
+  },
+  {
     title: 'Informations',
     links: [
       { label: 'Contact', href: '/contact' },
@@ -119,7 +128,7 @@ export function Footer() {
   return (
     <footer className="bg-[#031B30] border-t border-[#17334D] mt-auto">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-12">
-        <div className="hidden md:grid grid-cols-4 gap-8">
+        <div className="hidden md:grid grid-cols-5 gap-8">
           <div className="col-span-1">
             <Link to="/" className="inline-block mb-4">
               <span className="text-xl font-bold">
