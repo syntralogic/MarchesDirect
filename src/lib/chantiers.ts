@@ -11,6 +11,7 @@ export interface ChantierSource { label: string; url: string }
 export interface ChantiersList { results: Chantier[]; total: number; page: number; pages: number; source: ChantierSource }
 export interface ChantiersStats {
   total: number; last30: number; latestAuthorization: string | null; lastImport: string | null; source: ChantierSource;
+  importProgress?: { partsDone: number; partsFailed: number; partsTotal: number } | null;
   departments: { code: string; name: string; count: number }[]; categories: { slug: string; label: string; count: number }[];
 }
 export interface ChantierFiche extends Chantier { nearby: Chantier[]; source: ChantierSource }

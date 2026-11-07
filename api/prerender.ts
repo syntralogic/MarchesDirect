@@ -412,7 +412,7 @@ async function buildChantiers(deptRaw: string): Promise<Doc> {
     `<p>${esc(chantiersIntro(deptName))}</p>`,
     total ? `<p>${total.toLocaleString('fr-FR')} projets autorisés en 12 mois.</p>` : '',
     `<p>Types de projets : ${esc(CHANTIER_CATEGORIES.map(c => c.label).join(', '))}.</p>`,
-    list.results.length ? `<h2>Derniers projets autorisés</h2><ul>${list.results.map(row).join('')}</ul>` : '<p>Les projets sont en cours d’import depuis la base officielle.</p>',
+    list.results.length ? `<h2>Derniers projets autorisés</h2><ul>${list.results.map(row).join('')}</ul>` : `<p>${stats.importProgress && stats.importProgress.partsDone < stats.importProgress.partsTotal ? 'Les permis de ce département sont en cours d’import depuis la base officielle.' : 'Aucun permis de construire publié pour ce département sur les 12 derniers mois.'}</p>`,
     !dept && stats.departments.length ? `<h2>Chantiers à venir par département</h2><ul style="list-style:none;padding:0">${stats.departments.slice().sort((a, b) => a.code.localeCompare(b.code)).map(d => link(chantiersDeptPath(d.code), `${d.name} (${d.count})`)).join('')}</ul>` : '',
     dept ? `<p><a href="/marches-publics/departement/${esc(dept.toLowerCase())}" style="color:#FF6B00">Marchés publics ouverts en ${esc(deptName)}</a></p>` : '',
     `<p><small>${esc(SOURCE_NOTE)}</small></p>`,

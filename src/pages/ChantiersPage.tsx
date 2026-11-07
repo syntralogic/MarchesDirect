@@ -47,6 +47,8 @@ export default function ChantiersPage() {
   }
   const setFilter = (k: string, v: string) => { const n = new URLSearchParams(sp); if (v) n.set(k, v); else n.delete(k); setSp(n, { replace: true }); };
   const filtered = !!(category || nature);
+  // 7 nov. (revue externe) : un département à zéro pendant l'import n'est pas un département sans permis.
+  const importing = !!(stats?.importProgress && stats.importProgress.partsDone < stats.importProgress.partsTotal && (!dept || !stats.departments.some(d => d.code === dept)));
   const deptCount = stats?.departments.find(d => d.code === dept)?.count;
   const total = dept ? (deptCount ?? data?.total ?? 0) : (stats?.total ?? data?.total ?? 0);
   const chip = (on: boolean) => `rounded-full border px-3 py-1 text-[13px] ${on ? 'border-[#FB923C] bg-[#FB923C] font-bold text-[#0A1628]' : 'border-[#22385A] text-[#D6E0EC] hover:border-[#FB923C]'}`;
@@ -82,7 +84,7 @@ export default function ChantiersPage() {
 
       {data === undefined && !items.length && <div className="mt-4 h-40 animate-pulse rounded-[14px] bg-[#12233A]" aria-busy="true" />}
       {data === null && <p className="mt-4 text-[14px] text-[#D6E0EC]">La liste n’a pas pu être chargée. Réessayez dans un instant.</p>}
-      {data && !items.length && <p className="mt-4 text-[14px] text-[#D6E0EC]">{stats && stats.total === 0 ? 'Les chantiers sont en cours d’import depuis la base officielle : la liste sera disponible dans quelques heures.' : 'Aucun projet ne correspond à ces filtres.'}</p>}
+      {data && !items.length && <p className="mt-4 text-[14px] text-[#D6E0EC]">{importing && !filtered ? `Les permis${deptName ? ` de ${deptName}` : ''} sont en cours d’import depuis la base officielle (${cn(stats!.importProgress!.partsDone)} sur ${cn(stats!.importProgress!.partsTotal)} lots déjà chargés) : la liste se remplit dans les prochaines heures.` : stats && stats.total === 0 ? 'Les chantiers sont en cours d’import depuis la base officielle : la liste sera disponible dans quelques heures.' : 'Aucun projet ne correspond à ces filtres.'}</p>}
       {items.length > 0 && <>
         <p className="mt-4 text-[13px] text-[#B4C1D3]">{cn(data?.total ?? items.length)} projet{(data?.total ?? 0) > 1 ? 's' : ''}{filtered ? ' avec ces filtres' : ''}, du plus récent au plus ancien</p>
         <ul className="mt-1">{items.map(c => <Row key={c.id} c={c} />)}</ul>
