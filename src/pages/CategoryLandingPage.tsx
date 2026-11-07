@@ -79,7 +79,7 @@ export default function CategoryLandingPage({ journey }: { journey: Journey }) {
       <h1 className="text-2xl md:text-3xl font-extrabold text-white leading-snug mb-4">{copy.h1}</h1>
       <p className="text-[#B9BBC8] text-sm md:text-base leading-relaxed mb-6">{copy.intro}</p>
       <Link
-        to={`/recherche?journey=${journey}`}
+        to={`/vos-marches?journey=${journey}`}
         className="inline-flex items-center gap-2 bg-orange text-white font-semibold text-sm px-5 py-3 rounded-xl hover:bg-orange/90 transition-colors mb-10"
       >
         <Search size={16} />
