@@ -15,7 +15,7 @@ import ConfirmationScreen from '@/components/fiche/ConfirmationScreen';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { isSaved as searchIsSaved, saveSearch, markViewed } from '@/lib/savedSearches';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
-import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, type Journey } from '@/components/liste/RefinePanel';
+import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, journeyMatches, journeySet, toggleJourney, type Journey, type JourneyKey } from '@/components/liste/RefinePanel';
 import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
   type Filter, type RankedCard, type ScoreMap,
@@ -99,8 +99,9 @@ export default function ListeMarchesPage() {
   // Filtres du volet « Affiner » (type, où, budget, réponse attendue, tri), tous dans l'adresse.
   const refineKey = params.toString();
   const refine = useMemo(() => refineFromParams(params), [refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const type: Journey = refine.journey;
-  const setType = (t: Journey) => setParams(paramsWithRefine(params, { ...refine, journey: t }), { replace: true });
+  const type = refine.journey;
+  const setType = (t: Journey) => setParams(paramsWithRefine(params, { ...refine, journey: toggleJourney(refine.journey, t) }), { replace: true });
+  const isOn = (t: Journey) => t === 'all' ? type === 'all' : journeySet(type).has(t as JourneyKey);
   const applyRefine = (r: typeof refine) => setParams(paramsWithRefine(params, r), { replace: true });
   // Recherche simple : totaux réels par type (le serveur filtre et compte), pas un comptage sur la première page.
   const [typeTotals, setTypeTotals] = useState<Record<string, number> | null>(null);
@@ -174,7 +175,7 @@ export default function ListeMarchesPage() {
   useEffect(() => { setSavedSearch(searchIsSaved(searchKey)); }, [searchKey]);
   useEffect(() => { if (cards && cards.length && savedSearch) markViewed(searchKey, cards.map(c => c.id)); }, [cards, savedSearch, searchKey]);
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
-  const byType = useMemo(() => !known || type === 'all' ? ranked : ranked.filter(c => c.journey === type), [ranked, type, known]);
+  const byType = useMemo(() => !known || type === 'all' ? ranked : ranked.filter(c => journeyMatches(type, c.journey)), [ranked, type, known]);
   const typeCounts = useMemo(() => known
     ? ranked.reduce<Record<string, number>>((acc, c) => { acc[c.journey || ''] = (acc[c.journey || ''] || 0) + 1; return acc; }, {})
     : (typeTotals || {}), [ranked, known, typeTotals]);
@@ -283,9 +284,9 @@ export default function ListeMarchesPage() {
           {TYPE_CHIPS.map(ch => {
             const count = ch.key === 'all' ? typeAll : (typeCounts[ch.key] ?? (known ? 0 : null));
             return (
-              <button key={ch.key} type="button" aria-pressed={type === ch.key} onClick={() => setType(ch.key)}
-                className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full border px-3.5 text-[14px] font-bold ${type === ch.key ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : count === 0 ? 'border-[#1E3352] text-[#6B7A90]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
-                {ch.label}{count == null ? '' : ` (${count})`}
+              <button key={ch.key} type="button" aria-pressed={isOn(ch.key)} onClick={() => setType(ch.key)}
+                className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full border px-3.5 text-[14px] font-bold ${isOn(ch.key) ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : count === 0 ? 'border-[#1E3352] text-[#6B7A90]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
+                {ch.key !== 'all' && isOn(ch.key) ? '✓ ' : ''}{ch.label}{count == null ? '' : ` (${count})`}
               </button>);
           })}
         </div>)}

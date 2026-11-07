@@ -16,6 +16,7 @@ import { normalizeFrPhoneDigits } from '@/lib/utils';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import MarketSuivi from '@/components/suivi/MarketSuivi';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
+import { journeyCopy, capFirst } from '@/lib/journeyCopy';
 import { loadCoords, saveCoords, validateCoords, leadMessage, pdfFileName, rappelDelai, type CoordChoice, type CoordErrors, type CoordValues } from '@/lib/coordonnees';
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
 import ConfirmationScreen, { type PdfState } from '@/components/fiche/ConfirmationScreen';
@@ -196,6 +197,7 @@ export default function FicheMarchePage() {
   const isOver = state === 'closed' || state === 'cancelled';
   const deadlineTxt = formatDeadlineExact(dlv) || (state === 'verify' ? 'À vérifier dans l’avis' : 'Non précisée');
   const title = opp ? shortTitle(opp.title, city) : '';
+  const jc = journeyCopy(opp?.journey);
   const crit = (k: string) => score?.matchCriteria?.find(c => c.key === k);
   const sc = score?.score ?? null;
   // v28 : repères et conseil d'Elena calculés à partir des faits chiffrés du moteur (aucune IA).
@@ -380,7 +382,7 @@ export default function FicheMarchePage() {
         ) : (
           <ConfirmationScreen choice={view.choice} values={coords} company={status?.company} pdf={pdf} onDownload={downloadPdf} onAppointment={() => setApptOpen(true)} onBackToMarket={back} elenaPhoto={<ElenaPhoto />} dossiers={dossiers}
             suivi={view.choice === 'dossier' ? <MarketSuivi compact opportunityId={id} sessionId={sessionId} analysed onDossier={back} fileName={pdfFileName(company, opp?.source_reference)} refreshKey={pdf} /> : null}
-            market={{ shortTitle: title, reference: opp.source_reference || null, deadline: (opp.deadline as string | null) || null, deadlineText: deadlineTxt, daysLeft: days, officialUrl: opp.official_url || null }} />
+            market={{ shortTitle: title, reference: opp.source_reference || null, deadline: (opp.deadline as string | null) || null, deadlineText: deadlineTxt, daysLeft: days, officialUrl: opp.official_url || null, journey: opp.journey }} />
         )}
         <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} opportunityId={opp.id}
           marketLabel={[opp.title, opp.source_reference].filter(Boolean).join(' · ')} deadline={opp.deadline} />
@@ -393,13 +395,13 @@ export default function FicheMarchePage() {
 
   const companyForm = (sticky = false) => (
     <form onSubmit={submitCompany} className={sticky ? 'flex gap-2' : 'flex flex-col gap-3 rounded-2xl bg-[#1C2433] p-4 ring-1 ring-[#C2410C]'}>
-      {!sticky && <><h2 className="text-[20px] font-extrabold text-white">Ce marché est-il pour vous ?</h2>
+      {!sticky && <><h2 className="text-[20px] font-extrabold text-white">{capFirst(jc.noun)} est-{jc.feminine ? 'elle' : 'il'} pour vous ?</h2>
         <p className="text-[14px] text-[#FFE9DC]">Entrez le nom de votre entreprise ou votre SIRET. Résultat immédiat, analysé sur six critères.</p>
         <label htmlFor="siret2" className="text-[14px] font-semibold">Nom de votre entreprise ou SIRET</label></>}
       <input id={sticky ? 'siret3' : 'siret2'} value={query} onChange={e => setQuery(e.target.value)} placeholder="Ex. : 929 393 072 00012" autoComplete="organization" enterKeyHint="go"
         aria-label="Nom de votre entreprise ou SIRET" className="h-[52px] w-full rounded-xl border border-[#2B4468] bg-[#0A1628] px-3.5 text-[16px] text-[#F2F5F9]" />
       <button type="submit" disabled={searching} className={sticky ? 'min-h-[52px] shrink-0 rounded-[14px] bg-[#C2410C] px-4 font-extrabold text-white' : btnMain}>
-        {searching ? 'Recherche…' : sticky ? 'Voir mon %' : 'Voir si ce marché me correspond'}
+        {searching ? 'Recherche…' : sticky ? 'Voir mon %' : `Voir si ${jc.noun} me correspond`}
       </button>
       {!sticky && <div className="text-center text-[13px] text-[#B4C1D3]">Gratuit · Sans inscription · Résultat immédiat</div>}
     </form>
@@ -452,17 +454,17 @@ export default function FicheMarchePage() {
                   <text x="60" y="68" textAnchor="middle" fontSize="26" fontWeight="800" fill="#F2F5F9">{sc} %</text>
                 </svg>
                 <div className="flex min-w-0 flex-col gap-1.5">
-                  <h2 className="text-[19px] font-extrabold">Ce marché vous correspond à {sc} %</h2>
+                  <h2 className="text-[19px] font-extrabold">{capFirst(jc.noun)} vous correspond à {sc} %</h2>
                   <span className="w-fit rounded-full px-2.5 py-1 text-[13px] font-bold" style={{ background: tone === 'hi' ? '#123B2A' : tone === 'mid' ? '#3A2312' : '#1E3352', color: tone === 'hi' ? '#6EE7B7' : tone === 'mid' ? '#FDBA74' : '#D6E0EC' }}>{scoreLabel(sc)}</span>
                   <span className="text-[13px] text-[#B4C1D3]">{score?.criteriaDocumented != null ? `Fiabilité : ${score.criteriaDocumented} critère${score.criteriaDocumented > 1 ? 's' : ''} sur ${(score.criteriaDocumented || 0) + (score.criteriaToConfirm || 0)} vérifiés par les données` : 'Correspondance estimée · à préciser avec vos réponses'}</span>
                 </div>
               </div>
             ) : score ? (
               <div className="flex flex-col gap-1.5"><h2 className="text-[19px] font-extrabold">Correspondance à confirmer</h2>
-                <p className="text-[14px] text-[#D6E0EC]">Nous ne savons pas encore comparer votre entreprise à ce marché. Répondez aux 4 questions ci-dessous : aucun pourcentage n’est inventé.</p></div>
+                <p className="text-[14px] text-[#D6E0EC]">Nous ne savons pas encore comparer votre entreprise à {jc.noun}. Répondez aux 4 questions ci-dessous : aucun pourcentage n’est inventé.</p></div>
             ) : <div className="h-24 animate-pulse rounded-xl bg-[#0F1F35]" aria-busy="true" />}
             {highlights.length > 0 ? (
-              <ul className="flex flex-wrap gap-1.5" aria-label="Vos repères sur ce marché">
+              <ul className="flex flex-wrap gap-1.5" aria-label={`Vos repères sur ${jc.noun}`}>
                 {highlights.map(h => <li key={h.text} className={`rounded-full px-2.5 py-1 text-[12.5px] font-bold ${h.tone === 'ok' ? 'bg-[#123B2A] text-[#6EE7B7]' : h.tone === 'warn' ? 'bg-[#3A2312] text-[#FDBA74]' : 'bg-[#1E3352] text-[#D6E0EC]'}`}>{h.text}</li>)}
               </ul>
             ) : sc != null && <p className="text-[14px] text-[#D6E0EC]">{summaryFor(sc)}</p>}
@@ -535,8 +537,8 @@ export default function FicheMarchePage() {
 
           {isOver ? (
           <section className="flex flex-col gap-3">
-            <h2 className="text-[20px] font-extrabold">Cette consultation n’accepte plus de candidatures</h2>
-            <p className="text-[14px] text-[#D6E0EC]">Elle est {state === 'cancelled' ? 'annulée' : 'clôturée'}. Les consultations ouvertes qui correspondent à votre activité sont dans votre liste.</p>
+            <h2 className="text-[20px] font-extrabold">{capFirst(jc.noun)} n’accepte plus de {opp.journey === 'public_procurement' ? 'candidatures' : 'propositions'}</h2>
+            <p className="text-[14px] text-[#D6E0EC]">{jc.feminine ? 'Elle' : 'Il'} est {state === 'cancelled' ? 'annulé' : 'clôturé'}{jc.feminine ? 'e' : ''}. Les annonces ouvertes qui correspondent à votre activité sont dans votre liste.</p>
             <Link to="/vos-marches" className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#F97316] px-3 text-center text-[15px] font-extrabold text-white">Voir les marchés ouverts pour mon entreprise</Link>
             <div className="text-center text-[13px] text-[#B4C1D3]"><button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">Poser une question à Elena</button></div>
           </section>
@@ -549,7 +551,7 @@ export default function FicheMarchePage() {
             <button ref={mainBtn} type="button" onClick={() => choose('dossier')} className={`${choiceBase} relative border-[#F97316] bg-[#C2410C] text-white shadow-[0_6px_18px_rgba(249,115,22,.35)]`}>
               <span className="absolute right-3 top-[-10px] rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold text-[#C2410C]">30 MIN OFFERTES</span>
               <b className="text-[17px] leading-tight">Recevoir mon dossier et faire le point avec Elena</b>
-              <span className="text-[13px] text-[#FFE9DC]">Dossier prérempli à votre nom tout de suite · un appel pour voir si ce marché vaut le coup pour vous et préparer la suite</span>
+              <span className="text-[13px] text-[#FFE9DC]">Dossier prérempli à votre nom tout de suite · un appel pour voir si {jc.noun} vaut le coup pour vous et préparer la suite</span>
             </button>
             <div className="text-center text-[13px] text-[#B4C1D3]">Gratuit · Sans engagement · <button type="button" onClick={() => choose('info')} className="min-h-[44px] underline">J’ai juste une question</button></div>
           </section>
@@ -559,21 +561,21 @@ export default function FicheMarchePage() {
         </div>)}
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-[18px] font-extrabold">Le marché en détail</h2>
+        <h2 className="text-[18px] font-extrabold">{jc.detailTitle}</h2>
         <p className="text-[14px] text-[#D6E0EC]"><span className="text-[13px] text-[#B4C1D3]">Intitulé officiel</span><br />{opp.title}</p>
         <dl className="grid grid-cols-2 gap-3 text-[14px]">
-          {([['Donneur d’ordre', opp.buyer_name || (opp.identity_unlocked === false ? 'Révélé après un rendez-vous' : 'Non précisé')], ['Lieu d’exécution', placeChip || 'Non précisé'], ...(buyerTxt ? [['Adresse de l’acheteur', buyerTxt] as const] : []), ['Date limite', deadlineTxt], ['Montant indiqué', opp.estimated_value != null ? `${money(opp.estimated_value, opp.currency)} (estimation ou plafond, HT/TTC non précisé dans nos données)` : 'Non communiqué'], ['Lot', opp.trade_name || 'Non précisé'], ['Référence', opp.source_reference || 'Non précisée']] as const).map(([k, v]) => (
+          {([[jc.giver, opp.buyer_name || (opp.identity_unlocked === false ? 'Révélé après un rendez-vous' : 'Non précisé')], ['Lieu d’exécution', placeChip || 'Non précisé'], ...(buyerTxt ? [[jc.giverAddress, buyerTxt] as const] : []), ['Date limite', deadlineTxt], ['Montant indiqué', opp.estimated_value != null ? `${money(opp.estimated_value, opp.currency)} (estimation ou plafond, HT/TTC non précisé dans nos données)` : 'Non communiqué'], ['Lot', opp.trade_name || 'Non précisé'], ['Référence', opp.source_reference || 'Non précisée']] as const).map(([k, v]) => (
             <div key={k} className="flex flex-col"><dt className="text-[13px] text-[#B4C1D3]">{k}</dt><dd className="font-bold">{v}</dd></div>))}
         </dl>
-        {dossiers != null && dossiers >= 2 && <p className="text-[14px] text-[#D6E0EC]">{dossiers} dossiers préremplis demandés pour ce marché ces 7 derniers jours</p>}
-        {(opp.ai_summary || sections?.presentation) && <div className="rounded-2xl border border-[#22385A] bg-[#12233A] p-4"><h3 className="mb-1 font-extrabold">Le marché en 30 secondes</h3><p className="text-[14px] text-[#D6E0EC]">{fixSummaryPlace(opp.ai_summary || sections?.presentation, opp as any)}</p></div>}
+        {dossiers != null && dossiers >= 2 && <p className="text-[14px] text-[#D6E0EC]">{dossiers} dossiers préremplis demandés pour {jc.noun} ces 7 derniers jours</p>}
+        {(opp.ai_summary || sections?.presentation) && <div className="rounded-2xl border border-[#22385A] bg-[#12233A] p-4"><h3 className="mb-1 font-extrabold">{jc.summaryTitle}</h3><p className="text-[14px] text-[#D6E0EC]">{fixSummaryPlace(opp.ai_summary || sections?.presentation, opp as any)}</p></div>}
         {sections?.conditions && <Details title="Conditions et points à vérifier"><p className="whitespace-pre-line">{sections.conditions}</p></Details>}
         {sections?.presentation && <Details title="Informations techniques"><p className="whitespace-pre-line">{sections.presentation}</p></Details>}
         {sections?.entreprises && <Details title="Entreprises concernées"><p className="whitespace-pre-line">{sections.entreprises}</p></Details>}
-        {opp.description && <Details title="Extrait de l’avis officiel"><p className="whitespace-pre-line">{opp.description.slice(0, 1500)}</p></Details>}
-        {opp.official_url && /^https?:\/\//i.test(opp.official_url) && <a href={opp.official_url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-[#FB923C]">Voir l’annonce officielle ↗</a>}
+        {opp.description && <Details title={opp.journey === 'public_procurement' ? 'Extrait de l’avis officiel' : 'Texte de l’annonce'}><p className="whitespace-pre-line">{opp.description.slice(0, 1500)}</p></Details>}
+        {opp.official_url && /^https?:\/\//i.test(opp.official_url) && <a href={opp.official_url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-[#FB923C]">{jc.officialLink} ↗</a>}
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#22385A] bg-[#0F1F35] p-4">
-          <div><h3 className="text-[15px] font-extrabold">Pas le temps maintenant ?</h3><p className="text-[13px] text-[#B4C1D3]">Enregistrez ce marché sur ce téléphone pour le retrouver. Aucun numéro demandé, aucun appel.</p></div>
+          <div><h3 className="text-[15px] font-extrabold">Pas le temps maintenant ?</h3><p className="text-[13px] text-[#B4C1D3]">Enregistrez {jc.noun} sur ce téléphone pour le retrouver. Aucun numéro demandé, aucun appel.</p></div>
           <button type="button" onClick={toggleSave} aria-pressed={saved} className="min-h-[44px] shrink-0 rounded-[14px] border border-[#2B4468] px-3.5 font-bold">{saved ? 'Enregistré ✓' : 'Enregistrer'}</button>
         </div>
       </section>
@@ -592,7 +594,7 @@ export default function FicheMarchePage() {
       {invite && (
         <div className="fixed inset-x-0 bottom-[64px] z-40 border-t border-[#2B4468] bg-[#12233A] md:bottom-0 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_24px_rgba(0,0,0,.4)]" role="region" aria-label="30 minutes offertes">
           <div className="relative mx-auto flex max-w-[560px] flex-col gap-3 pr-8">
-            <p className="text-[15px]">Ce marché vous intéresse, mais vous ne savez pas par où commencer ? Profitez de 30 minutes offertes avec notre équipe pour faire le point sur votre entreprise, ce marché et les prochaines étapes.</p>
+            <p className="text-[15px]">{capFirst(jc.noun)} vous intéresse, mais vous ne savez pas par où commencer ? Profitez de 30 minutes offertes avec notre équipe pour faire le point sur votre entreprise, {jc.noun} et les prochaines étapes.</p>
             <button type="button" className={btnMain} onClick={() => { trackVisitorEvent('invitation_30min_clicked', 'Invitation cliquée', undefined, { opportunityId: id }); setInvite(false); acted.current = true; setApptOpen(true); }}>Demander mes 30 minutes offertes</button>
             <div className="text-center text-[13px] text-[#B4C1D3]">Par téléphone · Sans engagement</div>
             <button type="button" onClick={closeInvite} aria-label="Fermer" className="absolute right-[-8px] top-[-8px] min-h-[44px] min-w-[44px] text-[18px]">✕</button>

@@ -8,8 +8,19 @@ import { opportunitiesApi, type OpportunitySearchParams } from '@/lib/apiClient'
 // Les valeurs vivent dans l'adresse (URL) : un lien partagé ou un retour arrière retrouve les mêmes filtres.
 
 export type Journey = 'all' | 'public_procurement' | 'tender' | 'subcontracting';
+// 7 nov. : plusieurs types cochables à la fois (ex. appels d'offres privés + sous-traitance). Valeur = liste séparée
+// par des virgules, dans l'ordre de TYPE_CHIPS ; 'all' = aucun type coché (ou les trois).
+export type JourneyKey = Exclude<Journey, 'all'>;
+const JOURNEY_KEYS: JourneyKey[] = ['public_procurement', 'tender', 'subcontracting'];
+export const journeySet = (j: string): Set<JourneyKey> => new Set(j === 'all' ? [] : (j.split(',').filter(x => (JOURNEY_KEYS as string[]).includes(x)) as JourneyKey[]));
+export const journeyValue = (set: Set<string>): string => { const l = JOURNEY_KEYS.filter(k => set.has(k)); return l.length === 0 || l.length === JOURNEY_KEYS.length ? 'all' : l.join(','); };
+export const toggleJourney = (j: string, key: Journey): string => {
+  if (key === 'all') return 'all';
+  const s = journeySet(j); if (s.has(key)) s.delete(key); else s.add(key); return journeyValue(s);
+};
+export const journeyMatches = (j: string, cardJourney: string | null | undefined) => j === 'all' || journeySet(j).has((cardJourney || '') as JourneyKey);
 export type Refine = {
-  journey: Journey;
+  journey: string;
   where: 'france' | 'department' | 'near';
   department: string;        // code, '' = aucun
   lat: number | null; lng: number | null; radius: 25 | 50 | 100;
@@ -38,7 +49,7 @@ export function refineFromParams(p: URLSearchParams): Refine {
   const j = p.get('journey'); const lat = num(p.get('lat')); const lng = num(p.get('lng')); const dep = p.get('department') || '';
   const r = Number(p.get('radius_km')); const dl = p.get('deadline_within'); const sort = p.get('sort');
   return {
-    journey: j === 'public_procurement' || j === 'tender' || j === 'subcontracting' ? j : 'all',
+    journey: journeyValue(journeySet(j || 'all')),
     where: lat != null && lng != null ? 'near' : dep ? 'department' : 'france',
     department: dep, lat, lng, radius: r === 25 || r === 100 ? r : 50,
     min: p.get('min_value') || '', max: p.get('max_value') || '',
@@ -85,7 +96,7 @@ const deptName = (code: string) => { const d = DEPARTMENTS.find(x => x.code === 
 /** Puces des filtres actifs (volet replié). */
 export function activeChips(r: Refine): { key: string; label: string; clear: (r: Refine) => Refine }[] {
   const out: { key: string; label: string; clear: (r: Refine) => Refine }[] = [];
-  if (r.journey !== 'all') out.push({ key: 'journey', label: TYPE_CHIPS.find(t => t.key === r.journey)!.label, clear: x => ({ ...x, journey: 'all' }) });
+  if (r.journey !== 'all') out.push({ key: 'journey', label: TYPE_CHIPS.filter(t => journeySet(r.journey).has(t.key as JourneyKey)).map(t => t.label).join(' + '), clear: x => ({ ...x, journey: 'all' }) });
   if (r.where === 'department' && r.department) out.push({ key: 'dep', label: deptName(r.department), clear: x => ({ ...x, where: 'france', department: '' }) });
   if (r.where === 'near' && r.lat != null) out.push({ key: 'near', label: `Autour de moi · ${r.radius} km`, clear: x => ({ ...x, where: 'france', lat: null, lng: null, sort: x.sort === 'distance' ? 'match' : x.sort }) });
   if (r.min.trim() || r.max.trim()) out.push({ key: 'budget', label: r.min.trim() && r.max.trim() ? `${euro(r.min)} – ${euro(r.max)}` : r.min.trim() ? `> ${euro(r.min)}` : `< ${euro(r.max)}`, clear: x => ({ ...x, min: '', max: '' }) });
@@ -166,11 +177,12 @@ export default function RefinePanel({ q, value, typeCounts, onApply }: Props) {
             <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" className="min-h-[40px] min-w-[40px] rounded-lg text-[20px] text-[#D6E0EC]">✕</button>
           </div>
 
-          <span className={LBL}>Type de marché</span>
+          <span className={LBL}>Type de marché <span className="font-normal text-[#B4C1D3]">(plusieurs choix possibles)</span></span>
           <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Type de marché">
             {TYPE_CHIPS.map(t => {
               const n = t.key === 'all' ? typeAll : typeCounts ? (typeCounts[t.key] ?? 0) : null;
-              return <button key={t.key} type="button" aria-pressed={draft.journey === t.key} onClick={() => setDraft(d => ({ ...d, journey: t.key }))} className={chip(draft.journey === t.key, n === 0)}>{t.label}{n == null ? '' : ` (${n})`}</button>;
+              const on = t.key === 'all' ? draft.journey === 'all' : journeySet(draft.journey).has(t.key as JourneyKey);
+              return <button key={t.key} type="button" aria-pressed={on} onClick={() => setDraft(d => ({ ...d, journey: toggleJourney(d.journey, t.key) }))} className={chip(on, n === 0)}>{t.key !== 'all' && on ? '✓ ' : ''}{t.label}{n == null ? '' : ` (${n})`}</button>;
             })}
           </div>
 
