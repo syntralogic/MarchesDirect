@@ -1875,6 +1875,21 @@ export const seoV2Api = {
   acheteur: async (slug: string): Promise<import('./acheteur').BuyerData> => (await apiClient.get(`/seo/v2/acheteur/${encodeURIComponent(slug)}`)).data,
 };
 
+// 7 nov. : « Publier un besoin » (donneurs d'ordre) : dépôt public, relecture et publication par l'équipe.
+export interface ClientNeed {
+  id: number; reference: string; status: 'pending' | 'published' | 'rejected' | 'closed'; journey: string; company_name: string; siret: string | null;
+  contact_name: string; email: string; phone: string; client_kind: string | null; title: string; description: string; trades: string[]; lots: string[];
+  city: string | null; postal_code: string | null; department: string; budget_min: number | null; budget_max: number | null; deadline: string | null;
+  start_date: string | null; duration: string | null; criteria: string | null; recurring: boolean; created_at: string; reject_reason: string | null; opportunity_id: string | null;
+}
+export const needsApi = {
+  submit: async (body: Record<string, unknown>): Promise<{ ok: boolean; reference?: string }> => (await apiClient.post('/needs', body)).data,
+  list: async (status?: string): Promise<{ items: ClientNeed[]; counts: Record<string, number> }> => (await apiClient.get('/needs', { params: status ? { status } : {} })).data,
+  publish: async (id: number, edits: { title?: string; description?: string }) => (await apiClient.post(`/needs/${id}/publish`, edits)).data,
+  reject: async (id: number, reason: string) => (await apiClient.post(`/needs/${id}/reject`, { reason })).data,
+  close: async (id: number) => (await apiClient.post(`/needs/${id}/close`)).data,
+};
+
 // 7 nov. : signalement d'une annonce inexacte, en un geste (aucune coordonnée, rien dans HubSpot).
 export const listingReportsApi = {
   send: async (opportunityId: string, kind: string, sessionId: string, comment?: string) =>
