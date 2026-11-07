@@ -5,7 +5,7 @@ const guide: Guide = {
   category: 'Argent et paiement',
   title: 'L’avance dans un marché public : combien, quand et comment l’obtenir',
   metaTitle: 'Avance marché public : taux, conditions et remboursement',
-  description: 'Avance obligatoire au-delà de 50 000 € HT et 2 mois, taux de 5 % à 30 % pour les PME, garantie, remboursement : ce que l’artisan doit savoir.',
+  description: 'Avance obligatoire au-delà de 50 000 € HT et 2 mois, taux minimal de 5 %, porté à 10 % ou 30 % pour les PME, garantie, remboursement : ce que l’artisan doit savoir.',
   published: '2026-11-06',
   updated: '2026-11-06',
   checked: '2026-11-06',

@@ -91,7 +91,7 @@ const guide: Guide = {
       id: 'choix',
       h2: 'Comment l’offre est choisie, et que faire si vous perdez',
       blocks: [
-        { p: 'Même en MAPA, l’acheteur choisit l’**offre économiquement la plus avantageuse** à partir de critères annoncés dans les documents de la consultation : en général le prix et la valeur technique. Depuis août 2026, les MAPA doivent comporter **au moins un critère environnemental** et une clause environnementale. Le fonctionnement des critères est détaillé dans notre guide sur les [critères d’attribution](/guides/criteres-attribution).' },
+        { p: 'Même en MAPA, l’acheteur choisit l’**offre économiquement la plus avantageuse** à partir de critères annoncés dans les documents de la consultation : en général le prix et la valeur technique. Pour les consultations lancées depuis le 21 août 2026, les MAPA doivent comporter **au moins un critère environnemental** et une clause environnementale. Le fonctionnement des critères est détaillé dans notre guide sur les [critères d’attribution](/guides/criteres-attribution).' },
         { p: 'Si votre offre est rejetée, vous pouvez demander par écrit les motifs du rejet : l’acheteur doit vous les communiquer dans un délai de **15 jours** à compter de la réception de votre demande (article R2181-2). Demandez aussi vos notes par critère et celles de l’offre retenue : c’est le meilleur moyen de progresser à la consultation suivante.' },
         { note: 'Si vous pensez que la procédure a été irrégulière, les délais pour agir devant le juge sont courts. Faites-vous conseiller rapidement.' },
       ],

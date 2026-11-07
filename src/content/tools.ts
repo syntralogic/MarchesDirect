@@ -49,7 +49,7 @@ export const AVANCE = {
   seuilMontant: 50_000,     // € HT
   seuilDureeMois: 2,
   tauxGeneral: 0.05,
-  tauxPme: { etat: 0.30, collectivite: 0.20, 'entite-adjudicatrice': 0.05 } as Record<Buyer, number>,
+  tauxPme: { etat: 0.30, collectivite: 0.10, 'entite-adjudicatrice': 0.05 } // collectivité : 10 % seulement au-delà de 60 M€ de dépenses (R2191-7, vérifié le 7 nov. 2026) as Record<Buyer, number>,
 };
 
 export function avance(montantHT: number, dureeMois: number, buyer: Buyer, pme: boolean): AvanceResult {

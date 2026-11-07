@@ -112,7 +112,7 @@ const guide: Guide = {
     { q: 'Faut-il payer un service de veille ?', a: 'Ce n’est pas obligatoire : le BOAMP, TED et les plateformes comme PLACE proposent des alertes. Un service de veille fait gagner du temps en regroupant les sources ; vérifiez qu’il couvre bien les plateformes de votre secteur.' },
     { q: 'Marchés Direct peut-il m’aider à trouver des consultations ?', a: 'Oui : la page [marchés publics](/marches-publics) de Marchés Direct présente des consultations ouvertes par secteur et par zone ; le dossier se télécharge toujours sur la plateforme de l’acheteur.' },
   ],
-  // Vérifié le 6 nov. 2026 : R2122-8 (dispense < 100 000 € travaux, < 60 000 € fournitures et services, depuis le 1er avril 2026),
+  // Vérifié le 7 nov. 2026 : R2122-8 (dispense < 100 000 € travaux depuis le 1er janv. 2026, < 60 000 € fournitures et services depuis le 1er avril 2026, décret n° 2025-1386),
   // R2131-12 (avis BOAMP ou JAL à partir de 90 000 €), R2131-16 (BOAMP + JOUE en procédure formalisée), R2132-2 (DCE gratuit sur
   // profil d’acheteur à partir de 60 000 €), L1211-1 (pouvoirs adjudicateurs de droit privé), seuils européens 2026-2027 (TED).
   sources: [

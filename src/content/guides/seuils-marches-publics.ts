@@ -62,7 +62,7 @@ const guide: Guide = {
         { h3: 'Deux changements à connaître' },
         { ul: [
           '**Pompes à chaleur et réseaux de chaleur** : jusqu’au 31 décembre 2026 inclus, les travaux d’installation de pompes à chaleur dans les bâtiments ou de raccordement à un réseau de chaleur urbain peuvent être passés sans mise en concurrence jusqu’à **140 000 € HT** (décret n° 2026-792 du 15 août 2026).',
-          '**Au 1er janvier 2027** : la loi de simplification de la vie économique porte à **140 000 € HT** le seuil de dispense pour l’ensemble des marchés de travaux (avec la même règle des 20 % pour les lots). Ce relèvement vise les travaux, pas les fournitures et services.',
+          '**Au 1er janvier 2027** : la loi n° 2026-403 du 26 mai 2026 de simplification de la vie économique (article 13) porte à **140 000 € HT** le seuil de dispense pour l’ensemble des marchés de travaux (avec la même règle des 20 % pour les lots). Ce relèvement vise les travaux, pas les fournitures et services.',
         ] },
         { p: 'Conséquence pratique : une bonne partie des petits chantiers ne fait l’objet d’aucune annonce. Pour en décrocher, il faut être **connu des acheteurs de votre secteur** : se présenter aux services techniques, être référencé, répondre vite et proprement aux demandes de devis.' },
       ],

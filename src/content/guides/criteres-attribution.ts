@@ -23,7 +23,7 @@ const guide: Guide = {
       blocks: [
         { p: 'Le marché est attribué à l’entreprise qui a présenté l’**offre économiquement la plus avantageuse**, sur la base d’un ou plusieurs critères **objectifs, précis et liés à l’objet du marché** ou à ses conditions d’exécution (article L2152-7 du code de la commande publique). Les offres sont jugées lot par lot.' },
         { p: 'Concrètement, l’acheteur commence par écarter les offres irrégulières (pièce manquante, non-respect du cahier des charges), inacceptables ou inappropriées. Il classe ensuite les offres restantes en appliquant les critères annoncés (article R2152-6). La première du classement l’emporte.' },
-        { note: 'Depuis la fin août 2026 (loi Climat et résilience, entrée en vigueur pour les consultations lancées à partir de cette date), **au moins un critère** doit prendre en compte les caractéristiques environnementales de l’offre, y compris en MAPA. Cela met fin au critère unique du prix.' },
+        { note: 'Depuis le 21 août 2026 (loi Climat et résilience, pour les consultations lancées à partir de cette date), **au moins un critère** doit prendre en compte les caractéristiques environnementales de l’offre, y compris en MAPA. Cela met fin au critère unique du prix.' },
       ],
     },
     {
@@ -106,7 +106,7 @@ const guide: Guide = {
     },
   ],
   faq: [
-    { q: 'Un marché public peut-il encore être attribué au moins-disant ?', a: 'Plus sur le seul critère du prix pour les consultations lancées depuis la fin août 2026 : au moins un critère doit porter sur les caractéristiques environnementales de l’offre. Le critère unique reste possible s’il s’agit du coût global intégrant ces caractéristiques.' },
+    { q: 'Un marché public peut-il encore être attribué au moins-disant ?', a: 'Plus sur le seul critère du prix pour les consultations lancées depuis le 21 août 2026 : au moins un critère doit porter sur les caractéristiques environnementales de l’offre. Le critère unique reste possible s’il s’agit du coût global intégrant ces caractéristiques.' },
     { q: 'L’acheteur doit-il publier la pondération des critères ?', a: 'Oui, les critères et leurs modalités de mise en œuvre figurent dans les documents de la consultation. En procédure formalisée, ils sont pondérés ou, à défaut, hiérarchisés. Les sous-critères pondérés qui peuvent influencer la préparation des offres doivent aussi être annoncés.' },
     { q: 'À partir de quel écart une offre est-elle anormalement basse ?', a: 'Aucun seuil chiffré n’est fixé par le code. L’acheteur apprécie au cas par cas et doit d’abord demander des justifications à l’entreprise avant de pouvoir rejeter son offre.' },
     { q: 'Comment savoir pourquoi mon offre a perdu ?', a: 'Demandez par écrit les motifs du rejet et vos notes par critère. En MAPA, l’acheteur a 15 jours à compter de votre demande pour répondre. Pour une question sur votre situation, vous pouvez [poser votre question](/question).' },
