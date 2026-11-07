@@ -11,6 +11,7 @@ import { CompanySearchForm, type CompanySearchHandle } from '@/components/home/C
 import { DEPARTMENTS } from '@/data/departments';
 import { ELENA, TEAM } from '@/data/homeContent';
 import { opportunitiesApi } from '@/lib/apiClient';
+import { GUIDE_CATALOG, PUBLISHED_GUIDES } from '@/content/guides/catalog';
 
 const GeographicSection = lazy(() => import('@/components/home/GeographicSection'));
 const SAVED_KEY = 'md_saved_markets';
@@ -406,6 +407,22 @@ export default function HomePage() {
             <p className="mt-1 text-[15px] text-[#B4C1D3]">Touchez une région, un département ou une ville : les marchés ouverts s’affichent.</p>
             <DeferredMap />
             <OpenCounter />
+          </section>
+
+          {/* 7 nov. : guides et baromètre visibles dès l'accueil (avant : seulement dans le menu et le pied de page). */}
+          <section className="w-full">
+            <Eyebrow>Guides gratuits</Eyebrow>
+            <h2 className="mt-1 text-[22px] font-extrabold leading-tight md:text-[28px]">Répondre aux marchés, pas à pas</h2>
+            <p className="mt-1 text-[15px] text-[#B4C1D3]">Candidature, mémoire technique, seuils, avance, paiement : des guides vérifiés sur les textes officiels.</p>
+            <ul className="mt-3 grid gap-2 md:grid-cols-2">
+              {GUIDE_CATALOG.filter(g => PUBLISHED_GUIDES.has(g.slug)).slice(0, 6).map(g => (
+                <li key={g.slug}><Link to={`/guides/${g.slug}`} className="block rounded-[14px] border border-[#22385A] bg-[#12233A] p-3 text-[15px] font-bold text-[#F2F5F9] hover:border-[#FB923C]">{g.title}</Link></li>
+              ))}
+            </ul>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-[14.5px] font-bold">
+              <Link to="/guides" className="text-[#FB923C] underline">Tous les guides ({PUBLISHED_GUIDES.size})</Link>
+              <Link to="/barometre-marches-publics" className="text-[#FB923C] underline">Baromètre des marchés publics</Link>
+            </div>
           </section>
 
           <Faq />
