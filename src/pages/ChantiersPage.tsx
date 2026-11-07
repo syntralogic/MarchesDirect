@@ -28,25 +28,34 @@ export default function ChantiersPage() {
   const navigate = useNavigate();
   const category = sp.get('categorie') || '';
   const nature = sp.get('nature') || '';
+  // Radar (7 nov.) : autour de moi, rayon au choix.
+  const lat = Number(sp.get('lat')), lng = Number(sp.get('lng')); const near = Number.isFinite(lat) && Number.isFinite(lng) && sp.get('lat') !== null;
+  const radius = [15, 30, 60].includes(Number(sp.get('rayon'))) ? Number(sp.get('rayon')) : 30;
+  const [locating, setLocating] = useState(false);
+  const locate = () => {
+    if (!navigator.geolocation) return; setLocating(true);
+    navigator.geolocation.getCurrentPosition(p => { setLocating(false); const n = new URLSearchParams(sp); n.set('lat', p.coords.latitude.toFixed(3)); n.set('lng', p.coords.longitude.toFixed(3)); n.set('rayon', String(radius)); navigate(`${CHANTIERS_BASE}?${n}`); },
+      () => setLocating(false), { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
+  };
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Chantier[]>([]);
   const [data, setData] = useState<ChantiersList | null | undefined>(undefined);
   const [stats, setStats] = useState<ChantiersStats | null>(null);
 
   useEffect(() => { chantiersApi.stats().then(setStats).catch(() => {}); }, []);
-  useEffect(() => { setPage(1); setItems([]); setData(undefined); }, [dept, category, nature]);
+  useEffect(() => { setPage(1); setItems([]); setData(undefined); }, [dept, category, nature, near, lat, lng, radius]);
   useEffect(() => {
-    chantiersApi.list({ department: dept || undefined, category: category || undefined, nature: nature || undefined, page })
+    chantiersApi.list({ department: near ? undefined : dept || undefined, category: category || undefined, nature: nature || undefined, page, ...(near ? { lat, lng, radius } : {}) })
       .then(r => { setData(r); setItems(prev => page === 1 ? r.results : [...prev, ...r.results]); })
       .catch(() => setData(null));
-  }, [dept, category, nature, page]);
+  }, [dept, category, nature, page, near, lat, lng, radius]);
 
   if (deptParam && !deptName) {
     return <main className="mx-auto max-w-[760px] px-4 pb-24 pt-5 text-[#F2F5F9]"><PageMeta title="Département introuvable | Marchés Direct" description="Ce département n’existe pas." noindex />
       <h1 className="text-[22px] font-extrabold">Département introuvable</h1><Link to={CHANTIERS_BASE} className="mt-3 inline-block font-bold text-[#FB923C] underline">Tous les chantiers à venir</Link></main>;
   }
   const setFilter = (k: string, v: string) => { const n = new URLSearchParams(sp); if (v) n.set(k, v); else n.delete(k); setSp(n, { replace: true }); };
-  const filtered = !!(category || nature);
+  const filtered = !!(category || nature || near);
   // 7 nov. (revue externe) : un département à zéro pendant l'import n'est pas un département sans permis.
   const importing = !!(stats?.importProgress && stats.importProgress.partsDone < stats.importProgress.partsTotal && (!dept || !stats.departments.some(d => d.code === dept)));
   const deptCount = stats?.departments.find(d => d.code === dept)?.count;
@@ -65,6 +74,11 @@ export default function ChantiersPage() {
       )}
 
       <div className="mt-4 flex flex-col gap-3 rounded-[14px] border border-[#22385A] bg-[#12233A] p-3">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Autour de moi">
+          <button type="button" onClick={locate} className={chip(near)}>{locating ? 'Localisation…' : near ? '✓ Autour de moi' : '📍 Autour de moi'}</button>
+          {near && [15, 30, 60].map(r => <button key={r} type="button" className={chip(radius === r)} onClick={() => setFilter('rayon', String(r))}>{r} km</button>)}
+          {near && <button type="button" className="min-h-[40px] text-[13px] text-[#B4C1D3] underline" onClick={() => { const n = new URLSearchParams(sp); ['lat', 'lng', 'rayon'].forEach(k => n.delete(k)); setSp(n, { replace: true }); }}>Retirer</button>}
+        </div>
         <label className="flex flex-wrap items-center gap-2 text-[13px] text-[#B4C1D3]">Département
           <select value={dept} onChange={e => navigate(`${e.target.value ? chantiersDeptPath(e.target.value) : CHANTIERS_BASE}${sp.toString() ? `?${sp}` : ''}`)}
             className="min-h-[36px] rounded-lg border border-[#22385A] bg-[#0A1628] px-2 text-[14px] text-[#F2F5F9]">

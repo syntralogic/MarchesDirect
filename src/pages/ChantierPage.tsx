@@ -46,6 +46,11 @@ export default function ChantierPage() {
       <dl className="mt-4 divide-y divide-[#22385A] rounded-[14px] border border-[#22385A] bg-[#12233A]">
         {rows.filter(([, v]) => v).map(([k, v]) => <div key={k} className="flex gap-3 px-3 py-2 text-[14px]"><dt className="w-[140px] shrink-0 text-[#B4C1D3]">{k}</dt><dd className="text-[#F2F5F9]">{v}</dd></div>)}
       </dl>
+      {c.phases && <div className="mt-3 rounded-[14px] border border-[#2B4468] bg-[#0F1F35] p-3">
+        <p className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FDBA74]">Repère indicatif, pas un calendrier</p>
+        <p className="mt-1 text-[14px] text-[#D6E0EC]">{c.phases.text}</p>
+        <p className="mt-1 text-[12px] text-[#93A4BC]">Estimation à partir de la date d’{c.phases.from === 'autorisation' ? 'autorisation' : 'ouverture du chantier'} déclarée ; le calendrier réel dépend du maître d’ouvrage.</p>
+      </div>}
       <p className="mt-3 text-[13px] text-[#B4C1D3]">L’adresse exacte du terrain et l’identité des particuliers ne sont pas publiées. Référence du permis : {c.id.slice(1)}.</p>
       <div className="mt-5 rounded-[14px] border border-[#FB923C]/40 bg-[#1A2B44] p-4">
         <p className="text-[15px] font-bold">Ce type de chantier correspond à votre métier ?</p>
