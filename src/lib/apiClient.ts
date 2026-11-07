@@ -1904,7 +1904,7 @@ export const listingReportsApi = {
 
 // 7 nov. : chantiers à venir (permis de construire autorisés, base Sitadel du SDES).
 export const chantiersApi = {
-  list: async (params: { department?: string; category?: string; nature?: string; page?: number }): Promise<import('./chantiers').ChantiersList> =>
+  list: async (params: { department?: string; category?: string; nature?: string; page?: number; lat?: number; lng?: number; radius?: number }): Promise<import('./chantiers').ChantiersList> =>
     (await apiClient.get('/chantiers', { params })).data,
   stats: async (): Promise<import('./chantiers').ChantiersStats> => (await apiClient.get('/chantiers/stats')).data,
   fiche: async (id: string): Promise<import('./chantiers').ChantierFiche> => (await apiClient.get(`/chantiers/${encodeURIComponent(id)}`)).data,

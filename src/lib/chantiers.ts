@@ -6,6 +6,7 @@ export interface Chantier {
   id: string; path: string; category: string; categoryLabel: string; title: string; what: string; nature: string | null; permit: string;
   state: 'authorized' | 'started' | 'cancelled'; authorizedAt: string | null; startedAt: string | null; commune: string | null; postalCode: string | null;
   department: string; departmentName: string | null; floorArea: number | null; dwellings: number | null; landArea: number | null; pool: boolean; applicant: string;
+  distanceKm?: number | null; phases?: { from: string; text: string } | null;
 }
 export interface ChantierSource { label: string; url: string }
 export interface ChantiersList { results: Chantier[]; total: number; page: number; pages: number; source: ChantierSource }
@@ -37,6 +38,7 @@ export const chantiersDescription = (total: number, deptName?: string | null) =>
 export const chantiersIntro = (deptName?: string | null) =>
   `Chaque projet autorisé${deptName ? ` en ${deptName}` : ''} est un futur chantier : gros œuvre, charpente, couverture, menuiseries, plomberie, électricité, finitions. Nous publions les permis de construire et les déclarations préalables accordés ces 12 derniers mois, avec la commune, la nature du projet et les surfaces. Les adresses et l’identité des particuliers ne sont jamais affichées.`;
 export const chantierLine = (c: Chantier) => [
+  c.distanceKm != null ? `à ${c.distanceKm} km` : null,
   c.commune ? `${c.commune}${c.postalCode ? ` (${c.postalCode})` : ''}` : null,
   c.floorArea ? `${cn(c.floorArea)} m²` : null,
   c.state === 'started' ? `chantier ouvert le ${cDay(c.startedAt)}` : c.authorizedAt ? `autorisé le ${cDay(c.authorizedAt)}` : null,
