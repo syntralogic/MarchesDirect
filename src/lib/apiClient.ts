@@ -852,6 +852,15 @@ export type ApiAlert = {
   created_at: string;
 };
 
+// 7 nov. : recherches sauvegardées côté serveur (session du téléphone, puis compte à la connexion).
+export type ApiSavedSearch = { id: string; label: string; query: string; ranked: boolean; alert_enabled: boolean; created_at: string; updated_at: string };
+export const savedSearchesApi = {
+  list: async (sessionId: string) => (await apiClient.get<{ items: ApiSavedSearch[]; limit: number; canAlert: boolean }>('/saved-searches', { params: { sessionId } })).data,
+  save: async (sessionId: string, label: string, query: string, ranked: boolean) => (await apiClient.post<{ ok: true; id: string; duplicate?: boolean }>('/saved-searches', { sessionId, label, query, ranked })).data,
+  update: async (sessionId: string, id: string, patch: { label?: string; alertEnabled?: boolean }) => (await apiClient.put<{ ok: true }>(`/saved-searches/${id}`, { sessionId, ...patch })).data,
+  remove: async (sessionId: string, id: string) => (await apiClient.delete<{ ok: true }>(`/saved-searches/${id}`, { params: { sessionId } })).data,
+};
+
 export const alertsApi = {
   list: async (unreadOnly = false): Promise<ApiAlert[]> => {
     const { data } = await apiClient.get('/alerts', unreadOnly ? { params: { unread_only: 'true' } } : undefined);
