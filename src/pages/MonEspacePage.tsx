@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { STAGES, metaOf, setMeta, type StageKey } from '@/lib/favMeta';
 import { suiviApi, favoritesApi, opportunitiesApi, siretApi, type SuiviDossier, type ApiOpportunity } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +31,8 @@ export default function MonEspacePage() {
   const [dossiers, setDossiers] = useState<SuiviDossier[] | null>(null);
   const [favs, setFavs] = useState<ApiOpportunity[] | null>(null);
   const [name, setName] = useState<string | null>(null);
+  const [stage, setStage] = useState<string>('all');
+  const [, setTick] = useState(0);
 
   useEffect(() => { suiviApi.list(sessionId).then(setDossiers).catch(() => setDossiers([])); }, [sessionId]);
   useEffect(() => { if (!isAuthenticated) siretApi.status(sessionId).then(s => setName(s?.company?.name || null)).catch(() => {}); }, [isAuthenticated, sessionId]);
@@ -78,12 +81,25 @@ export default function MonEspacePage() {
       }))}
 
       {tab === 'favoris' && (favs == null ? <Skeleton /> : favs.length === 0 ? (
-        <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>Aucun favori. Touchez le cœur sur un marché pour le retrouver ici.</div>
-      ) : favs.map(o => (
-        <Link key={o.id} to={`/opportunites/${o.id}`} className={`${card} border-[#22385A]`}>
-          <b className="text-[14.5px] leading-tight">{o.title}</b>
-          <small className="block text-[12px] text-[#B4C1D3]">{[o.buyer_name, o.location_city, o.deadline ? `remise le ${new Date(o.deadline as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ')}</small>
-        </Link>)))}
+        <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>Aucun favori. Touchez l’étoile ☆ sur une annonce pour la retrouver ici.</div>
+      ) : <>
+        {/* 7 nov. : favoris rangés par étape, avec une note personnelle (gardées sur ce téléphone). */}
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Étape">
+          {[{ key: 'all', label: 'Tous' }, ...STAGES].map(st => { const n = st.key === 'all' ? favs.length : favs.filter(o => metaOf(o.id).stage === st.key).length;
+            return <button key={st.key} type="button" aria-pressed={stage === st.key} onClick={() => setStage(st.key)} className={`min-h-[40px] rounded-full border px-3 text-[13px] font-bold ${stage === st.key ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>{st.label} ({n})</button>; })}
+        </div>
+        {favs.filter(o => stage === 'all' || metaOf(o.id).stage === stage).map(o => { const m = metaOf(o.id); return (
+        <div key={o.id} className={`${card} border-[#22385A]`}>
+          <Link to={`/opportunites/${o.id}`} className="block"><b className="text-[14.5px] leading-tight">{o.title}</b>
+            <small className="block text-[12px] text-[#B4C1D3]">{[o.buyer_name, o.location_city, o.deadline ? `remise le ${new Date(o.deadline as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ')}</small></Link>
+          <label className="mt-2 flex items-center gap-2 text-[12.5px] text-[#B4C1D3]">Étape
+            <select value={m.stage} onChange={e => { setMeta(o.id, { stage: e.target.value as StageKey }); setTick(t => t + 1); }} className="min-h-[36px] rounded-lg border border-[#2B4468] bg-[#0A1628] px-2 text-[13.5px] text-[#F2F5F9]">
+              {STAGES.map(st => <option key={st.key} value={st.key}>{st.label}</option>)}
+            </select></label>
+          <textarea defaultValue={m.note} onBlur={e => setMeta(o.id, { note: e.target.value })} maxLength={500} placeholder="Note personnelle (ex. : voir avec mon associé)" aria-label="Note personnelle"
+            className="mt-2 min-h-[56px] w-full rounded-lg border border-[#2B4468] bg-[#0A1628] p-2 text-[13.5px] text-[#F2F5F9]" />
+        </div>); })}
+      </>)}
 
       {tab === 'recherches' && <SavedSearchesTab sessionId={sessionId} />}
 
