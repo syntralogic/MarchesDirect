@@ -5,7 +5,7 @@ import { useFavorites } from '@/contexts/FavoritesContext';
 import ActivityDot from '@/components/ActivityDot';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { chantiersApi, opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus } from '@/lib/apiClient';
+import { chantiersApi, opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus, type ApiOpportunity } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { useBrand } from '@/hooks/use-brand';
 import { useIdempotency } from '@/lib/useIdempotency';
@@ -23,6 +23,9 @@ import {
   type Filter, type RankedCard, type ScoreMap,
 } from '@/lib/rankedList';
 import { execLabel, buyerPlace, execOf } from '@/lib/noticePlace';
+
+// Carte de liste à partir d'un résultat de recherche (recherche simple et liste de secours).
+const toCard = ((o: ApiOpportunity): RankedCard => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, deadline_checked: o.deadline_checked ?? null, open_state: o.open_state ?? null, location_level: o.location_level ?? null, exec_status: o.exec_status, exec_communes: o.exec_communes, exec_departments: o.exec_departments, exec_text: o.exec_text, buyer_city: o.buyer_city, buyer_department: o.buyer_department, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null, matched_lot: (o as { matched_lot?: string | null }).matched_lot ?? null }));
 
 // Liste de la dernière visite (sessionStorage) : affichée immédiatement, puis rafraîchie.
 const readCards = (k: string): RankedCard[] | null => { try { const v = JSON.parse(sessionStorage.getItem(k) || 'null'); return Array.isArray(v) && v.length ? v : null; } catch { return null; } };
@@ -133,6 +136,7 @@ export default function ListeMarchesPage() {
   const [rankedZone, setRankedZone] = useState<string>('france');
   const [works, setWorks] = useState<number | null>(null);
   const [error, setError] = useState(false);
+  const [fallback, setFallback] = useState(false);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -165,7 +169,7 @@ export default function ListeMarchesPage() {
     // 7 nov. (Hedi) : 2-3 s de cases vides à chaque ouverture. La dernière liste de la même recherche est gardée sur le
     // téléphone et affichée tout de suite ; elle est remplacée dès que le serveur répond.
     const cacheKey = `md_cards:${known ? `r:${sessionId}:${zoneParam || ''}` : `s:${refineKey}:${tradeId || ''}`}`;
-    setCards(readCards(cacheKey)); setScores({}); setDone(false); setError(false); setTradeUnknown(false); shown.current = ''; setSearchTotal(null);
+    setCards(readCards(cacheKey)); setScores({}); setDone(false); setError(false); setFallback(false); setTradeUnknown(false); shown.current = ''; setSearchTotal(null);
     const mine = ++run.current;
     const stop = () => run.current !== mine;
     try {
@@ -188,7 +192,7 @@ export default function ListeMarchesPage() {
         if (stop()) return;
         setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
         setSearchTotal(r.pagination?.total ?? r.results.length);
-        const mapped = r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, deadline_checked: o.deadline_checked ?? null, open_state: o.open_state ?? null, location_level: o.location_level ?? null, exec_status: o.exec_status, exec_communes: o.exec_communes, exec_departments: o.exec_departments, exec_text: o.exec_text, buyer_city: o.buyer_city, buyer_department: o.buyer_department, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null, matched_lot: (o as { matched_lot?: string | null }).matched_lot ?? null }));
+        const mapped = r.results.map(toCard);
         setCards(mapped); writeCards(cacheKey, mapped);
         // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
@@ -196,7 +200,24 @@ export default function ListeMarchesPage() {
         if (stop()) return;
         setTypeTotals(Object.fromEntries(journeys.map((j, i) => [j, totals[i]])));
       } else setCards([]);
-    } catch { if (stop()) return; if (attempt < 2) { window.setTimeout(() => { if (!stop()) void load(attempt + 1); }, 4000 * (attempt + 1)); } else setError(true); }
+    } catch {
+      if (stop()) return;
+      if (attempt < 2) { window.setTimeout(() => { if (!stop()) void load(attempt + 1); }, 4000 * (attempt + 1)); return; }
+      // 7 nov. (panne de la liste par entreprise) : filet de sécurité. Si la liste classée échoue trois fois, on montre la
+      // recherche simple du métier de l'entreprise plutôt qu'un message d'erreur : le visiteur voit des annonces.
+      if (known) {
+        try {
+          const prof = await siretApi.profile(sessionId).catch(() => null);
+          const kw = prof?.trades?.[0]?.name || q || 'travaux';
+          const r = await opportunitiesApi.search(searchParamsFor(kw, { ...refine, journey: 'all' }, { limit: 40 }));
+          if (stop()) return;
+          setZoneLabel('Toute la France · liste simplifiée'); setFallback(true);
+          const mapped = r.results.map(toCard);
+          setCards(mapped); setSearchTotal(r.pagination?.total ?? mapped.length); return;
+        } catch { /* on affiche l'erreur ci-dessous */ }
+      }
+      setError(true);
+    }
   }, [known, sessionId, zoneParam, tradeId, q, dept, refine]);
   useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -347,6 +368,7 @@ export default function ListeMarchesPage() {
             </button>))}
         </div>)}
 
+      {fallback && <p className="text-[13px] text-[#FDBA74]">Liste simplifiée : le classement par entreprise est momentanément indisponible, voici les annonces de votre métier.</p>}
       {error && <p role="alert" className="text-[14px] text-[#FCA5A5]">La liste n’a pas pu être chargée. <button type="button" onClick={() => void load()} className="min-h-[44px] font-bold underline">Réessayer</button></p>}
       {cards === null && !error && <div className="flex flex-col gap-2.5" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="h-[150px] animate-pulse rounded-2xl bg-[#12233A]" />)}</div>}
 
