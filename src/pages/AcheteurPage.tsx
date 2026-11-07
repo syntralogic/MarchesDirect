@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PageMeta from '@/components/common/PageMeta';
-import { seoV2Api } from '@/lib/apiClient';
+import { seoV2Api, awardsApi, type BuyerAwardsData } from '@/lib/apiClient';
 import { buyerDescription, buyerIntro, buyerPath, buyerTitle, frDay, n, type BuyerCard, type BuyerData } from '@/lib/acheteur';
 
 // Page acheteur (7 nov.) : mêmes textes que le pré-rendu serveur (api/prerender.ts, kind=acheteur).
@@ -21,6 +21,23 @@ function Card({ c }: { c: BuyerCard }) {
       </p>
     </li>
   );
+}
+
+// 7 nov. : habitudes de l'acheteur d'après ses marchés attribués (DECP) : mois, familles, part de PME, offres reçues.
+function BuyerHabits({ name, h2 }: { name: string; h2: string }) {
+  const [d, setD] = useState<BuyerAwardsData | null>(null);
+  useEffect(() => { setD(null); awardsApi.buyer(name).then(setD).catch(() => setD(null)); }, [name]);
+  if (!d || !d.available) return null;
+  const M = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']; const max = Math.max(1, ...(d.byMonth || []));
+  return (<>
+    <h2 className={h2}>Ses habitudes d’attribution</h2>
+    <p className="text-[14.5px] text-[#F2F5F9]">{d.seasonText}</p>
+    <div className="mt-2 flex items-end gap-1" aria-label="Marchés attribués par mois">
+      {(d.byMonth || []).map((v, i) => <div key={i} className="flex flex-1 flex-col items-center gap-1"><div className={`w-full rounded-t ${d.peakMonths?.includes(i + 1) ? 'bg-[#FB923C]' : 'bg-[#2B4468]'}`} style={{ height: `${Math.max(3, Math.round(v / max * 48))}px` }} title={`${v}`} /><span className="text-[10px] text-[#93A4BC]">{M[i]}</span></div>)}
+    </div>
+    <p className="mt-2 text-[13.5px] text-[#D6E0EC]">{[d.topTypes?.length ? `Surtout : ${d.topTypes.map(t => t.label).join(', ')}.` : null, d.pmeText, d.offersText, d.medianAmount ? `Montant médian ${Math.round(d.medianAmount).toLocaleString('fr-FR')} € HT.` : null].filter(Boolean).join(' ')}</p>
+    <p className="text-[12px] text-[#93A4BC]">Source : contrats attribués publiés par les acheteurs publics (DECP, Licence Ouverte).</p>
+  </>);
 }
 
 export default function AcheteurPage() {
@@ -50,6 +67,7 @@ export default function AcheteurPage() {
       <h2 className={h2}>Consultations ouvertes ({n(b.counts.open)})</h2>
       {b.open.length ? <ul className="flex flex-col gap-2">{b.open.map(c => <Card key={c.id} c={c} />)}</ul> : <p className="text-[14px] text-[#D6E0EC]">Aucune consultation ouverte aujourd’hui. Les consultations récentes ci-dessous montrent ce que cet acheteur commande habituellement.</p>}
       {b.verify.length > 0 && <><h2 className={h2}>Date limite à vérifier ({n(b.counts.verify)})</h2><ul className="flex flex-col gap-2">{b.verify.map(c => <Card key={c.id} c={c} />)}</ul></>}
+      <BuyerHabits name={b.name} h2={h2} />
       {b.topTrades.length > 0 && <><h2 className={h2}>Métiers recherchés par cet acheteur</h2><p className="text-[14px] text-[#D6E0EC]">{b.topTrades.map(t => `${t.name} (${n(t.count)})`).join(' · ')}</p></>}
       {b.closed.length > 0 && <><h2 className={h2}>Consultations des six derniers mois ({n(b.counts.closed)} clôturées)</h2><ul className="flex flex-col gap-2">{b.closed.map(c => <Card key={c.id} c={c} />)}</ul></>}
       {b.otherBuyers.length > 0 && <><h2 className={h2}>Autres acheteurs publics {b.deptName ? `en ${b.deptName}` : ''}</h2>
