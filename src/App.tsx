@@ -38,7 +38,7 @@ import MissionProfilPage from '@/pages/sous-traitance/MissionProfilPage';
 import MissionRelationPage from '@/pages/sous-traitance/MissionRelationPage';
 import MiseEnRelationPage from '@/pages/sous-traitance/MiseEnRelationPage';
 import TarifsPage from '@/pages/TarifsPage';
-import RecherchePage from '@/pages/RecherchePage';
+import RechercheRedirect from '@/pages/RechercheRedirect';
 import ListeMarchesPage from '@/pages/ListeMarchesPage';
 import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
@@ -229,7 +229,7 @@ const App: React.FC = () => {
               <Route path="/sous-traitance/mission/:id/relation" element={<RequireAuth><MissionRelationPage /></RequireAuth>} />
               <Route path="/sous-traitance/mise-en-relation" element={<RequireAuth><MiseEnRelationPage /></RequireAuth>} />
               <Route path="/tarifs" element={<TarifsPage />} />
-              <Route path="/recherche" element={<RecherchePage />} />
+              <Route path="/recherche" element={<RechercheRedirect />} />
               <Route path="/vos-marches" element={<ListeMarchesPage />} />
               <Route path="/parcours" element={<OpportunityJourneyPage />} />
               <Route path="/opportunites/:id" element={<PageErrorBoundary><KeyedOpportunityDetail /></PageErrorBoundary>} />
