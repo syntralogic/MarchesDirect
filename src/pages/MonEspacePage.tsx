@@ -24,7 +24,7 @@ function Skeleton() {
 export default function MonEspacePage() {
   const sessionId = useMemo(() => getSessionId(), []);
   const { isAuthenticated, company } = useAuth();
-  const { savedIds } = useFavorites();
+  const { savedIds, loading: favLoading } = useFavorites();
   const [params, setParams] = useSearchParams();
   const tab = params.get('onglet') === 'favoris' ? 'favoris' : params.get('onglet') === 'documents' ? 'documents' : params.get('onglet') === 'recherches' ? 'recherches' : 'dossiers';
   const [dossiers, setDossiers] = useState<SuiviDossier[] | null>(null);
@@ -35,10 +35,12 @@ export default function MonEspacePage() {
   useEffect(() => { if (!isAuthenticated) siretApi.status(sessionId).then(s => setName(s?.company?.name || null)).catch(() => {}); }, [isAuthenticated, sessionId]);
   useEffect(() => {
     let live = true;
+    // 7 nov. : tant que les favoris se chargent, on n'affiche pas « aucun favori » (il apparaissait une seconde).
+    if (favLoading) { setFavs(null); return () => { live = false; }; }
     (isAuthenticated ? favoritesApi.list() : Promise.all([...savedIds].slice(0, 20).map(id => opportunitiesApi.getById(id).catch(() => null))).then(r => r.filter(Boolean) as ApiOpportunity[]))
       .then(r => { if (live) setFavs(r); }).catch(() => { if (live) setFavs([]); });
     return () => { live = false; };
-  }, [isAuthenticated, savedIds]);
+  }, [isAuthenticated, savedIds, favLoading]);
 
   const who = (isAuthenticated ? company?.name : name) || null;
   const actions = (dossiers || []).filter(d => d.steps.some(s => s.state === 'action')).length;

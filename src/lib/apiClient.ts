@@ -1875,6 +1875,12 @@ export const seoV2Api = {
   acheteur: async (slug: string): Promise<import('./acheteur').BuyerData> => (await apiClient.get(`/seo/v2/acheteur/${encodeURIComponent(slug)}`)).data,
 };
 
+// 7 nov. : signalement d'une annonce inexacte, en un geste (aucune coordonnée, rien dans HubSpot).
+export const listingReportsApi = {
+  send: async (opportunityId: string, kind: string, sessionId: string, comment?: string) =>
+    (await apiClient.post('/listing-reports', { opportunityId, kind, sessionId, ...(comment ? { comment } : {}) })).data,
+};
+
 // 7 nov. : chantiers à venir (permis de construire autorisés, base Sitadel du SDES).
 export const chantiersApi = {
   list: async (params: { department?: string; category?: string; nature?: string; page?: number }): Promise<import('./chantiers').ChantiersList> =>
