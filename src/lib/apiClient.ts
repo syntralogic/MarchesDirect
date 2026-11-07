@@ -1875,6 +1875,12 @@ export const seoV2Api = {
   acheteur: async (slug: string): Promise<import('./acheteur').BuyerData> => (await apiClient.get(`/seo/v2/acheteur/${encodeURIComponent(slug)}`)).data,
 };
 
+// 7 nov. : inscription douce (portable + e-mail, sans mot de passe) après 10 fiches.
+export const membersApi = {
+  join: async (body: { phone: string; email: string; company?: string; siret?: string; sessionId: string; fichesSeen: number; consentText: string }) =>
+    (await apiClient.post('/members', body)).data,
+};
+
 // 7 nov. : « Publier un besoin » (donneurs d'ordre) : dépôt public, relecture et publication par l'équipe.
 export interface ClientNeed {
   id: number; reference: string; status: 'pending' | 'published' | 'rejected' | 'closed'; journey: string; company_name: string; siret: string | null;
