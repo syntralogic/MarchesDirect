@@ -1,7 +1,6 @@
 import ReportListing from '@/components/fiche/ReportListing';
 import MemberGate from '@/components/fiche/MemberGate';
 import { needsGate } from '@/lib/memberGate';
-import { viewedIds } from '@/lib/lastList';
 import { useAuth } from '@/contexts/AuthContext';
 import { lastListPath, markViewed, neighbours } from '@/lib/lastList';
 // Écran 3 de la refonte (maquette v26): fiche marché + analyse sur place, en un seul écran.
@@ -331,14 +330,8 @@ export default function FicheMarchePage() {
 
   // --- save on this phone (3.10): localStorage only, no network ---
   // 5 nov. : le favori est celui du site (session puis compte), pour le retrouver dans « Mon espace ».
-  const toggleSave = () => {
-    try {
-      const list = (JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') as { id: string; siret?: string }[]).filter(s => s.id !== id);
-      if (!saved) list.push({ id, siret: status?.siret });
-      localStorage.setItem(SAVED_KEY, JSON.stringify(list));
-    } catch { /* storage unavailable */ }
-    void favToggle(id);
-  };
+  // 7 nov. : le téléphone garde le favori via FavoritesContext (qui demande d'abord portable + e-mail au premier enregistrement).
+  const toggleSave = () => { void favToggle(id); };
 
   // --- fixed bar (3.11): hidden while the main button is on screen or a field is being typed in ---
   useEffect(() => {
@@ -390,7 +383,7 @@ export default function FicheMarchePage() {
         <div className="flex flex-wrap gap-2 text-[12px] font-bold"><span className="rounded-full bg-[#3A2312] px-2.5 py-1 text-[#FDBA74]">{TYPE_LABEL[opp.journey] || 'MARCHÉ'}</span>{placeChip && <span className="rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold text-[#D6E0EC]">{placeChip}</span>}</div>
         <h1 className="text-[23px] font-extrabold leading-tight">{title}</h1>
       </section>
-      <MemberGate company={status?.company?.name} siret={status?.siret} seen={viewedIds().size} onDone={() => setGate({ id, on: false })} />
+      <MemberGate company={status?.company?.name} siret={status?.siret} onDone={() => setGate({ id, on: false })} intro="Indiquez votre portable et votre e-mail pour continuer." />
     </main>
   );
   if (view.kind !== 'fiche') {

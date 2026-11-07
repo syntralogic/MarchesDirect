@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LangProvider } from '@/contexts/LangContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { FavoritesProvider } from '@/contexts/FavoritesContext';
+import { MemberGateProvider } from '@/contexts/MemberGateContext';
 import { CompanyKnownProvider } from '@/contexts/CompanyKnownContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -187,6 +188,7 @@ const App: React.FC = () => {
     <ThemeProvider>
       <LangProvider>
         <AuthProvider>
+          <MemberGateProvider>
           <FavoritesProvider>
           <CompanyKnownProvider>
           <BrowserRouter>
@@ -292,6 +294,7 @@ const App: React.FC = () => {
           </BrowserRouter>
           </CompanyKnownProvider>
           </FavoritesProvider>
+          </MemberGateProvider>
         </AuthProvider>
       </LangProvider>
     </ThemeProvider>
