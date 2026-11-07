@@ -3,8 +3,6 @@ import { favoritesApi } from '@/lib/apiClient';
 import { useAuth } from './AuthContext';
 import { getSessionId } from '@/lib/visitorTracking';
 import { toast } from 'sonner';
-import { useMemberGate } from './MemberGateContext';
-import { isMember } from '@/lib/memberGate';
 
 interface FavoritesContextType {
   savedIds: Set<string>;
@@ -32,7 +30,6 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const { requireMember } = useMemberGate();
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   // Client's brief (6 Sep): "une fois identifié, le développeur doit les
@@ -88,7 +85,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     async (opportunityId: string) => {
       const wasSaved = savedIds.has(opportunityId);
       // Premier enregistrement d'un visiteur anonyme : portable + e-mail d'abord, puis l'enregistrement se fait.
-      if (!wasSaved && !isAuthenticated && !isMember()) { requireMember(() => { void toggleRef.current(opportunityId); }); return; }
 
       // Optimistic update, rolled back on failure.
       setSavedIds((prev) => {
@@ -122,9 +118,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         toast.error("Échec de l'enregistrement. Réessayez.");
       }
     },
-    [isAuthenticated, savedIds, requireMember]
+    [isAuthenticated, savedIds]
   );
-  const toggleRef = useRef(toggle); toggleRef.current = toggle;
 
   return (
     <FavoritesContext.Provider value={{ savedIds, isSaved, toggle, loading }}>{children}</FavoritesContext.Provider>
