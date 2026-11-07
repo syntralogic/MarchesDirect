@@ -54,6 +54,14 @@
       "destination": "/api/prerender?kind=guides"
     },
     {
+      "source": "/chantiers-a-venir",
+      "destination": "/api/prerender?kind=chantiers"
+    },
+    {
+      "source": "/chantiers-a-venir/departement/:dept",
+      "destination": "/api/prerender?kind=chantiers&dept=:dept"
+    },
+    {
       "source": "/acheteurs/:slug",
       "destination": "/api/prerender?kind=acheteur&slug=:slug"
     },

@@ -1856,3 +1856,11 @@ export const seoV2Api = {
   barometre: async (): Promise<import('./barometre').Barometre> => (await apiClient.get('/seo/v2/barometre')).data,
   acheteur: async (slug: string): Promise<import('./acheteur').BuyerData> => (await apiClient.get(`/seo/v2/acheteur/${encodeURIComponent(slug)}`)).data,
 };
+
+// 7 nov. : chantiers à venir (permis de construire autorisés, base Sitadel du SDES).
+export const chantiersApi = {
+  list: async (params: { department?: string; category?: string; nature?: string; page?: number }): Promise<import('./chantiers').ChantiersList> =>
+    (await apiClient.get('/chantiers', { params })).data,
+  stats: async (): Promise<import('./chantiers').ChantiersStats> => (await apiClient.get('/chantiers/stats')).data,
+  fiche: async (id: string): Promise<import('./chantiers').ChantierFiche> => (await apiClient.get(`/chantiers/${encodeURIComponent(id)}`)).data,
+};
