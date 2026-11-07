@@ -123,7 +123,7 @@ export function calendarRows(a: { deadline: string | Date | null | undefined; ch
   const rows: CalendarRow[] = [
     { when: 'Aujourd’hui', what: 'Pourcentage calculé, dossier prérempli' },
     { when: a.slotLabel ? a.slotLabel : a.choice === 'rappel' && a.moment !== 'now' ? (a.moment === 'afternoon' ? 'Cet après-midi' : 'Demain matin') : rappelDelai(now).replace(/^./, c => c.toUpperCase()), what: 'Elena vous appelle' },
-    // 6 nov. : la rédaction et le dépôt sont une prestation sur devis, décidée pendant l'appel — jamais présentée comme acquise.
+    // 6 nov. : la rédaction et le dépôt font partie des formules d'accompagnement, décidées pendant l'appel — jamais présentés comme acquis.
     { when: 'Les jours suivants', what: jc.daysAfter },
   ];
   const d = a.deadline ? new Date(a.deadline) : null;

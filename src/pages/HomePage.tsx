@@ -272,7 +272,7 @@ function TestimonialsSection() {
 
 function Faq() {
   const items: [string, string][] = [
-    ['Qu’est-ce qui est gratuit ?', 'La recherche, le pourcentage par marché, le premier échange de 30 minutes et votre dossier prérempli. L’accompagnement à la candidature (mémoire technique, formulaires, dépôt) est sur devis, présenté lors de cet échange. Vous décidez ensuite.'],
+    ['Qu’est-ce qui est gratuit ?', 'La recherche, le pourcentage par marché, le premier échange de 30 minutes et votre dossier prérempli. L’accompagnement (candidature, présentation de votre entreprise aux donneurs d’ordre, mise en relation, négociation) fait partie de nos formules, présentées lors de cet échange. Vous décidez ensuite.'],
     ['Je ne connais pas les marchés publics. C’est pour moi ?', 'Oui. La plupart des entreprises que nous accompagnons répondent pour la première fois. Nous expliquons chaque étape et nous préparons les pièces avec vous.'],
     ['Que fait Marchés Direct à ma place ?', 'La recherche des marchés, le pourcentage de correspondance, le dossier prérempli et, si vous le souhaitez, les formulaires de candidature, le mémoire technique et le dépôt. Vous fournissez vos références et vos pièces, vous validez.'],
     ['Mes informations restent-elles confidentielles ?', 'Oui. Vos coordonnées servent à préparer votre dossier et à vous appeler au sujet de vos marchés. Vous pouvez demander à ne plus être appelé à tout moment.'],
@@ -412,12 +412,12 @@ export default function HomePage() {
                 ['🔎', 'Gratuit', 'La recherche et votre pourcentage', 'Tous les marchés de votre métier, classés pour votre entreprise.'],
                 ['📄', 'Gratuit', 'Votre dossier prérempli, à votre nom', 'Téléchargé tout de suite, prêt à compléter.'],
                 ['📞', 'Offert', '30 minutes avec notre équipe', 'Pour faire le point sur le marché et sur votre entreprise.'],
-                ['🤝', 'Sur devis', 'La candidature préparée avec vous', 'Formulaires, mémoire technique, dépôt. Vous décidez après l’échange.'],
+                ['🤝', 'Formule', 'Votre dossier porté avec vous', 'Candidature, mise en relation avec les donneurs d’ordre, négociation. Vous décidez après l’échange.'],
               ] as const).map(([ico, tag, t, d]) => (
                 <li key={t} className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5">
                   <span aria-hidden className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-[#1E3352] text-[22px]">{ico}</span>
                   <div>
-                    <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-extrabold ${tag === 'Sur devis' ? 'bg-[#3A2312] text-[#FDBA74]' : 'bg-[#123B2A] text-[#6EE7B7]'}`}>{tag}</span>
+                    <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-extrabold ${tag === 'Formule' ? 'bg-[#3A2312] text-[#FDBA74]' : 'bg-[#123B2A] text-[#6EE7B7]'}`}>{tag}</span>
                     <b className="block text-[16px] leading-tight">{t}</b><span className="text-[14px] leading-snug text-[#D6E0EC]">{d}</span>
                   </div>
                 </li>
