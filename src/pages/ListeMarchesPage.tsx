@@ -3,7 +3,7 @@
 import ActivityDot from '@/components/ActivityDot';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus } from '@/lib/apiClient';
+import { chantiersApi, opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { useBrand } from '@/hooks/use-brand';
 import { useIdempotency } from '@/lib/useIdempotency';
@@ -108,6 +108,10 @@ export default function ListeMarchesPage() {
   const [searchTotal, setSearchTotal] = useState<number | null>(null);
   const [tradeUnknown, setTradeUnknown] = useState(false);
   const [zoneLabel, setZoneLabel] = useState('Toute la France');
+  // 7 nov. : liste par entreprise = toute la France par défaut, département de l'entreprise en tête.
+  const [homeDept, setHomeDept] = useState<string | null>(null);
+  const [rankedZone, setRankedZone] = useState<string>('france');
+  const [works, setWorks] = useState<number | null>(null);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
@@ -144,7 +148,10 @@ export default function ListeMarchesPage() {
       if (known) {
         const r = await opportunitiesApi.rankedCandidates(sessionId, zoneParam);
         if (stop()) return;
-        setZoneLabel(r.zone === 'france' ? 'Toute la France' : `Département ${r.zone}`);
+        const home = (r as { homeDepartment?: string | null }).homeDepartment || null;
+        setHomeDept(home); setRankedZone(r.zone);
+        setZoneLabel(r.zone === 'france' ? (home ? `Toute la France · le ${home} en premier` : 'Toute la France') : `Département ${r.zone}`);
+        if (home) chantiersApi.stats().then(st => setWorks(st.departments.find(d => d.code === home)?.count ?? 0)).catch(() => setWorks(null));
         setTradeUnknown(r.reason === 'trade_unknown');
         setCards(r.items); setRankedTotal(typeof r.total === 'number' ? r.total : null);
         await mapLimit(r.items, 4, async c => {
@@ -305,6 +312,12 @@ export default function ListeMarchesPage() {
 
       {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} />)}</div>}
       {beyond > 0 && <p className="text-[13px] text-[#B4C1D3]">{cards!.length} marchés affichés sur {rankedTotal} correspondant à votre métier et à votre zone : ce sont ceux dont la date limite est la plus proche, classés ici par pourcentage. Affinez la zone pour voir les autres.</p>}
+      {known && homeDept && cards && (
+        <div className="flex flex-wrap items-center gap-2 text-[13.5px]">
+          <button type="button" aria-pressed={rankedZone === 'france'} onClick={() => { const p = new URLSearchParams(params); p.delete('zone'); setParams(p, { replace: true }); }} className={`min-h-[40px] rounded-full border px-3 font-bold ${rankedZone === 'france' ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>Toute la France</button>
+          <button type="button" aria-pressed={rankedZone === homeDept} onClick={() => { const p = new URLSearchParams(params); p.set('zone', homeDept); setParams(p, { replace: true }); }} className={`min-h-[40px] rounded-full border px-3 font-bold ${rankedZone === homeDept ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>Mon département ({homeDept})</button>
+          {works != null && works > 0 && <Link to={`/chantiers-a-venir/departement/${homeDept.toLowerCase()}`} className="font-bold text-[#FB923C] underline">{new Intl.NumberFormat('fr-FR').format(works)} chantiers à venir dans le {homeDept} ›</Link>}
+        </div>)}
       {known && cards && cards.length > 0 && (
         <section className="flex flex-col gap-2 rounded-2xl border border-[#22385A] bg-[#12233A] p-4" aria-label="Être prévenu des prochains marchés">
           <h2 className="text-[18px] font-extrabold">Être prévenu des prochains marchés</h2>
@@ -326,8 +339,8 @@ export default function ListeMarchesPage() {
           {!known && type !== 'all' && (type === 'tender' || type === 'subcontracting') && (
             <Link to={`/question?q=${encodeURIComponent(`Prévenez-moi des ${type === 'tender' ? 'appels d’offres privés' : 'missions de sous-traitance'}${q ? ` en ${q}` : ''}${dept ? ` (département ${dept})` : ''}.`)}`} className={btn}>Être prévenu par Elena</Link>)}
           {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className="min-h-[44px] text-[14px] font-semibold text-[#FB923C] underline">Voir tous les types</button>}
-          <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known && zoneParam !== 'france' ? `Aucun marché ouvert dans votre zone (${zoneLabel.replace('Département ', 'département ')}) pour votre activité. Élargissez à toute la France ou demandez à être prévenu.` : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
-          {((known && zoneParam !== 'france') || dept || refine.where === 'near') && !tradeUnknown && <button type="button" onClick={() => { const p = paramsWithRefine(params, { ...refine, where: 'france', department: '', lat: null, lng: null, sort: refine.sort === 'distance' ? 'match' : refine.sort }); p.set('zone', 'france'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
+          <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known && rankedZone !== 'france' ? `Aucun marché ouvert dans votre zone (${zoneLabel.replace('Département ', 'département ')}) pour votre activité. Élargissez à toute la France ou demandez à être prévenu.` : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
+          {((known && rankedZone !== 'france') || dept || refine.where === 'near') && !tradeUnknown && <button type="button" onClick={() => { const p = paramsWithRefine(params, { ...refine, where: 'france', department: '', lat: null, lng: null, sort: refine.sort === 'distance' ? 'match' : refine.sort }); p.delete('zone'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {(known || q || dept) && <button type="button" onClick={openAlert} className="min-h-[48px] text-[15px] font-semibold text-[#FB923C] underline">Être prévenu dès qu’un marché correspond</button>}
           {known && <p className="text-[14px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/question" className="inline-flex min-h-[48px] items-center font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
           {known || q || dept
