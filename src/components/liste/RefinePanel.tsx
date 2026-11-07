@@ -27,6 +27,7 @@ export type Refine = {
   min: string; max: string;  // euros, '' = aucun
   deadline: 'all' | '7' | '30' | 'later';
   sort: 'match' | 'distance' | 'deadline' | 'amount' | 'recent';
+  focus: string;             // 7 nov. : prestation choisie dans l'autocomplétion (classement, pas filtre), '' = aucune
 };
 
 export const TYPE_CHIPS: { key: Journey; label: string }[] = [
@@ -41,7 +42,7 @@ const SORTS: { key: Refine['sort']; label: string; needsPosition?: boolean }[] =
   { key: 'deadline', label: 'Date limite' }, { key: 'amount', label: 'Montant' }, { key: 'recent', label: 'Nouveautés' },
 ];
 
-export const DEFAULT_REFINE: Refine = { journey: 'all', where: 'france', department: '', lat: null, lng: null, radius: 50, min: '', max: '', deadline: 'all', sort: 'match' };
+export const DEFAULT_REFINE: Refine = { journey: 'all', where: 'france', department: '', lat: null, lng: null, radius: 50, min: '', max: '', deadline: 'all', sort: 'match', focus: '' };
 
 const num = (v: string | null) => { const n = v ? Number(v) : NaN; return Number.isFinite(n) ? n : null; };
 
@@ -55,6 +56,7 @@ export function refineFromParams(p: URLSearchParams): Refine {
     min: p.get('min_value') || '', max: p.get('max_value') || '',
     deadline: dl === '7' || dl === '30' || dl === 'later' ? dl : 'all',
     sort: sort === 'distance' || sort === 'deadline' || sort === 'amount' || sort === 'recent' ? sort : 'match',
+    focus: p.get('focus') || '',
   };
 }
 
@@ -78,6 +80,7 @@ export function paramsWithRefine(base: URLSearchParams, r: Refine): URLSearchPar
 export function searchParamsFor(q: string | undefined, r: Refine, extra: Partial<OpportunitySearchParams> = {}): OpportunitySearchParams {
   return {
     ...(q ? { q } : {}),
+    ...(r.focus ? { focus: r.focus } : {}),
     ...(r.journey !== 'all' ? { journey: r.journey } : {}),
     ...(r.where === 'department' && r.department ? { department: r.department } : {}),
     ...(r.where === 'near' && r.lat != null && r.lng != null ? { lat: r.lat, lng: r.lng, radius_km: r.radius } : {}),
