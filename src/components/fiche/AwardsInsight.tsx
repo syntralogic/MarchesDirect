@@ -7,16 +7,13 @@ export default function AwardsInsight({ opportunityId, sessionId }: { opportunit
   const [d, setD] = useState<AwardsInsightData | null>(null);
   useEffect(() => { setD(null); awardsApi.opportunity(opportunityId, sessionId).then(setD).catch(() => setD(null)); }, [opportunityId, sessionId]);
   if (!d || !d.available) return null;
-  const eur = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} €`;
   return (
     <section className="flex flex-col gap-2 rounded-2xl border border-[#22385A] bg-[#12233A] p-4" aria-label="Ce que disent les marchés déjà attribués">
       <h3 className="text-[16px] font-extrabold">Ce que disent les marchés déjà attribués</h3>
-      {d.price && <div>
-        <p className="text-[14.5px] text-[#F2F5F9]"><b>Entre {eur(d.price.low)} et {eur(d.price.high)}</b> pour la plupart des marchés comparables{d.familyLabel ? ` (${d.familyLabel})` : ''}, médiane {eur(d.price.median)}.</p>
-        <p className="text-[12.5px] text-[#B4C1D3]">{d.price.count} marchés attribués {d.price.scope === 'departement' ? 'dans ce département' : 'en France'} ces {d.price.years} ans{d.cpvFrom === 'metier' ? ' · famille déduite de votre métier' : ''}.</p>
-      </div>}
-      {d.peers && <p className="text-[14.5px] text-[#6EE7B7]">✓ {d.peers.text}{d.peers.recentExample ? <span className="block text-[12.5px] text-[#B4C1D3]">Par exemple, en {d.peers.recentExample.year} : « {d.peers.recentExample.objet} »</span> : null}</p>}
-      <p className="text-[12px] text-[#93A4BC]">{d.note}</p>
+      {d.price && <p className="text-[15px] font-bold text-[#F2F5F9]">{d.price.text}</p>}
+      {d.peers && <p className="text-[15px] font-bold text-[#6EE7B7]">✓ {d.peers.text}</p>}
+      <details className="text-[12.5px] text-[#93A4BC]"><summary className="min-h-[36px] cursor-pointer list-none underline [&::-webkit-details-marker]:hidden">D’où viennent ces chiffres</summary>
+        <p className="mt-1">{[d.price?.detail, d.peers?.detail].filter(Boolean).join(' · ')}. {d.note}</p></details>
     </section>
   );
 }

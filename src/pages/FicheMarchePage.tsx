@@ -489,17 +489,13 @@ export default function FicheMarchePage() {
               <div className="flex flex-col gap-1.5"><h2 className="text-[19px] font-extrabold">Correspondance à confirmer</h2>
                 <p className="text-[14px] text-[#D6E0EC]">Nous ne savons pas encore comparer votre entreprise à {jc.noun}. Répondez aux 4 questions ci-dessous : aucun pourcentage n’est inventé.</p></div>
             ) : <div className="h-24 animate-pulse rounded-xl bg-[#0F1F35]" aria-busy="true" />}
-            {v28 && sc != null && (() => { const w = whyProposed(v28, null); return (
-              <details className="rounded-xl border border-[#22385A] bg-[#0F1F35] p-3" open>
-                <summary className="min-h-[40px] cursor-pointer list-none text-[14px] font-extrabold [&::-webkit-details-marker]:hidden">Pourquoi {jc.noun} vous est proposé{jc.feminine ? 'e' : ''}</summary>
-                {w.confirmed.length > 0 && <ul className="mt-2 flex flex-col gap-1 text-[13.5px]">{w.confirmed.map(t => <li key={t} className="text-[#6EE7B7]">✓ {t}</li>)}</ul>}
-                {w.unknown.length > 0 && <><p className="mt-2 text-[12.5px] font-bold text-[#B4C1D3]">Ce que nous ne savons pas encore</p><ul className="flex flex-col gap-1 text-[13.5px]">{w.unknown.map(t => <li key={t} className="text-[#FDBA74]">? {t}</li>)}</ul></>}
-              </details>); })()}
             {highlights.length > 0 ? (
               <ul className="flex flex-wrap gap-1.5" aria-label={`Vos repères sur ${jc.noun}`}>
                 {highlights.map(h => <li key={h.text} className={`rounded-full px-2.5 py-1 text-[12.5px] font-bold ${h.tone === 'ok' ? 'bg-[#123B2A] text-[#6EE7B7]' : h.tone === 'warn' ? 'bg-[#3A2312] text-[#FDBA74]' : 'bg-[#1E3352] text-[#D6E0EC]'}`}>{h.text}</li>)}
               </ul>
             ) : sc != null && <p className="text-[14px] text-[#D6E0EC]">{summaryFor(sc)}</p>}
+            {v28 && sc != null && (() => { const w = whyProposed(v28, null); return w.unknown.length ? (
+              <p className="text-[13px] text-[#B4C1D3]"><b className="text-[#FDBA74]">À confirmer :</b> {w.unknown.map(t => t.charAt(0).toLowerCase() + t.slice(1)).join(' · ')}</p>) : null; })()}
             <div className="flex items-center gap-2 rounded-xl bg-[#123B2A] px-3 py-2 text-[13px] text-[#6EE7B7]">
               <span aria-hidden>✓</span><span className="min-w-0 flex-1">{['Pour ' + company, status?.company?.activity && status.company.activity.length <= 40 ? status.company.activity : null, status?.company?.city ? `${status.company.city}${deptFromPostal(status.company.postal) ? ` (${deptFromPostal(status.company.postal)})` : ''}` : null].filter(Boolean).join(' · ')}</span>
               <button type="button" onClick={() => { setEditing(true); setQuery(company); }} className="min-h-[48px] min-w-[48px] font-bold underline">Modifier</button>
@@ -519,8 +515,9 @@ export default function FicheMarchePage() {
               <p className="text-[12px] text-[#B4C1D3]">Synthèse automatique à partir de votre entreprise et du marché, à confirmer avec Elena.</p>
             </section>)}
 
-          <section className="flex flex-col gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-4">
-            <h3 className="text-[17px] font-extrabold">D’où vient votre {sc != null ? `${sc} %` : 'pourcentage'}</h3>
+          <details className="group rounded-2xl border border-[#22385A] bg-[#12233A] p-4 [&[open]>summary]:mb-3">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between text-[17px] font-extrabold [&::-webkit-details-marker]:hidden">D’où vient votre {sc != null ? `${sc} %` : 'pourcentage'}<span aria-hidden className="text-[22px] text-[#FB923C] group-open:rotate-45">+</span></summary>
+            <div className="flex flex-col gap-3">
             {score ? CRITERIA_ORDER.map(({ key, label }) => {
               const c = crit(key); const st = criterionStatus(c);
               // v28 : points réellement gagnés / maximum (somme = pourcentage). Critère hors calcul : une ligne d'explication.
@@ -564,7 +561,8 @@ export default function FicheMarchePage() {
                 <p className="text-[13px] text-[#B4C1D3]">Le pourcentage se met à jour à chaque réponse. Une information que nous n’avons pas compte pour une valeur neutre, ni acquise ni contre vous.</p>
               </div>
             </details>
-          </section>
+            </div>
+          </details>
 
 
           {isOver ? (

@@ -1885,8 +1885,8 @@ export const pilotageApi = {
 // 7 nov. : contrats attribués (DECP) : ordres de grandeur et pairs pour une annonce, habitudes d'un acheteur.
 export interface AwardsInsightData {
   available: boolean; cpv: string | null; cpvFrom: 'avis' | 'metier'; familyLabel: string | null; note: string;
-  price: { count: number; low: number; median: number; high: number; scope: 'departement' | 'region' | 'france'; years: number; text: string } | null;
-  peers: { count: number; pme: number; sameDepartment: number; text: string; recentExample: { objet: string; year: number; department: string | null } | null } | null;
+  price: { count: number; low: number; median: number; high: number; scope: 'departement' | 'region' | 'france'; years: number; text: string; detail?: string } | null;
+  peers: { count: number; pme: number; sameDepartment: number; text: string; detail?: string; recentExample: { objet: string; year: number; department: string | null } | null } | null;
 }
 export interface BuyerAwardsData { available: boolean; contracts?: number; years?: number; byMonth?: number[]; peakMonths?: number[]; topTypes?: { label: string; count: number }[]; pmeShare?: number | null; medianAmount?: number | null; avgOffers?: number | null; seasonText?: string; pmeText?: string | null; offersText?: string | null }
 export const awardsApi = {
