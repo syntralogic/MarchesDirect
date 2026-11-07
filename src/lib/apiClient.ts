@@ -1875,6 +1875,18 @@ export const seoV2Api = {
   acheteur: async (slug: string): Promise<import('./acheteur').BuyerData> => (await apiClient.get(`/seo/v2/acheteur/${encodeURIComponent(slug)}`)).data,
 };
 
+// 7 nov. : contrats attribués (DECP) : ordres de grandeur et pairs pour une annonce, habitudes d'un acheteur.
+export interface AwardsInsightData {
+  available: boolean; cpv: string | null; cpvFrom: 'avis' | 'metier'; familyLabel: string | null; note: string;
+  price: { count: number; low: number; median: number; high: number; scope: 'departement' | 'region' | 'france'; years: number; text: string } | null;
+  peers: { count: number; pme: number; sameDepartment: number; text: string; recentExample: { objet: string; year: number; department: string | null } | null } | null;
+}
+export interface BuyerAwardsData { available: boolean; contracts?: number; years?: number; byMonth?: number[]; peakMonths?: number[]; topTypes?: { label: string; count: number }[]; pmeShare?: number | null; medianAmount?: number | null; avgOffers?: number | null; seasonText?: string; pmeText?: string | null; offersText?: string | null }
+export const awardsApi = {
+  opportunity: async (id: string, sessionId: string): Promise<AwardsInsightData> => (await apiClient.get(`/awards/opportunity/${encodeURIComponent(id)}`, { params: { sessionId } })).data,
+  buyer: async (name: string): Promise<BuyerAwardsData> => (await apiClient.get('/awards/buyer', { params: { name } })).data,
+};
+
 // 7 nov. : inscription douce (portable + e-mail, sans mot de passe) après 10 fiches.
 export const membersApi = {
   join: async (body: { phone: string; email: string; company?: string; siret?: string; sessionId: string; fichesSeen: number; consentText: string }) =>

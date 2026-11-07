@@ -1,3 +1,4 @@
+import AwardsInsight from '@/components/fiche/AwardsInsight';
 import HelpOptions from '@/components/fiche/HelpOptions';
 import ReportListing from '@/components/fiche/ReportListing';
 import MemberGate from '@/components/fiche/MemberGate';
@@ -595,6 +596,7 @@ export default function FicheMarchePage() {
         </dl>
         {dossiers != null && dossiers >= 2 && <p className="text-[14px] text-[#D6E0EC]">{dossiers} dossiers préremplis demandés pour {jc.noun} ces 7 derniers jours</p>}
         {(opp.ai_summary || sections?.presentation) && <div className="rounded-2xl border border-[#22385A] bg-[#12233A] p-4"><h3 className="mb-1 font-extrabold">{jc.summaryTitle}</h3><p className="text-[14px] text-[#D6E0EC]">{fixSummaryPlace(opp.ai_summary || sections?.presentation, opp as any)}</p></div>}
+        {opp.journey === 'public_procurement' && <AwardsInsight opportunityId={opp.id} sessionId={sessionId} />}
         {sections?.conditions && <Details title="Conditions et points à vérifier"><p className="whitespace-pre-line">{sections.conditions}</p></Details>}
         {sections?.presentation && <Details title="Informations techniques"><p className="whitespace-pre-line">{sections.presentation}</p></Details>}
         {sections?.entreprises && <Details title="Entreprises concernées"><p className="whitespace-pre-line">{sections.entreprises}</p></Details>}
