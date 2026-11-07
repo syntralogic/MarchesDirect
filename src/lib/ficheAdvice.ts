@@ -230,3 +230,23 @@ export function buildEliteAdvice(i: V28Input): { text: string; suggestBetter: bo
 
 // Clé de réponse du moteur -> question de la fiche (pour répondre « oui » directement depuis « Ce qui ferait monter »).
 export const UPGRADE_QUESTION: Record<ApiMatchUpgrade['key'], FicheQuestion> = { experience: 'refs', capacity: 'moyens', location: 'zone', calendar: 'dispo' };
+
+// 7 nov. : « Pourquoi cette annonce vous est proposée » : des phrases, en séparant ce qui est confirmé par les données de
+// ce qui reste inconnu. Seulement à partir des faits du moteur (jamais de supposition).
+export function whyProposed(i: V28Input, deptName: string | null): { confirmed: string[]; unknown: string[] } {
+  const f = i.facts; const confirmed: string[] = []; const unknown: string[] = [];
+  if (f?.metierLevel === 'exact') confirmed.push(`Votre métier exact${i.tradeLabel ? ` (${i.tradeLabel})` : ''}`);
+  else if (f?.metierLevel === 'secondary') confirmed.push('Une de vos activités');
+  else if (f?.metierLevel === 'general') unknown.push('Le lot précis qui vous concerne (annonce tous corps d’état)');
+  else unknown.push('Le lien avec votre métier');
+  if (f?.km != null) (f.km <= f.radiusKm ? confirmed : unknown).push(f.km <= f.radiusKm ? `À ${f.km.toLocaleString('fr-FR')} km de votre entreprise${deptName ? `, ${deptName}` : ''}` : `À ${f.km.toLocaleString('fr-FR')} km : au-delà de votre zone habituelle`);
+  else unknown.push('La distance exacte (lieu d’exécution non précisé dans l’avis)');
+  if (f?.daysLeft != null && f.daysLeft > 0) confirmed.push(`${f.daysLeft} jours pour répondre`); else if (f?.daysLeft == null) unknown.push('La date limite (à vérifier dans l’avis)');
+  if (f?.revenueRatio != null) (f.revenueRatio <= 0.6 ? confirmed : unknown).push(f.revenueRatio <= 0.6 ? 'Un montant à la mesure de votre entreprise' : 'Un montant élevé par rapport à votre chiffre d’affaires');
+  else unknown.push('Le montant (non publié)');
+  const q = i.criteria.find(c => c.key === 'qualifications');
+  if (q) { if (q.evidence === 'verified_match') confirmed.push('Les qualifications demandées'); else if ((q.maxPoints || 0) > 0) unknown.push('Les qualifications demandées (à confirmer)'); }
+  const r = i.criteria.find(c => c.key === 'experience');
+  if (r && r.evidence !== 'verified_match') unknown.push('Vos références de chantiers similaires');
+  return { confirmed, unknown };
+}
