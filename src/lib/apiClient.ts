@@ -497,13 +497,13 @@ export const opportunitiesApi = {
   // Écran 2 « Vos marchés »: open markets of the identified company's trade and zone, WITHOUT percentages.
   // 403 company_not_identified until a SIRET lookup is done for this session.
   // 7 nov. : journey (pastille de type, filtrée côté serveur) et limit (« Voir plus », par pas de 40, 200 max).
-  rankedCandidates: async (sessionId: string, zone?: string, opts: { journey?: string; limit?: number } = {}) => {
+  rankedCandidates: async (sessionId: string, zone?: string, opts: { journey?: string; limit?: number; offset?: number } = {}) => {
     const { data } = await apiClient.get<{
       items: (import('./noticePlace').PlaceFields & { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null; matched_lot?: string | null })[];
       total: number; zone: string; reason?: 'trade_unknown';
       byJourney?: Record<string, number>;
       company?: { name: string | null; activity: string | null; city: string | null; department: string | null };
-    }>('/opportunities/ranked/candidates', { params: { sessionId, ...(zone ? { zone } : {}), ...(opts.journey && opts.journey !== 'all' ? { journey: opts.journey } : {}), ...(opts.limit ? { limit: opts.limit } : {}) } });
+    }>('/opportunities/ranked/candidates', { params: { sessionId, ...(zone ? { zone } : {}), ...(opts.journey && opts.journey !== 'all' ? { journey: opts.journey } : {}), ...(opts.limit ? { limit: opts.limit } : {}), ...(opts.offset ? { offset: opts.offset } : {}) } });
     return data;
   },
   getMatchScore: async (id: string, sessionId?: string, answers?: string): Promise<ApiMatchScore> => {
