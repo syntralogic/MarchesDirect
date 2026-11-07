@@ -25,6 +25,11 @@ export const neighbours = (id: string): { prev: string | null; next: string | nu
   const ids = readArr(ss(), IDS); const i = ids.indexOf(id);
   return i < 0 ? { prev: null, next: null, pos: 0, total: 0 } : { prev: ids[i - 1] || null, next: ids[i + 1] || null, pos: i + 1, total: ids.length };
 };
+// Le lot repéré sur la carte, repris sur la fiche (« Votre lot »).
+export const rememberLot = (id: string, lot: string | null | undefined) => {
+  if (!lot) return; try { const m = JSON.parse(ss()?.getItem('md_lots') || '{}'); m[id] = lot; ss()?.setItem('md_lots', JSON.stringify(m)); } catch { /* idem */ }
+};
+export const lotFor = (id: string): string | null => { try { return JSON.parse(ss()?.getItem('md_lots') || '{}')[id] || null; } catch { return null; } };
 export const saveScroll = (key: string) => { try { ss()?.setItem(SCROLL, JSON.stringify({ key, y: window.scrollY })); } catch { /* idem */ } };
 export const takeScroll = (key: string): number | null => {
   try { const v = JSON.parse(ss()?.getItem(SCROLL) || 'null'); if (v && v.key === key && typeof v.y === 'number') { ss()?.removeItem(SCROLL); return v.y; } } catch { /* idem */ }
