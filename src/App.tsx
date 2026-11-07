@@ -26,6 +26,8 @@ const GuidesPage = lazy(() => import('@/pages/GuidesPage'));
 const GuidePage = lazy(() => import('@/pages/GuidePage'));
 const BarometrePage = lazy(() => import('@/pages/BarometrePage'));
 const AcheteurPage = lazy(() => import('@/pages/AcheteurPage'));
+const ChantiersPage = lazy(() => import('@/pages/ChantiersPage'));
+const ChantierPage = lazy(() => import('@/pages/ChantierPage'));
 // Anciennes « actualités » (textes de remplissage, remplacés le 6 nov. par les guides) : renvoi vers le guide équivalent.
 function LegacyArticleRedirect() { const { id = '' } = useParams<{ id: string }>(); return <Navigate to={ACTU_REDIRECTS[id] || '/guides'} replace />; }
 import MissionDetailPage from '@/pages/sous-traitance/MissionDetailPage';
@@ -237,6 +239,9 @@ const App: React.FC = () => {
               <Route path="/equipe" element={<EquipePage />} />
               <Route path="/barometre-marches-publics" element={<Suspense fallback={null}><BarometrePage /></Suspense>} />
               <Route path="/acheteurs/:slug" element={<Suspense fallback={null}><AcheteurPage /></Suspense>} />
+              <Route path="/chantiers-a-venir" element={<Suspense fallback={null}><ChantiersPage /></Suspense>} />
+              <Route path="/chantiers-a-venir/departement/:dept" element={<Suspense fallback={null}><ChantiersPage /></Suspense>} />
+              <Route path="/chantiers-a-venir/:id" element={<Suspense fallback={null}><ChantierPage /></Suspense>} />
               <Route path="/guides" element={<Suspense fallback={null}><GuidesPage /></Suspense>} />
               <Route path="/guides/:slug" element={<Suspense fallback={null}><GuidePage /></Suspense>} />
               <Route path="/actualites" element={<Navigate to="/guides" replace />} />

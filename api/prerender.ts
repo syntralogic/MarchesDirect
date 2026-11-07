@@ -11,7 +11,7 @@
 // 404 (it used to be "Page introuvable" with status 200, i.e. a soft 404), and 503 when the backend is
 // down, so a crawler retries later instead of recording an empty page.
 //
-// Routed by vercel.json rewrites (kind=category|local|opportunity|slug|guides|guide). Keep the category copy in sync
+// Routed by vercel.json rewrites (kind=category|local|opportunity|slug|guides|guide|acheteur|barometre|chantiers). Keep the category copy in sync
 // with src/pages/CategoryLandingPage.tsx, and the URL structure with api/sitemap.xml.ts.
 
 import { seoTitle, seoH1, seoDescription, seoIntro, seoFaq, seoBreadcrumb, seoSearchPath, seoSearchLabel, seoItemLine, seoItemTitle, seoSections, seoPagePath, seoExecLine, seoDate, zonePath, SEO_LABEL, type SeoV2Page, type SeoItem } from '../src/lib/seoLocalCopy.js';
@@ -19,6 +19,8 @@ import { GUIDES, GUIDE_CATEGORIES, GUIDES_INTRO, guideBySlug } from '../src/cont
 import { localGuides } from '../src/content/guides/catalog.js';
 import { BARO_METHOD, BARO_PATH, baroDate, baroTime, baroDescription, baroTitle, euros, n as nfmt, pct, type Barometre } from '../src/lib/barometre.js';
 import { buyerDescription, buyerIntro, buyerPath, buyerTitle, frDay, type BuyerCard, type BuyerData } from '../src/lib/acheteur.js';
+import { CHANTIERS_BASE, CHANTIER_CATEGORIES, SOURCE_NOTE, chantierLine, chantiersDeptPath, chantiersDescription, chantiersH1, chantiersIntro, chantiersTitle, type Chantier, type ChantiersList, type ChantiersStats } from '../src/lib/chantiers.js';
+import { DEPARTMENTS as DEPT_LIST } from '../src/data/departments.js';
 import { guideBodyHtml, guideJsonLd, guideMetaTitle, guidePath, GUIDES_BASE } from '../src/content/guideModel.js';
 
 const PUBLIC_SITE = 'https://www.marchesdirect.fr';
@@ -122,7 +124,7 @@ interface Doc { status: number; title: string; description: string; path: string
 
 const link = (href: string, label: string): string => `<li style="display:inline-block;margin:0 .5rem .5rem 0"><a href="${esc(href)}" style="color:#FF6B00">${esc(label)}</a></li>`;
 const wrap = (inner: string): string =>
-  `<main style="max-width:48rem;margin:0 auto;padding:2rem 1rem;color:#E5E7EB;font-family:Inter,system-ui,sans-serif;line-height:1.6">${inner}<nav aria-label="Ressources" style="margin-top:2rem"><ul style="list-style:none;padding:0">${link('/guides', 'Guides pour répondre aux marchés publics')}${link('/barometre-marches-publics', 'Baromètre des marchés publics')}${link('/marches-publics', 'Tous les marchés publics')}</ul></nav></main>`;
+  `<main style="max-width:48rem;margin:0 auto;padding:2rem 1rem;color:#E5E7EB;font-family:Inter,system-ui,sans-serif;line-height:1.6">${inner}<nav aria-label="Ressources" style="margin-top:2rem"><ul style="list-style:none;padding:0">${link('/guides', 'Guides pour répondre aux marchés publics')}${link('/barometre-marches-publics', 'Baromètre des marchés publics')}${link('/chantiers-a-venir', 'Chantiers à venir (permis de construire)')}${link('/marches-publics', 'Tous les marchés publics')}</ul></nav></main>`;
 
 function render(shell: string, d: Doc): string {
   const url = `${PUBLIC_SITE}${d.path}`;
@@ -392,6 +394,34 @@ async function buildAcheteur(slug: string): Promise<Doc> {
     ] };
 }
 
+// Chantiers à venir (7 nov.) : la page générale et une page par département (indexées dès qu'elles ont des projets).
+async function buildChantiers(deptRaw: string): Promise<Doc> {
+  const dept = deptRaw.toUpperCase();
+  const deptName = dept ? (DEPT_LIST.find(d => d.code === dept)?.name || null) : null;
+  const path = dept ? chantiersDeptPath(dept) : CHANTIERS_BASE;
+  if (dept && !deptName) return notFound(path);
+  const [st, li] = await Promise.all([getJson('/api/chantiers/stats'), getJson(`/api/chantiers${dept ? `?department=${encodeURIComponent(dept)}` : ''}`)]);
+  if (st.status !== 200 || li.status !== 200 || !st.json || !li.json) return unavailable(path);
+  const stats = st.json as ChantiersStats; const list = li.json as ChantiersList;
+  const total = dept ? (stats.departments.find(d => d.code === dept)?.count || 0) : stats.total;
+  const row = (c: Chantier) => `<li><a href="${esc(c.path)}" style="color:#FF6B00">${esc(c.title)}</a> — ${esc(c.categoryLabel)} · ${esc(chantierLine(c))}</li>`;
+  const crumbs = [{ name: 'Accueil', path: '/' }, { name: 'Chantiers à venir', path: CHANTIERS_BASE }, ...(dept ? [{ name: deptName as string, path }] : [])];
+  const body = [
+    `<nav aria-label="Fil d'Ariane">${crumbs.map((c, k) => k === crumbs.length - 1 ? esc(c.name) : `<a href="${esc(c.path)}" style="color:#FF6B00">${esc(c.name)}</a>`).join(' › ')}</nav>`,
+    `<h1>${esc(chantiersH1(deptName, dept))}</h1>`,
+    `<p>${esc(chantiersIntro(deptName))}</p>`,
+    total ? `<p>${total.toLocaleString('fr-FR')} projets autorisés en 12 mois.</p>` : '',
+    `<p>Types de projets : ${esc(CHANTIER_CATEGORIES.map(c => c.label).join(', '))}.</p>`,
+    list.results.length ? `<h2>Derniers projets autorisés</h2><ul>${list.results.map(row).join('')}</ul>` : '<p>Les projets sont en cours d’import depuis la base officielle.</p>',
+    !dept && stats.departments.length ? `<h2>Chantiers à venir par département</h2><ul style="list-style:none;padding:0">${stats.departments.slice().sort((a, b) => a.code.localeCompare(b.code)).map(d => link(chantiersDeptPath(d.code), `${d.name} (${d.count})`)).join('')}</ul>` : '',
+    dept ? `<p><a href="/marches-publics/departement/${esc(dept.toLowerCase())}" style="color:#FF6B00">Marchés publics ouverts en ${esc(deptName)}</a></p>` : '',
+    `<p><small>${esc(SOURCE_NOTE)}</small></p>`,
+  ].join('');
+  return { status: 200, title: chantiersTitle(deptName, dept), description: chantiersDescription(total, deptName), path, noindex: total === 0, body: wrap(body),
+    cache: 'public, s-maxage=3600, stale-while-revalidate=86400',
+    jsonld: [{ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, k) => ({ '@type': 'ListItem', position: k + 1, name: c.name, item: `${PUBLIC_SITE}${c.path}` })) }] };
+}
+
 export default async function handler(req: any, res: any) {
   const q = req.query || {};
   const kind = param(q.kind);
@@ -429,6 +459,8 @@ export default async function handler(req: any, res: any) {
       doc = await buildSlug(param(q.slug));
     } else if (kind === 'acheteur') {
       doc = await buildAcheteur(param(q.slug));
+    } else if (kind === 'chantiers') {
+      doc = await buildChantiers(param(q.dept));
     } else if (kind === 'barometre') {
       doc = await buildBarometre();
     } else if (kind === 'guides') {

@@ -41,6 +41,15 @@ export default async function handler(req: any, res: any) {
       ...GUIDES.map(g => ({ loc: `${PUBLIC_SITE}${guidePath(g.slug)}`, lastmod: g.updated }))];
     return send(urlset([...STATIC.map((p) => ({ loc: `${PUBLIC_SITE}${p}` })), ...guides, ...local].slice(0, 50000)));
   }
+  // 7 nov. : chantiers à venir, page générale + départements qui ont au moins un projet.
+  if (part === 'chantiers') {
+    const data = await getJson(`${apiUrl}/api/chantiers/stats`);
+    if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
+    const lm = day(data.lastImport);
+    if (!data.total) return send(urlset([]));
+    return send(urlset([{ loc: `${PUBLIC_SITE}/chantiers-a-venir`, lastmod: lm },
+      ...((data.departments || []) as { code: string; count: number }[]).filter(d => d.count > 0).map(d => ({ loc: `${PUBLIC_SITE}/chantiers-a-venir/departement/${d.code.toLowerCase()}`, lastmod: lm }))]));
+  }
   if (part === 'acheteurs') {
     const data = await getJson(`${apiUrl}/api/seo/v2/acheteurs`);
     if (!data) return res.status(503).setHeader('Retry-After', '600').send('');
@@ -61,7 +70,7 @@ export default async function handler(req: any, res: any) {
   const opp = await getJson(`${apiUrl}/api/seo-pages/opportunities-sitemap`, 25000);
   if (!opp) return res.status(503).setHeader('Retry-After', '600').send('');
   const chunks = Math.max(1, Number(opp.pages) || Math.ceil((Number(opp.total) || 0) / CHUNK));
-  const files = ['sitemap-pages.xml', 'sitemap-acheteurs.xml', ...Array.from({ length: chunks }, (_, k) => `sitemap-annonces-${k + 1}.xml`)];
+  const files = ['sitemap-pages.xml', 'sitemap-acheteurs.xml', 'sitemap-chantiers.xml', ...Array.from({ length: chunks }, (_, k) => `sitemap-annonces-${k + 1}.xml`)];
   return send(`<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${files.map((f) => `  <sitemap><loc>${PUBLIC_SITE}/${f}</loc></sitemap>`).join('\n')}

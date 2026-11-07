@@ -10,7 +10,7 @@ import { CallbackModal } from '@/components/CallbackModal';
 import { CompanySearchForm, type CompanySearchHandle } from '@/components/home/CompanySearchForm';
 import { DEPARTMENTS } from '@/data/departments';
 import { ELENA, TEAM } from '@/data/homeContent';
-import { opportunitiesApi } from '@/lib/apiClient';
+import { chantiersApi, opportunitiesApi } from '@/lib/apiClient';
 import { GUIDE_CATALOG, PUBLISHED_GUIDES } from '@/content/guides/catalog';
 
 const GeographicSection = lazy(() => import('@/components/home/GeographicSection'));
@@ -37,6 +37,8 @@ function ElenaAvatar({ size = 48 }: { size?: number }) {
 function LiveCounter() {
   const [c, setC] = useState<{ open: number; new24h: number; lastImportAt: string | null; byJourney?: Record<string, { open: number; verify: number; new24h: number }> } | null>(null);
   const [bump, setBump] = useState(false);
+  const [works, setWorks] = useState(0); // 7 nov. : chantiers à venir (permis autorisés), une ligne discrète
+  useEffect(() => { chantiersApi.stats().then(r => setWorks(r.total || 0)).catch(() => {}); }, []);
   useEffect(() => {
     let live = true; let prev: number | null = null;
     const load = () => opportunitiesApi.getLiveCounter().then(res => { let r = res;
@@ -71,7 +73,7 @@ function LiveCounter() {
         const parts: string[] = [];
         if (t && t.open + t.verify > 0) parts.push(`${nf.format(t.open + t.verify)} appels d’offres privés${t.new24h > 0 ? ` (${nf.format(t.new24h)} nouveaux en 24 h)` : ''}`);
         if (st && st.open + st.verify > 0) parts.push(`${nf.format(st.open + st.verify)} demandes de sous-traitance${st.new24h > 0 ? ` (${nf.format(st.new24h)} nouvelles en 24 h)` : ''}`);
-        return parts.length ? <span className="basis-full pl-[18px] text-[12.5px] text-[#B4C1D3]">{parts.join(' · ')}</span> : null;
+        return parts.length || works ? <span className="basis-full pl-[18px] text-[12.5px] text-[#B4C1D3]">{parts.join(' · ')}{works > 0 && <>{parts.length ? ' · ' : ''}<Link to="/chantiers-a-venir" className="underline hover:text-[#FB923C]">{nf.format(works)} chantiers à venir</Link></>}</span> : null;
       })()}
     </div>
   );
