@@ -31,6 +31,18 @@ export default function ChantierPage() {
       <nav aria-label="Fil d’Ariane" className="text-[12.5px] text-[#B4C1D3]"><Link to="/" className="underline">Accueil</Link> › <Link to={CHANTIERS_BASE} className="underline">Chantiers à venir</Link> › <Link to={chantiersDeptPath(c.department)} className="underline">{c.departmentName || c.department}</Link></nav>
       <p className="mt-3 text-[12px] font-extrabold uppercase tracking-[.08em] text-[#FB923C]">{c.categoryLabel}</p>
       <h1 className="mt-1 text-[24px] font-extrabold leading-tight md:text-[28px]">{c.title}</h1>
+      {/* 7 nov. (Hedi) : la fiche doit permettre d'agir tout de suite. Les deux boutons ouvrent la page « Une question »
+          avec la demande préremplie : Elena reçoit le chantier, sa référence, et rappelle. */}
+      <div className="mt-4 rounded-[14px] border border-[#FB923C]/50 bg-[#1A2B44] p-4">
+        <p className="text-[15.5px] font-bold">Ce chantier vous intéresse ?</p>
+        <p className="mt-1 text-[13.5px] text-[#D6E0EC]">Elena suit ce projet pour vous et vous rappelle pour voir comment vous positionner{c.applicant === 'Société' ? ' auprès de la société qui construit' : ''}.</p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <Link to={`/question?q=${encodeURIComponent(`Chantier à venir : ${c.title} (${c.commune || ''}${c.postalCode ? ` ${c.postalCode}` : ''}, permis ${c.id.slice(1)}). Je souhaite être mis en relation pour ce chantier.`)}`}
+            className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-[#C2410C] px-4 text-center text-[15px] font-extrabold text-white">Être mis en relation</Link>
+          <Link to={`/question?q=${encodeURIComponent(`Chantiers à venir : je souhaite être prévenu des projets comme « ${c.title} » en ${c.departmentName || c.department}.`)}`}
+            className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-[#FB923C] px-4 text-center text-[15px] font-bold text-[#FB923C]">Être prévenu des chantiers similaires</Link>
+        </div>
+      </div>
       <dl className="mt-4 divide-y divide-[#22385A] rounded-[14px] border border-[#22385A] bg-[#12233A]">
         {rows.filter(([, v]) => v).map(([k, v]) => <div key={k} className="flex gap-3 px-3 py-2 text-[14px]"><dt className="w-[140px] shrink-0 text-[#B4C1D3]">{k}</dt><dd className="text-[#F2F5F9]">{v}</dd></div>)}
       </dl>
@@ -40,7 +52,7 @@ export default function ChantierPage() {
         <p className="mt-1 text-[13.5px] text-[#D6E0EC]">Retrouvez aussi les consultations ouvertes (marchés publics, appels d’offres privés, sous-traitance) pour votre activité et votre zone.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link to="/" className="inline-block rounded-full bg-[#FB923C] px-4 py-2 text-[14px] font-bold text-[#0A1628]">Trouver mes marchés</Link>
-          <Link to="/contact" className="inline-block rounded-full border border-[#FB923C] px-4 py-2 text-[14px] font-bold text-[#FB923C]">Poser une question à Elena</Link>
+          <Link to={`/question?q=${encodeURIComponent(`Question sur le chantier à venir ${c.id.slice(1)} (${c.title}) : `)}`} className="inline-block rounded-full border border-[#FB923C] px-4 py-2 text-[14px] font-bold text-[#FB923C]">Poser une question à Elena</Link>
         </div>
       </div>
       {c.nearby.length > 0 && <>
