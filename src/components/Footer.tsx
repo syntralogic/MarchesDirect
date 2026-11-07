@@ -105,7 +105,7 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
   {
     title: 'Ressources',
     links: [
-      { label: 'Guides pour répondre', href: '/guides' },
+      { label: 'Le journal des marchés', href: '/guides' },
       { label: 'Mémoire technique', href: '/guides/memoire-technique' },
       { label: 'Baromètre des marchés publics', href: '/barometre-marches-publics' },
       { label: 'Tous les marchés publics', href: '/marches-publics' },

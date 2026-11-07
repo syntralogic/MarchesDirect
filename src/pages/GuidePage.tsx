@@ -27,22 +27,26 @@ export default function GuidePage() {
 
   return (
     <main className="mx-auto w-full max-w-[720px] px-4 pb-24 pt-4 text-[#F2F5F9]">
+      {/* 7 nov. : mise en page « article de journal » (rubrique, titre, chapeau, signature), dans les couleurs du site. */}
       <PageMeta title={guideMetaTitle(g)} description={g.description} canonicalPath={guidePath(g.slug)} />
       <Helmet>{guideJsonLd(g, SITE).map((j, k) => <script key={k} type="application/ld+json">{JSON.stringify(j)}</script>)}</Helmet>
       <nav aria-label="Fil d'Ariane" className="mb-3 flex flex-wrap items-center gap-1 text-[12px] text-[#B4C1D3]">
         <Link to="/" className="hover:text-[#FB923C]">Accueil</Link><ChevronRight size={11} aria-hidden />
-        <Link to={GUIDES_BASE} className="hover:text-[#FB923C]">Guides</Link><ChevronRight size={11} aria-hidden />
+        <Link to={GUIDES_BASE} className="hover:text-[#FB923C]">Le journal</Link><ChevronRight size={11} aria-hidden />
         <span className="text-white">{g.category}</span>
       </nav>
-      <h1 className="text-[25px] font-extrabold leading-tight md:text-[32px]">{g.title}</h1>
-      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[#B4C1D3]">
-        <span className="inline-flex items-center gap-1"><Clock size={12} aria-hidden />{g.minutes} min de lecture</span>
-        <span>Mis à jour le {frDate(g.updated)}</span>
+      <p className="text-[12px] font-extrabold uppercase tracking-[.12em] text-[#FB923C]">{g.category}</p>
+      <h1 className="mt-1 text-[28px] font-black leading-[1.1] tracking-tight md:text-[40px]">{g.title}</h1>
+      <p className="mt-3 text-[17px] leading-relaxed text-[#E4EAF2] md:text-[18.5px]">{g.description}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-y border-[#22385A] py-2.5 text-[12.5px] text-[#B4C1D3]">
+        <span className="font-bold text-[#F2F5F9]">Par la rédaction de Marchés Direct</span>
+        <span aria-hidden>·</span><span>{frDate(g.updated)}</span>
+        <span aria-hidden>·</span><span className="inline-flex items-center gap-1"><Clock size={12} aria-hidden />{g.minutes} min de lecture</span>
         <span className="inline-flex items-center gap-1"><ShieldCheck size={12} aria-hidden />Règles vérifiées le {frDate(g.checked)}</span>
-      </p>
+      </div>
 
       <section className="mt-5 rounded-[14px] border border-[#2B4468] bg-[#12233A] p-4">
-        <h2 className="text-[15px] font-extrabold text-[#FDBA74]">En bref</h2>
+        <h2 className="text-[12px] font-extrabold uppercase tracking-[.1em] text-[#FDBA74]">L’essentiel</h2>
         <ul className="guide-prose mt-2">{g.summary.map((s, k) => <li key={k} dangerouslySetInnerHTML={html(inline(s))} />)}</ul>
       </section>
 
@@ -53,7 +57,7 @@ export default function GuidePage() {
 
       {g.sections.map(s => (
         <section key={s.id} id={s.id} className="mt-7 scroll-mt-20">
-          <h2 className="mb-2 text-[20px] font-extrabold leading-snug">{s.h2}</h2>
+          <h2 className="mb-2 text-[22px] font-black leading-snug">{s.h2}</h2>
           <div className="guide-prose" dangerouslySetInnerHTML={html(s.blocks.map(blockHtml).join(''))} />
         </section>
       ))}
@@ -70,11 +74,11 @@ export default function GuidePage() {
       {g.faq.length > 0 && (<section className="mt-8"><h2 className="mb-2 text-[20px] font-extrabold">Questions fréquentes</h2>
         <div className="flex flex-col gap-2">{g.faq.map(f => <details key={f.q} className="rounded-[14px] border border-[#22385A] bg-[#12233A] p-3"><summary className="cursor-pointer text-[14px] font-bold">{f.q}</summary><div className="guide-prose mt-2" dangerouslySetInnerHTML={html(`<p>${inline(f.a)}</p>`)} /></details>)}</div></section>)}
 
-      <section className="mt-8"><h2 className="mb-2 text-[17px] font-extrabold">Sources officielles</h2>
-        <ul className="list-disc pl-5 text-[13px] text-[#B4C1D3]">{g.sources.map(s => <li key={s.url}><a href={s.url} target="_blank" rel="noopener" className="underline hover:text-[#FB923C]">{s.label}</a></li>)}</ul></section>
+      <section className="mt-8 border-t border-[#22385A] pt-3"><h2 className="mb-1 text-[12px] font-extrabold uppercase tracking-[.1em] text-[#93A4BC]">Sources</h2>
+        <ul className="list-disc pl-5 text-[12.5px] text-[#93A4BC]">{g.sources.map(s => <li key={s.url}><a href={s.url} target="_blank" rel="noopener" className="underline hover:text-[#FB923C]">{s.label}</a></li>)}</ul></section>
 
-      {related.length > 0 && (<section className="mt-8"><h2 className="mb-2 text-[17px] font-extrabold">À lire aussi</h2>
-        <ul className="flex flex-col gap-2">{related.map(r => <li key={r.slug}><Link to={guidePath(r.slug)} className="block rounded-[14px] border border-[#22385A] bg-[#12233A] p-3 font-bold hover:border-[#FB923C]">{r.title}</Link></li>)}</ul></section>)}
+      {related.length > 0 && (<section className="mt-8"><h2 className="mb-3 text-[12px] font-extrabold uppercase tracking-[.1em] text-[#B4C1D3]">À lire aussi dans le journal</h2>
+        <ul className="grid gap-5 sm:grid-cols-2">{related.map(r => <li key={r.slug}><Link to={guidePath(r.slug)} className="group block border-t-2 border-[#22385A] pt-2 hover:border-[#FB923C]"><span className="text-[11px] font-extrabold uppercase tracking-[.08em] text-[#FB923C]">{r.category}</span><span className="mt-1 block text-[16px] font-extrabold leading-snug group-hover:text-[#FDBA74]">{r.title}</span><span className="mt-1 block text-[12px] text-[#93A4BC]">{r.minutes} min de lecture</span></Link></li>)}</ul></section>)}
 
       <p className="mt-8 text-[12px] text-[#B4C1D3]">Ce guide est une information générale, pas un conseil juridique : en cas de doute, le règlement de la consultation fait foi. Marchés Direct est une plateforme indépendante.</p>
     </main>
