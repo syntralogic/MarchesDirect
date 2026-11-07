@@ -35,13 +35,16 @@ function ElenaAvatar({ size = 48 }: { size?: number }) {
  *  (et au retour sur l'onglet), même définition que la recherche : date limite connue et à venir, non annulée.
  *  La fraîcheur est dite honnêtement : si le dernier import date de plus de 24 h, on l'écrit au lieu de « en direct ». */
 function LiveCounter() {
-  const [c, setC] = useState<{ open: number; new24h: number; lastImportAt: string | null } | null>(null);
+  const [c, setC] = useState<{ open: number; new24h: number; lastImportAt: string | null; byJourney?: Record<string, { open: number; verify: number; new24h: number }> } | null>(null);
   const [bump, setBump] = useState(false);
   useEffect(() => {
     let live = true; let prev: number | null = null;
-    const load = () => opportunitiesApi.getLiveCounter().then(r => {
+    const load = () => opportunitiesApi.getLiveCounter().then(res => { let r = res;
       if (!live || !Number.isFinite(r.open) || r.open <= 0) return;
       if (prev !== null && prev !== r.open) { setBump(true); setTimeout(() => setBump(false), 1200); }
+      // 7 nov. : la ligne principale = marchés publics seuls (le privé et la sous-traitance ont leur propre ligne).
+      const pub = r.byJourney?.public_procurement;
+      if (pub) r = { ...r, open: pub.open, new24h: pub.new24h };
       prev = r.open; setC(r);
     }).catch(() => {});
     load();
@@ -55,13 +58,21 @@ function LiveCounter() {
   const fresh = age != null && age <= 24;
   const when = c.lastImportAt ? new Date(c.lastImportAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : null;
   return (
-    <div className="flex items-center gap-2 text-[14px]" aria-live="polite">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[14px]" aria-live="polite">
       <span className="relative flex h-2.5 w-2.5" aria-hidden>
         {fresh && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#EF4444] opacity-75" />}
         <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${fresh ? 'bg-[#EF4444]' : 'bg-[#94A3B8]'}`} />
       </span>
-      <span><b className={`text-white transition-colors ${bump ? 'text-[#FDBA74]' : ''}`}>{new Intl.NumberFormat('fr-FR').format(c.open)}</b> marchés ouverts
+      <span><b className={`text-white transition-colors ${bump ? 'text-[#FDBA74]' : ''}`}>{new Intl.NumberFormat('fr-FR').format(c.open)}</b> marchés publics ouverts
         <span className="text-[#B4C1D3]">{fresh ? (c.new24h > 0 ? ` · ${new Intl.NumberFormat('fr-FR').format(c.new24h)} nouveaux en 24 h` : ' · en direct') : when ? ` · dernier import le ${when}` : ''}</span></span>
+      {/* 7 nov. : appels d'offres privés et sous-traitance, mêmes règles (annonces disponibles ; archives non comptées). */}
+      {(() => {
+        const nf = new Intl.NumberFormat('fr-FR'); const t = c.byJourney?.tender; const st = c.byJourney?.subcontracting;
+        const parts: string[] = [];
+        if (t && t.open + t.verify > 0) parts.push(`${nf.format(t.open + t.verify)} appels d’offres privés${t.new24h > 0 ? ` (${nf.format(t.new24h)} nouveaux en 24 h)` : ''}`);
+        if (st && st.open + st.verify > 0) parts.push(`${nf.format(st.open + st.verify)} demandes de sous-traitance${st.new24h > 0 ? ` (${nf.format(st.new24h)} nouvelles en 24 h)` : ''}`);
+        return parts.length ? <span className="basis-full pl-[18px] text-[12.5px] text-[#B4C1D3]">{parts.join(' · ')}</span> : null;
+      })()}
     </div>
   );
 }
