@@ -1,3 +1,4 @@
+import HelpOptions from '@/components/fiche/HelpOptions';
 import ReportListing from '@/components/fiche/ReportListing';
 import MemberGate from '@/components/fiche/MemberGate';
 import { needsGate, noteVisitDay, later as gateLater } from '@/lib/memberGate';
@@ -581,6 +582,7 @@ export default function FicheMarchePage() {
           </section>
           )}
 
+          {!isOver && <HelpOptions reference={opp.source_reference || opp.id.slice(0, 8)} title={title} />}
           <MarketSuivi light opportunityId={id} sessionId={sessionId} analysed={sc != null} onDossier={() => choose('dossier')} fileName={pdfFileName(company, opp?.source_reference)} />
         </div>)}
 
@@ -598,6 +600,7 @@ export default function FicheMarchePage() {
         {sections?.entreprises && <Details title="Entreprises concernées"><p className="whitespace-pre-line">{sections.entreprises}</p></Details>}
         {opp.description && <Details title={opp.journey === 'public_procurement' ? 'Extrait de l’avis officiel' : 'Texte de l’annonce'}><p className="whitespace-pre-line">{opp.description.slice(0, 1500)}</p></Details>}
         {/* 7 nov. : l'artisan peut signaler une erreur (date, lieu, annonce déjà attribuée) ; l'équipe corrige. */}
+        {!known && !isOver && <HelpOptions reference={opp.source_reference || opp.id.slice(0, 8)} title={title} />}
         <ReportListing opportunityId={opp.id} sessionId={sessionId} />
         {opp.official_url && /^https?:\/\//i.test(opp.official_url) && <a href={opp.official_url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-[#FB923C]">{jc.officialLink} ↗</a>}
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#22385A] bg-[#0F1F35] p-4">

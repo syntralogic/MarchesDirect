@@ -1,3 +1,4 @@
+import HelpOptions from '@/components/fiche/HelpOptions';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { STAGES, metaOf, setMeta, type StageKey } from '@/lib/favMeta';
@@ -98,6 +99,7 @@ export default function MonEspacePage() {
             </select></label>
           <textarea defaultValue={m.note} onBlur={e => setMeta(o.id, { note: e.target.value })} maxLength={500} placeholder="Note personnelle (ex. : voir avec mon associé)" aria-label="Note personnelle"
             className="mt-2 min-h-[56px] w-full rounded-lg border border-[#2B4468] bg-[#0A1628] p-2 text-[13.5px] text-[#F2F5F9]" />
+          <HelpOptions compact reference={o.source_reference || o.id.slice(0, 8)} title={o.title} />
         </div>); })}
       </>)}
 
