@@ -24,6 +24,10 @@ import {
 } from '@/lib/rankedList';
 import { execLabel, buyerPlace, execOf } from '@/lib/noticePlace';
 
+// Liste de la dernière visite (sessionStorage) : affichée immédiatement, puis rafraîchie.
+const readCards = (k: string): RankedCard[] | null => { try { const v = JSON.parse(sessionStorage.getItem(k) || 'null'); return Array.isArray(v) && v.length ? v : null; } catch { return null; } };
+const writeCards = (k: string, v: RankedCard[]) => { try { sessionStorage.setItem(k, JSON.stringify(v.slice(0, 60))); } catch { /* stockage indisponible */ } };
+
 const RING = { hi: '#34D399', mid: '#FDBA74', lo: '#6B7A90' } as const;
 const CHIPS: { key: Filter; label: string }[] = [{ key: 'all', label: 'Tous' }, { key: 'hi', label: 'Très adaptés' }, { key: 'mid', label: 'À étudier' }, { key: 'lo', label: 'Peu adaptés' }];
 // 5 Nov (retour client) : le visiteur doit voir qu'il n'y a pas que du marché public.
@@ -158,7 +162,10 @@ export default function ListeMarchesPage() {
   // Cards first (SQL only), then one percentage at a time from the rules engine, 4 in flight.
   // 7 nov. : un échec (serveur qui redémarre, réseau faible) est réessayé deux fois avant d'afficher l'erreur.
   const load = useCallback(async (attempt = 0) => {
-    setCards(null); setScores({}); setDone(false); setError(false); setTradeUnknown(false); shown.current = ''; setSearchTotal(null);
+    // 7 nov. (Hedi) : 2-3 s de cases vides à chaque ouverture. La dernière liste de la même recherche est gardée sur le
+    // téléphone et affichée tout de suite ; elle est remplacée dès que le serveur répond.
+    const cacheKey = `md_cards:${known ? `r:${sessionId}:${zoneParam || ''}` : `s:${refineKey}:${tradeId || ''}`}`;
+    setCards(readCards(cacheKey)); setScores({}); setDone(false); setError(false); setTradeUnknown(false); shown.current = ''; setSearchTotal(null);
     const mine = ++run.current;
     const stop = () => run.current !== mine;
     try {
@@ -170,7 +177,7 @@ export default function ListeMarchesPage() {
         setZoneLabel(r.zone === 'france' ? (home ? `Toute la France · le ${home} en premier` : 'Toute la France') : `Département ${r.zone}`);
         if (home) chantiersApi.stats().then(st => setWorks(st.departments.find(d => d.code === home)?.count ?? 0)).catch(() => setWorks(null));
         setTradeUnknown(r.reason === 'trade_unknown');
-        setCards(r.items); setRankedTotal(typeof r.total === 'number' ? r.total : null);
+        setCards(r.items); setRankedTotal(typeof r.total === 'number' ? r.total : null); writeCards(cacheKey, r.items);
         await mapLimit(r.items, 4, async c => {
           try { const s = await opportunitiesApi.getMatchScore(c.id, sessionId); setScores(p => ({ ...p, [c.id]: s.score })); }
           catch { setScores(p => ({ ...p, [c.id]: null })); }
@@ -181,7 +188,8 @@ export default function ListeMarchesPage() {
         if (stop()) return;
         setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
         setSearchTotal(r.pagination?.total ?? r.results.length);
-        setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, deadline_checked: o.deadline_checked ?? null, open_state: o.open_state ?? null, location_level: o.location_level ?? null, exec_status: o.exec_status, exec_communes: o.exec_communes, exec_departments: o.exec_departments, exec_text: o.exec_text, buyer_city: o.buyer_city, buyer_department: o.buyer_department, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null, matched_lot: (o as { matched_lot?: string | null }).matched_lot ?? null })));
+        const mapped = r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, deadline_checked: o.deadline_checked ?? null, open_state: o.open_state ?? null, location_level: o.location_level ?? null, exec_status: o.exec_status, exec_communes: o.exec_communes, exec_departments: o.exec_departments, exec_text: o.exec_text, buyer_city: o.buyer_city, buyer_department: o.buyer_department, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null, matched_lot: (o as { matched_lot?: string | null }).matched_lot ?? null }));
+        setCards(mapped); writeCards(cacheKey, mapped);
         // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
         const totals = await Promise.all(journeys.map(j => opportunitiesApi.search(searchParamsFor(q, { ...refine, journey: j }, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 1 })).then(x => x.pagination?.total ?? 0).catch(() => 0)));
