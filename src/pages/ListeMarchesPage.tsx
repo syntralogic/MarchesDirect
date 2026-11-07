@@ -256,7 +256,7 @@ export default function ListeMarchesPage() {
     try {
       let added: RankedCard[] = [];
       if (rankedMode) {
-        const r = await opportunitiesApi.rankedCandidates(sessionId, zoneParam, { journey: type, limit: Math.min(cards.length + 40, 200) });
+        const r = await opportunitiesApi.rankedCandidates(sessionId, zoneParam, { journey: type, limit: 40, offset: cards.length });
         if (stop()) return;
         const have = new Set(cards.map(c => c.id)); added = r.items.filter(i => !have.has(i.id));
         setRankedTotal(typeof r.total === 'number' ? r.total : null);
@@ -334,7 +334,7 @@ export default function ListeMarchesPage() {
   const total = rankedMode ? (rankedTotal ?? cards?.length ?? 0) : (searchTotal ?? cards?.length ?? 0);
   // Reste à charger (« Voir plus ») : liste par entreprise plafonnée à 200, recherche sans plafond.
   const remaining = cards ? Math.max(0, (rankedMode ? (rankedTotal ?? 0) : (searchTotal ?? 0)) - cards.length) : 0;
-  const canMore = remaining > 0 && (!rankedMode || (cards?.length ?? 0) < 200);
+  const canMore = remaining > 0;
   // No company and no trade chosen: nothing to count yet, so no "0 marché".
   const { title, sub } = known && total === 0 ? { title: 'Vos marchés', sub: `${zoneLabel} · mis à jour aujourd’hui` } : known || total > 0 ? (known && !rankedMode ? { title: `${total} marché${total > 1 ? 's' : ''}${q ? ` · ${q}` : ''} · ${zoneLabel}`, sub: 'Votre recherche, avec le pourcentage de votre entreprise sur chaque marché' } : titleFor(total, known, q, zoneLabel)) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
   const c = status?.company;
