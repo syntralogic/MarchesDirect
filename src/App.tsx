@@ -29,6 +29,7 @@ const AcheteurPage = lazy(() => import('@/pages/AcheteurPage'));
 const ChantiersPage = lazy(() => import('@/pages/ChantiersPage'));
 const PublierBesoinPage = lazy(() => import('@/pages/PublierBesoinPage'));
 const AdminBesoins = lazy(() => import('@/pages/AdminBesoins'));
+const AdminPilotage = lazy(() => import('@/pages/AdminPilotage'));
 const ChantierPage = lazy(() => import('@/pages/ChantierPage'));
 // Anciennes « actualités » (textes de remplissage, remplacés le 6 nov. par les guides) : renvoi vers le guide équivalent.
 function LegacyArticleRedirect() { const { id = '' } = useParams<{ id: string }>(); return <Navigate to={ACTU_REDIRECTS[id] || '/guides'} replace />; }
@@ -278,6 +279,7 @@ const App: React.FC = () => {
               <Route path="/admin/leads/:leadId/journey" element={<RequireAuth adminOnly><AdminLeadJourney /></RequireAuth>} />
               <Route path="/admin/contacts" element={<RequireAuth adminOnly><AdminContacts /></RequireAuth>} />
               <Route path="/admin/besoins" element={<RequireAuth adminOnly><Suspense fallback={null}><AdminBesoins /></Suspense></RequireAuth>} />
+              <Route path="/admin/pilotage" element={<RequireAuth adminOnly><Suspense fallback={null}><AdminPilotage /></Suspense></RequireAuth>} />
               <Route path="/admin/entreprises" element={<RequireAuth adminOnly><AdminProspects /></RequireAuth>} />
               <Route path="/admin/subscriptions" element={<RequireAuth adminOnly><AdminSubscriptions /></RequireAuth>} />
               <Route path="/admin/brands" element={<RequireAuth adminOnly><AdminBrands /></RequireAuth>} />
