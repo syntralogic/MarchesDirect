@@ -40,7 +40,7 @@ import MiseEnRelationPage from '@/pages/sous-traitance/MiseEnRelationPage';
 import TarifsPage from '@/pages/TarifsPage';
 import RechercheRedirect from '@/pages/RechercheRedirect';
 import ListeMarchesPage from '@/pages/ListeMarchesPage';
-import OpportunityJourneyPage from '@/pages/OpportunityJourneyPage';
+import ParcoursRedirect from '@/pages/ParcoursRedirect';
 import OpportunityDetailPage from '@/pages/OpportunityDetailPage';
 import FicheMarchePage from '@/pages/FicheMarchePage';
 import { OpportunityTransitionProvider } from '@/contexts/OpportunityTransitionContext';
@@ -231,7 +231,7 @@ const App: React.FC = () => {
               <Route path="/tarifs" element={<TarifsPage />} />
               <Route path="/recherche" element={<RechercheRedirect />} />
               <Route path="/vos-marches" element={<ListeMarchesPage />} />
-              <Route path="/parcours" element={<OpportunityJourneyPage />} />
+              <Route path="/parcours" element={<ParcoursRedirect />} />
               <Route path="/opportunites/:id" element={<PageErrorBoundary><KeyedOpportunityDetail /></PageErrorBoundary>} />
               <Route path="/opportunites/:id/candidature" element={<RequireAuth><BidWorkspacePage /></RequireAuth>} />
               <Route path="/tableau-de-bord" element={<RequireAuth><TableauDeBordPage /></RequireAuth>} />

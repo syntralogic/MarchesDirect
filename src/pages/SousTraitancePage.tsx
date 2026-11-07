@@ -70,7 +70,7 @@ export default function SousTraitancePage() {
         <p className="text-[11px] text-[#B9BBC8] max-w-[46ch] mx-auto mb-3">
           {t('subPartnerExplain') || "Il n'existe pas encore d'annuaire de partenaires à parcourir. Publiez ce que vous recherchez (métier, secteur, disponibilité) : les entreprises intéressées vous contacteront directement."}
         </p>
-        <a href="/parcours?type=sous-traitance" className="inline-block text-xs font-semibold text-white bg-orange px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors">
+        <a href="/publier-un-besoin" className="inline-block text-xs font-semibold text-white bg-orange px-4 py-2.5 rounded-lg hover:bg-orange/90 transition-colors">
           {t('subPartnerCta') || 'Publier ma recherche de partenaire →'}
         </a>
       </div>
