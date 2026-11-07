@@ -1875,6 +1875,13 @@ export const seoV2Api = {
   acheteur: async (slug: string): Promise<import('./acheteur').BuyerData> => (await apiClient.get(`/seo/v2/acheteur/${encodeURIComponent(slug)}`)).data,
 };
 
+// 7 nov. : pilotage interne (équipe).
+export interface Funnel { weeks: { week: string; visitors: number; searched: number; viewed: number; returning: number; companyIdentified: number; members: number; favorites: number; alerts: number; needsPublished: number; requests: number; voluntaryRequests: number; packsSold: number; packsAmount: number }[]; underserved: { query: string; department: string; searches: number; avgResults: number | null }[]; definitions: Record<string, string> }
+export const pilotageApi = {
+  funnel: async (weeks = 8): Promise<Funnel> => (await apiClient.get('/pilotage/funnel', { params: { weeks } })).data,
+  packSale: async (b: { soldOn: string; amount?: number; label?: string }) => (await apiClient.post('/pilotage/pack-sale', b)).data,
+};
+
 // 7 nov. : contrats attribués (DECP) : ordres de grandeur et pairs pour une annonce, habitudes d'un acheteur.
 export interface AwardsInsightData {
   available: boolean; cpv: string | null; cpvFrom: 'avis' | 'metier'; familyLabel: string | null; note: string;
