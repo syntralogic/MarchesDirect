@@ -39,9 +39,12 @@ function LiveCounter() {
   const [bump, setBump] = useState(false);
   useEffect(() => {
     let live = true; let prev: number | null = null;
-    const load = () => opportunitiesApi.getLiveCounter().then(r => {
+    const load = () => opportunitiesApi.getLiveCounter().then(res => { let r = res;
       if (!live || !Number.isFinite(r.open) || r.open <= 0) return;
       if (prev !== null && prev !== r.open) { setBump(true); setTimeout(() => setBump(false), 1200); }
+      // 7 nov. : la ligne principale = marchés publics seuls (le privé et la sous-traitance ont leur propre ligne).
+      const pub = r.byJourney?.public_procurement;
+      if (pub) r = { ...r, open: pub.open, new24h: pub.new24h };
       prev = r.open; setC(r);
     }).catch(() => {});
     load();
@@ -60,7 +63,7 @@ function LiveCounter() {
         {fresh && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#EF4444] opacity-75" />}
         <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${fresh ? 'bg-[#EF4444]' : 'bg-[#94A3B8]'}`} />
       </span>
-      <span><b className={`text-white transition-colors ${bump ? 'text-[#FDBA74]' : ''}`}>{new Intl.NumberFormat('fr-FR').format(c.open)}</b> marchés ouverts
+      <span><b className={`text-white transition-colors ${bump ? 'text-[#FDBA74]' : ''}`}>{new Intl.NumberFormat('fr-FR').format(c.open)}</b> marchés publics ouverts
         <span className="text-[#B4C1D3]">{fresh ? (c.new24h > 0 ? ` · ${new Intl.NumberFormat('fr-FR').format(c.new24h)} nouveaux en 24 h` : ' · en direct') : when ? ` · dernier import le ${when}` : ''}</span></span>
       {/* 7 nov. : appels d'offres privés et sous-traitance, mêmes règles (annonces disponibles ; archives non comptées). */}
       {(() => {
