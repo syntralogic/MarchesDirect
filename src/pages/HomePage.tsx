@@ -467,6 +467,16 @@ export default function HomePage() {
             </div>
           </section>
 
+          {/* 7 nov. : l'autre côté de la place de marché. Gratuit, relu, candidatures triées par l'équipe. */}
+          <section className="w-full rounded-[20px] border border-[#2B4468] bg-[#12233A] p-5 md:flex md:items-center md:justify-between md:gap-6">
+            <div>
+              <Eyebrow>Donneurs d’ordre</Eyebrow>
+              <h2 className="mt-1 text-[20px] font-extrabold leading-tight md:text-[24px]">Vous cherchez une entreprise ou un sous-traitant ?</h2>
+              <p className="mt-1 text-[14.5px] text-[#D6E0EC]">Publiez votre besoin gratuitement : nous recevons les candidatures et vous présentons les entreprises qui correspondent à vos critères.</p>
+            </div>
+            <Link to="/publier-un-besoin" className="mt-3 inline-flex min-h-[48px] shrink-0 items-center rounded-full bg-[#FB923C] px-5 text-[15px] font-extrabold text-[#0A1628] md:mt-0">Publier un besoin</Link>
+          </section>
+
           <Faq />
 
           <section className="flex flex-col items-center gap-3 rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-5 text-center">

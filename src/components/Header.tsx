@@ -113,6 +113,7 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
+            <Link to="/publier-un-besoin" onClick={() => setMenuOpen(false)} className="flex items-center rounded-xl px-4 py-3 text-[16px] font-semibold text-[#FDBA74]">Donneur d’ordre ? Publier un besoin</Link>
             <div className="space-y-2 border-t border-[#1E3352] pt-3">
               <Link to="/question" onClick={() => setMenuOpen(false)} className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-[#F97316] text-[16px] font-extrabold text-white">
                 Poser ma question à {ELENA.name.split(' ')[0]}

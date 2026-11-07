@@ -109,6 +109,7 @@ const FOOTER_COLS: { title: string; links: { label: string; href: string }[] }[]
       { label: 'Mémoire technique', href: '/guides/memoire-technique' },
       { label: 'Baromètre des marchés publics', href: '/barometre-marches-publics' },
       { label: 'Chantiers à venir', href: '/chantiers-a-venir' },
+      { label: 'Publier un besoin (gratuit)', href: '/publier-un-besoin' },
       { label: 'Tous les marchés publics', href: '/marches-publics' },
     ],
   },

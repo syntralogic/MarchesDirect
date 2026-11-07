@@ -27,6 +27,8 @@ const GuidePage = lazy(() => import('@/pages/GuidePage'));
 const BarometrePage = lazy(() => import('@/pages/BarometrePage'));
 const AcheteurPage = lazy(() => import('@/pages/AcheteurPage'));
 const ChantiersPage = lazy(() => import('@/pages/ChantiersPage'));
+const PublierBesoinPage = lazy(() => import('@/pages/PublierBesoinPage'));
+const AdminBesoins = lazy(() => import('@/pages/AdminBesoins'));
 const ChantierPage = lazy(() => import('@/pages/ChantierPage'));
 // Anciennes « actualités » (textes de remplissage, remplacés le 6 nov. par les guides) : renvoi vers le guide équivalent.
 function LegacyArticleRedirect() { const { id = '' } = useParams<{ id: string }>(); return <Navigate to={ACTU_REDIRECTS[id] || '/guides'} replace />; }
@@ -239,6 +241,7 @@ const App: React.FC = () => {
               <Route path="/equipe" element={<EquipePage />} />
               <Route path="/barometre-marches-publics" element={<Suspense fallback={null}><BarometrePage /></Suspense>} />
               <Route path="/acheteurs/:slug" element={<Suspense fallback={null}><AcheteurPage /></Suspense>} />
+              <Route path="/publier-un-besoin" element={<Suspense fallback={null}><PublierBesoinPage /></Suspense>} />
               <Route path="/chantiers-a-venir" element={<Suspense fallback={null}><ChantiersPage /></Suspense>} />
               <Route path="/chantiers-a-venir/departement/:dept" element={<Suspense fallback={null}><ChantiersPage /></Suspense>} />
               <Route path="/chantiers-a-venir/:id" element={<Suspense fallback={null}><ChantierPage /></Suspense>} />
@@ -274,6 +277,7 @@ const App: React.FC = () => {
               <Route path="/admin/abandon" element={<RequireAuth adminOnly><AdminAbandonment /></RequireAuth>} />
               <Route path="/admin/leads/:leadId/journey" element={<RequireAuth adminOnly><AdminLeadJourney /></RequireAuth>} />
               <Route path="/admin/contacts" element={<RequireAuth adminOnly><AdminContacts /></RequireAuth>} />
+              <Route path="/admin/besoins" element={<RequireAuth adminOnly><Suspense fallback={null}><AdminBesoins /></Suspense></RequireAuth>} />
               <Route path="/admin/entreprises" element={<RequireAuth adminOnly><AdminProspects /></RequireAuth>} />
               <Route path="/admin/subscriptions" element={<RequireAuth adminOnly><AdminSubscriptions /></RequireAuth>} />
               <Route path="/admin/brands" element={<RequireAuth adminOnly><AdminBrands /></RequireAuth>} />
