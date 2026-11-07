@@ -1,8 +1,36 @@
 import type { Guide } from '../guideModel.js';
 import memoireTechnique from './memoire-technique.js';
+import repondreMarchePublicArtisan from './repondre-marche-public-artisan.js';
+import trouverAppelsOffres from './trouver-appels-offres.js';
+import lireAvisDce from './lire-avis-dce.js';
+import dc1Dc2Dume from './dc1-dc2-dume.js';
+import piecesAttributaire from './pieces-attributaire.js';
+import seuilsMarchesPublics from './seuils-marches-publics.js';
+import procedureAdapteeMapa from './procedure-adaptee-mapa.js';
+import criteresAttribution from './criteres-attribution.js';
+import avanceMarchePublic from './avance-marche-public.js';
+import delaisPaiementMarchesPublics from './delais-paiement-marches-publics.js';
+import retenueDeGarantie from './retenue-de-garantie.js';
+import revisionDesPrix from './revision-des-prix.js';
+import sousTraitanceDc4PaiementDirect from './sous-traitance-dc4-paiement-direct.js';
+import groupementEntreprises from './groupement-entreprises.js';
 
 // Liste des guides publiés. Ajouter un guide : créer son fichier, l'importer ici, l'ajouter au catalogue (catalog.ts).
 export const GUIDES: Guide[] = [
+  repondreMarchePublicArtisan,
+  trouverAppelsOffres,
+  lireAvisDce,
+  dc1Dc2Dume,
+  piecesAttributaire,
+  seuilsMarchesPublics,
+  procedureAdapteeMapa,
+  criteresAttribution,
+  avanceMarchePublic,
+  delaisPaiementMarchesPublics,
+  retenueDeGarantie,
+  revisionDesPrix,
+  sousTraitanceDc4PaiementDirect,
+  groupementEntreprises,
   memoireTechnique,
 ];
 
