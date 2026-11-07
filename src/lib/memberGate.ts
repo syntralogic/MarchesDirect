@@ -1,7 +1,28 @@
-// Portable + e-mail donnés une fois : retenu sur le téléphone.
-const KEY = 'md_member';
+import { viewedIds } from './lastList';
+// 7 nov. (décision de Hedi : « laisser mûrir le visiteur ») : rien n'est demandé tant que l'artisan découvre le site.
+// À 20 fiches ouvertes ET au moins 2 jours de visite : demande douce (« Plus tard » possible, redemandée le lendemain).
+// À 30 fiches : portable + e-mail nécessaires pour ouvrir de NOUVELLES fiches (celles déjà vues restent libres).
+// Enregistrer une annonce ou une recherche reste libre. Seuils à ajuster selon les chiffres réels.
+export const SOFT_AT = 20, HARD_AT = 30, MIN_DAYS = 2;
+const KEY = 'md_member', DAYS = 'md_visit_days', LATER = 'md_gate_later';
+const today = () => new Date().toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const write = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* stockage indisponible */ } };
 export const isMember = () => { try { return localStorage.getItem(KEY) === '1'; } catch { return true; } };
-export const setMember = () => { try { localStorage.setItem(KEY, '1'); } catch { /* idem */ } };
-/** Doit-on demander les coordonnées avant d'ouvrir cette fiche ? (fiche déjà vue = toujours libre) */
-// 7 nov. (révision) : la lecture n'est plus jamais bloquée ; voir MemberGateContext (portable au premier enregistrement).
-export const needsGate = (_id: string, _signedIn: boolean) => false;
+export const setMember = () => write(KEY, '1');
+/** Note le jour de visite (au plus 60 jours gardés). */
+export function noteVisitDay() {
+  let days: string[] = []; try { days = JSON.parse(read(DAYS) || '[]'); } catch { days = []; }
+  if (!days.includes(today())) write(DAYS, JSON.stringify([...days, today()].slice(-60)));
+}
+const visitDays = () => { try { return (JSON.parse(read(DAYS) || '[]') as string[]).length; } catch { return 1; } };
+export const later = () => write(LATER, today());
+/** 'none' | 'soft' (avec « Plus tard ») | 'hard' pour cette fiche. Une fiche déjà vue est toujours libre. */
+export function needsGate(id: string, signedIn: boolean): 'none' | 'soft' | 'hard' {
+  if (signedIn || isMember()) return 'none';
+  const seen = viewedIds();
+  if (seen.has(id)) return 'none';
+  if (seen.size >= HARD_AT) return 'hard';
+  if (seen.size >= SOFT_AT && visitDays() >= MIN_DAYS && read(LATER) !== today()) return 'soft';
+  return 'none';
+}

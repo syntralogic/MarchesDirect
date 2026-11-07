@@ -1,6 +1,6 @@
 import ReportListing from '@/components/fiche/ReportListing';
 import MemberGate from '@/components/fiche/MemberGate';
-import { needsGate } from '@/lib/memberGate';
+import { needsGate, noteVisitDay, later as gateLater } from '@/lib/memberGate';
 import { useAuth } from '@/contexts/AuthContext';
 import { lastListPath, markViewed, neighbours } from '@/lib/lastList';
 // Écran 3 de la refonte (maquette v26): fiche marché + analyse sur place, en un seul écran.
@@ -138,9 +138,9 @@ export default function FicheMarchePage() {
 
   const { isAuthenticated: signedIn } = useAuth();
   // Décidé à l'ouverture de la fiche, AVANT de la marquer vue (sinon une fiche bloquée deviendrait « déjà vue »).
-  const [gate, setGate] = useState<{ id: string; on: boolean } | null>(null);
-  useEffect(() => { setGate({ id, on: needsGate(id, signedIn) }); }, [id, signedIn]);
-  const gated = !!gate && gate.id === id && gate.on;
+  const [gate, setGate] = useState<{ id: string; on: 'none' | 'soft' | 'hard' } | null>(null);
+  useEffect(() => { noteVisitDay(); setGate({ id, on: needsGate(id, signedIn) }); }, [id, signedIn]);
+  const gated = !!gate && gate.id === id && gate.on !== 'none';
   useEffect(() => { if (!opp || gated || !gate || gate.id !== id) return; markViewed(opp.id); try { sessionStorage.setItem('md_fiches_vues', String(Number(sessionStorage.getItem('md_fiches_vues') || 0) + 1)); } catch { /* idem */ } }, [opp?.id, gated, gate?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (opp) trackVisitorEvent('offer_view', 'Fiche marché ouverte', undefined, { opportunityId: id, journey: opp.journey }); }, [opp, id]);
 
@@ -383,7 +383,9 @@ export default function FicheMarchePage() {
         <div className="flex flex-wrap gap-2 text-[12px] font-bold"><span className="rounded-full bg-[#3A2312] px-2.5 py-1 text-[#FDBA74]">{TYPE_LABEL[opp.journey] || 'MARCHÉ'}</span>{placeChip && <span className="rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold text-[#D6E0EC]">{placeChip}</span>}</div>
         <h1 className="text-[23px] font-extrabold leading-tight">{title}</h1>
       </section>
-      <MemberGate company={status?.company?.name} siret={status?.siret} onDone={() => setGate({ id, on: false })} intro="Indiquez votre portable et votre e-mail pour continuer." />
+      <MemberGate company={status?.company?.name} siret={status?.siret} onDone={() => setGate({ id, on: 'none' })}
+        intro={gate?.on === 'hard' ? 'Vous connaissez maintenant Marchés Direct : pour continuer à ouvrir de nouvelles annonces, indiquez votre portable et votre e-mail. C’est gratuit, sans mot de passe, et vous retrouvez vos annonces sur tous vos appareils.' : 'Vous revenez sur Marchés Direct : indiquez votre portable et votre e-mail pour retrouver vos annonces sur tous vos appareils. C’est gratuit et sans mot de passe.'}
+        onLater={gate?.on === 'soft' ? () => { gateLater(); setGate({ id, on: 'none' }); } : undefined} />
     </main>
   );
   if (view.kind !== 'fiche') {

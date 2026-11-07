@@ -9,7 +9,7 @@ import { viewedIds } from '@/lib/lastList';
 const CONSENT = 'Vos coordonnées servent à retrouver votre espace Marchés Direct et à vous présenter nos offres d’accompagnement. Vous pouvez demander leur suppression à tout moment.';
 const FIELD = 'h-[52px] w-full rounded-xl border-2 border-[#C9D6E8] bg-white px-3 text-[16px] text-[#0A1628] focus:border-[#F97316] focus:outline-none';
 
-export default function MemberGate({ company, siret, onDone, intro }: { company?: string | null; siret?: string | null; onDone: () => void; intro: string }) {
+export default function MemberGate({ company, siret, onDone, intro, onLater }: { company?: string | null; siret?: string | null; onDone: () => void; intro: string; onLater?: () => void }) {
   const [phone, setPhone] = useState(''); const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({}); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
   const submit = async (e: React.FormEvent) => {
@@ -34,6 +34,7 @@ export default function MemberGate({ company, siret, onDone, intro }: { company?
       {errors.email && <p role="alert" className="text-[13px] text-[#FCA5A5]">{errors.email}</p>}
       {error && <p role="alert" className="text-[13px] text-[#FCA5A5]">{error}</p>}
       <button type="submit" disabled={busy} className="flex min-h-[54px] items-center justify-center rounded-[14px] bg-[#C2410C] text-[17px] font-extrabold text-white disabled:opacity-60">{busy ? 'Enregistrement…' : 'Continuer gratuitement'}</button>
+      {onLater && <button type="button" onClick={onLater} className="min-h-[44px] text-[14px] font-semibold text-[#D6E0EC] underline">Plus tard</button>}
       <p className="text-[12px] leading-relaxed text-[#B4C1D3]">{CONSENT}</p>
     </form>
   );
