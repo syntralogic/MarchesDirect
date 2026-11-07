@@ -17,6 +17,7 @@ import ConfirmationScreen from '@/components/fiche/ConfirmationScreen';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { isSaved as searchIsSaved, saveSearch, markViewed } from '@/lib/savedSearches';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
+import MetierAutocomplete from '@/components/MetierAutocomplete';
 import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, journeyMatches, journeySet, toggleJourney, type Journey, type JourneyKey } from '@/components/liste/RefinePanel';
 import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
@@ -126,6 +127,16 @@ export default function ListeMarchesPage() {
   const setType = (t: Journey) => setParams(paramsWithRefine(params, { ...refine, journey: toggleJourney(refine.journey, t) }), { replace: true });
   const isOn = (t: Journey) => t === 'all' ? type === 'all' : journeySet(type).has(t as JourneyKey);
   const applyRefine = (r: typeof refine) => setParams(paramsWithRefine(params, r), { replace: true });
+  // 7 nov. : champ métier avec autocomplétion sur la liste : changer de métier garde la zone et les filtres.
+  const [metierDraft, setMetierDraft] = useState(q || '');
+  useEffect(() => { setMetierDraft(q || ''); }, [q]);
+  const goMetier = (nq: string, focus?: string) => {
+    const p = new URLSearchParams(params);
+    if (nq.trim()) p.set('q', nq.trim()); else p.delete('q');
+    if (focus) p.set('focus', focus); else p.delete('focus');
+    p.delete('page');
+    setParams(p);
+  };
   // Recherche simple : totaux réels par type (le serveur filtre et compte), pas un comptage sur la première page.
   const [typeTotals, setTypeTotals] = useState<Record<string, number> | null>(null);
   const [searchTotal, setSearchTotal] = useState<number | null>(null);
@@ -344,6 +355,12 @@ export default function ListeMarchesPage() {
               <span aria-hidden>☆</span> Sauvegarder cette recherche</button>)}
       </header>
 
+      {!known && status !== undefined && (q || dept || tradeId || refine.where === 'near') && (
+        <form onSubmit={e => { e.preventDefault(); goMetier(metierDraft); }} className="flex flex-col gap-1">
+          <label htmlFor="liste-metier" className="text-[13px] font-bold text-[#B4C1D3]">Métier recherché</label>
+          <MetierAutocomplete id="liste-metier" compact value={metierDraft} onChange={setMetierDraft} onPick={s => goMetier(s.q, s.focus)} onSubmitFree={() => goMetier(metierDraft)}
+            placeholder="Ex. : nettoyage, chauffage, sécurité…" className="h-[48px] w-full rounded-xl border-2 border-[#C9D6E8] bg-white px-3 text-[16px] text-[#0A1628] focus:border-[#F97316] focus:outline-none" />
+        </form>)}
       {!known && status !== undefined && (q || dept || tradeId || refine.where === 'near') && (
         <RefinePanel q={q} value={refine} typeCounts={typeTotals} onApply={applyRefine} />)}
 

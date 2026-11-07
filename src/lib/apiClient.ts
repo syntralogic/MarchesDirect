@@ -315,6 +315,7 @@ export type OpportunitySearchParams = {
   // silently dropped everything but the first-selected type.
   journey?: 'tender' | 'public_procurement' | 'subcontracting' | string;
   q?: string;
+  focus?: string; // 7 nov. : mot de classement (suggestion « Nettoyage de toiture »), ne filtre pas
   trade_id?: string;
   region?: string;
   city?: string;

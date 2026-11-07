@@ -12,6 +12,8 @@ import { DEPARTMENTS } from '@/data/departments';
 import { ELENA, TEAM } from '@/data/homeContent';
 import { chantiersApi, opportunitiesApi } from '@/lib/apiClient';
 import ReturnBlock from '@/components/home/ReturnBlock';
+import MetierAutocomplete from '@/components/MetierAutocomplete';
+import type { MetierSuggestion } from '@/data/tradeFamilies';
 import { chantierLine, type Chantier, type ChantiersStats } from '@/lib/chantiers';
 import { GUIDE_CATALOG, PUBLISHED_GUIDES } from '@/content/guides/catalog';
 
@@ -166,19 +168,22 @@ function SimpleSearch() {
   const navigate = useNavigate();
   const [metier, setMetier] = useState('');
   const [dept, setDept] = useState('FR');
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const go = (q: string, focus?: string) => {
     // Recherche simple -> la liste v26 (cartes d'abord, sans pourcentage), jamais l'ancienne page de filtres.
     const p = new URLSearchParams();
-    if (metier.trim()) p.set('q', metier.trim());
+    if (q.trim()) p.set('q', q.trim());
+    if (focus) p.set('focus', focus);
     if (dept !== 'FR') p.set('department', dept);
     navigate(`/vos-marches?${p.toString()}`);
   };
+  const submit = (e: React.FormEvent) => { e.preventDefault(); go(metier); };
+  // 7 nov. : appui sur une suggestion = recherche lancée tout de suite, zone conservée.
+  const pick = (s: MetierSuggestion) => go(s.q, s.focus);
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <LiveCounter />
       <label htmlFor="md-metier" className="text-[15px] font-bold">Votre métier</label>
-      <input id="md-metier" value={metier} onChange={e => setMetier(e.target.value)} placeholder="Ex. : nettoyage, peinture, sécurité, architecte…" className={`${FIELD} placeholder:text-[#6B7A90]`} />
+      <MetierAutocomplete id="md-metier" value={metier} onChange={setMetier} onPick={pick} onSubmitFree={() => go(metier)} placeholder="Ex. : nettoyage, peinture, sécurité, architecte…" className={`${FIELD} placeholder:text-[#6B7A90]`} />
       <label htmlFor="md-zone" className="text-[15px] font-bold">Votre zone</label>
       <select id="md-zone" value={dept} onChange={e => setDept(e.target.value)} className={FIELD}>
         <option value="FR">Toute la France</option>
