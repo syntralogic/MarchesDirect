@@ -705,10 +705,28 @@ export type ApiSiretStatus = {
 // Prototype V17 "reconnaissance d'entreprise" flow (see backend
 // routes/siret.ts). Session-scoped: companyKnown is a single flag per
 // browser, not per opportunity.
+// 7 nov. (demande de Hedi : « qu'ils n'aient pas à la remettre ») : l'entreprise choisie est retenue sur le téléphone.
+// Sans accord de mesure d'audience, l'identifiant de session ne survit pas au rechargement : l'entreprise était oubliée.
+// Retenir l'entreprise que le visiteur a lui-même indiquée est une fonction qu'il a demandée (pas un traçage) ; jamais par
+// adresse IP (partagée entre abonnés d'un même opérateur : on afficherait l'entreprise d'un autre).
+const COMPANY_KEY = 'md_company_siret';
+const rememberCompany = (s: ApiSiretStatus) => {
+  try { if (s?.companyKnown && s.siret && /^\d{14}$/.test(s.siret)) localStorage.setItem(COMPANY_KEY, s.siret); } catch { /* stockage indisponible */ }
+  return s;
+};
+export const forgetCompany = () => { try { localStorage.removeItem(COMPANY_KEY); } catch { /* idem */ } };
+const restoring = new Map<string, Promise<ApiSiretStatus>>();
+
 export const siretApi = {
   status: async (sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.get('/siret/status', { params: { sessionId } });
-    return data;
+    if ((data as ApiSiretStatus)?.companyKnown) return rememberCompany(data);
+    let siret: string | null = null; try { siret = localStorage.getItem(COMPANY_KEY); } catch { /* idem */ }
+    if (!siret || !/^\d{14}$/.test(siret)) return data;
+    // Une seule ré-identification à la fois pour cette session (plusieurs écrans demandent le statut au chargement).
+    if (!restoring.has(sessionId)) restoring.set(sessionId, apiClient.post('/siret/lookup', { query: siret, sessionId })
+      .then(r => (r.data?.companyKnown ? r.data : data)).catch(() => data));
+    return restoring.get(sessionId)!;
   },
   // Accueil v26 (1.2): métier deduced from the recognised company (APE + activity), most specific first. Empty list = unknown.
   profile: async (sessionId: string): Promise<{ companyKnown: boolean; trades: { slug: string; name: string }[] }> => {
@@ -717,12 +735,12 @@ export const siretApi = {
   },
   lookup: async (query: string, sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.post('/siret/lookup', { query, sessionId });
-    return data;
+    return rememberCompany(data);
   },
   // The visitor picked one candidate off the list `lookup` returned.
   confirm: async (siret: string, sessionId: string): Promise<ApiSiretStatus> => {
     const { data } = await apiClient.post('/siret/confirm', { siret, sessionId });
-    return data;
+    return rememberCompany(data);
   },
   // Client's newest brief: phone + email requested after the visitor has
   // already seen the score/why-it-matches, gating the fuller breakdown.
