@@ -1,267 +1,46 @@
-import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import PageMeta from '@/components/common/PageMeta';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Check, Monitor, FileText, Trophy, 
-  Ban, CalendarDays, Target, Search, ClipboardCheck, Phone, User 
-} from 'lucide-react';
-import { CallbackModal } from '@/components/CallbackModal';
-import { AppointmentModal } from '@/components/AppointmentModal';
-import { useLang } from '@/contexts/LangContext';
+
+// 7 nov. (Hedi : « il ne faut pas qu'il y ait d'incohérence ») : l'ancienne page affichait un abonnement « à partir de
+// 29 €/mois » et une commission « 0,5 % à 5 % », contraires au modèle en place sur tout le site : consultation gratuite,
+// formules d'accompagnement présentées lors de l'échange. Même vocabulaire et mêmes promesses que l'accueil, sans montant.
+const FREE = ['La recherche des marchés publics, appels d’offres privés, sous-traitance et chantiers à venir', 'Le pourcentage de correspondance de chaque marché avec votre entreprise',
+  'Les annonces enregistrées, les recherches suivies et les nouveautés depuis votre dernière visite', 'Votre dossier prérempli et le premier échange de 30 minutes avec Elena'];
+const FORMULE = ['Présentation de votre entreprise au donneur d’ordre ou à l’entreprise principale', 'Formulaires de candidature, mémoire technique et dépôt du dossier (marchés publics)',
+  'Mise en relation et appui de votre dossier (appels d’offres privés, sous-traitance, chantiers)', 'Négociation des conditions : prix, délais, paiement'];
 
 export default function TarifsPage() {
-  const { t } = useLang();
-  const navigate = useNavigate();
-  const [apptOpen, setApptOpen] = useState(false);
-  const [callbackOpen, setCallbackOpen] = useState(false);
-
-  const PLANS = [
-    {
-      id: 'decouverte',
-      name: t('planDiscoveryName'),
-      price: '0',
-      period: t('planDiscoveryPeriod'),
-      badge: null,
-      features: [t('planDiscoveryFeat1'), t('planDiscoveryFeat2'), t('planDiscoveryFeat3'), t('planDiscoveryFeat4')],
-      cta: t('planDiscoveryCta'),
-      ctaType: 'appt' as const,
-    },
-    {
-      id: 'pro',
-      name: t('planProName'),
-      price: '89',
-      period: t('planProPeriod'),
-      badge: t('planProBadge'),
-      features: [t('planProFeat1'), t('planProFeat2'), t('planProFeat4'), t('planProFeat5')],
-      cta: t('planProCta'),
-      // Not 'checkout': per the client's explicit instruction (WhatsApp),
-      // this site never sells a subscription directly - it's a lead-capture
-      // tool for a phone sales team. The displayed 89€ is described the
-      // same way ("tarif d'appel" - a symbolic anchor price quoted to build
-      // trust, not what's actually charged after negotiation), so every
-      // plan's CTA leads to a human conversation, never a card form.
-      ctaType: 'appt' as const,
-    },
-    {
-      id: 'entreprise',
-      name: t('planEntName'),
-      price: t('planEntPrice'),
-      period: t('planEntPeriod'),
-      badge: null,
-      features: [t('planEntFeat1'), t('planEntFeat2'), t('planEntFeat3'), t('planEntFeat4')],
-      cta: t('planEntCta'),
-      ctaType: 'callback' as const,
-    },
-  ];
-
-  const handleSubscribe = (_plan: (typeof PLANS)[number]) => {
-    // Every plan's CTA opens the appointment modal - see the ctaType note on
-    // the 'pro' plan above for why there is no self-serve checkout path.
-    setApptOpen(true);
-  };
-
+  const card = 'rounded-[14px] border border-[#22385A] bg-[#12233A] p-4';
   return (
-    // Responsive: Perfect mobile (max-w-md) & Premium web (max-w-5xl)
-    <div className="page-fade-in w-full max-w-md md:max-w-5xl mx-auto px-4 py-6 overflow-x-hidden">
-      <PageMeta title="Tarifs et accompagnement | Marchés Direct" description="Découvrez l'offre Marchés Direct et ce qu'elle comprend pour trouver et préparer vos réponses aux marchés." />
-      
-      {/* ========== 1. HEADER ========== */}
-      <div className="mb-6 md:mb-12">
-        <span className="text-xs font-bold text-orange uppercase tracking-widest">Tarifs</span>
-        <h1 className="text-2xl md:text-4xl font-extrabold text-white leading-tight mt-1 mb-2">
-          Des tarifs simples.<br />
-          <span className="text-orange">Des intérêts alignés.</span>
-        </h1>
-        <p className="text-[#B9BBC8] text-sm md:text-base leading-relaxed md:max-w-2xl">
-          Un abonnement pour accéder à la plateforme et à notre accompagnement. Une commission uniquement lorsque vous signez un marché.
-        </p>
+    <main className="mx-auto w-full max-w-[760px] px-4 pb-24 pt-5 text-[#F2F5F9]">
+      <PageMeta title="Formules d’accompagnement | Marchés Direct" description="La consultation est gratuite. L’accompagnement (candidature, mise en relation, négociation) fait l’objet de formules présentées lors d’un premier échange." />
+      <p className="text-[12px] font-extrabold uppercase tracking-[.08em] text-[#FB923C]">Formules</p>
+      <h1 className="mt-1 text-[24px] font-extrabold leading-tight md:text-[28px]">Consulter est gratuit. Être accompagné, c’est une formule.</h1>
+      <p className="mt-2 text-[14.5px] leading-relaxed text-[#D6E0EC]">Vous cherchez, comparez et enregistrez vos marchés librement, sans compte ni carte bancaire. Quand un marché vous intéresse vraiment, vous décidez de le confier à l’équipe : la formule est présentée pendant le premier échange, avant tout engagement.</p>
+
+      <section className={`${card} mt-5`}>
+        <p className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#6EE7B7]">Gratuit, sans limite de durée</p>
+        <ul className="mt-2 space-y-1.5 text-[14px] text-[#D6E0EC]">{FREE.map(x => <li key={x} className="flex gap-2"><span className="text-[#6EE7B7]">✓</span><span>{x}</span></li>)}</ul>
+      </section>
+      <section className={`${card} mt-3 border-[#FB923C]/50 bg-[#1A2B44]`}>
+        <p className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FDBA74]">La formule d’accompagnement</p>
+        <p className="mt-1 text-[14px] text-[#D6E0EC]">Votre dossier porté avec vous, de la candidature à la négociation :</p>
+        <ul className="mt-2 space-y-1.5 text-[14px] text-[#D6E0EC]">{FORMULE.map(x => <li key={x} className="flex gap-2"><span className="text-[#FDBA74]">●</span><span>{x}</span></li>)}</ul>
+        <p className="mt-3 text-[13px] text-[#B4C1D3]">Le contenu et le tarif de la formule dépendent du marché et de votre entreprise ; ils vous sont présentés pendant l’échange, par écrit. Vous décidez ensuite. Aucun frais n’est demandé pour consulter le site.</p>
+      </section>
+
+      <section className="mt-5">
+        <h2 className="text-[19px] font-extrabold">Comment ça se passe</h2>
+        <ol className="mt-2 space-y-2 text-[14px] text-[#D6E0EC]">
+          {['Vous repérez un marché et vous touchez « Confier à Elena » sur sa fiche.', 'Elena vous rappelle : 30 minutes pour comprendre votre entreprise et le marché, gratuitement.', 'Si vous souhaitez être accompagné, la formule vous est présentée par écrit ; vous validez, puis le chargé d’affaires prépare le dossier avec vous.']
+            .map((x, i) => <li key={x} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#1E3352] text-[13px] font-extrabold">{i + 1}</span><span className="pt-1">{x}</span></li>)}
+        </ol>
+      </section>
+
+      <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+        <Link to="/vos-marches" className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl bg-[#C2410C] px-4 text-center text-[15px] font-extrabold text-white">Voir mes marchés</Link>
+        <Link to="/question" className="flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-[#FB923C] px-4 text-center text-[15px] font-bold text-[#FB923C]">Poser une question à Elena</Link>
       </div>
-
-      {/* ========== 2. COMMISSION CARD (Button Added!) ========== */}
-      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-6 md:mb-8 relative overflow-hidden">
-        
-        <div className="absolute top-0 right-0 w-40 h-40 bg-orange/20 rounded-bl-[100%] blur-2xl pointer-events-none" />
-        
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2 md:mb-4">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-orange md:w-12 md:h-12">
-              <path d="m11 17 2 2a1 1 0 1 0 3-3" />
-              <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" />
-              <path d="m21 3 1 11h-2" />
-              <path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" />
-              <path d="M3 4h8" />
-            </svg>
-            <h2 className="text-[10px] md:text-sm font-bold text-orange uppercase tracking-wider">Vous signez, nous sommes rémunérés.</h2>
-          </div>
-
-          <div className="mb-3 md:mb-6">
-            <div className="flex items-end gap-2 mb-1 md:mb-2">
-              <span className="text-4xl md:text-6xl font-extrabold text-orange leading-none">0,5%</span>
-              <span className="text-xl md:text-3xl font-bold text-white leading-none mb-1">à 5%</span>
-            </div>
-            <p className="text-xs md:text-base font-semibold text-white mb-1 md:mb-2">du montant du marché signé</p>
-            <p className="text-[11px] md:text-sm text-[#B9BBC8] leading-snug md:leading-relaxed md:max-w-2xl">
-              Le pourcentage dépend notamment du montant, du type de marché et de sa complexité. Il est défini avec vous dès le départ.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 md:grid-cols-3 md:gap-6 border-t border-[#17334D] pt-3 md:pt-6">
-            <div>
-              <Ban size={14} className="text-orange mb-1 md:w-6 md:h-6 md:mb-2" />
-              <p className="text-[10px] md:text-sm font-semibold text-white leading-tight">Aucun marché signé</p>
-              <p className="text-[9px] md:text-xs text-[#B9BBC8]">= aucune commission</p>
-            </div>
-            <div className="border-l border-[#17334D] pl-2 md:pl-0 md:border-l-0">
-              <FileText size={14} className="text-orange mb-1 md:w-6 md:h-6 md:mb-2" />
-              <p className="text-[10px] md:text-sm font-semibold text-white leading-tight">Pas de frais</p>
-              <p className="text-[9px] md:text-xs text-[#B9BBC8]">de dossier</p>
-            </div>
-            <div className="border-l border-[#17334D] pl-2 md:pl-0 md:border-l-0">
-              <Target size={14} className="text-orange mb-1 md:w-6 md:h-6 md:mb-2" />
-              <p className="text-[10px] md:text-sm font-semibold text-white leading-tight">Pourcentage fixé</p>
-              <p className="text-[9px] md:text-xs text-[#B9BBC8]">avant de commencer</p>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => handleSubscribe(PLANS[1])}
-            className="w-full bg-orange text-white font-bold py-2.5 md:py-4 rounded-lg md:rounded-xl mt-3 md:mt-8 hover:bg-orange/90 transition-colors flex items-center justify-center gap-1.5 text-xs md:text-base"
-          >
-            <Trophy size={14} className="md:w-5 md:h-5" /> Démarrer avec nous
-          </button>
-        </div>
-      </div>
-
-      {/* ========== 3. MAIN CARD (S'abonner Button Linked!) ========== */}
-      <div className="border border-orange rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-5 md:mb-6">
-        <div className="flex flex-col md:flex-row md:items-start md:gap-12">
-          <div className="md:w-1/2">
-            <div className="flex items-start gap-3 md:block">
-              <div className="w-10 h-10 md:w-16 md:h-16 shrink-0 rounded-lg md:rounded-xl border border-orange flex items-center justify-center">
-                <Monitor size={20} className="text-orange md:hidden" />
-                <Monitor size={30} className="text-orange hidden md:block" />
-              </div>
-              
-              <div className="flex-1 md:mt-4">
-                <h2 className="text-[10px] md:text-xs font-bold text-orange uppercase tracking-wider mb-1">Accès et accompagnement</h2>
-                <p className="text-[10px] md:text-xs text-[#B9BBC8] mb-1">À partir de</p>
-                <div className="flex items-end gap-1 mb-2 md:mb-3">
-                  <span className="text-4xl md:text-6xl font-extrabold text-orange leading-none">29</span>
-                  <span className="text-lg md:text-2xl font-bold text-orange leading-none mb-1">€/mois</span>
-                </div>
-                <p className="text-[11px] md:text-sm text-[#B9BBC8] leading-snug md:leading-relaxed">
-                  Le tarif exact dépend du profil de votre entreprise, des marchés recherchés et du niveau d'accompagnement nécessaire. Il est confirmé avec vous avant tout engagement.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="md:w-1/2 mt-4 md:mt-0">
-            <div className="border-t md:border-t-0 border-[#17334D] pt-4 md:pt-0">
-              <ul className="space-y-2.5 md:space-y-4">
-                {PLANS[1].features.map(f => (
-                  <li key={f} className="flex items-center gap-2.5 md:gap-3">
-                    <Check size={13} className="text-orange shrink-0 md:hidden" />
-                    <Check size={16} className="text-orange shrink-0 hidden md:block" />
-                    <span className="text-xs md:text-base text-white">{f}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              {/* Subscribe Button */}
-              <button 
-                onClick={() => handleSubscribe(PLANS[1])}
-                className="w-full bg-orange text-white font-bold py-3 mt-4 rounded-lg hover:bg-orange/90 transition-colors text-sm"
-              >
-                {PLANS[1].cta}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========== 4. 3-STEP PROCESS ========== */}
-      <div className="border border-[#17334D] rounded-xl md:rounded-2xl bg-[#061D32] p-6 md:p-8 mb-4 md:mb-6">
-        <h2 className="text-[10px] md:text-sm font-bold text-orange uppercase tracking-wider mb-6 md:mb-8">Un modèle clair en 3 étapes</h2>
-        
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between md:gap-8 relative">
-          <div className="absolute top-2.5 left-7 right-7 border-t border-dashed border-[#17334D] z-0 hidden md:block" />
-          
-          <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center relative z-10 md:w-1/3">
-            <div className="w-5 h-5 md:w-8 md:h-8 rounded-full border border-orange bg-[#061D32] text-orange flex items-center justify-center text-[9px] md:text-sm font-bold shrink-0">1</div>
-            <div className="md:mt-3">
-              <Search size={18} className="text-orange mb-1 md:hidden" />
-              <Search size={24} className="text-orange mb-2 hidden md:block" />
-              <p className="text-[9px] md:text-sm font-semibold text-white leading-snug md:mt-2">Nous étudions votre entreprise et vos objectifs</p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center relative z-10 md:w-1/3">
-            <div className="w-5 h-5 md:w-8 md:h-8 rounded-full border border-orange bg-[#061D32] text-orange flex items-center justify-center text-[9px] md:text-sm font-bold shrink-0">2</div>
-            <div className="md:mt-3">
-              <CalendarDays size={18} className="text-orange mb-1 md:hidden" />
-              <CalendarDays size={24} className="text-orange mb-2 hidden md:block" />
-              <p className="text-[9px] md:text-sm font-semibold text-white leading-snug md:mt-2">Votre abonnement et votre pourcentage sont fixés à l'avance</p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4 md:flex-col md:items-center md:text-center relative z-10 md:w-1/3">
-            <div className="w-5 h-5 md:w-8 md:h-8 rounded-full border border-orange bg-[#061D32] text-orange flex items-center justify-center text-[9px] md:text-sm font-bold shrink-0">3</div>
-            <div className="md:mt-3">
-              <ClipboardCheck size={18} className="text-orange mb-1 md:hidden" />
-              <ClipboardCheck size={24} className="text-orange mb-2 hidden md:block" />
-              <p className="text-[9px] md:text-sm font-semibold text-white leading-snug md:mt-2">Vous signez le marché : notre commission devient due</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========== 5. CUSTOM PRICE CTA ========== */}
-      <div className="border border-[#17334D] rounded-xl md:rounded-2xl bg-[#061D32] p-4 md:p-8 mb-3 md:mb-0 text-left">
-        <div className="flex flex-col md:flex-row md:items-center md:gap-8">
-          <div className="flex items-start gap-3 md:block">
-            <div className="w-9 h-9 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-orange/10 border border-orange/30 flex items-center justify-center shrink-0">
-              <User size={18} className="text-orange md:hidden" />
-              <User size={28} className="text-orange hidden md:block" />
-            </div>
-            
-            <div className="flex-1 md:mt-4">
-              <h2 className="text-sm md:text-2xl font-bold text-white mb-1 md:mb-2">Obtenez votre tarif personnalisé</h2>
-              <p className="text-[11px] md:text-sm text-[#B9BBC8] leading-snug md:leading-relaxed mb-3 md:mb-5">
-                Quelques minutes suffisent pour comprendre votre besoin et vous annoncer des conditions claires.
-              </p>
-              
-              <div className="flex gap-2 md:gap-3 md:max-w-lg">
-                <button 
-                  onClick={() => setApptOpen(true)} 
-                  className="flex-1 md:flex-none bg-orange text-white font-bold py-2.5 md:py-3 px-3 md:px-6 rounded-lg md:rounded-xl hover:bg-orange/90 transition-colors flex items-center justify-center gap-1.5 text-[11px] md:text-sm"
-                >
-                  <CalendarDays size={25} className="md:w-4 md:h-4" /> Prendre rendez‑vous
-                </button>
-                <button 
-                  onClick={() => setCallbackOpen(true)} 
-                  className="flex-1 md:flex-none border border-orange text-orange font-bold py-2.5 md:py-3 px-3 md:px-6 rounded-lg md:rounded-xl hover:bg-orange/10 transition-colors flex items-center justify-center gap-1.5 text-[11px] md:text-sm"
-                >
-                  <Phone size={13} className="md:w-4 md:h-4" /> Être rappelé
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========== 6. FOOTER LINK ========== */}
-      <div className="text-center pb-4 mt-4 md:mt-8">
-        <p className="text-[11px] md:text-sm text-[#B9BBC8]">
-          Vous préférez commercer seul ?{' '}
-          <button onClick={() => navigate('/recherche')} className="text-orange font-semibold hover:underline">
-            Découvrez Marchés Direct App →
-          </button>
-        </p>
-      </div>
-
-      <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
-    </div>
+    </main>
   );
 }
