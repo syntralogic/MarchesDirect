@@ -2,7 +2,7 @@ import ReportListing from '@/components/fiche/ReportListing';
 import MemberGate from '@/components/fiche/MemberGate';
 import { needsGate, noteVisitDay, later as gateLater } from '@/lib/memberGate';
 import { useAuth } from '@/contexts/AuthContext';
-import { lastListPath, markViewed, neighbours } from '@/lib/lastList';
+import { lastListPath, markViewed, neighbours, lotFor } from '@/lib/lastList';
 // Écran 3 de la refonte (maquette v26): fiche marché + analyse sur place, en un seul écran.
 // Pas d'appel IA à l'ouverture: le pourcentage vient du moteur de règles existant (match-score).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -455,6 +455,7 @@ export default function FicheMarchePage() {
             : <span className={`rounded-full bg-[#1E3352] px-2.5 py-1 font-semibold ${days != null && days <= 7 ? 'text-[#FDBA74]' : 'text-[#D6E0EC]'}`}>{formatDeadlineExact(dlv) ? `Réponse avant le ${deadlineTxt}${days != null && days >= 0 ? ` · J-${days}` : ''}` : state === 'verify' ? 'Date limite à vérifier dans l’avis' : 'Date limite non précisée'}</span>}
         </div>
         <h1 className="text-[23px] font-extrabold leading-tight">{title}</h1>
+        {lotFor(id) && <p className="text-[15px] font-bold text-[#FDBA74]">Votre lot : {lotFor(id)}</p>}
         {consult && <p className="flex items-center gap-2 text-[14px] text-[#D6E0EC]"><span className="md-live-dot h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden />{consult}</p>}
       </section>
 

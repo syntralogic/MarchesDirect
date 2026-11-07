@@ -13,6 +13,7 @@ export interface RankedCard extends PlaceFields {
   deadline: string | null;
   estimated_value?: number | null;
   distance_km?: number | null;
+  matched_lot?: string | null; // 7 nov. : le lot qui correspond au métier ou à la recherche
 }
 // undefined = still being computed, null = the engine cannot compare yet ("à confirmer"), number = percentage
 export type ScoreMap = Record<string, number | null | undefined>;

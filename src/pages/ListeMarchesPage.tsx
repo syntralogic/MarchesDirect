@@ -1,4 +1,4 @@
-import { rememberList, viewedIds, hiddenIds, setHidden, rememberListIds, saveScroll, takeScroll } from '@/lib/lastList';
+import { rememberList, rememberLot, viewedIds, hiddenIds, setHidden, rememberListIds, saveScroll, takeScroll } from '@/lib/lastList';
 import { useFavorites } from '@/contexts/FavoritesContext';
 // Écran 2 de la refonte (maquette v26): « Vos marchés », la liste classée. Pourcentages par les règles du moteur existant
 // (match-score), jamais par l'IA ; les cartes apparaissent tout de suite, les pourcentages se remplissent ensuite.
@@ -79,8 +79,9 @@ function Card({ c, score, withScore, seen, onHide, onOpen }: { c: RankedCard; sc
           {isClosingSoon(dl) && <span className="rounded-full bg-[#3A2312] px-2 py-0.5 text-[#FDBA74]">Bientôt clos</span>}
         </div>
         <h3 className="line-clamp-3 text-[16px] font-extrabold leading-snug">{c.title}</h3>
+        {c.matched_lot && <p className="text-[13.5px] font-bold text-[#FDBA74]">Votre lot : {c.matched_lot}</p>}
         <ActivityDot opportunityId={c.id} />
-        <p className="text-[13px] text-[#B4C1D3]">{[buyer, place, c.estimated_value && c.estimated_value >= 100 ? `${Math.round(c.estimated_value).toLocaleString('fr-FR')} €` : null].filter(Boolean).join(' · ')}</p>
+        <p className="text-[13px] text-[#B4C1D3]">{[buyer, place, c.estimated_value && c.estimated_value >= 100 ? `${Math.round(c.estimated_value).toLocaleString('fr-FR')} €${c.matched_lot ? ' (montant global)' : ''}` : null].filter(Boolean).join(' · ')}</p>
         <p className="text-[13px] text-[#D6E0EC]">{formatDeadlineExact(dl) ? `Réponse avant le ${formatDeadlineExact(dl)}${n != null && n >= 0 ? ` · J-${n}` : ''}` : 'Date limite non précisée'}</p>
         <span className="text-[14px] font-bold text-[#FB923C]">{c.journey === 'subcontracting' ? 'Voir la mission' : c.journey === 'tender' ? 'Voir la consultation' : 'Voir le marché'} ›</span>
       </div>
@@ -180,7 +181,7 @@ export default function ListeMarchesPage() {
         if (stop()) return;
         setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
         setSearchTotal(r.pagination?.total ?? r.results.length);
-        setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, deadline_checked: o.deadline_checked ?? null, open_state: o.open_state ?? null, location_level: o.location_level ?? null, exec_status: o.exec_status, exec_communes: o.exec_communes, exec_departments: o.exec_departments, exec_text: o.exec_text, buyer_city: o.buyer_city, buyer_department: o.buyer_department, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null })));
+        setCards(r.results.map(o => ({ id: o.id, title: o.title, journey: o.journey, buyer_name: o.buyer_name ?? null, location_city: o.location_city ?? null, location_department: o.location_department ?? null, deadline: o.deadline, deadline_checked: o.deadline_checked ?? null, open_state: o.open_state ?? null, location_level: o.location_level ?? null, exec_status: o.exec_status, exec_communes: o.exec_communes, exec_departments: o.exec_departments, exec_text: o.exec_text, buyer_city: o.buyer_city, buyer_department: o.buyer_department, estimated_value: o.estimated_value != null && Number.isFinite(Number(o.estimated_value)) ? Number(o.estimated_value) : null, distance_km: o.distance_km != null && Number.isFinite(Number(o.distance_km)) ? Number(o.distance_km) : null, matched_lot: (o as { matched_lot?: string | null }).matched_lot ?? null })));
         // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
         const totals = await Promise.all(journeys.map(j => opportunitiesApi.search(searchParamsFor(q, { ...refine, journey: j }, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 1 })).then(x => x.pagination?.total ?? 0).catch(() => 0)));
@@ -341,7 +342,7 @@ export default function ListeMarchesPage() {
       {error && <p role="alert" className="text-[14px] text-[#FCA5A5]">La liste n’a pas pu être chargée. <button type="button" onClick={() => void load()} className="min-h-[44px] font-bold underline">Réessayer</button></p>}
       {cards === null && !error && <div className="flex flex-col gap-2.5" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="h-[150px] animate-pulse rounded-2xl bg-[#12233A]" />)}</div>}
 
-      {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} seen={seen.has(card.id)} onHide={() => hide(card.id)} onOpen={() => saveScroll(listKey)} />)}</div>}
+      {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} seen={seen.has(card.id)} onHide={() => hide(card.id)} onOpen={() => { saveScroll(listKey); rememberLot(card.id, card.matched_lot); }} />)}</div>}
       {hiddenCount > 0 && <p className="text-[13px] text-[#B4C1D3]">{hiddenCount} annonce{hiddenCount > 1 ? 's' : ''} masquée{hiddenCount > 1 ? 's' : ''} dans cette liste · <button type="button" onClick={() => setShowHidden(v => !v)} className="min-h-[40px] font-bold text-[#FB923C] underline">{showHidden ? 'Les cacher' : 'Les afficher'}</button>{showHidden && <> · <button type="button" onClick={() => { filtered0.forEach(c => { if (hidden.has(c.id)) setHidden(c.id, false); }); setHiddenSet(hiddenIds()); }} className="min-h-[40px] font-bold text-[#FB923C] underline">Tout réafficher</button></>}</p>}
       {beyond > 0 && <p className="text-[13px] text-[#B4C1D3]">{cards!.length} marchés affichés sur {rankedTotal} correspondant à votre métier et à votre zone : ce sont ceux dont la date limite est la plus proche, classés ici par pourcentage. Affinez la zone pour voir les autres.</p>}
       {known && homeDept && cards && (

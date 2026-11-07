@@ -489,7 +489,7 @@ export const opportunitiesApi = {
   // 403 company_not_identified until a SIRET lookup is done for this session.
   rankedCandidates: async (sessionId: string, zone?: string) => {
     const { data } = await apiClient.get<{
-      items: (import('./noticePlace').PlaceFields & { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null })[];
+      items: (import('./noticePlace').PlaceFields & { id: string; title: string; journey: string | null; buyer_name: string | null; location_city: string | null; location_department: string | null; deadline: string | null; matched_lot?: string | null })[];
       total: number; zone: string; reason?: 'trade_unknown';
       company?: { name: string | null; activity: string | null; city: string | null; department: string | null };
     }>('/opportunities/ranked/candidates', { params: { sessionId, ...(zone ? { zone } : {}) } });
