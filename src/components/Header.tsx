@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { label: 'Accueil', href: '/' },
   { label: 'Vos marchés', href: '/vos-marches' },
   { label: 'Comment ça marche', href: '/#mdh-etapes' },
-  { label: 'Le journal', href: '/guides' },
+  { label: 'Conseils', href: '/guides' },
   { label: 'Qui sommes-nous ?', href: '/a-propos' },
   { label: 'Notre équipe', href: '/equipe' },
 ];
