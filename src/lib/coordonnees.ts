@@ -1,3 +1,4 @@
+import { journeyCopy } from './journeyCopy';
 // Screens 4 (COORDONNÉES) and 5 (CONFIRMATION) of the v26 refonte, first half: DOSSIER, RAPPEL, QUESTION.
 // Copy comes from the client's mockup v26 (it wins over every other document). No promise of an e-mail anywhere.
 import { isValidEmail, isValidFrPhone, normalizeFrPhoneDigits } from './utils';
@@ -116,21 +117,22 @@ export const leadMessage = (choice: CoordChoice, v: CoordValues, scope?: string)
 
 // ------------------------------------------------------------------ calendar "jusqu'au dépôt" (from the real deadline)
 export type CalendarRow = { when: string; what: string };
-export function calendarRows(a: { deadline: string | Date | null | undefined; choice: CoordChoice; moment: Moment | null; slotLabel?: string | null; now?: Date }): CalendarRow[] {
+export function calendarRows(a: { deadline: string | Date | null | undefined; choice: CoordChoice; moment: Moment | null; slotLabel?: string | null; now?: Date; journey?: string | null }): CalendarRow[] {
   const now = a.now || new Date();
+  const jc = journeyCopy(a.journey);
   const rows: CalendarRow[] = [
     { when: 'Aujourd’hui', what: 'Pourcentage calculé, dossier prérempli' },
     { when: a.slotLabel ? a.slotLabel : a.choice === 'rappel' && a.moment !== 'now' ? (a.moment === 'afternoon' ? 'Cet après-midi' : 'Demain matin') : rappelDelai(now).replace(/^./, c => c.toUpperCase()), what: 'Elena vous appelle' },
     // 6 nov. : la rédaction et le dépôt sont une prestation sur devis, décidée pendant l'appel — jamais présentée comme acquise.
-    { when: 'Les jours suivants', what: 'Si vous nous confiez la candidature (sur devis) : vous envoyez vos pièces, nous rédigeons le mémoire' },
+    { when: 'Les jours suivants', what: jc.daysAfter },
   ];
   const d = a.deadline ? new Date(a.deadline) : null;
   if (d && !isNaN(d.getTime()) && d.getTime() > now.getTime()) {
     const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
     const left = Math.round((day(d) - day(now)) / 86_400_000);
-    if (left >= 3) rows.push({ when: '2 jours avant la date limite', what: 'Vous validez la candidature' });
+    if (left >= 3) rows.push({ when: '2 jours avant la date limite', what: jc.validate });
     const date = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
-    rows.push({ when: date, what: 'Dépôt de la candidature (par nous si vous nous l’avez confiée, sinon par vous)' });
+    rows.push({ when: date, what: jc.submit });
   }
   return rows;
 }

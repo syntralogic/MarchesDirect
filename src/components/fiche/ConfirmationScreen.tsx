@@ -2,6 +2,7 @@ import InstallOffer from '@/components/pwa/InstallOffer';
 import type { ReactNode } from 'react';
 import { COPY, calendarRows, callWhen, dossierCallWhen, formatPhone, momentLabel, rappelDelai, type CoordChoice, type CoordValues } from '@/lib/coordonnees';
 import type { ApiSiretCompany } from '@/lib/apiClient';
+import { journeyCopy } from '@/lib/journeyCopy';
 
 // Screen 5 (CONFIRMATION « Mon dossier »), first half: after DOSSIER, RAPPEL, QUESTION.
 // The green banner answers three questions (saved? what now? what does the team do next?). The PDF button only exists
@@ -12,7 +13,7 @@ type Props = {
   choice: CoordChoice;
   values: CoordValues;
   company: ApiSiretCompany | undefined;
-  market: { shortTitle: string; reference: string | null; deadline: string | null; deadlineText: string; daysLeft: number | null; officialUrl: string | null };
+  market: { shortTitle: string; reference: string | null; deadline: string | null; deadlineText: string; daysLeft: number | null; officialUrl: string | null; journey?: string | null };
   pdf: PdfState;
   onDownload: () => void;
   onAppointment: () => void;
@@ -32,10 +33,8 @@ function Dossier({ p, open }: { p: Props; open: boolean }) {
   const prefilled: [string, string | null | undefined][] = [
     ['Entreprise', co?.name], ['SIRET', co?.siret], ['Adresse', [co?.postal, co?.city].filter(Boolean).join(' ') || null], ['Activité', co?.activity],
   ];
-  const who: [string, string][] = [
-    ['Références de chantiers similaires', 'Vous'], ['Moyens humains et matériels', 'Vous'], ['Attestations et pièces administratives', 'Vous'],
-    ['Formulaires de candidature', 'Nous (sur devis)'], ['Mémoire technique', 'Nous (sur devis)'], ['Offre de prix', 'Ensemble'], ['Dépôt de la candidature', 'Nous (sur devis)'],
-  ];
+  const jc = journeyCopy(p.market.journey);
+  const who = jc.who;
   return (
     <details open={open} className={`group ${card}`}>
       <summary className="flex min-h-[48px] cursor-pointer list-none flex-col justify-center">
@@ -44,14 +43,13 @@ function Dossier({ p, open }: { p: Props; open: boolean }) {
       </summary>
       <div className="mt-3 flex flex-col gap-5">
         <div className="text-[14px]"><b>{co?.name || 'Votre entreprise'}</b><br /><span className="text-[#B4C1D3]">{[formatPhone(p.values.phone), p.values.email.trim()].filter(Boolean).join(' · ')}</span></div>
-        <div className="text-[14px]"><b className="block text-[15px]">Vos marchés enregistrés</b>{p.market.shortTitle}{p.market.daysLeft != null && p.market.daysLeft >= 0 ? ` · J-${p.market.daysLeft}` : ''}<br /><span className="text-[#B4C1D3]">{[p.market.reference && `Réf. ${p.market.reference}`, `Date limite : ${p.market.deadlineText}`].filter(Boolean).join(' · ')}</span></div>
+        <div className="text-[14px]"><b className="block text-[15px]">Enregistré dans votre espace</b>{p.market.shortTitle}{p.market.daysLeft != null && p.market.daysLeft >= 0 ? ` · J-${p.market.daysLeft}` : ''}<br /><span className="text-[#B4C1D3]">{[p.market.reference && `Réf. ${p.market.reference}`, `Date limite : ${p.market.deadlineText}`].filter(Boolean).join(' · ')}</span></div>
 
         <section aria-label="Mes documents"><b className="mb-2 block text-[15px]">Mes documents</b>
           <ul className="flex flex-col gap-3 text-[14px]">
             <li className="flex items-start justify-between gap-3"><span><b>Votre dossier prérempli</b><br /><span className="text-[#B4C1D3]">{p.pdf === 'ready' ? 'Première base, à compléter avant le dépôt · PDF' : 'Disponible après l’appel d’Elena'}</span></span>{tag(p.pdf === 'ready')}</li>
-            <li className="flex items-start justify-between gap-3"><span><b>Avis du marché</b><br /><span className="text-[#B4C1D3]">Document officiel publié par l’acheteur</span></span>{p.market.officialUrl ? <a href={p.market.officialUrl} target="_blank" rel="noopener noreferrer" className="min-h-[44px] font-bold text-[#FB923C] underline">Ouvrir ↗</a> : tag(false)}</li>
-            <li className="flex items-start justify-between gap-3"><span><b>Mémoire technique</b><br /><span className="text-[#B4C1D3]">Rédigé avec notre équipe, après votre échange</span></span>{tag(false)}</li>
-            <li className="flex items-start justify-between gap-3"><span><b>Formulaires de candidature</b><br /><span className="text-[#B4C1D3]">Préparés par nos soins, après votre échange</span></span>{tag(false)}</li>
+            <li className="flex items-start justify-between gap-3"><span><b>{jc.notice}</b><br /><span className="text-[#B4C1D3]">{jc.noticeSub}</span></span>{p.market.officialUrl ? <a href={p.market.officialUrl} target="_blank" rel="noopener noreferrer" className="min-h-[44px] font-bold text-[#FB923C] underline">Ouvrir ↗</a> : tag(false)}</li>
+            {jc.docs.map(d => <li key={d.title} className="flex items-start justify-between gap-3"><span><b>{d.title}</b><br /><span className="text-[#B4C1D3]">{d.sub}</span></span>{tag(false)}</li>)}
           </ul>
         </section>
 
@@ -67,7 +65,7 @@ function Dossier({ p, open }: { p: Props; open: boolean }) {
         </section>
 
         <section aria-label="Votre calendrier jusqu’au dépôt"><b className="mb-2 block text-[15px]">Votre calendrier jusqu’au dépôt</b>
-          <ol className="flex flex-col gap-2 text-[14px]">{calendarRows({ deadline: p.market.deadline, choice: p.choice, moment: p.values.moment, slotLabel: p.values.slotLabel }).map((r) => <li key={r.when}><b>{r.when}</b> <span className="text-[#D6E0EC]">— {r.what}</span></li>)}</ol>
+          <ol className="flex flex-col gap-2 text-[14px]">{calendarRows({ deadline: p.market.deadline, choice: p.choice, moment: p.values.moment, slotLabel: p.values.slotLabel, journey: p.market.journey }).map((r) => <li key={r.when}><b>{r.when}</b> <span className="text-[#D6E0EC]">— {r.what}</span></li>)}</ol>
         </section>
       </div>
     </details>
@@ -94,7 +92,8 @@ export default function ConfirmationScreen(p: Props) {
   );
   if (p.choice === 'dossier') {
     const when = dossierCallWhen(p.values);
-    const cal = calendarRows({ deadline: p.market.deadline, choice: p.choice, moment: p.values.moment, slotLabel: p.values.slotLabel });
+    const cal = calendarRows({ deadline: p.market.deadline, choice: p.choice, moment: p.values.moment, slotLabel: p.values.slotLabel, journey: p.market.journey });
+    const jc = journeyCopy(p.market.journey);
     return (
       <div className="flex flex-col gap-4 pb-10">
         <ol className="flex gap-2 text-[13px] text-[#B4C1D3]" aria-label="Étapes"><li>1 · Vos marchés</li><li>2 · Mon analyse</li><li className="font-bold text-[#F2F5F9]">3 · Mon dossier</li></ol>
@@ -108,9 +107,7 @@ export default function ConfirmationScreen(p: Props) {
         <section className={card} aria-label="Ce que vous verrez avec Elena">
           <b className="mb-2 block text-[16px]">Ce que vous verrez avec Elena</b>
           <ul className="flex flex-col gap-2 text-[14px] text-[#D6E0EC]">
-            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Vos atouts et vos points faibles sur ce marché</li>
-            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Ce qu’il faut fournir, écrire, et dans quel ordre</li>
-            <li><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>Qui fait quoi si vous décidez d’y aller : vous, nous, ensemble</li>
+            {jc.withElena.map(t => <li key={t}><span aria-hidden className="font-extrabold text-[#6EE7B7]">✓ </span>{t}</li>)}
           </ul>
           <ol className="mt-3 flex gap-2" aria-label="Votre calendrier">
             {cal.slice(0, 3).map((r) => <li key={r.when} className="flex-1 rounded-xl border border-[#22385A] p-2.5 text-[12px] text-[#B4C1D3]"><b className="mb-0.5 block text-[13px] text-[#F2F5F9]">{r.when}</b>{r.what}</li>)}
@@ -121,7 +118,7 @@ export default function ConfirmationScreen(p: Props) {
         {p.dossiers != null && p.dossiers >= 2 && <p className="flex items-center gap-2 text-[13px] text-[#D6E0EC]"><span aria-hidden className="h-2 w-2 rounded-full bg-[#EF4444]" />{p.dossiers} entreprises ont demandé leur dossier ces 7 derniers jours</p>}
         <Dossier p={p} open={false} />
         <InstallOffer context="dossier" />
-        <button type="button" onClick={p.onBackToMarket} className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à ce marché</button>
+        <button type="button" onClick={p.onBackToMarket} className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à {journeyCopy(p.market.journey).noun}</button>
       </div>
     );
   }
@@ -146,7 +143,7 @@ export default function ConfirmationScreen(p: Props) {
       <section className={`${card} flex flex-col gap-3`} aria-label="30 minutes offertes">
         <div className="flex items-center gap-3">{p.elenaPhoto}<p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{c.done.elena}</p></div>
         <div><b className="text-[16px]">30 minutes offertes avec notre équipe</b>
-          <p className="mt-1 text-[14px] text-[#D6E0EC]">Le point sur ce marché et sur votre situation, les prochaines étapes concrètement. Si vous souhaitez préparer votre candidature avec nous (mémoire technique, formulaires, dépôt) : accompagnement sur devis, présenté pendant l’échange.</p></div>
+          <p className="mt-1 text-[14px] text-[#D6E0EC]">Le point sur {journeyCopy(p.market.journey).noun} et sur votre situation, les prochaines étapes concrètement. {journeyCopy(p.market.journey).helpLine}</p></div>
         <button type="button" onClick={p.onAppointment} className="flex min-h-[54px] w-full items-center justify-center rounded-[14px] bg-[#C2410C] px-4 text-[16px] font-extrabold text-white">Demander mes 30 minutes offertes</button>
         <p className="text-center text-[13px] text-[#B4C1D3]">Par téléphone · Sans engagement</p>
       </section>
