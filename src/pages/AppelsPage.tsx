@@ -11,7 +11,6 @@ export default function AppelsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const trades = useTrades();
-  const city = searchParams.get('city') || '';
   const sector = searchParams.get('sector') || 'Tous';
   const bare = searchParams.toString() === ''; // SEO audit 23 Oct, point 2: bare URL = indexable entry page
 
@@ -20,13 +19,13 @@ export default function AppelsPage() {
     if (sector !== 'Tous' && trades.length === 0) return;
     const params = new URLSearchParams();
     params.set('journey', 'tender');
-    if (city) params.set('city', city);
     if (sector !== 'Tous') {
       const tradeId = trades.find(tr => tr.name === sector)?.id;
       if (tradeId) params.set('trade_id', tradeId);
     }
-    navigate(`/recherche?${params.toString()}`, { replace: true });
-  }, [navigate, trades, city, sector, bare]);
+    // 7 nov. : vers la liste v2 (/vos-marches), qui affiche les vraies annonces partenaires, plus /recherche.
+    navigate(`/vos-marches?${params.toString()}`, { replace: true });
+  }, [navigate, trades, sector, bare]);
 
   return bare ? <CategoryLandingPage journey="tender" /> : null;
 }
