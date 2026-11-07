@@ -464,6 +464,14 @@ export const opportunitiesApi = {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;
   },
+  // 7 nov. : plusieurs annonces en une requête (favoris sans compte), dans l'ordre demandé. 200 max.
+  getMany: async (ids: string[]): Promise<ApiOpportunity[]> => {
+    const want = ids.slice(0, 200);
+    if (!want.length) return [];
+    const { data } = await apiClient.get<{ results: ApiOpportunity[] }>('/opportunities', { params: { ids: want.join(','), limit: 200, loc: '2', status: 'all' } });
+    const by = new Map(data.results.map(o => [o.id, o]));
+    return want.map(id => by.get(id)).filter((o): o is ApiOpportunity => !!o);
+  },
   // Graduated access for private tender / sous-traitance fiches: level1
   // (anonymous/no lead yet) -> teaser only, level2 (coordinates left via
   // requestAccess) -> full read, level3 (staff-reviewed) -> documents too.
