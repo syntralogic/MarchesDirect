@@ -1,4 +1,4 @@
-import { lastListPath } from '@/lib/lastList';
+import { lastListPath, markViewed, neighbours } from '@/lib/lastList';
 // Écran 3 de la refonte (maquette v26): fiche marché + analyse sur place, en un seul écran.
 // Pas d'appel IA à l'ouverture: le pourcentage vient du moteur de règles existant (match-score).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -132,7 +132,7 @@ export default function FicheMarchePage() {
     return () => { live = false; };
   }, [id, sessionId]);
 
-  useEffect(() => { if (!opp) return; try { sessionStorage.setItem('md_fiches_vues', String(Number(sessionStorage.getItem('md_fiches_vues') || 0) + 1)); } catch { /* idem */ } }, [opp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!opp) return; markViewed(opp.id); try { sessionStorage.setItem('md_fiches_vues', String(Number(sessionStorage.getItem('md_fiches_vues') || 0) + 1)); } catch { /* idem */ } }, [opp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (opp) trackVisitorEvent('offer_view', 'Fiche marché ouverte', undefined, { opportunityId: id, journey: opp.journey }); }, [opp, id]);
 
   // --- score from the real engine; re-run with the visitor's answers ---
@@ -414,7 +414,15 @@ export default function FicheMarchePage() {
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-32 pt-3 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
       <nav aria-label="Étapes" className="flex flex-col gap-3">
-        <Link to={lastListPath()} className="flex min-h-[44px] items-center gap-1.5 text-[15px] text-[#B4C1D3]">‹ Vos marchés</Link>
+        {(() => { const nb = neighbours(id); return (
+          <div className="flex items-center justify-between gap-2">
+            <Link to={lastListPath()} className="flex min-h-[44px] items-center gap-1.5 text-[15px] text-[#B4C1D3]">‹ Vos marchés</Link>
+            {nb.total > 1 && <div className="flex items-center gap-1 text-[14px]">
+              {nb.prev && <Link to={`/opportunites/${nb.prev}`} aria-label="Annonce précédente" className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[#2B4468] font-bold">‹</Link>}
+              <span className="px-1 text-[13px] text-[#B4C1D3]">{nb.pos} / {nb.total}</span>
+              {nb.next && <Link to={`/opportunites/${nb.next}`} className="flex min-h-[44px] items-center justify-center rounded-lg border border-[#2B4468] px-3 font-bold text-[#FB923C]">Suivante ›</Link>}
+            </div>}
+          </div>); })()}
         <ol className="flex text-center text-[13px]">
           {['Vos marchés', 'Mon analyse', 'Mon dossier'].map((s, i) => (
             <li key={s} className={`flex flex-1 flex-col items-center gap-1.5 ${i === 1 ? 'font-bold text-[#FB923C]' : i === 0 ? 'text-[#6EE7B7]' : 'text-[#B4C1D3]'}`} aria-current={i === 1 ? 'step' : undefined}>
@@ -573,6 +581,8 @@ export default function FicheMarchePage() {
         {sections?.presentation && <Details title="Informations techniques"><p className="whitespace-pre-line">{sections.presentation}</p></Details>}
         {sections?.entreprises && <Details title="Entreprises concernées"><p className="whitespace-pre-line">{sections.entreprises}</p></Details>}
         {opp.description && <Details title={opp.journey === 'public_procurement' ? 'Extrait de l’avis officiel' : 'Texte de l’annonce'}><p className="whitespace-pre-line">{opp.description.slice(0, 1500)}</p></Details>}
+        {/* 7 nov. : l'artisan peut signaler une erreur (date, lieu, annonce déjà attribuée) ; l'équipe corrige. */}
+        <Link to={`/question?q=${encodeURIComponent(`Signalement sur l’annonce ${opp.source_reference || opp.id} (${title}) : `)}`} className="text-[13px] text-[#B4C1D3] underline">Une information vous semble inexacte ? Signalez-la</Link>
         {opp.official_url && /^https?:\/\//i.test(opp.official_url) && <a href={opp.official_url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-[#FB923C]">{jc.officialLink} ↗</a>}
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#22385A] bg-[#0F1F35] p-4">
           <div><h3 className="text-[15px] font-extrabold">Pas le temps maintenant ?</h3><p className="text-[13px] text-[#B4C1D3]">Enregistrez {jc.noun} sur ce téléphone pour le retrouver. Aucun numéro demandé, aucun appel.</p></div>

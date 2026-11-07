@@ -1,4 +1,5 @@
-import { rememberList } from '@/lib/lastList';
+import { rememberList, viewedIds, hiddenIds, setHidden, rememberListIds, saveScroll, takeScroll } from '@/lib/lastList';
+import { useFavorites } from '@/contexts/FavoritesContext';
 // Écran 2 de la refonte (maquette v26): « Vos marchés », la liste classée. Pourcentages par les règles du moteur existant
 // (match-score), jamais par l'IA ; les cartes apparaissent tout de suite, les pourcentages se remplissent ensuite.
 import ActivityDot from '@/components/ActivityDot';
@@ -51,7 +52,9 @@ function Ring({ score }: { score: number | null | undefined }) {
   );
 }
 
-function Card({ c, score, withScore }: { c: RankedCard; score: number | null | undefined; withScore: boolean }) {
+function Card({ c, score, withScore, seen, onHide, onOpen }: { c: RankedCard; score: number | null | undefined; withScore: boolean; seen: boolean; onHide: () => void; onOpen: () => void }) {
+  const { isSaved, toggle } = useFavorites();
+  const saved = isSaved(c.id);
   const dl = c.deadline_checked || c.deadline;
   const n = daysLeft(dl);
   const dept = c.location_department ? ` (${c.location_department})` : '';
@@ -65,10 +68,12 @@ function Card({ c, score, withScore }: { c: RankedCard; score: number | null | u
     ? `Lieu d’exécution : ${exec}${buyerPlace(c) && !(execOf(c)?.communes || []).length ? ` · acheteur à ${buyerPlace(c)}` : ''}`
     : c.location_city && c.location_city.trim() !== buyer ? `${c.location_city.trim()}${dept}` : dept.trim();
   return (
-    <Link to={`/opportunites/${c.id}`} className="flex gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5 text-[#F2F5F9]">
+    <div className="relative">
+    <Link to={`/opportunites/${c.id}`} onClick={onOpen} className={`flex gap-3 rounded-2xl border bg-[#12233A] p-3.5 text-[#F2F5F9] ${seen ? 'border-[#1B2D47]' : 'border-[#22385A]'}`}>
       {withScore ? <Ring score={score} /> : <div className="flex w-[76px] shrink-0 flex-col items-center gap-1.5"><div className="flex h-[64px] w-[64px] items-center justify-center rounded-full border-4 border-[#1E3352] text-[15px] font-extrabold">— %</div><span className="text-center text-[12px] font-bold text-[#FB923C]">Voir mon %</span></div>}
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 pr-[84px]">
         <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+          {seen && <span className="rounded-full bg-[#1E3352] px-2 py-0.5 text-[#93A4BC]">Déjà vue</span>}
           <span className="text-[#FDBA74]">{TYPE_LABEL[c.journey || ''] || 'MARCHÉ'}{c.distance_km != null ? ` · ${Math.round(c.distance_km)} km` : ''}</span>
           {c.open_state === 'verify' && <span className="rounded-full bg-[#1E3352] px-2 py-0.5 text-[#D6E0EC]">Date limite à vérifier</span>}
           {isClosingSoon(dl) && <span className="rounded-full bg-[#3A2312] px-2 py-0.5 text-[#FDBA74]">Bientôt clos</span>}
@@ -80,6 +85,14 @@ function Card({ c, score, withScore }: { c: RankedCard; score: number | null | u
         <span className="text-[14px] font-bold text-[#FB923C]">{c.journey === 'subcontracting' ? 'Voir la mission' : c.journey === 'tender' ? 'Voir la consultation' : 'Voir le marché'} ›</span>
       </div>
     </Link>
+    {/* Enregistrer en un geste, ou écarter une annonce sans intérêt (gardé sur ce téléphone). */}
+    <div className="absolute right-2 top-2 flex gap-1">
+      <button type="button" onClick={() => void toggle(c.id)} aria-pressed={saved} aria-label={saved ? 'Retirer des favoris' : 'Enregistrer'} title={saved ? 'Enregistré' : 'Enregistrer'}
+        className={`flex h-[40px] w-[40px] items-center justify-center rounded-full border text-[18px] ${saved ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468] bg-[#0F1F35] text-[#D6E0EC]'}`}>{saved ? '★' : '☆'}</button>
+      <button type="button" onClick={onHide} aria-label="Masquer cette annonce" title="Masquer"
+        className="flex h-[40px] w-[40px] items-center justify-center rounded-full border border-[#2B4468] bg-[#0F1F35] text-[16px] text-[#93A4BC]">✕</button>
+    </div>
+    </div>
   );
 }
 
@@ -189,7 +202,22 @@ export default function ListeMarchesPage() {
     ? ranked.reduce<Record<string, number>>((acc, c) => { acc[c.journey || ''] = (acc[c.journey || ''] || 0) + 1; return acc; }, {})
     : (typeTotals || {}), [ranked, known, typeTotals]);
   const typeAll = known ? ranked.length : (typeTotals ? Object.values(typeTotals).reduce((a, b) => a + b, 0) : (searchTotal ?? ranked.length));
-  const visible = applyFilter(byType, scores, filter);
+  const [hidden, setHiddenSet] = useState<Set<string>>(() => hiddenIds());
+  const [showHidden, setShowHidden] = useState(false);
+  const [seen] = useState<Set<string>>(() => viewedIds());
+  const filtered0 = applyFilter(byType, scores, filter);
+  const hiddenCount = filtered0.filter(c => hidden.has(c.id)).length;
+  const visible = showHidden ? filtered0 : filtered0.filter(c => !hidden.has(c.id));
+  const listKey = `/vos-marches?${params.toString()}`;
+  const hide = (id: string) => { setHidden(id, true); setHiddenSet(hiddenIds()); };
+  // Ordre de la liste affichée (fiche suivante) et position de défilement rendue au retour, une seule fois.
+  const restored = useRef(false);
+  useEffect(() => { if (visible.length) rememberListIds(visible.map(c => c.id)); }, [visible.map(c => c.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (restored.current || !cards || !cards.length) return;
+    restored.current = true;
+    const y = takeScroll(listKey); if (y != null) requestAnimationFrame(() => window.scrollTo({ top: y }));
+  }, [cards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ranked_list_shown: once, when every percentage is in (SIRET, number of markets, three best percentages).
   useEffect(() => {
@@ -312,7 +340,8 @@ export default function ListeMarchesPage() {
       {error && <p role="alert" className="text-[14px] text-[#FCA5A5]">La liste n’a pas pu être chargée. <button type="button" onClick={() => void load()} className="min-h-[44px] font-bold underline">Réessayer</button></p>}
       {cards === null && !error && <div className="flex flex-col gap-2.5" aria-busy="true">{[0, 1, 2].map(i => <div key={i} className="h-[150px] animate-pulse rounded-2xl bg-[#12233A]" />)}</div>}
 
-      {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} />)}</div>}
+      {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} seen={seen.has(card.id)} onHide={() => hide(card.id)} onOpen={() => saveScroll(listKey)} />)}</div>}
+      {hiddenCount > 0 && <p className="text-[13px] text-[#B4C1D3]">{hiddenCount} annonce{hiddenCount > 1 ? 's' : ''} masquée{hiddenCount > 1 ? 's' : ''} dans cette liste · <button type="button" onClick={() => setShowHidden(v => !v)} className="min-h-[40px] font-bold text-[#FB923C] underline">{showHidden ? 'Les cacher' : 'Les afficher'}</button>{showHidden && <> · <button type="button" onClick={() => { filtered0.forEach(c => { if (hidden.has(c.id)) setHidden(c.id, false); }); setHiddenSet(hiddenIds()); }} className="min-h-[40px] font-bold text-[#FB923C] underline">Tout réafficher</button></>}</p>}
       {beyond > 0 && <p className="text-[13px] text-[#B4C1D3]">{cards!.length} marchés affichés sur {rankedTotal} correspondant à votre métier et à votre zone : ce sont ceux dont la date limite est la plus proche, classés ici par pourcentage. Affinez la zone pour voir les autres.</p>}
       {known && homeDept && cards && (
         <div className="flex flex-wrap items-center gap-2 text-[13.5px]">
