@@ -43,10 +43,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated) {
       setLoading(true);
       // Favoris gardés sur le téléphone avant la connexion : rattachés au compte.
-      const afterAuth = () => Promise.all(localIds().map(id => favoritesApi.save(id).catch(() => {})))
-        .then(() => { try { localStorage.removeItem(LOCAL_KEY); } catch { /* idem */ } }).then(() =>
+      // 7 nov. : un favori n'est retiré du téléphone qu'une fois son enregistrement confirmé ; ceux qui ont échoué
+      // (réseau faible) restent et seront rattachés à la prochaine ouverture. Rien ne disparaît.
+      const afterAuth = () => Promise.all(localIds().map(id => favoritesApi.save(id).then(() => setLocal(id, false), () => {})))
+        .then(() =>
         favoritesApi.ids())
-          .then((ids) => { if (!cancelled) setSavedIds(new Set(ids)); })
+          .then((ids) => { if (!cancelled) setSavedIds(new Set([...localIds(), ...ids])); })
           .catch(() => {
             // Non-fatal: the bookmark toggle just won't show as pre-saved until
             // the next successful load. No toast here - fires on every page

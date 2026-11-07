@@ -18,7 +18,7 @@ import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { isSaved as searchIsSaved, saveSearch, markViewed } from '@/lib/savedSearches';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
-import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, journeyMatches, journeySet, toggleJourney, type Journey, type JourneyKey } from '@/components/liste/RefinePanel';
+import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, journeySet, toggleJourney, type Journey, type JourneyKey } from '@/components/liste/RefinePanel';
 import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
   type Filter, type RankedCard, type ScoreMap,
@@ -155,6 +155,11 @@ export default function ListeMarchesPage() {
   const shown = useRef('');
   const run = useRef(0); // a newer load (zone widened, company changed) makes the older one stop writing
   const known = !!status?.companyKnown;
+  // 7 nov. : la recherche explicitement saisie (métier, filtre) est prioritaire sur l'entreprise mémorisée. L'entreprise
+  // sert alors à calculer le pourcentage, pas à enfermer le visiteur dans son activité déclarée.
+  const rankedMode = known && !q && !tradeId;
+  const [rankedByJourney, setRankedByJourney] = useState<Record<string, number> | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // 4.5 / 5.5 : l'alerte « nouveaux marchés » se demande depuis la liste (sans marché précis). Aucun envoi automatique : Elena appelle.
   const [view, setView] = useState<'list' | 'alerte' | 'done'>('list');
@@ -179,14 +184,15 @@ export default function ListeMarchesPage() {
   const load = useCallback(async (attempt = 0) => {
     // 7 nov. (Hedi) : 2-3 s de cases vides à chaque ouverture. La dernière liste de la même recherche est gardée sur le
     // téléphone et affichée tout de suite ; elle est remplacée dès que le serveur répond.
-    const cacheKey = `md_cards:${known ? `r:${sessionId}:${zoneParam || ''}` : `s:${refineKey}:${tradeId || ''}`}`;
+    const cacheKey = `md_cards:${rankedMode ? `r:${sessionId}:${zoneParam || ''}:${type}` : `s:${refineKey}:${tradeId || ''}`}`;
     setCards(readCards(cacheKey)); setScores({}); setDone(false); setError(false); setFallback(false); setTradeUnknown(false); shown.current = ''; setSearchTotal(null);
     const mine = ++run.current;
     const stop = () => run.current !== mine;
     try {
-      if (known) {
-        const r = await opportunitiesApi.rankedCandidates(sessionId, zoneParam);
+      if (rankedMode) {
+        const r = await opportunitiesApi.rankedCandidates(sessionId, zoneParam, { journey: type });
         if (stop()) return;
+        setRankedByJourney(r.byJourney || null);
         const home = (r as { homeDepartment?: string | null }).homeDepartment || null;
         setHomeDept(home); setRankedZone(r.zone);
         setZoneLabel(r.zone === 'france' ? (home ? `Toute la France · le ${home} en premier` : 'Toute la France') : `Département ${r.zone}`);
@@ -205,18 +211,27 @@ export default function ListeMarchesPage() {
         setSearchTotal(r.pagination?.total ?? r.results.length);
         const mapped = r.results.map(toCard);
         setCards(mapped); writeCards(cacheKey, mapped);
+        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
         // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
         const totals = await Promise.all(journeys.map(j => opportunitiesApi.search(searchParamsFor(q, { ...refine, journey: j }, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 1 })).then(x => x.pagination?.total ?? 0).catch(() => 0)));
         if (stop()) return;
         setTypeTotals(Object.fromEntries(journeys.map((j, i) => [j, totals[i]])));
+        // Entreprise connue + recherche saisie : le pourcentage est calculé quand même, sur la recherche choisie.
+        if (known) {
+          await mapLimit(mapped, 4, async c => {
+            try { const s = await opportunitiesApi.getMatchScore(c.id, sessionId); setScores(p => ({ ...p, [c.id]: s.score })); }
+            catch { setScores(p => ({ ...p, [c.id]: null })); }
+          }, stop);
+          if (!stop()) setDone(true);
+        }
       } else setCards([]);
     } catch {
       if (stop()) return;
       if (attempt < 2) { window.setTimeout(() => { if (!stop()) void load(attempt + 1); }, 4000 * (attempt + 1)); return; }
       // 7 nov. (panne de la liste par entreprise) : filet de sécurité. Si la liste classée échoue trois fois, on montre la
       // recherche simple du métier de l'entreprise plutôt qu'un message d'erreur : le visiteur voit des annonces.
-      if (known) {
+      if (rankedMode) {
         try {
           const prof = await siretApi.profile(sessionId).catch(() => null);
           const kw = prof?.trades?.[0]?.name || q || 'travaux';
@@ -229,8 +244,41 @@ export default function ListeMarchesPage() {
       }
       setError(true);
     }
-  }, [known, sessionId, zoneParam, tradeId, q, dept, refine]);
+  }, [known, rankedMode, type, sessionId, zoneParam, tradeId, q, dept, refine]);
   useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 7 nov. : « Voir plus » : accès à tous les résultats (liste par entreprise : par pas de 40 jusqu'à 200 ; recherche :
+  // page suivante), au lieu d'inviter à affiner la zone.
+  const loadMore = async () => {
+    if (!cards || loadingMore) return;
+    setLoadingMore(true);
+    const mine = run.current; const stop = () => run.current !== mine;
+    try {
+      let added: RankedCard[] = [];
+      if (rankedMode) {
+        const r = await opportunitiesApi.rankedCandidates(sessionId, zoneParam, { journey: type, limit: Math.min(cards.length + 40, 200) });
+        if (stop()) return;
+        const have = new Set(cards.map(c => c.id)); added = r.items.filter(i => !have.has(i.id));
+        setRankedTotal(typeof r.total === 'number' ? r.total : null);
+      } else {
+        const page = Math.floor(cards.length / 40) + 1;
+        const r = await opportunitiesApi.search(searchParamsFor(q, refine, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 40, page }));
+        if (stop()) return;
+        const have = new Set(cards.map(c => c.id)); added = r.results.map(toCard).filter(i => !have.has(i.id));
+        setSearchTotal(r.pagination?.total ?? null);
+      }
+      if (!added.length) { setLoadingMore(false); return; }
+      const next = [...cards, ...added]; setCards(next);
+      if (known) {
+        setDone(false);
+        await mapLimit(added, 4, async c => {
+          try { const s = await opportunitiesApi.getMatchScore(c.id, sessionId); setScores(p => ({ ...p, [c.id]: s.score })); }
+          catch { setScores(p => ({ ...p, [c.id]: null })); }
+        }, stop);
+        if (!stop()) setDone(true);
+      }
+    } catch { /* le bouton reste disponible */ } finally { if (!stop()) setLoadingMore(false); }
+  };
 
   const ranked = useMemo(() => (cards ? (done ? rank(cards, scores) : cards) : []), [cards, scores, done]);
   // Recherche sauvegardée : on garde les marchés vus pour compter ensuite les « nouveaux ».
@@ -239,11 +287,12 @@ export default function ListeMarchesPage() {
   useEffect(() => { setSavedSearch(searchIsSaved(searchKey)); }, [searchKey]);
   useEffect(() => { if (cards && cards.length && savedSearch) markViewed(searchKey, cards.map(c => c.id)); }, [cards, savedSearch, searchKey]);
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
-  const byType = useMemo(() => !known || type === 'all' ? ranked : ranked.filter(c => journeyMatches(type, c.journey)), [ranked, type, known]);
-  const typeCounts = useMemo(() => known
-    ? ranked.reduce<Record<string, number>>((acc, c) => { acc[c.journey || ''] = (acc[c.journey || ''] || 0) + 1; return acc; }, {})
-    : (typeTotals || {}), [ranked, known, typeTotals]);
-  const typeAll = known ? ranked.length : (typeTotals ? Object.values(typeTotals).reduce((a, b) => a + b, 0) : (searchTotal ?? ranked.length));
+  // Le type est filtré côté serveur dans les deux modes : les compteurs portent sur tout le résultat, pas sur la page chargée.
+  const byType = ranked;
+  const typeCounts = useMemo(() => (rankedMode ? rankedByJourney : typeTotals) || {}, [rankedMode, rankedByJourney, typeTotals]);
+  const typeAll = rankedMode
+    ? (rankedByJourney ? Object.values(rankedByJourney).reduce((a, b) => a + b, 0) : (rankedTotal ?? ranked.length))
+    : (typeTotals ? Object.values(typeTotals).reduce((a, b) => a + b, 0) : (searchTotal ?? ranked.length));
   const [hidden, setHiddenSet] = useState<Set<string>>(() => hiddenIds());
   const [showHidden, setShowHidden] = useState(false);
   const [seen] = useState<Set<string>>(() => viewedIds());
@@ -281,11 +330,12 @@ export default function ListeMarchesPage() {
     finally { setBusy(false); }
   };
 
-  const total = known ? (cards?.length ?? 0) : (searchTotal ?? cards?.length ?? 0);
-  // Total réel du périmètre (la liste classée n'en charge que 40) : dit à part, pour que le nombre affiché corresponde à la liste.
-  const beyond = known && rankedTotal != null && cards && rankedTotal > cards.length ? rankedTotal - cards.length : 0;
+  const total = rankedMode ? (rankedTotal ?? cards?.length ?? 0) : (searchTotal ?? cards?.length ?? 0);
+  // Reste à charger (« Voir plus ») : liste par entreprise plafonnée à 200, recherche sans plafond.
+  const remaining = cards ? Math.max(0, (rankedMode ? (rankedTotal ?? 0) : (searchTotal ?? 0)) - cards.length) : 0;
+  const canMore = remaining > 0 && (!rankedMode || (cards?.length ?? 0) < 200);
   // No company and no trade chosen: nothing to count yet, so no "0 marché".
-  const { title, sub } = known && total === 0 ? { title: 'Vos marchés', sub: `${zoneLabel} · mis à jour aujourd’hui` } : known || total > 0 ? titleFor(total, known, q, zoneLabel) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
+  const { title, sub } = known && total === 0 ? { title: 'Vos marchés', sub: `${zoneLabel} · mis à jour aujourd’hui` } : known || total > 0 ? (known && !rankedMode ? { title: `${total} marché${total > 1 ? 's' : ''}${q ? ` · ${q}` : ''} · ${zoneLabel}`, sub: 'Votre recherche, avec le pourcentage de votre entreprise sur chaque marché' } : titleFor(total, known, q, zoneLabel)) : { title: 'Vos marchés', sub: 'Indiquez votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché' };
   const c = status?.company;
   const scope = known && c
     ? [c.activity && c.activity.length <= 40 ? c.activity : null, c.city ? `${c.city}${deptFromPostal(c.postal) ? ` (${deptFromPostal(c.postal)})` : ''} et alentours` : null].filter(Boolean).join(' · ')
@@ -355,19 +405,20 @@ export default function ListeMarchesPage() {
               <span aria-hidden>☆</span> Sauvegarder cette recherche</button>)}
       </header>
 
-      {!known && status !== undefined && (q || dept || tradeId || refine.where === 'near') && (
+      {status !== undefined && (known || q || dept || tradeId || refine.where === 'near') && (
         <form onSubmit={e => { e.preventDefault(); goMetier(metierDraft); }} className="flex flex-col gap-1">
-          <label htmlFor="liste-metier" className="text-[13px] font-bold text-[#B4C1D3]">Métier recherché</label>
+          <label htmlFor="liste-metier" className="text-[13px] font-bold text-[#B4C1D3]">{rankedMode ? 'Chercher un autre métier' : 'Métier recherché'}</label>
           <MetierAutocomplete id="liste-metier" compact value={metierDraft} onChange={setMetierDraft} onPick={s => goMetier(s.q, s.focus)} onSubmitFree={() => goMetier(metierDraft)}
             placeholder="Ex. : nettoyage, chauffage, sécurité…" className="h-[48px] w-full rounded-xl border-2 border-[#C9D6E8] bg-white px-3 text-[16px] text-[#0A1628] focus:border-[#F97316] focus:outline-none" />
         </form>)}
-      {!known && status !== undefined && (q || dept || tradeId || refine.where === 'near') && (
+      {!rankedMode && status !== undefined && (q || dept || tradeId || refine.where === 'near') && (
         <RefinePanel q={q} value={refine} typeCounts={typeTotals} onApply={applyRefine} />)}
+      {known && !rankedMode && <p className="text-[13px] text-[#B4C1D3]">Recherche libre : votre entreprise sert au pourcentage, pas au tri des annonces. <button type="button" onClick={() => goMetier('')} className="min-h-[40px] font-bold text-[#FB923C] underline">Revenir à mes marchés</button></p>}
 
-      {known && cards && cards.length > 0 && (
+      {rankedMode && cards && cards.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtrer par type de marché">
           {TYPE_CHIPS.map(ch => {
-            const count = ch.key === 'all' ? typeAll : (typeCounts[ch.key] ?? (known ? 0 : null));
+            const count = ch.key === 'all' ? typeAll : (typeCounts[ch.key] ?? null);
             return (
               <button key={ch.key} type="button" aria-pressed={isOn(ch.key)} onClick={() => setType(ch.key)}
                 className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-full border px-3.5 text-[14px] font-bold ${isOn(ch.key) ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : count === 0 ? 'border-[#1E3352] text-[#6B7A90]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>
@@ -391,8 +442,9 @@ export default function ListeMarchesPage() {
 
       {cards && cards.length > 0 && <div className="flex flex-col gap-2.5">{visible.map(card => <Card key={card.id} c={card} score={scores[card.id]} withScore={known} seen={seen.has(card.id)} onHide={() => hide(card.id)} onOpen={() => { saveScroll(listKey); rememberLot(card.id, card.matched_lot); }} />)}</div>}
       {hiddenCount > 0 && <p className="text-[13px] text-[#B4C1D3]">{hiddenCount} annonce{hiddenCount > 1 ? 's' : ''} masquée{hiddenCount > 1 ? 's' : ''} dans cette liste · <button type="button" onClick={() => setShowHidden(v => !v)} className="min-h-[40px] font-bold text-[#FB923C] underline">{showHidden ? 'Les cacher' : 'Les afficher'}</button>{showHidden && <> · <button type="button" onClick={() => { filtered0.forEach(c => { if (hidden.has(c.id)) setHidden(c.id, false); }); setHiddenSet(hiddenIds()); }} className="min-h-[40px] font-bold text-[#FB923C] underline">Tout réafficher</button></>}</p>}
-      {beyond > 0 && <p className="text-[13px] text-[#B4C1D3]">{cards!.length} marchés affichés sur {rankedTotal} correspondant à votre métier et à votre zone : ce sont ceux dont la date limite est la plus proche, classés ici par pourcentage. Affinez la zone pour voir les autres.</p>}
-      {known && homeDept && cards && (
+      {canMore && <button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="min-h-[52px] w-full rounded-[14px] border-2 border-[#2B4468] text-[15px] font-extrabold text-[#F2F5F9] disabled:opacity-60">{loadingMore ? 'Chargement…' : `Voir ${Math.min(40, remaining)} marchés de plus (${remaining} restants)`}</button>}
+      {!canMore && remaining > 0 && <p className="text-[13px] text-[#B4C1D3]">{cards!.length} marchés affichés sur {total}. Précisez la zone ou le type pour voir les autres.</p>}
+      {rankedMode && homeDept && cards && (
         <div className="flex flex-wrap items-center gap-2 text-[13.5px]">
           <button type="button" aria-pressed={rankedZone === 'france'} onClick={() => { const p = new URLSearchParams(params); p.delete('zone'); setParams(p, { replace: true }); }} className={`min-h-[40px] rounded-full border px-3 font-bold ${rankedZone === 'france' ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>Toute la France</button>
           <button type="button" aria-pressed={rankedZone === homeDept} onClick={() => { const p = new URLSearchParams(params); p.set('zone', homeDept); setParams(p, { replace: true }); }} className={`min-h-[40px] rounded-full border px-3 font-bold ${rankedZone === homeDept ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468] text-[#D6E0EC]'}`}>Mon département ({homeDept})</button>
@@ -420,7 +472,7 @@ export default function ListeMarchesPage() {
             <Link to={`/question?q=${encodeURIComponent(`Prévenez-moi des ${type === 'tender' ? 'appels d’offres privés' : 'missions de sous-traitance'}${q ? ` en ${q}` : ''}${dept ? ` (département ${dept})` : ''}.`)}`} className={btn}>Être prévenu par Elena</Link>)}
           {!known && type !== 'all' && <button type="button" onClick={() => setType('all')} className="min-h-[44px] text-[14px] font-semibold text-[#FB923C] underline">Voir tous les types</button>}
           <p className="text-[14px] text-[#D6E0EC]">{tradeUnknown ? 'Nous n’avons pas pu déduire votre métier à partir de votre entreprise.' : known && rankedZone !== 'france' ? `Aucun marché ouvert dans votre zone (${zoneLabel.replace('Département ', 'département ')}) pour votre activité. Élargissez à toute la France ou demandez à être prévenu.` : known || q || dept ? 'Les marchés changent chaque jour. Vous pouvez élargir la zone ou changer de mot-clé.' : 'Nom ou SIRET : le résultat s’affiche ici, classé par pourcentage.'}</p>
-          {((known && rankedZone !== 'france') || dept || refine.where === 'near') && !tradeUnknown && <button type="button" onClick={() => { const p = paramsWithRefine(params, { ...refine, where: 'france', department: '', lat: null, lng: null, sort: refine.sort === 'distance' ? 'match' : refine.sort }); p.delete('zone'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
+          {((rankedMode && rankedZone !== 'france') || dept || refine.where === 'near') && !tradeUnknown && <button type="button" onClick={() => { const p = paramsWithRefine(params, { ...refine, where: 'france', department: '', lat: null, lng: null, sort: refine.sort === 'distance' ? 'match' : refine.sort }); p.delete('zone'); setParams(p); }} className={btn}>Élargir à toute la France</button>}
           {(known || q || dept) && <button type="button" onClick={openAlert} className="min-h-[48px] text-[15px] font-semibold text-[#FB923C] underline">Être prévenu dès qu’un marché correspond</button>}
           {known && <p className="text-[14px] text-[#B4C1D3]">Votre activité n’apparaît pas ? <Link to="/question" className="inline-flex min-h-[48px] items-center font-bold text-[#FB923C] underline">Dites-le nous</Link>, nous vous répondons.</p>}
           {known || q || dept
