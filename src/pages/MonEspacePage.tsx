@@ -39,7 +39,7 @@ export default function MonEspacePage() {
     let live = true;
     // 7 nov. : tant que les favoris se chargent, on n'affiche pas « aucun favori » (il apparaissait une seconde).
     if (favLoading) { setFavs(null); return () => { live = false; }; }
-    (isAuthenticated ? favoritesApi.list() : Promise.all([...savedIds].slice(0, 20).map(id => opportunitiesApi.getById(id).catch(() => null))).then(r => r.filter(Boolean) as ApiOpportunity[]))
+    (isAuthenticated ? favoritesApi.list() : opportunitiesApi.getMany([...savedIds]))
       .then(r => { if (live) setFavs(r); }).catch(() => { if (live) setFavs([]); });
     return () => { live = false; };
   }, [isAuthenticated, savedIds, favLoading]);

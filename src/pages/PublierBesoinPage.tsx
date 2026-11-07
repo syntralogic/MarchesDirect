@@ -11,8 +11,8 @@ const TRADES: [string, string][] = [['gros-oeuvre', 'Gros œuvre'], ['maconnerie
   ['couverture', 'Couverture, étanchéité'], ['electricite', 'Électricité'], ['plomberie', 'Plomberie'], ['cvc', 'Chauffage, ventilation, climatisation'],
   ['isolation', 'Isolation'], ['platrerie', 'Plâtrerie'], ['menuiserie', 'Menuiserie'], ['carrelage', 'Carrelage'], ['peinture', 'Peinture'],
   ['vitrerie', 'Vitrerie'], ['vrd', 'Voirie et réseaux'], ['batiment-general', 'Tous corps d’état'], ['espaces-verts', 'Espaces verts'],
-  ['nettoyage', 'Nettoyage'], ['maintenance', 'Maintenance']];
-const KINDS = ['Entreprise générale', 'Syndic ou copropriété', 'Promoteur, bailleur', 'Commerce, entreprise', 'Particulier', 'Autre'];
+  ['nettoyage', 'Nettoyage'], ['maintenance', 'Maintenance'], ['securite', 'Sécurité, gardiennage']];
+const KINDS = ['Entreprise générale', 'Syndic ou copropriété', 'Promoteur, bailleur', 'Commerce, entreprise', 'Autre'];
 
 type F = Record<string, string>;
 const FIELD = 'h-[52px] w-full rounded-xl border-2 border-[#C9D6E8] bg-white px-3 text-[16px] text-[#0A1628] focus:border-[#F97316] focus:outline-none';
