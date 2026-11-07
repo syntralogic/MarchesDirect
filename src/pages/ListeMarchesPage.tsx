@@ -155,7 +155,8 @@ export default function ListeMarchesPage() {
   useEffect(() => { siretApi.status(sessionId).then(setStatus).catch(() => setStatus(null)); }, [sessionId]);
 
   // Cards first (SQL only), then one percentage at a time from the rules engine, 4 in flight.
-  const load = useCallback(async () => {
+  // 7 nov. : un échec (serveur qui redémarre, réseau faible) est réessayé deux fois avant d'afficher l'erreur.
+  const load = useCallback(async (attempt = 0) => {
     setCards(null); setScores({}); setDone(false); setError(false); setTradeUnknown(false); shown.current = ''; setSearchTotal(null);
     const mine = ++run.current;
     const stop = () => run.current !== mine;
@@ -186,7 +187,7 @@ export default function ListeMarchesPage() {
         if (stop()) return;
         setTypeTotals(Object.fromEntries(journeys.map((j, i) => [j, totals[i]])));
       } else setCards([]);
-    } catch { if (!stop()) setError(true); }
+    } catch { if (stop()) return; if (attempt < 2) { window.setTimeout(() => { if (!stop()) void load(attempt + 1); }, 4000 * (attempt + 1)); } else setError(true); }
   }, [known, sessionId, zoneParam, tradeId, q, dept, refine]);
   useEffect(() => { if (status !== undefined) void load(); }, [status, zoneParam, tradeId, q, refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
 

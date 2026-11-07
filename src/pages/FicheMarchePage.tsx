@@ -1,3 +1,4 @@
+import ReportListing from '@/components/fiche/ReportListing';
 import { lastListPath, markViewed, neighbours } from '@/lib/lastList';
 // Écran 3 de la refonte (maquette v26): fiche marché + analyse sur place, en un seul écran.
 // Pas d'appel IA à l'ouverture: le pourcentage vient du moteur de règles existant (match-score).
@@ -582,7 +583,7 @@ export default function FicheMarchePage() {
         {sections?.entreprises && <Details title="Entreprises concernées"><p className="whitespace-pre-line">{sections.entreprises}</p></Details>}
         {opp.description && <Details title={opp.journey === 'public_procurement' ? 'Extrait de l’avis officiel' : 'Texte de l’annonce'}><p className="whitespace-pre-line">{opp.description.slice(0, 1500)}</p></Details>}
         {/* 7 nov. : l'artisan peut signaler une erreur (date, lieu, annonce déjà attribuée) ; l'équipe corrige. */}
-        <Link to={`/question?q=${encodeURIComponent(`Signalement sur l’annonce ${opp.source_reference || opp.id} (${title}) : `)}`} className="text-[13px] text-[#B4C1D3] underline">Une information vous semble inexacte ? Signalez-la</Link>
+        <ReportListing opportunityId={opp.id} sessionId={sessionId} />
         {opp.official_url && /^https?:\/\//i.test(opp.official_url) && <a href={opp.official_url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-[#FB923C]">{jc.officialLink} ↗</a>}
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#22385A] bg-[#0F1F35] p-4">
           <div><h3 className="text-[15px] font-extrabold">Pas le temps maintenant ?</h3><p className="text-[13px] text-[#B4C1D3]">Enregistrez {jc.noun} sur ce téléphone pour le retrouver. Aucun numéro demandé, aucun appel.</p></div>
