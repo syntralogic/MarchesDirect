@@ -132,6 +132,7 @@ export default function FicheMarchePage() {
     return () => { live = false; };
   }, [id, sessionId]);
 
+  useEffect(() => { if (!opp) return; try { sessionStorage.setItem('md_fiches_vues', String(Number(sessionStorage.getItem('md_fiches_vues') || 0) + 1)); } catch { /* idem */ } }, [opp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (opp) trackVisitorEvent('offer_view', 'Fiche marché ouverte', undefined, { opportunityId: id, journey: opp.journey }); }, [opp, id]);
 
   // --- score from the real engine; re-run with the visitor's answers ---
@@ -355,13 +356,15 @@ export default function FicheMarchePage() {
   const hasScore = known && sc != null;
   useEffect(() => {
     if (!hasScore) return;
+    // 7 nov. : seulement à partir de la 3e fiche consultée dans la visite : un visiteur qui parcourt n'est pas sollicité.
+    let seen = 0; try { seen = Number(sessionStorage.getItem('md_fiches_vues') || 0); } catch { /* idem */ }
+    if (seen < 3) return;
     const t = window.setTimeout(openInvite, 40000);
     return () => window.clearTimeout(t);
   }, [hasScore, openInvite]);
   useEffect(() => {
-    if (!hasScore) return;
-    window.addEventListener('popstate', openInvite);
-    return () => window.removeEventListener('popstate', openInvite);
+    // 7 nov. : plus d'invitation au moment où le visiteur revient en arrière (il voulait partir, pas être retenu).
+    return;
   }, [hasScore, openInvite]);
   const closeInvite = () => { setInvite(false); trackVisitorEvent('invitation_30min_closed', 'Invitation fermée', undefined, { opportunityId: id }); };
 
@@ -432,17 +435,13 @@ export default function FicheMarchePage() {
         {consult && <p className="flex items-center gap-2 text-[14px] text-[#D6E0EC]"><span className="md-live-dot h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden />{consult}</p>}
       </section>
 
-      {!known && (<>
-        {companyForm()}
-        {formError && <p role="alert" className="text-[14px] text-[#FCA5A5]">{formError}</p>}
-        {candidates.length > 0 && (
-          <ul className="flex flex-col gap-2" aria-label="Entreprises trouvées">
-            <li className="text-[14px] text-[#B4C1D3]">Plusieurs entreprises correspondent. Choisissez la vôtre :</li>
-            {candidates.map(c => (
-              <li key={c.siret}><button type="button" onClick={() => pick(c)} className="min-h-[56px] w-full rounded-xl border border-[#2B4468] bg-[#12233A] px-3.5 py-2 text-left">
-                <b className="block text-[15px]">{c.name}</b><span className="text-[13px] text-[#B4C1D3]">{[c.postal, c.city].filter(Boolean).join(' ')} · SIRET {c.siret}</span></button></li>))}
-          </ul>)}
-      </>)}
+      {/* 7 nov. : parcourir d'abord. Le visiteur lit l'annonce et peut l'enregistrer tout de suite ; la correspondance
+          avec son entreprise est proposée après le détail, sans être exigée. */}
+      {!known && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={toggleSave} aria-pressed={saved} className="min-h-[44px] rounded-[14px] border border-[#2B4468] px-3.5 text-[14px] font-bold">{saved ? 'Enregistré ✓' : '☆ Enregistrer'}</button>
+          <a href="#ma-correspondance" className="flex min-h-[44px] items-center rounded-[14px] border border-[#2B4468] px-3.5 text-[14px] font-bold text-[#FB923C]">Voir si {jc.noun} me correspond ↓</a>
+        </div>)}
 
       {known && (
         <div className="flex flex-col gap-6">
@@ -581,8 +580,20 @@ export default function FicheMarchePage() {
         </div>
       </section>
 
+      {!known && (<div id="ma-correspondance" className="flex scroll-mt-20 flex-col gap-3">
+        {companyForm()}
+        {formError && <p role="alert" className="text-[14px] text-[#FCA5A5]">{formError}</p>}
+        {candidates.length > 0 && (
+          <ul className="flex flex-col gap-2" aria-label="Entreprises trouvées">
+            <li className="text-[14px] text-[#B4C1D3]">Plusieurs entreprises correspondent. Choisissez la vôtre :</li>
+            {candidates.map(c => (
+              <li key={c.siret}><button type="button" onClick={() => pick(c)} className="min-h-[56px] w-full rounded-xl border border-[#2B4468] bg-[#12233A] px-3.5 py-2 text-left">
+                <b className="block text-[15px]">{c.name}</b><span className="text-[13px] text-[#B4C1D3]">{[c.postal, c.city].filter(Boolean).join(' ')} · SIRET {c.siret}</span></button></li>))}
+          </ul>)}
+      </div>)}
+
       {/* Barre fixe (3.11) */}
-      {!isOver && !(known && mainVisible) && !fieldActive && !invite && (
+      {!isOver && known && !mainVisible && !fieldActive && !invite && (
         <div className="fixed inset-x-0 bottom-[64px] z-30 border-t border-[#22385A] bg-[#0A1628]/95 md:bottom-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
           <div className="mx-auto max-w-[560px]">
             {known
