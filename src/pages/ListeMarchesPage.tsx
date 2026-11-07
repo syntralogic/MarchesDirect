@@ -284,6 +284,7 @@ export default function ListeMarchesPage() {
   // Recherche sauvegardée : on garde les marchés vus pour compter ensuite les « nouveaux ».
   const searchKey = useMemo(() => { const p = new URLSearchParams(params); p.delete('source'); return p.toString(); }, [refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [savedSearch, setSavedSearch] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   useEffect(() => { setSavedSearch(searchIsSaved(searchKey)); }, [searchKey]);
   useEffect(() => { if (cards && cards.length && savedSearch) markViewed(searchKey, cards.map(c => c.id)); }, [cards, savedSearch, searchKey]);
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
@@ -400,9 +401,10 @@ export default function ListeMarchesPage() {
         {known && cards && !done && pending > 0 && <p className="text-[13px] text-[#FDBA74]" role="status">Calcul des pourcentages… {total - pending} / {total}</p>}
         {cards && cards.length > 0 && (savedSearch
           ? <p className="text-[13px] text-[#6EE7B7]">✓ Recherche sauvegardée · retrouvez les nouveaux marchés dans <Link to="/mon-espace?onglet=recherches" className="font-bold underline">Mon espace</Link></p>
-          : <button type="button" onClick={() => { saveSearch(title, searchKey, known, cards.map(c => c.id)); setSavedSearch(true); }}
+          : <button type="button" onClick={() => { setSavedSearch(true); setSaveMsg(null); void saveSearch(title, searchKey, known, cards.map(c => c.id)).then(msg => { if (msg) { setSavedSearch(false); setSaveMsg(msg); } }); }}
               className="mt-1 flex min-h-[44px] items-center gap-2 self-start rounded-full border border-[#2B4468] px-3.5 text-[13.5px] font-bold text-[#D6E0EC]">
               <span aria-hidden>☆</span> Sauvegarder cette recherche</button>)}
+        {saveMsg && <p role="alert" className="text-[13px] text-[#FCA5A5]">{saveMsg} <Link to="/mon-espace?onglet=recherches" className="font-bold underline">Mes recherches</Link></p>}
       </header>
 
       {status !== undefined && (known || q || dept || tradeId || refine.where === 'near') && (

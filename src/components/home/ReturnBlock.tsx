@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { opportunitiesApi } from '@/lib/apiClient';
-import { listSaved, currentIds, type SavedSearch } from '@/lib/savedSearches';
+import { listSaved, syncSaved, currentIds, type SavedSearch } from '@/lib/savedSearches';
 import { lastListPath, recentViewed } from '@/lib/lastList';
 import { getSessionId } from '@/lib/visitorTracking';
 
@@ -12,11 +12,13 @@ export default function ReturnBlock() {
   // 7 nov. : n = null quand la vérification a échoué (réseau), pour ne pas afficher à tort « rien de nouveau ».
   const [news, setNews] = useState<{ s: SavedSearch; n: number | null }[] | null>(null);
   const [recent, setRecent] = useState<{ id: string; title: string }[]>([]);
-  const saved = listSaved().slice(0, 3);
+  const [saved, setSaved] = useState<SavedSearch[]>(() => listSaved().slice(0, 3));
   const last = lastListPath();
   useEffect(() => {
     const sid = getSessionId();
-    Promise.all(saved.map(s => currentIds(s, sid).then(ids => ({ s, n: ids.filter(i => !s.seen.includes(i)).length })).catch(() => ({ s, n: null }))))
+    // 7 nov. : la liste serveur fait foi (même liste sur téléphone et ordinateur) ; la copie locale s'affiche en attendant.
+    syncSaved().then(r => { const l = (r ? r.list : listSaved()).slice(0, 3); setSaved(l);
+      return Promise.all(l.map(s => currentIds(s, sid).then(ids => ({ s, n: ids.filter(i => !s.seen.includes(i)).length })).catch(() => ({ s, n: null })))); })
       .then(setNews).catch(() => setNews([]));
     const ids = recentViewed(3);
     Promise.all(ids.map(id => opportunitiesApi.getById(id).then(o => ({ id, title: o.title })).catch(() => null)))
