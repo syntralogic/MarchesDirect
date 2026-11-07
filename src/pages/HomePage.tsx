@@ -11,6 +11,7 @@ import { CompanySearchForm, type CompanySearchHandle } from '@/components/home/C
 import { DEPARTMENTS } from '@/data/departments';
 import { ELENA, TEAM } from '@/data/homeContent';
 import { chantiersApi, opportunitiesApi } from '@/lib/apiClient';
+import ReturnBlock from '@/components/home/ReturnBlock';
 import { chantierLine, type Chantier, type ChantiersStats } from '@/lib/chantiers';
 import { GUIDE_CATALOG, PUBLISHED_GUIDES } from '@/content/guides/catalog';
 
@@ -367,6 +368,7 @@ export default function HomePage() {
               </div>
               <div hidden={mode !== 'company'}><CompanySearchForm ref={companyRef} /></div>
               {mode === 'simple' && <SimpleSearch />}
+              <ReturnBlock />
               <SavedBanner />
             </section>
             <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-center text-[13px] font-bold text-[#6EE7B7]">

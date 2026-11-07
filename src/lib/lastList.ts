@@ -35,3 +35,5 @@ export const takeScroll = (key: string): number | null => {
   try { const v = JSON.parse(ss()?.getItem(SCROLL) || 'null'); if (v && v.key === key && typeof v.y === 'number') { ss()?.removeItem(SCROLL); return v.y; } } catch { /* idem */ }
   return null;
 };
+/** Les dernières fiches ouvertes, la plus récente d'abord. */
+export const recentViewed = (n: number) => readArr(ls(), VIEWED).slice(-n).reverse();
