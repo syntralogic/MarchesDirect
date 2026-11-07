@@ -27,7 +27,7 @@ const LOCAL: Record<string, string[]> = {
 };
 // Guides réellement publiés (les autres sont prévus mais pas encore rédigés et vérifiés) : seuls ceux-ci reçoivent un lien.
 // À compléter à chaque publication — un test vérifie que chacun existe dans src/content/guides/index.ts.
-export const PUBLISHED_GUIDES = new Set<string>(['memoire-technique']);
+export const PUBLISHED_GUIDES = new Set<string>(['memoire-technique', 'repondre-marche-public-artisan', 'trouver-appels-offres', 'lire-avis-dce', 'dc1-dc2-dume', 'pieces-attributaire', 'seuils-marches-publics', 'procedure-adaptee-mapa', 'criteres-attribution', 'avance-marche-public', 'delais-paiement-marches-publics', 'retenue-de-garantie', 'revision-des-prix', 'sous-traitance-dc4-paiement-direct', 'groupement-entreprises']);
 
 export const localGuides = (journey: string): GuideRef[] => {
   const wanted = (LOCAL[journey] || LOCAL.public_procurement).filter(s => PUBLISHED_GUIDES.has(s));
