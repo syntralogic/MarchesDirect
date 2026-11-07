@@ -1,3 +1,4 @@
+import { rememberList } from '@/lib/lastList';
 // Écran 2 de la refonte (maquette v26): « Vos marchés », la liste classée. Pourcentages par les règles du moteur existant
 // (match-score), jamais par l'IA ; les cartes apparaissent tout de suite, les pourcentages se remplissent ensuite.
 import ActivityDot from '@/components/ActivityDot';
@@ -87,6 +88,7 @@ export default function ListeMarchesPage() {
   const [params, setParams] = useSearchParams();
   const sessionId = useMemo(() => getSessionId(), []);
   const zoneParam = params.get('zone') || undefined;
+  useEffect(() => { rememberList(`/vos-marches${params.toString() ? `?${params}` : ''}`); }, [params]);
   const tradeId = params.get('trade_id') || undefined;
   const q = params.get('q') || undefined; // recherche simple par métier (mots-clés)
   const dept = params.get('department') || undefined;

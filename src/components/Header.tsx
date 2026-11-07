@@ -1,3 +1,4 @@
+import { lastListPath } from '@/lib/lastList';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, User } from 'lucide-react';
@@ -57,7 +58,7 @@ export function Header() {
             {NAV_LINKS.map(link => (
               <Link
                 key={link.href}
-                to={link.href}
+                to={link.href === '/vos-marches' ? lastListPath() : link.href}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors ${
                   isActive(link.href) ? 'bg-[#F97316]/10 text-[#FB923C]' : 'text-[#D6E0EC] hover:bg-white/5 hover:text-white'
                 }`}
@@ -103,7 +104,7 @@ export function Header() {
             {NAV_LINKS.map(link => (
               <Link
                 key={link.href}
-                to={link.href}
+                to={link.href === '/vos-marches' ? lastListPath() : link.href}
                 onClick={() => setMenuOpen(false)}
                 className={`flex items-center rounded-xl px-4 py-3 text-[16px] font-semibold ${
                   isActive(link.href) ? 'bg-[#F97316]/10 text-[#FB923C]' : 'text-[#D6E0EC]'

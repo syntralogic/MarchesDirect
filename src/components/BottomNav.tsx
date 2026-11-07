@@ -1,3 +1,4 @@
+import { lastListPath } from '@/lib/lastList';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, MessageCircle, User } from 'lucide-react';
 
@@ -23,7 +24,7 @@ export function BottomNav() {
         {NAV_ITEMS.map(item => {
           const active = isActive(item.href);
           return (
-            <Link key={item.href} to={item.href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group">
+            <Link key={item.href} to={item.href === '/vos-marches' ? lastListPath() : item.href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative group">
               {active && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#F97316] rounded-full" />
               )}

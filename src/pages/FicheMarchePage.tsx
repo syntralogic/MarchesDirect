@@ -1,3 +1,4 @@
+import { lastListPath } from '@/lib/lastList';
 // Écran 3 de la refonte (maquette v26): fiche marché + analyse sur place, en un seul écran.
 // Pas d'appel IA à l'ouverture: le pourcentage vient du moteur de règles existant (match-score).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -364,7 +365,7 @@ export default function FicheMarchePage() {
   }, [hasScore, openInvite]);
   const closeInvite = () => { setInvite(false); trackVisitorEvent('invitation_30min_closed', 'Invitation fermée', undefined, { opportunityId: id }); };
 
-  if (loadError) return <main className="mx-auto max-w-[560px] px-4 py-16 text-center text-[#F2F5F9]"><p>Ce marché n’est plus disponible.</p><Link to="/vos-marches" className="mt-4 inline-block text-[#FB923C] underline">‹ Voir les marchés</Link></main>;
+  if (loadError) return <main className="mx-auto max-w-[560px] px-4 py-16 text-center text-[#F2F5F9]"><p>Ce marché n’est plus disponible.</p><Link to={lastListPath()} className="mt-4 inline-block text-[#FB923C] underline">‹ Voir les marchés</Link></main>;
   if (!opp) return <main className="mx-auto max-w-[560px] px-4 py-10" aria-busy="true"><div className="h-8 w-2/3 animate-pulse rounded bg-[#12233A]" /><div className="mt-6 h-40 animate-pulse rounded-2xl bg-[#12233A]" /></main>;
 
   const tone = sc != null ? scoreTone(sc) : 'mid';
@@ -410,7 +411,7 @@ export default function FicheMarchePage() {
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-32 pt-3 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
       <nav aria-label="Étapes" className="flex flex-col gap-3">
-        <Link to="/vos-marches" className="flex min-h-[44px] items-center gap-1.5 text-[15px] text-[#B4C1D3]">‹ Vos marchés</Link>
+        <Link to={lastListPath()} className="flex min-h-[44px] items-center gap-1.5 text-[15px] text-[#B4C1D3]">‹ Vos marchés</Link>
         <ol className="flex text-center text-[13px]">
           {['Vos marchés', 'Mon analyse', 'Mon dossier'].map((s, i) => (
             <li key={s} className={`flex flex-1 flex-col items-center gap-1.5 ${i === 1 ? 'font-bold text-[#FB923C]' : i === 0 ? 'text-[#6EE7B7]' : 'text-[#B4C1D3]'}`} aria-current={i === 1 ? 'step' : undefined}>

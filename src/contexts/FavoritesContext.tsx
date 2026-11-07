@@ -11,6 +11,21 @@ interface FavoritesContextType {
   loading: boolean;
 }
 
+// 7 nov. (revue externe) : sans consentement de mesure d'audience, l'identifiant de session ne vit que le temps de la
+// page : un favori enregistré disparaissait au rechargement alors que l'accueil l'affichait (liste du téléphone).
+// Un favori est une fonction demandée par le visiteur : il est donc gardé sur le téléphone et fusionné avec le serveur.
+const LOCAL_KEY = 'md_saved_markets';
+function localIds(): string[] {
+  try { return (JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]') as { id?: string }[]).map(x => x?.id).filter((x): x is string => typeof x === 'string'); } catch { return []; }
+}
+function setLocal(id: string, on: boolean) {
+  try {
+    const list = (JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]') as { id: string }[]).filter(x => x && x.id !== id);
+    if (on) list.push({ id });
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+  } catch { /* stockage indisponible */ }
+}
+
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
@@ -27,8 +42,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
     if (isAuthenticated) {
       setLoading(true);
-      const afterAuth = () =>
-        favoritesApi.ids()
+      // Favoris gardés sur le téléphone avant la connexion : rattachés au compte.
+      const afterAuth = () => Promise.all(localIds().map(id => favoritesApi.save(id).catch(() => {})))
+        .then(() => { try { localStorage.removeItem(LOCAL_KEY); } catch { /* idem */ } }).then(() =>
+        favoritesApi.ids())
           .then((ids) => { if (!cancelled) setSavedIds(new Set(ids)); })
           .catch(() => {
             // Non-fatal: the bookmark toggle just won't show as pre-saved until
@@ -54,8 +71,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     // Anonymous visitor: load this browser session's own saves.
     attachedRef.current = false;
     setLoading(true);
+    setSavedIds(new Set(localIds()));
     favoritesApi.sessionIds(getSessionId())
-      .then((ids) => { if (!cancelled) setSavedIds(new Set(ids)); })
+      .then((ids) => { if (!cancelled) setSavedIds(new Set([...localIds(), ...ids])); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -80,9 +98,11 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           if (wasSaved) await favoritesApi.remove(opportunityId);
           else await favoritesApi.save(opportunityId);
         } else {
+          setLocal(opportunityId, !wasSaved);
           const sessionId = getSessionId();
-          if (wasSaved) await favoritesApi.sessionRemove(opportunityId, sessionId);
-          else await favoritesApi.sessionSave(opportunityId, sessionId);
+          // Le téléphone garde le favori : un échec côté serveur ne l'annule pas.
+          if (wasSaved) await favoritesApi.sessionRemove(opportunityId, sessionId).catch(() => {});
+          else await favoritesApi.sessionSave(opportunityId, sessionId).catch(() => {});
         }
         // Client's brief: the Save icon stays a Save icon - a plain
         // confirmation, never a form or a login prompt.
