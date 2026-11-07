@@ -13,6 +13,7 @@ import { ELENA } from '@/data/homeContent';
 const NAV_LINKS = [
   { label: 'Accueil', href: '/' },
   { label: 'Vos marchés', href: '/vos-marches' },
+  { label: 'Chantiers', href: '/chantiers-a-venir' },
   { label: 'Comment ça marche', href: '/#mdh-etapes' },
   { label: 'Conseils', href: '/guides' },
   { label: 'Qui sommes-nous ?', href: '/a-propos' },
