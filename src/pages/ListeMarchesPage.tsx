@@ -18,6 +18,7 @@ import { formatDeadlineExact } from '@/lib/deadlineFormat';
 import { listSaved, isSaved as searchIsSaved, saveSearch, markViewed } from '@/lib/savedSearches';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
+import { deptsLabel } from '@/data/zones';
 import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, journeySet, toggleJourney, type Journey, type JourneyKey } from '@/components/liste/RefinePanel';
 import {
   TYPE_LABEL, applyFilter, counts, daysLeft, isClosingSoon, labelOf, mapLimit, rank, titleFor, toneOf, topScores,
@@ -195,7 +196,7 @@ export default function ListeMarchesPage() {
         setRankedByJourney(r.byJourney || null);
         const home = (r as { homeDepartment?: string | null }).homeDepartment || null;
         setHomeDept(home); setRankedZone(r.zone);
-        setZoneLabel(r.zone === 'france' ? (home ? `Toute la France · le ${home} en premier` : 'Toute la France') : `Département ${r.zone}`);
+        setZoneLabel(r.zone === 'france' ? (home ? `Toute la France · le ${home} en premier` : 'Toute la France') : deptsLabel(r.zone));
         if (home) chantiersApi.stats().then(st => setWorks(st.departments.find(d => d.code === home)?.count ?? 0)).catch(() => setWorks(null));
         setTradeUnknown(r.reason === 'trade_unknown');
         setCards(r.items); setRankedTotal(typeof r.total === 'number' ? r.total : null); writeCards(cacheKey, r.items);
@@ -207,11 +208,11 @@ export default function ListeMarchesPage() {
       } else if (tradeId || q || dept || refine.where === 'near') {
         const r = await opportunitiesApi.search(searchParamsFor(q, refine, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 40 }));
         if (stop()) return;
-        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
+        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? deptsLabel(dept) : 'Toute la France');
         setSearchTotal(r.pagination?.total ?? r.results.length);
         const mapped = r.results.map(toCard);
         setCards(mapped); writeCards(cacheKey, mapped);
-        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? `Département ${dept}` : 'Toute la France');
+        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? deptsLabel(dept) : 'Toute la France');
         // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
         const totals = await Promise.all(journeys.map(j => opportunitiesApi.search(searchParamsFor(q, { ...refine, journey: j }, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 1 })).then(x => x.pagination?.total ?? 0).catch(() => 0)));

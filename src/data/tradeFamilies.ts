@@ -83,6 +83,9 @@ export const TRADE_FAMILIES: TradeFamily[] = [
     { label: 'Rénovation tous corps d’état', focus: 'renovation' }, { label: 'Réhabilitation', focus: 'rehabilitation' }, { label: 'Construction neuve', focus: 'construction' }] },
 ];
 
+/** Libellé d'une famille à partir du mot envoyé au serveur (« platrerie » → « Plâtrerie »). */
+export const familyLabel = (q: string): string => TRADE_FAMILIES.find(f => f.q === q.trim().toLowerCase())?.label || (q.charAt(0).toUpperCase() + q.slice(1));
+
 export const foldFr = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’'`]/g, ' ').replace(/\s+/g, ' ').trim();
 
 export interface MetierSuggestion { label: string; q: string; focus?: string; family: string }
