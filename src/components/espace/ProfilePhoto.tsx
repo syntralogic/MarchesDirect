@@ -6,6 +6,40 @@ import { prepareAvatar } from '@/lib/prepareAvatar';
 import { saveLocalAvatar } from '@/lib/localAvatar';
 import ProfileAvatar, { useProfilePhotoUrl } from '@/components/ProfileAvatar';
 
+// 8 nov. (Hedi) : la photo s'affiche en haut de Mon espace, à côté du « Bonjour / Bonsoir ». Variante compacte : la
+// photo (ou la silhouette) avec un petit bouton appareil photo pour l'ajouter ou la changer.
+export function ProfilePhotoCompact() {
+  const { isAuthenticated, loading, refreshProfile } = useAuth();
+  const photo = useProfilePhotoUrl();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function choose(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || busy) return;
+    setBusy(true); setError(null);
+    try {
+      const prepared = await prepareAvatar(file);
+      if (isAuthenticated) { await uploadsApi.uploadAvatar(prepared.file); await refreshProfile(); }
+      else saveLocalAvatar(prepared.dataUrl);
+    } catch (err) {
+      setError(err instanceof Error && !('isAxiosError' in err) ? err.message : 'La photo n’a pas pu être enregistrée.');
+    } finally { setBusy(false); }
+  }
+  return (
+    <div className="relative shrink-0">
+      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} aria-label="Choisir ma photo" className="sr-only" tabIndex={-1} disabled={busy || loading} />
+      <button type="button" onClick={() => input.current?.click()} disabled={busy || loading} aria-label={photo ? 'Modifier ma photo' : 'Ajouter ma photo'}
+        className={`relative flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-full border-2 ${photo ? 'border-[#FB923C]' : 'border-dashed border-[#3B5A86]'} bg-[#1E3352] text-[#B4C1D3] ${busy ? 'opacity-60' : ''}`}>
+        <ProfileAvatar size={60} />
+      </button>
+      <span aria-hidden className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0A1628] bg-[#F97316] text-white"><Camera size={13} /></span>
+      {error && <p role="alert" className="absolute left-0 top-[70px] w-[220px] text-[12px] text-[#FCA5A5]">{error}</p>}
+    </div>
+  );
+}
+
 export default function ProfilePhoto() {
   const { isAuthenticated, loading, refreshProfile } = useAuth();
   const photo = useProfilePhotoUrl();
