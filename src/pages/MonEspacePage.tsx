@@ -30,7 +30,7 @@ function Skeleton() {
 export default function MonEspacePage() {
   const sessionId = useMemo(() => getSessionId(), []);
   const { isAuthenticated, company, user } = useAuth();
-  const { savedIds, loading: favLoading } = useFavorites();
+  const { savedIds, loading: favLoading, toggle: toggleFav } = useFavorites();
   const [params, setParams] = useSearchParams();
   // 8 nov. (Hedi) : « Documents » retiré (les pièces sont envoyées une fois à la souscription, pas stockées sur le
   // site) ; « Messages » ouvre l'espace : le fil de tout ce qui concerne l'artisan. Ancien lien ?onglet=documents → Messages.
@@ -178,8 +178,13 @@ export default function MonEspacePage() {
         {/* 7 nov. (Hedi) : simple : la liste des annonces enregistrées, une note facultative. Rien d'autre. */}
         {favs.map(o => { const m = metaOf(o.id); return (
         <div key={o.id} className={`${card} border-[#22385A]`}>
-          <Link to={`/opportunites/${o.id}`} className="block"><b className="text-[14.5px] leading-tight">{o.title}</b>
-            <small className="block text-[12px] text-[#B4C1D3]">{[o.buyer_name, o.location_city, o.deadline ? `remise le ${new Date(o.deadline as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ')}</small></Link>
+          <div className="flex items-start gap-2">
+            <Link to={`/opportunites/${o.id}`} className="block min-w-0 flex-1"><b className="text-[14.5px] leading-tight">{o.title}</b>
+              <small className="block text-[12px] text-[#B4C1D3]">{[o.buyer_name, o.location_city, o.deadline ? `remise le ${new Date(o.deadline as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null].filter(Boolean).join(' · ')}</small></Link>
+            {/* 8 nov. : retirer une annonce enregistrée directement d'ici (l'étoile pleine, comme sur la liste). */}
+            <button type="button" onClick={() => { void toggleFav(o.id); setFavs(f => (f ? f.filter(x => x.id !== o.id) : f)); }} aria-label="Retirer des enregistrés"
+              className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center text-[20px] text-[#FB923C]" title="Retirer des enregistrés">★</button>
+          </div>
           <input defaultValue={m.note} onBlur={e => setMeta(o.id, { note: e.target.value })} maxLength={200} placeholder="Ajouter une note (facultatif)" aria-label="Note personnelle"
             className="mt-2 h-[40px] w-full rounded-lg border border-[#2B4468] bg-[#0A1628] px-2 text-[13.5px] text-[#F2F5F9] placeholder:text-[#6B7A90]" />
           <HelpOptions compact reference={o.source_reference || o.id.slice(0, 8)} title={o.title} />
