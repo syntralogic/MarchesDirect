@@ -49,7 +49,7 @@ export function MarketPulse({ fil }: { fil: EspaceFil }) {
         <span className="md-live-dot h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden /> Le marché en direct
       </p>
       <p className="mt-1.5 text-[17px] font-extrabold leading-snug text-white">
-        En moyenne, <span className="text-[#FB923C]">{p.rate} entreprise{p.rate > 1 ? 's' : ''} comme la vôtre</span> décroche{p.rate > 1 ? 'nt' : ''} un marché public {perTxt}.
+        En moyenne, <span className="text-[#FB923C]">{p.rate} entreprise{p.rate > 1 ? 's' : ''} {p.scope === 'trade' ? 'de votre métier' : 'comme la vôtre'}</span> décroche{p.rate > 1 ? 'nt' : ''} un marché public {perTxt}.
       </p>
       <p className="mt-1 text-[12.5px] text-[#C9B8C4]">{p.activity} · {p.zoneLabel} : {p.yearCount.toLocaleString('fr-FR')} marchés attribués sur les 12 derniers mois (données publiques des marchés notifiés).</p>
       {p.recent && <p className="mt-2 rounded-xl bg-[#0A1628]/60 p-2.5 text-[13px] text-[#E5D9E2]"><b className="capitalize">{p.recent.day}</b> : {p.recent.buyer || 'un acheteur public'} a attribué « {p.recent.objet} » à {p.recent.pme ? 'une PME' : 'une entreprise'}{p.recent.dept ? ` (${p.recent.dept})` : ''}.</p>}
