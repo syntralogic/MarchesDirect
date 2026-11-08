@@ -165,7 +165,15 @@ function TestimonialsSection() {
   // only plays when its own thumbnail is tapped ("Non du tout - tu as une
   // flèche pour aller à la miniature suivante"). Adding a clip = one more entry
   // in this array (+ its .mp4 and .jpeg in public/testimonials).
+  // 8 nov. : 4 nouveaux témoignages (Julien, Nadine, Camille, Lucas). Ordre choisi pour donner envie dès la
+  // première vignette : le menuisier d'abord (demande du client), puis les résultats les plus concrets.
   const slides = [
+    {
+      title: 'Julien — menuisier, tout un lotissement pour un promoteur.',
+      image: '/testimonials/temoignage-julien.jpeg',
+      alt: 'Témoignage client : Julien, artisan menuisier, la menuiserie d’un lotissement d’une dizaine de maisons',
+      videoUrl: '/testimonials/temoignage-julien.mp4',
+    },
     {
       title: '10 mois de planning rempli — Bordeaux Élec.',
       image: '/testimonials/temoignage-didier-bourdon.jpeg',
@@ -173,10 +181,28 @@ function TestimonialsSection() {
       videoUrl: '/testimonials/temoignage-didier-bourdon.mp4',
     },
     {
+      title: 'Nadine — nettoyage, un contrat public de plus de 4 ans.',
+      image: '/testimonials/temoignage-nadine.jpeg',
+      alt: 'Témoignage client : Nadine, gérante d’une PME de nettoyage, un contrat public de plus de quatre ans',
+      videoUrl: '/testimonials/temoignage-nadine.mp4',
+    },
+    {
+      title: 'Lucas — paysagiste, 21 ans, un travail plus régulier.',
+      image: '/testimonials/temoignage-lucas.jpeg',
+      alt: 'Témoignage client : Lucas, paysagiste auto-entrepreneur de 21 ans',
+      videoUrl: '/testimonials/temoignage-lucas.mp4',
+    },
+    {
       title: 'Nico — gérant, chauffage & climatisation.',
       image: '/testimonials/temoignage-nico.jpeg',
       alt: 'Témoignage client : Nico, gérant dans le chauffage et la climatisation',
       videoUrl: '/testimonials/temoignage-nico.mp4',
+    },
+    {
+      title: 'Camille — ABE Rénov, toute une équipe derrière nous.',
+      image: '/testimonials/temoignage-camille.jpeg',
+      alt: 'Témoignage client : Camille, assistante de direction chez ABE Rénov',
+      videoUrl: '/testimonials/temoignage-camille.mp4',
     },
   ];
   const [i, setI] = useState(0);
@@ -225,9 +251,13 @@ function TestimonialsSection() {
           )}
         </div>
         {slides.length > 1 && (
-          <p className="text-[11px] text-[#B9BBC8] text-center mt-2">
-            Témoignage {i + 1} sur {slides.length}
-          </p>
+          <div className="flex items-center justify-center gap-1.5 mt-2.5" role="tablist" aria-label="Choisir un témoignage">
+            {slides.map((s, k) => (
+              <button key={s.videoUrl} onClick={() => setI(k)} role="tab" aria-selected={k === i}
+                aria-label={`Témoignage ${k + 1} sur ${slides.length} : ${s.title}`}
+                className={`h-1.5 rounded-full transition-all ${k === i ? 'w-5 bg-orange' : 'w-1.5 bg-[#2A4560] hover:bg-[#B9BBC8]'}`} />
+            ))}
+          </div>
         )}
       </div>
 
