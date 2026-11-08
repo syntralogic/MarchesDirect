@@ -20,7 +20,7 @@ function report(error: unknown, componentStack?: string | null) {
   try {
     const e = error instanceof Error ? error : new Error(String(error));
     const key = `${e.message}|${location.pathname}`; if (reported.has(key)) return; reported.add(key);
-    fetch(`${API}/client-errors`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+    fetch(`${API}/api/client-errors`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: location.pathname, message: e.message, stack: e.stack || null, componentStack: componentStack || null,
         build: (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined)?.slice(0, 12) || null }) }).catch(() => {});
   } catch { /* jamais bloquant */ }
