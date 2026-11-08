@@ -12,13 +12,13 @@ import { DEPARTMENTS } from '@/data/departments';
 import { ELENA, TEAM } from '@/data/homeContent';
 import { chantiersApi, opportunitiesApi } from '@/lib/apiClient';
 import ReturnBlock from '@/components/home/ReturnBlock';
+import SavedMarketsBanner from '@/components/home/SavedMarketsBanner';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
 import type { MetierSuggestion } from '@/data/tradeFamilies';
 import { chantierLine, type Chantier, type ChantiersStats } from '@/lib/chantiers';
 import { GUIDE_CATALOG, PUBLISHED_GUIDES } from '@/content/guides/catalog';
 
 const GeographicSection = lazy(() => import('@/components/home/GeographicSection'));
-const SAVED_KEY = 'md_saved_markets';
 // Champ clair sur carte sombre : le moteur doit ressortir du fond bleu nuit.
 export const FIELD = 'h-[54px] w-full rounded-xl border-2 border-[#C9D6E8] bg-white px-3.5 text-[16px] text-[#0A1628]';
 export const BTN = 'min-h-[56px] w-full rounded-[14px] bg-[#C2410C] px-4 py-2 text-[17px] font-extrabold text-white shadow-[0_6px_20px_rgba(194,65,12,.35)] disabled:opacity-70';
@@ -123,43 +123,6 @@ function OpenCounter() {
           <b className={`block text-[26px] leading-none ${t.hot ? 'text-[#FDBA74]' : 'text-white'}`}>{t.big}</b>
           <span className="mt-1.5 block text-[13px] leading-snug text-[#B4C1D3]">{t.small}</span>
         </div>))}
-    </div>
-  );
-}
-
-// 1.6 : lecture de localStorage uniquement, aucun appel réseau tant que le visiteur ne déplie pas la liste.
-function SavedBanner() {
-  const [ids, setIds] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
-  const [titles, setTitles] = useState<Record<string, string>>({});
-  useEffect(() => {
-    try {
-      const list = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]') as { id?: string }[];
-      setIds(list.map(s => s?.id).filter((x): x is string => typeof x === 'string'));
-    } catch { setIds([]); }
-  }, []);
-  useEffect(() => {
-    if (!open) return;
-    ids.slice(0, 10).forEach(id => {
-      opportunitiesApi.getById(id).then(o => setTitles(t => ({ ...t, [id]: o.title }))).catch(() => {});
-    });
-  }, [open, ids]);
-  if (ids.length === 0) return null;
-  return (
-    <div className="rounded-xl bg-[#123B2A] px-3.5 py-3 text-[15px] text-[#6EE7B7]">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-semibold">{ids.length === 1 ? '1 marché enregistré' : `${ids.length} marchés enregistrés`} sur ce téléphone</span>
-        {ids.length === 1
-          ? <Link to={`/opportunites/${ids[0]}`} className="flex min-h-[48px] items-center font-bold underline">Le retrouver</Link>
-          : <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="flex min-h-[48px] items-center font-bold underline">{open ? 'Masquer' : 'Les retrouver'}</button>}
-      </div>
-      {open && (
-        <ul className="mt-1 flex flex-col gap-1">
-          {ids.slice(0, 10).map(id => (
-            <li key={id}><Link to={`/opportunites/${id}`} className="flex min-h-[48px] items-center underline">{titles[id] || 'Marché enregistré'}</Link></li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }
@@ -374,7 +337,7 @@ export default function HomePage() {
               <div hidden={mode !== 'company'}><CompanySearchForm ref={companyRef} /></div>
               {mode === 'simple' && <SimpleSearch />}
               <ReturnBlock />
-              <SavedBanner />
+              <SavedMarketsBanner />
             </section>
             <p className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-center text-[13px] font-bold text-[#6EE7B7]">
               <span>✓ Gratuit</span><span>✓ Réservé aux entreprises</span><span>✓ Réponse immédiate</span>
@@ -497,3 +460,4 @@ export default function HomePage() {
     </div>
   );
 }
+

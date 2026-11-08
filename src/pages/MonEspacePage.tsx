@@ -2,7 +2,7 @@ import HelpOptions from '@/components/fiche/HelpOptions';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { metaOf, setMeta } from '@/lib/favMeta';
-import { suiviApi, favoritesApi, opportunitiesApi, siretApi, type SuiviDossier, type ApiOpportunity } from '@/lib/apiClient';
+import { suiviApi, opportunitiesApi, siretApi, type SuiviDossier, type ApiOpportunity } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -31,6 +31,8 @@ export default function MonEspacePage() {
   const tab = params.get('onglet') === 'favoris' ? 'favoris' : params.get('onglet') === 'documents' ? 'documents' : params.get('onglet') === 'recherches' ? 'recherches' : 'dossiers';
   const [dossiers, setDossiers] = useState<SuiviDossier[] | null>(null);
   const [favs, setFavs] = useState<ApiOpportunity[] | null>(null);
+  const [favError, setFavError] = useState(false);
+  const [favRetry, setFavRetry] = useState(0);
   const [name, setName] = useState<string | null>(null);
 
   useEffect(() => { suiviApi.list(sessionId).then(setDossiers).catch(() => setDossiers([])); }, [sessionId]);
@@ -38,11 +40,16 @@ export default function MonEspacePage() {
   useEffect(() => {
     let live = true;
     // 7 nov. : tant que les favoris se chargent, on n'affiche pas « aucun favori » (il apparaissait une seconde).
-    if (favLoading) { setFavs(null); return () => { live = false; }; }
-    (isAuthenticated ? favoritesApi.list() : opportunitiesApi.getMany([...savedIds]))
-      .then(r => { if (live) setFavs(r); }).catch(() => { if (live) setFavs([]); });
+    setFavError(false);
+    setFavs(null);
+    if (favLoading) return () => { live = false; };
+    // Include local saves that could not yet be attached to the account.
+    // A network/server error must never turn a saved selection into "zero".
+    opportunitiesApi.getMany([...savedIds])
+      .then(r => { if (live) setFavs(r); })
+      .catch(() => { if (live) setFavError(true); });
     return () => { live = false; };
-  }, [isAuthenticated, savedIds, favLoading]);
+  }, [savedIds, favLoading, favRetry]);
 
   const who = (isAuthenticated ? company?.name : name) || null;
   const actions = (dossiers || []).filter(d => d.steps.some(s => s.state === 'action')).length;
@@ -58,7 +65,7 @@ export default function MonEspacePage() {
       </div>
 
       <div className="flex gap-1.5" role="tablist">
-        {([['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Enregistrés${favs ? ' · ' + favs.length : ''}`], ['recherches', 'Mes suivis'], ['documents', 'Documents']] as const).map(([k, l]) => (
+        {([['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Enregistrés${!favLoading || savedIds.size ? ' · ' + savedIds.size : ''}`], ['recherches', 'Mes suivis'], ['documents', 'Documents']] as const).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} onClick={() => setParams(k === 'dossiers' ? {} : { onglet: k })}
             className={`min-h-[44px] flex-1 rounded-[10px] border px-1 text-[12.5px] font-bold ${tab === k ? 'border-[#3B5A86] bg-[#1E3352] text-white' : 'border-[#2B4468] text-[#B4C1D3]'}`}>{l}</button>))}
       </div>
@@ -79,9 +86,17 @@ export default function MonEspacePage() {
           </Link>);
       }))}
 
-      {tab === 'favoris' && (favs == null ? <Skeleton /> : favs.length === 0 ? (
+      {tab === 'favoris' && (favError ? (
+        <div role="alert" className={`${card} border-[#B45309] text-[14px] text-[#D6E0EC]`}>
+          Vos annonces enregistrées n’ont pas pu être chargées. Réessayez dans un instant.
+          <button type="button" onClick={() => setFavRetry(n => n + 1)} className="mt-2 flex min-h-[44px] items-center font-bold text-[#FB923C] underline">Réessayer</button>
+        </div>
+      ) : favs == null ? <Skeleton /> : savedIds.size === 0 ? (
         <div className={`${card} border-[#22385A] text-[14px] text-[#D6E0EC]`}>Aucun favori. Touchez l’étoile ☆ sur une annonce pour la retrouver ici.</div>
       ) : <>
+        {favs.length < savedIds.size && <p role="status" className="text-[14px] text-[#B4C1D3]">
+          {savedIds.size - favs.length} annonce{savedIds.size - favs.length > 1 ? 's enregistrées ne sont plus accessibles' : ' enregistrée n’est plus accessible'}. Vos autres favoris restent disponibles ci-dessous.
+        </p>}
         {/* 7 nov. (Hedi) : simple : la liste des annonces enregistrées, une note facultative. Rien d'autre. */}
         {favs.map(o => { const m = metaOf(o.id); return (
         <div key={o.id} className={`${card} border-[#22385A]`}>
@@ -112,3 +127,4 @@ export default function MonEspacePage() {
     </main>
   );
 }
+

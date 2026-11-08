@@ -465,12 +465,15 @@ export const opportunitiesApi = {
     const { data } = await apiClient.get<ApiOpportunityDetail>(`/opportunities/${id}`);
     return data;
   },
-  // 7 nov. : plusieurs annonces en une requête (favoris sans compte), dans l'ordre demandé. 200 max.
+  // Fetch every saved ID, in batches bounded by the server's 100-result limit.
   getMany: async (ids: string[]): Promise<ApiOpportunity[]> => {
-    const want = ids.slice(0, 200);
+    const want = [...new Set(ids)];
     if (!want.length) return [];
-    const { data } = await apiClient.get<{ results: ApiOpportunity[] }>('/opportunities', { params: { ids: want.join(','), limit: 200, loc: '2', status: 'all' } });
-    const by = new Map(data.results.map(o => [o.id, o]));
+    const by = new Map<string, ApiOpportunity>();
+    for (let start = 0; start < want.length; start += 100) {
+      const { data } = await apiClient.get<{ results: ApiOpportunity[] }>('/opportunities', { params: { ids: want.slice(start, start + 100).join(','), limit: 100, loc: '2', status: 'all' } });
+      for (const row of data.results) by.set(row.id, row);
+    }
     return want.map(id => by.get(id)).filter((o): o is ApiOpportunity => !!o);
   },
   // Graduated access for private tender / sous-traitance fiches: level1
@@ -1948,3 +1951,4 @@ export const chantiersApi = {
   stats: async (): Promise<import('./chantiers').ChantiersStats> => (await apiClient.get('/chantiers/stats')).data,
   fiche: async (id: string): Promise<import('./chantiers').ChantierFiche> => (await apiClient.get(`/chantiers/${encodeURIComponent(id)}`)).data,
 };
+
