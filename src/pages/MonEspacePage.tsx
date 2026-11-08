@@ -2,7 +2,7 @@ import HelpOptions from '@/components/fiche/HelpOptions';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { metaOf, setMeta } from '@/lib/favMeta';
-import { suiviApi, opportunitiesApi, siretApi, espaceApi, type SuiviDossier, type ApiOpportunity, type EspaceFil } from '@/lib/apiClient';
+import { API_URL, suiviApi, opportunitiesApi, siretApi, espaceApi, type SuiviDossier, type ApiOpportunity, type EspaceFil } from '@/lib/apiClient';
 import { getSessionId } from '@/lib/visitorTracking';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/contexts/FavoritesContext';
@@ -65,7 +65,12 @@ export default function MonEspacePage() {
   useEffect(() => {
     if (favLoading) return;
     let live = true; setFilError(false);
-    espaceApi.fil(sessionId, [...savedIds]).then(r => { if (live) setFil(r); }).catch(() => { if (live) setFilError(true); });
+    espaceApi.fil(sessionId, [...savedIds]).then(r => { if (live) setFil(r); }).catch((e: any) => {
+      if (live) setFilError(true);
+      // 8 nov. : l'échec du fil est relevé (code et réponse du serveur) pour être corrigé, sans donnée personnelle.
+      try { fetch(`${API_URL}/api/client-errors`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: '/mon-espace#fil', message: `fil ${e?.response?.status || 'réseau'} ${e?.code || ''} ${JSON.stringify(e?.response?.data || '').slice(0, 300)}`.trim() }) }).catch(() => {}); } catch { /* jamais bloquant */ }
+    });
     return () => { live = false; };
   }, [sessionId, savedIds, favLoading, filRetry, isAuthenticated]);
   const { url: photoUrl } = useProfilePhoto();
