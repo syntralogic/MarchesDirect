@@ -18,7 +18,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face{font-family:P;font-weight:400;src:${font('Regular')}}@font-face{font-family:P;font-weight:500;src:${font('Medium')}}
 @font-face{font-family:P;font-weight:700;src:${font('Bold')}}@font-face{font-family:P;font-weight:800;src:${font('Bold')}}
 *{margin:0;box-sizing:border-box}body{width:840px;height:1050px;overflow:hidden;font-family:P;background:#071A2E}
-.bg{position:absolute;inset:0;background:url(file://${frame}) center 30%/cover}
+.bg{position:absolute;inset:0;background:url(file://${frame}) center ${o.pos || "30%"}/cover}
 .fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,26,46,0) 48%,rgba(7,26,46,.72) 66%,#071A2E 82%)}
 .logo{position:absolute;left:38px;top:38px;background:#2A3346;border-radius:14px;padding:13px 24px;font-weight:800;font-size:37px;color:#fff;letter-spacing:-.5px}
 .logo b{color:#FF6B12;font-weight:800}
