@@ -92,11 +92,18 @@ export default function MonEspacePage() {
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-4 bg-[#0A1628] px-4 pb-28 pt-4 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
       <div className="flex items-center gap-3">
         <ProfilePhotoCompact />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
         <span className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FB923C]">Mon espace</span>
         <h1 className="mt-0.5 text-[22px] font-extrabold leading-tight">{firstName ? `${hello} ${cap(firstName)}` : `${hello} !`}</h1>
         {who && <p className="truncate text-[14px] font-bold text-[#D6E0EC]">{pretty(who)} <span className="text-[#6EE7B7]" title="Entreprise identifiée par son SIRET" aria-label="Entreprise identifiée par son SIRET">✓</span></p>}
         </div>
+        {fil && <ProfileProgress sessionId={sessionId} onPush={() => setPushOn(pushState() === 'granted')} steps={[
+        { key: 'siret', label: 'Entreprise identifiée', done: !!who, to: '/vos-marches' },
+        { key: 'photo', label: 'Photo ou logo ajouté', done: !!photoUrl },
+        { key: 'suivi', label: 'Un suivi créé', done: fil.searches > 0, to: '/mon-espace?onglet=recherches' },
+        { key: 'push', label: 'Notifications activées', done: pushOn || pushState() === 'unsupported' },
+        { key: 'compte', label: 'Compte connecté (téléphone et ordinateur)', done: isAuthenticated, to: '/connexion?next=/mon-espace' },
+      ]} />}
       </div>
       <div>
         <p className="text-[14px] text-[#B4C1D3]">{dossiers == null ? '\u00a0' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
@@ -126,13 +133,7 @@ export default function MonEspacePage() {
       </div>
 
       {fil && <NotToMiss fil={fil} />}
-      {fil && <ProfileProgress sessionId={sessionId} onPush={() => setPushOn(pushState() === 'granted')} steps={[
-        { key: 'siret', label: 'Entreprise identifiée', done: !!who, to: '/vos-marches' },
-        { key: 'photo', label: 'Photo ou logo ajouté', done: !!photoUrl },
-        { key: 'suivi', label: 'Un suivi créé', done: fil.searches > 0, to: '/mon-espace?onglet=recherches' },
-        { key: 'push', label: 'Notifications activées', done: pushOn || pushState() === 'unsupported' },
-        { key: 'compte', label: 'Compte connecté (téléphone et ordinateur)', done: isAuthenticated, to: '/connexion?next=/mon-espace' },
-      ]} />}
+
 
       <div className="flex gap-1.5" role="tablist">
         {([['messages', `Messages${unreadMsgs ? ' · ' + unreadMsgs : ''}`], ['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Enregistrés${!favLoading || savedIds.size ? ' · ' + savedIds.size : ''}`], ['recherches', 'Mes suivis']] as const).map(([k, l]) => (

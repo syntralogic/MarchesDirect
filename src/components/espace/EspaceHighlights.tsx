@@ -83,27 +83,43 @@ export function NotToMiss({ fil }: { fil: EspaceFil }) {
   );
 }
 
+/** 8 nov. (Hedi : « ça prend trop de place, plutôt un petit truc en haut à droite, très discret ») : un anneau
+ *  « Profil 20 % » ; un appui ouvre la liste des étapes, un second la referme. Disparaît à 100 %. */
 export function ProfileProgress({ steps, sessionId, onPush }: { steps: { key: string; label: string; done: boolean; to?: string }[]; sessionId: string; onPush: () => void }) {
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const done = steps.filter(s => s.done).length; const pct = Math.round((done / steps.length) * 100);
   if (pct === 100) return null;
-  const next = steps.find(s => !s.done)!;
-  const push = next.key === 'push';
+  const R = 15, C = 2 * Math.PI * R;
   return (
-    <section aria-label="Profil complété" className="rounded-[16px] border border-[#22385A] bg-[#0F1F35] p-3.5">
-      <div className="flex items-center justify-between"><b className="text-[14.5px]">Profil complété</b><b className="text-[14.5px] text-[#FB923C]">{pct} %</b></div>
-      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#1E3352]" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-full rounded-full bg-gradient-to-r from-[#F97316] to-[#FB923C] transition-all" style={{ width: `${pct}%` }} />
-      </div>
-      <ul className="mt-2.5 flex flex-col gap-1 text-[13px]">
-        {steps.map(s => <li key={s.key} className={s.done ? 'text-[#6EE7B7]' : 'text-[#B4C1D3]'}>{s.done ? '✓' : '○'} {s.label}</li>)}
-      </ul>
-      {push
-        ? <button type="button" disabled={busy || pushState() === 'denied' || pushState() === 'unsupported'} onClick={async () => { setBusy(true); await subscribePush(sessionId); setBusy(false); onPush(); }}
-            className="mt-3 flex min-h-[46px] w-full items-center justify-center rounded-xl border-2 border-[#FB923C] text-[14.5px] font-extrabold text-[#FDBA74] disabled:opacity-50">
-            {pushState() === 'unsupported' ? 'Ajoutez d’abord le site à votre écran d’accueil' : pushState() === 'denied' ? 'Notifications refusées dans les réglages du téléphone' : busy ? '…' : 'Être prévenu des nouveautés (2 fois par semaine au plus)'}
-          </button>
-        : next.to && <Link to={next.to} className="mt-3 flex min-h-[46px] items-center justify-center rounded-xl border-2 border-[#FB923C] text-[14.5px] font-extrabold text-[#FDBA74]">Étape suivante : {next.label.toLowerCase()}</Link>}
-    </section>
+    <div className="relative shrink-0">
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-label={`Profil complété à ${pct} %`}
+        className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#22385A] bg-[#0F1F35] py-1 pl-1 pr-2.5">
+        <svg width="34" height="34" viewBox="0 0 36 36" aria-hidden>
+          <circle cx="18" cy="18" r={R} fill="none" stroke="#1E3352" strokeWidth="4" />
+          <circle cx="18" cy="18" r={R} fill="none" stroke="#FB923C" strokeWidth="4" strokeLinecap="round" strokeDasharray={`${(pct / 100) * C} ${C}`} transform="rotate(-90 18 18)" />
+          <text x="18" y="22" textAnchor="middle" fontSize="10" fontWeight="800" fill="#F2F5F9">{pct}</text>
+        </svg>
+        <span className="text-[12px] font-bold text-[#B4C1D3]">Profil</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-[50px] z-20 w-[270px] rounded-[14px] border border-[#2B4468] bg-[#0F1F35] p-3 shadow-xl">
+          <b className="text-[13.5px]">Profil complété à {pct} %</b>
+          <ul className="mt-2 flex flex-col gap-0.5 text-[13px]">
+            {steps.map(s => (
+              <li key={s.key}>
+                {s.done ? <span className="flex min-h-[36px] items-center text-[#6EE7B7]">✓ {s.label}</span>
+                  : s.key === 'push'
+                    ? <button type="button" disabled={busy || pushState() === 'denied' || pushState() === 'unsupported'}
+                        onClick={async () => { setBusy(true); await subscribePush(sessionId); setBusy(false); onPush(); }}
+                        className="flex min-h-[36px] w-full items-center text-left font-bold text-[#FDBA74] disabled:font-normal disabled:text-[#8FA3BF]">
+                        ○ {pushState() === 'unsupported' ? 'Notifications : ajoutez d’abord le site à l’écran d’accueil' : pushState() === 'denied' ? 'Notifications refusées dans les réglages' : busy ? '…' : `${s.label} (2 fois par semaine au plus) →`}
+                      </button>
+                    : s.to ? <Link to={s.to} onClick={() => setOpen(false)} className="flex min-h-[36px] items-center font-bold text-[#FDBA74]">○ {s.label} →</Link>
+                    : <span className="flex min-h-[36px] items-center text-[#B4C1D3]">○ {s.label}</span>}
+              </li>))}
+          </ul>
+        </div>)}
+    </div>
   );
 }
