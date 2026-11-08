@@ -11,7 +11,7 @@ import InstallOffer from '@/components/pwa/InstallOffer';
 import MessagesTab from '@/components/espace/MessagesTab';
 import SecurityCard from '@/components/espace/SecurityCard';
 import SavedSearchesTab from '@/components/espace/SavedSearchesTab';
-import ProfilePhoto from '@/components/espace/ProfilePhoto';
+import { ProfilePhotoCompact } from '@/components/espace/ProfilePhoto';
 
 // « Mon espace » (5 nov.) : mes dossiers suivis, mes favoris, et l'accès aux nouveaux marchés.
 // Fonctionne sans compte (ce navigateur) ; une fois connecté par lien e-mail, on retrouve aussi les dossiers liés à
@@ -26,7 +26,7 @@ function Skeleton() {
 
 export default function MonEspacePage() {
   const sessionId = useMemo(() => getSessionId(), []);
-  const { isAuthenticated, company } = useAuth();
+  const { isAuthenticated, company, user } = useAuth();
   const { savedIds, loading: favLoading } = useFavorites();
   const [params, setParams] = useSearchParams();
   // 8 nov. (Hedi) : « Documents » retiré (les pièces sont envoyées une fois à la souscription, pas stockées sur le
@@ -38,12 +38,13 @@ export default function MonEspacePage() {
   const [favError, setFavError] = useState(false);
   const [favRetry, setFavRetry] = useState(0);
   const [name, setName] = useState<string | null>(null);
+  const [director, setDirector] = useState<string | null>(null);
   const [fil, setFil] = useState<EspaceFil | null>(null);
   const [filError, setFilError] = useState(false);
   const [filRetry, setFilRetry] = useState(0);
 
   useEffect(() => { suiviApi.list(sessionId).then(setDossiers).catch(() => setDossiers([])); }, [sessionId]);
-  useEffect(() => { if (!isAuthenticated) siretApi.status(sessionId).then(s => setName(s?.company?.name || null)).catch(() => {}); }, [isAuthenticated, sessionId]);
+  useEffect(() => { siretApi.status(sessionId).then(s => { if (!isAuthenticated) setName(s?.company?.name || null); setDirector(s?.company?.director || null); }).catch(() => {}); }, [isAuthenticated, sessionId]);
   useEffect(() => {
     let live = true;
     // 7 nov. : tant que les favoris se chargent, on n'affiche pas « aucun favori » (il apparaissait une seconde).
@@ -67,6 +68,14 @@ export default function MonEspacePage() {
   const readAll = () => { espaceApi.lu(sessionId).then(() => setFilRetry(n => n + 1)).catch(() => {}); };
 
   const who = (isAuthenticated ? company?.name : name) || null;
+  // 8 nov. (Hedi : « Bonsoir Eddy, Bonsoir Karim, Verifrance Habitat ») : salutation selon l'heure, prénom du compte, ou
+  // à défaut celui du dirigeant connu par le SIRET (le mot qui n'est pas en capitales : « Hedi FATHALLAH » → Hedi).
+  const hour = new Date().getHours();
+  const hello = hour >= 18 || hour < 5 ? 'Bonsoir' : 'Bonjour';
+  const fromDirector = (director || '').split(/\s+/).find(w => /[a-zà-ÿ]/.test(w) && w !== w.toUpperCase()) || null;
+  const firstName = (user?.firstName || '').trim() || fromDirector;
+  const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  const pretty = (n: string) => (n === n.toUpperCase() ? n.split(/\s+/).map(cap).join(' ') : n);
   const sum = fil?.summary;
   const unreadMsgs = fil ? fil.items.filter(i => i.unread && (i.kind === 'message' || i.kind === 'dossier')).length : 0;
   const tile = 'flex min-h-[84px] flex-col justify-between rounded-[14px] border border-[#22385A] bg-[#12233A] p-3 text-left';
@@ -75,11 +84,16 @@ export default function MonEspacePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-4 bg-[#0A1628] px-4 pb-28 pt-4 text-[#F2F5F9]" style={{ fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' }}>
-      <div>
+      <div className="flex items-center gap-3">
+        <ProfilePhotoCompact />
+        <div className="min-w-0">
         <span className="text-[12px] font-extrabold uppercase tracking-[.06em] text-[#FB923C]">Mon espace</span>
-        <h1 className="mt-0.5 text-[22px] font-extrabold leading-tight">{who ? `Bonjour, ${who}` : 'Votre espace'}</h1>
-        {who && <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#123B2A] px-2.5 py-1 text-[12px] font-bold text-[#6EE7B7]">✓ Entreprise identifiée par son SIRET</span>}
-        <p className="mt-1 text-[14px] text-[#B4C1D3]">{dossiers == null ? '\u00a0' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
+        <h1 className="mt-0.5 text-[22px] font-extrabold leading-tight">{firstName ? `${hello} ${cap(firstName)}` : `${hello} !`}</h1>
+        {who && <p className="truncate text-[14px] font-bold text-[#D6E0EC]">{pretty(who)} <span className="text-[#6EE7B7]" title="Entreprise identifiée par son SIRET" aria-label="Entreprise identifiée par son SIRET">✓</span></p>}
+        </div>
+      </div>
+      <div>
+        <p className="text-[14px] text-[#B4C1D3]">{dossiers == null ? '\u00a0' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
       </div>
 
       {/* 8 nov. (Hedi) : tableau de bord. Quatre chiffres réels, chacun ouvre l'endroit où agir. */}
@@ -152,7 +166,6 @@ export default function MonEspacePage() {
 
       <Link to="/vos-marches" className="flex min-h-[48px] items-center justify-center rounded-xl border-2 border-[#2B4468] text-[14.5px] font-bold">Voir les nouveaux marchés</Link>
 
-      <ProfilePhoto />
       {isAuthenticated && <SecurityCard />}
       {!isAuthenticated && (
         <p className="rounded-[14px] border border-[#22385A] bg-[#0F1F35] p-3 text-[13px] text-[#B4C1D3]">
