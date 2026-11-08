@@ -725,10 +725,14 @@ export type ApiSiretStatus = {
 // adresse IP (partagée entre abonnés d'un même opérateur : on afficherait l'entreprise d'un autre).
 const COMPANY_KEY = 'md_company_siret';
 const rememberCompany = (s: ApiSiretStatus) => {
-  try { if (s?.companyKnown && s.siret && /^\d{14}$/.test(s.siret)) localStorage.setItem(COMPANY_KEY, s.siret); } catch { /* stockage indisponible */ }
+  try { if (s?.companyKnown && s.siret && /^\d{14}$/.test(s.siret)) {
+    const changed = localStorage.getItem(COMPANY_KEY) !== s.siret;
+    localStorage.setItem(COMPANY_KEY, s.siret);
+    if (changed) window.dispatchEvent(new Event('md:company-changed'));
+  } } catch { /* stockage indisponible */ }
   return s;
 };
-export const forgetCompany = () => { try { localStorage.removeItem(COMPANY_KEY); } catch { /* idem */ } };
+export const forgetCompany = () => { try { localStorage.removeItem(COMPANY_KEY); window.dispatchEvent(new Event('md:company-changed')); } catch { /* idem */ } };
 const restoring = new Map<string, Promise<ApiSiretStatus>>();
 
 export const siretApi = {

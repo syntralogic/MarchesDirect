@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { uploadsApi } from '@/lib/apiClient';
 import { prepareAvatar } from '@/lib/prepareAvatar';
 import { saveLocalAvatar } from '@/lib/localAvatar';
-import ProfileAvatar, { useProfilePhotoUrl } from '@/components/ProfileAvatar';
+import ProfileAvatar, { useProfilePhoto } from '@/components/ProfileAvatar';
 
 // 8 nov. (Hedi) : la photo s'affiche en haut de Mon espace, à côté du « Bonjour / Bonsoir ». Variante compacte : la
 // photo (ou la silhouette) avec un petit bouton appareil photo pour l'ajouter ou la changer.
@@ -42,7 +42,7 @@ export function ProfilePhotoCompact() {
 
 export default function ProfilePhoto() {
   const { isAuthenticated, loading, refreshProfile } = useAuth();
-  const photo = useProfilePhotoUrl();
+  const { url: photo, automatic, source, local } = useProfilePhoto();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,12 +86,14 @@ export default function ProfilePhoto() {
             className="flex min-h-[44px] items-center gap-2 text-[14px] font-bold text-[#FB923C] disabled:opacity-60">
             <Camera size={18} aria-hidden="true" />{busy ? 'Enregistrement…' : photo ? 'Modifier ma photo' : 'Ajouter ma photo'}
           </button>
-          <p className="text-[12px] leading-relaxed text-[#B4C1D3]">{isAuthenticated
+          <p className="text-[12px] leading-relaxed text-[#B4C1D3]">{automatic
+            ? <>Logo issu du <a href={source!} target="_blank" rel="noopener noreferrer" className="underline">site de votre entreprise</a>. Vous pouvez le remplacer.</>
+            : isAuthenticated
             ? 'Photo ou logo de votre entreprise, enregistré sur votre compte.'
             : 'Photo ou logo, conservé uniquement sur cet appareil.'}</p>
         </div>
       </div>
-      {!isAuthenticated && photo && <button type="button" onClick={remove} disabled={busy}
+      {!isAuthenticated && local && <button type="button" onClick={remove} disabled={busy}
         className="mt-1 min-h-[44px] text-[12px] text-[#B4C1D3] underline">Retirer ma photo de cet appareil</button>}
       {error && <p role="alert" className="mt-2 text-[13px] text-[#FCA5A5]">{error}</p>}
       {saved && <p role="status" className="mt-2 text-[13px] text-[#6EE7B7]">{isAuthenticated ? 'Photo enregistrée sur votre compte.' : 'Photo enregistrée sur cet appareil.'}</p>}
