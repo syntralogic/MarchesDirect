@@ -12,7 +12,23 @@ Sentry.init({
   environment: import.meta.env.MODE,
 });
 
-function ErrorFallback() {
+// 8 nov. : chaque plantage est envoyé au serveur (message, pile, page sans paramètres, aucune donnée personnelle) pour
+// être corrigé, et une courte référence s'affiche (utile si le visiteur fait une capture d'écran).
+const API = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5000';
+const reported = new Set<string>();
+function report(error: unknown, componentStack?: string | null) {
+  try {
+    const e = error instanceof Error ? error : new Error(String(error));
+    const key = `${e.message}|${location.pathname}`; if (reported.has(key)) return; reported.add(key);
+    fetch(`${API}/client-errors`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: location.pathname, message: e.message, stack: e.stack || null, componentStack: componentStack || null,
+        build: (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA as string | undefined)?.slice(0, 12) || null }) }).catch(() => {});
+  } catch { /* jamais bloquant */ }
+}
+
+function ErrorFallback({ error, componentStack }: { error?: unknown; componentStack?: string | null }) {
+  if (error) report(error, componentStack);
+  const ref = error instanceof Error ? error.message.slice(0, 80) : '';
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
@@ -22,6 +38,7 @@ function ErrorFallback() {
       <p style={{ fontSize: '14px', color: '#B9BBC8' }}>
         Une erreur inattendue est survenue. Merci de recharger la page.
       </p>
+      {ref && <p style={{ fontSize: '11px', color: '#5F6B7D', maxWidth: '320px', wordBreak: 'break-word' }}>Réf. : {ref}</p>}
       <button
         onClick={() => window.location.reload()}
         style={{
@@ -51,7 +68,7 @@ if (typeof Node === 'function' && Node.prototype) {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
+  <Sentry.ErrorBoundary fallback={({ error, componentStack }) => <ErrorFallback error={error} componentStack={componentStack} />}>
     <AppWrapper>
       <App />
     </AppWrapper>
