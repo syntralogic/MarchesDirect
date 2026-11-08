@@ -204,6 +204,14 @@ export default function FicheMarchePage() {
   const buyerTxt = opp ? buyerPlace(opp as any) : null;
   const dlv = (opp as any)?.deadline_checked || opp?.deadline;
   const state: string | null = (opp as any)?.open_state || null;
+  // 8 nov. : provenance dite sur chaque fiche. Liste partenaire : date de la liste + disponibilité non confirmée (la date
+  // d'import n'est jamais présentée comme une vérification). Avis public : source officielle et date de publication.
+  const prov = (opp as any)?.provenance as { kind: string; label: string | null; listDate?: string | null; addedAt?: string | null; publishedAt?: string | null } | undefined;
+  const fmtDay = (d?: string | null) => d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+  const provenanceLine = !prov ? null
+    : prov.kind === 'partner_list'
+      ? `Provenance : liste partenaire${fmtDay(prov.listDate || prov.addedAt) ? ` du ${fmtDay(prov.listDate || prov.addedAt)}` : ''} · disponibilité non confirmée — nous la vérifions auprès du donneur d’ordre avant toute mise en relation.`
+      : `Source : ${prov.label || 'avis public'}${fmtDay(prov.publishedAt) ? ` · publié le ${fmtDay(prov.publishedAt)}` : ''}.`;
   const days = daysLeft(dlv);
   // 7 nov. (audit) : consultation clôturée ou annulée : plus de bouton « dossier », d'invitation ni de barre fixe —
   // on propose les marchés ouverts à la place.
@@ -459,6 +467,7 @@ export default function FicheMarchePage() {
         <h1 className="text-[23px] font-extrabold leading-tight">{title}</h1>
         {lotFor(id) && <p className="text-[15px] font-bold text-[#FDBA74]">Votre lot : {lotFor(id)}</p>}
         {consult && <p className="flex items-center gap-2 text-[14px] text-[#D6E0EC]"><span className="md-live-dot h-2.5 w-2.5 rounded-full bg-[#EF4444]" aria-hidden />{consult}</p>}
+        {provenanceLine && <p className="text-[13px] text-[#B4C1D3]">{provenanceLine}</p>}
       </section>
 
       {/* 7 nov. : parcourir d'abord. Le visiteur lit l'annonce et peut l'enregistrer tout de suite ; la correspondance
