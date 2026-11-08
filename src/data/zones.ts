@@ -19,6 +19,7 @@ export function deptsLabel(dep: string): string {
   const key = [...list].sort().join(',');
   const reg = REGIONS.find(r => [...r[2]].sort().join(',') === key);
   if (reg) return reg[1];
+  if (list.length > 1 && list.length <= 4) return list.map(c => DEPARTMENTS.find(x => x.code === c)?.name || c).join(', ');
   if (list.length > 1) return `${list.length} départements`;
   const d = DEPARTMENTS.find(x => x.code === list[0]);
   return d ? `${d.name} (${d.code})` : `Département ${list[0]}`;
