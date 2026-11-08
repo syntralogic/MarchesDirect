@@ -211,7 +211,7 @@ export default function FicheMarchePage() {
   const provenanceLine = !prov ? null
     : prov.kind === 'partner_list'
       ? `Provenance : liste partenaire${fmtDay(prov.listDate || prov.addedAt) ? ` du ${fmtDay(prov.listDate || prov.addedAt)}` : ''} · disponibilité non confirmée — nous la vérifions auprès du donneur d’ordre avant toute mise en relation.`
-      : `Source : ${prov.label || 'avis public'}${fmtDay(prov.publishedAt) ? ` · publié le ${fmtDay(prov.publishedAt)}` : ''}.`;
+      : `Source : ${(prov.label || 'avis public').replace(/\s*(official\s+feed|feed|api)\s*$/i, '').replace(/^BOAMP.*/i, 'BOAMP (avis officiel)').replace(/^TED.*/i, 'TED (Journal officiel de l’UE)')}${fmtDay(prov.publishedAt) ? ` · publié le ${fmtDay(prov.publishedAt)}` : ''}.`;
   const days = daysLeft(dlv);
   // 7 nov. (audit) : consultation clôturée ou annulée : plus de bouton « dossier », d'invitation ni de barre fixe —
   // on propose les marchés ouverts à la place.
