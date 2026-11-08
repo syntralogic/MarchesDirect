@@ -15,7 +15,7 @@ import SavedMarketsBanner from '@/components/home/SavedMarketsBanner';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
 import ZonePicker from '@/components/ZonePicker';
 import type { MetierSuggestion } from '@/data/tradeFamilies';
-import { chantierLine, type Chantier, type ChantiersStats } from '@/lib/chantiers';
+import { type ChantiersStats } from '@/lib/chantiers';
 import { GUIDE_CATALOG, PUBLISHED_GUIDES } from '@/content/guides/catalog';
 
 const GeographicSection = lazy(() => import('@/components/home/GeographicSection'));
@@ -86,10 +86,10 @@ function LiveCounter() {
 // 7 nov. : chantiers à venir (permis de construire autorisés) visibles dès l'accueil, en un bloc court.
 function ChantiersBlock() {
   const [stats, setStats] = useState<ChantiersStats | null>(null);
-  const [latest, setLatest] = useState<Chantier[]>([]);
+  // 8 nov., client : la liste de 4 chantiers prenait trop de place sur l'accueil → retirée ; le bloc garde le
+  // chiffre et le lien vers la page des chantiers.
   useEffect(() => {
     chantiersApi.stats().then(setStats).catch(() => {});
-    chantiersApi.list({ page: 1 }).then(r => setLatest(r.results.slice(0, 4))).catch(() => {});
   }, []);
   if (!stats || !stats.total) return null;
   const nf = new Intl.NumberFormat('fr-FR');
@@ -98,12 +98,6 @@ function ChantiersBlock() {
       <Eyebrow>Nouveau · Chantiers à venir</Eyebrow>
       <h2 className="mt-1 text-[22px] font-extrabold leading-tight md:text-[28px]">Repérez les chantiers avant qu’ils commencent</h2>
       <p className="mt-1 text-[15px] text-[#B4C1D3]"><b className="text-white">{nf.format(stats.total)}</b> permis de construire autorisés ces 12 derniers mois : maisons, logements, bureaux, commerces, bâtiments agricoles et industriels.</p>
-      {latest.length > 0 && <ul className="mt-3 grid gap-2 md:grid-cols-2">{latest.map(c => (
-        <li key={c.id}><Link to={c.path} className="block h-full rounded-[14px] border border-[#22385A] bg-[#12233A] p-3 hover:border-[#FB923C]">
-          <span className="text-[11.5px] font-extrabold uppercase tracking-[.06em] text-[#FB923C]">{c.categoryLabel}</span>
-          <span className="mt-0.5 block text-[15px] font-bold text-[#F2F5F9]">{c.title}</span>
-          <span className="mt-0.5 block text-[12.5px] text-[#B4C1D3]">{chantierLine(c)}</span>
-        </Link></li>))}</ul>}
       <Link to="/chantiers-a-venir" className="mt-3 inline-block text-[14.5px] font-bold text-[#FB923C] underline">Voir les chantiers de mon département</Link>
     </section>
   );
