@@ -10,7 +10,7 @@ import { MiniProgress, stateLine } from '@/components/suivi/DossierTimeline';
 import InstallOffer from '@/components/pwa/InstallOffer';
 import MessagesTab from '@/components/espace/MessagesTab';
 import { SinceLastVisit, MarketPulse, NotToMiss, ProfileProgress } from '@/components/espace/EspaceHighlights';
-import { useProfilePhotoUrl } from '@/components/ProfileAvatar';
+import { useProfilePhoto } from '@/components/ProfileAvatar';
 import { pushState, refreshPushSubscription } from '@/lib/pwa';
 import SecurityCard from '@/components/espace/SecurityCard';
 import SavedSearchesTab from '@/components/espace/SavedSearchesTab';
@@ -68,7 +68,7 @@ export default function MonEspacePage() {
     espaceApi.fil(sessionId, [...savedIds]).then(r => { if (live) setFil(r); }).catch(() => { if (live) setFilError(true); });
     return () => { live = false; };
   }, [sessionId, savedIds, favLoading, filRetry, isAuthenticated]);
-  const photoUrl = useProfilePhotoUrl();
+  const { url: photoUrl } = useProfilePhoto();
   const [pushOn, setPushOn] = useState(() => pushState() === 'granted');
   useEffect(() => { void refreshPushSubscription(sessionId); }, [sessionId]);
   const readAll = () => { espaceApi.lu(sessionId).then(() => setFilRetry(n => n + 1)).catch(() => {}); };
