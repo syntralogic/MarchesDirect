@@ -43,7 +43,8 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
   // Formulaire : métiers (plusieurs possibles), zone, montant, types, titre.
   const [open, setOpen] = useState(false);
   const [metiers, setMetiers] = useState<string[]>([]); const [typing, setTyping] = useState('');
-  const [zones, setZones] = useState<string[]>([]); // codes départements const [near, setNear] = useState(false); const [min, setMin] = useState(''); const [types, setTypes] = useState<string[]>([]);
+  const [zones, setZones] = useState<string[]>([]); // codes départements
+  const [near, setNear] = useState(false); const [min, setMin] = useState(''); const [types, setTypes] = useState<string[]>([]);
   // 8 nov. (Hedi : « Paris 100 km ») : zone « autour d'une ville », avec rayon.
   const [city, setCity] = useState(''); const [radius, setRadius] = useState<(typeof RADII)[number]>(50);
   const [title, setTitle] = useState(''); const [titleTouched, setTitleTouched] = useState(false);
@@ -156,7 +157,7 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
             <small className="mt-1 block text-[12px] text-[#8FA3BF]">{titleTouched ? <button type="button" onClick={() => { setTitleTouched(false); setTitle(''); }} className="underline">Reprendre le nom automatique</button> : 'Rempli automatiquement, modifiable.'}</small>
           </div>
 
-          <button type="submit" disabled={saving || (!allMetiers.length && !zone)} className="flex min-h-[52px] items-center justify-center rounded-xl bg-[#C2410C] text-[15.5px] font-extrabold text-white disabled:opacity-50">
+          <button type="submit" disabled={saving || (!allMetiers.length && !zones.length && !near)} className="flex min-h-[52px] items-center justify-center rounded-xl bg-[#C2410C] text-[15.5px] font-extrabold text-white disabled:opacity-50">
             {saving ? 'Enregistrement…' : 'Suivre ces annonces'}
           </button>
         </form>
