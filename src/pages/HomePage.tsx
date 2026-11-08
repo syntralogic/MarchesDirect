@@ -6,7 +6,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import DemoVideoModal from '@/components/DemoVideoModal';
 import PageMeta from '@/components/common/PageMeta';
-import { CallbackModal } from '@/components/CallbackModal';
 import { CompanySearchForm, type CompanySearchHandle } from '@/components/home/CompanySearchForm';
 import { ELENA, TEAM } from '@/data/homeContent';
 import { chantiersApi, opportunitiesApi } from '@/lib/apiClient';
@@ -310,10 +309,10 @@ function DeferredMap() {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate();
   // ?mode=metier : arrivée depuis « Vos marchés » sans entreprise, l'onglet « Par métier » s'ouvre directement.
   const [params] = useSearchParams();
   const [mode, setMode] = useState<'company' | 'simple'>(params.get('mode') === 'metier' ? 'simple' : 'company');
-  const [callbackOpen, setCallbackOpen] = useState(false);
   const companyRef = useRef<CompanySearchHandle>(null);
   // « Modifier » depuis la liste (2.1) : retour ici, onglet « Par entreprise », champ vide et curseur dedans.
   const location = useLocation();
@@ -473,11 +472,10 @@ export default function HomePage() {
           <section className="flex flex-col items-center gap-3 rounded-[20px] border-2 border-[#C2410C] bg-[#142B4A] p-5 text-center">
             <h2 className="text-[22px] font-extrabold leading-tight">Voyez les marchés qui vous correspondent</h2>
             <button type="button" onClick={focusCompany} className={BTN}>Indiquer mon entreprise</button>
-            <button type="button" onClick={() => setCallbackOpen(true)} className="min-h-[48px] text-[15px] font-bold text-[#FB923C] underline">Vous préférez qu’on vous appelle ?</button>
+            <button type="button" onClick={() => navigate('/question?type=rappel')} className="min-h-[48px] text-[15px] font-bold text-[#FB923C] underline">Vous préférez qu’on vous appelle ?</button>
           </section>
         </div>
       </main>
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
   );
 }

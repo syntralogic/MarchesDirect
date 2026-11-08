@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { AppointmentModal } from '@/components/AppointmentModal';
-import { CallbackModal } from '@/components/CallbackModal';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Target, ArrowRight, CheckCircle, FileText, Handshake,
   Phone, Calendar, Plus, ChevronUp, Euro, Clock, Shield, Search, Building2,
@@ -56,9 +54,8 @@ const FAQ_SECTIONS = [
 
 export default function InfoPage() {
   const { t } = useLang();
+  const navigate = useNavigate();
   const location = useLocation();
-  const [apptOpen, setApptOpen] = useState(false);
-  const [callbackOpen, setCallbackOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [openSection, setOpenSection] = useState<string | null>(null);
   const [activeFaqTab, setActiveFaqTab] = useState(FAQ_SECTIONS[0].titleKey);
@@ -97,12 +94,10 @@ export default function InfoPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors flex-1"><Calendar size={16} /> {t('bookAppointment')}</button>
-          <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors flex-1"><Phone size={16} /> {t('callBack')}</button>
+          <button onClick={() => navigate('/question?type=rappel')} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors flex-1"><Calendar size={16} /> {t('bookAppointment')}</button>
+          <button onClick={() => navigate('/question?type=rappel')} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors flex-1"><Phone size={16} /> {t('callBack')}</button>
         </div>
 
-        <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
-        <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
       </div>
     );
   }
@@ -156,13 +151,11 @@ export default function InfoPage() {
           <h2 className="text-lg font-bold text-white mb-1">{t('faqCTAQuestion')}</h2>
           <p className="text-sm text-orange font-medium mb-4">{t('faqCTAName')}</p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <button onClick={() => setApptOpen(true)} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm"><Calendar size={16} /> {t('bookAppointment')}</button>
-            <button onClick={() => setCallbackOpen(true)} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors text-sm"><Phone size={16} /> {t('callBack')}</button>
+            <button onClick={() => navigate('/question?type=rappel')} className="inline-flex items-center justify-center gap-2 bg-orange text-white font-semibold px-6 py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm"><Calendar size={16} /> {t('bookAppointment')}</button>
+            <button onClick={() => navigate('/question?type=rappel')} className="inline-flex items-center justify-center gap-2 border border-orange text-orange font-semibold px-6 py-3 rounded-xl hover:bg-orange/10 transition-colors text-sm"><Phone size={16} /> {t('callBack')}</button>
           </div>
         </div>
 
-        <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
-        <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
       </div>
     );
   }
@@ -442,7 +435,7 @@ export default function InfoPage() {
             Trouver une opportunité <ArrowRight size={16} />
           </Link>
           <button
-            onClick={() => setCallbackOpen(true)}
+            onClick={() => navigate('/question?type=rappel')}
             className="w-full flex items-center justify-center gap-2 border border-orange text-orange font-semibold py-3.5 rounded-xl hover:bg-orange/10 transition-colors text-sm"
           >
             <Phone size={16} /> Être rappelé
@@ -458,8 +451,6 @@ export default function InfoPage() {
         </div>
       </div>
 
-      <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
   );
 }

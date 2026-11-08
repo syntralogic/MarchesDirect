@@ -18,13 +18,15 @@ type Props = {
   hideSteps?: boolean;                   // the general question is not a step of the market journey
   // 5 Nov (dossier + créneau) : créneaux réels proposés par le serveur (3 au plus) ; undefined = pas encore chargés.
   slots?: { slotAt: string; label: string }[];
+  // 8 nov. : textes ajustés quand l'écran sert hors d'un marché (rendez-vous depuis la page équipe, par ex.).
+  copy?: Partial<typeof COPY[CoordChoice]>;
 };
 
 const field = 'min-h-[52px] w-full rounded-xl border border-[#2B4468] bg-[#0F1F35] px-3.5 text-[16px] text-[#F2F5F9] placeholder:text-[#7C8CA3] focus:border-[#FB923C] focus:outline-none';
 const errText = 'mt-1 text-[14px] text-[#FCA5A5]';
 
 export default function CoordonneesScreen(p: Props) {
-  const c = COPY[p.choice];
+  const c = { ...COPY[p.choice], ...(p.copy || {}) };
   const err = p.errors;
   return (
     <div className="flex flex-col gap-4 pb-10">

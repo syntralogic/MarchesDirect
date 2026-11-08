@@ -28,9 +28,21 @@ export default function QuestionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // 8 nov. : « Prendre rendez-vous » / « Être rappelé » (page équipe, Qui sommes-nous, contact) arrivent ici avec
+  // ?type=rappel : même écran que sur la fiche d'un marché (moment préféré + téléphone), à la place des anciennes fenêtres.
+  const choice: 'info' | 'rappel' = params.get('type') === 'rappel' ? 'rappel' : 'info';
+  const rdvCopy = choice === 'rappel' ? {
+    label: 'Prendre rendez-vous', title: 'Quand pouvons-nous vous appeler ?',
+    sub: '30 minutes par téléphone avec Elena pour voir quels marchés conviennent à votre entreprise. Offert, sans engagement.',
+    benefit: 'un appel d’Elena au moment choisi, pour faire le point sur votre entreprise et les marchés qui vous correspondent.',
+    before: 'Après validation : Elena vous appelle au moment choisi. Rien d’autre à faire.',
+    btn: 'Confirmer mon rendez-vous',
+    elena: 'C’est moi qui vous appelle, au moment choisi. On regarde ensemble votre entreprise et les marchés qui vous correspondent.',
+    done: { ...COPY.rappel.done, title: 'Votre rendez-vous est enregistré', elena: 'Je regarde votre entreprise avant de vous appeler, pour aller droit à l’essentiel.' },
+  } : undefined;
 
   const submit = async () => {
-    const errs = validateCoords('info', coords);
+    const errs = validateCoords(choice, coords);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     if (!idem.begin()) return;
@@ -40,9 +52,9 @@ export default function QuestionPage() {
       const requestId = idem.key();
       await crmApi.submitLead({
         brandId, phone: normalizeFrPhoneDigits(coords.phone), sessionId: getSessionId(), idempotencyKey: requestId,
-        leadSource: 'contact_form', message: leadMessage('info', coords),
+        leadSource: choice === 'rappel' ? 'callback_modal' : 'contact_form', message: leadMessage(choice, coords),
       });
-      trackRequestSubmitted('contact', { requestId });
+      trackRequestSubmitted(choice === 'rappel' ? 'callback' : 'contact', { requestId });
       idem.reset(); saveCoords({ ...coords, question: '' });
       setDone(true); window.scrollTo({ top: 0 });
     } catch (err) {
@@ -50,21 +62,22 @@ export default function QuestionPage() {
     } finally { idem.end(); setSubmitting(false); }
   };
 
+  const momentLabel = coords.moment === 'now' ? rappelDelai() : coords.moment === 'afternoon' ? 'cet après-midi' : 'demain matin';
   const shell = 'mx-auto flex w-full max-w-[560px] flex-col gap-6 bg-[#0A1628] px-4 pb-10 pt-3 text-[#F2F5F9]';
   const font = { fontFamily: '"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif' };
   if (done) return (
     <main className={shell} style={font}>
       <section role="status" className="rounded-2xl border border-[#1E6B4A] bg-[#123B2A] p-4">
-        <h1 className="text-[22px] font-extrabold text-[#6EE7B7]">✓ {COPY.info.done.title}</h1>
-        <p className="mt-1.5 text-[15px] text-[#E8FFF4]">Rien d’autre à faire : Elena vous rappelle au {formatPhone(coords.phone)} {rappelDelai()} avec la réponse.</p>
+        <h1 className="text-[22px] font-extrabold text-[#6EE7B7]">✓ {(rdvCopy?.done || COPY[choice].done).title}</h1>
+        <p className="mt-1.5 text-[15px] text-[#E8FFF4]">Rien d’autre à faire : Elena vous rappelle au {formatPhone(coords.phone)} {choice === 'rappel' ? momentLabel : `${rappelDelai()} avec la réponse`}.</p>
       </section>
-      <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5"><ElenaPhoto /><p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{COPY.info.done.elena}</p></div>
+      <div className="flex items-center gap-3 rounded-2xl border border-[#22385A] bg-[#12233A] p-3.5"><ElenaPhoto /><p className="text-[14px] text-[#D6E0EC]"><b className="block text-[13px] text-[#B4C1D3]">Elena Popescu</b>{(rdvCopy?.done || COPY[choice].done).elena}</p></div>
       <Link to="/" className="min-h-[48px] self-start text-[14px] font-semibold text-[#FB923C] underline">‹ Revenir à l’accueil</Link>
     </main>
   );
   return (
     <main className={shell} style={font}>
-      <CoordonneesScreen choice="info" context="Question générale · sans marché précis" values={coords} errors={errors} submitting={submitting} submitError={submitError}
+      <CoordonneesScreen choice={choice} context={choice === 'rappel' ? 'Appel avec Elena · 30 min offertes · sans engagement' : 'Question générale · sans marché précis'} copy={rdvCopy} values={coords} errors={errors} submitting={submitting} submitError={submitError}
         onChange={(patch) => { setCoords((c) => ({ ...c, ...patch })); setErrors({}); }} onSubmit={submit} onBack={() => navigate(-1)} elenaPhoto={<ElenaPhoto />}
         backLabel="Retour" hideSteps />
     </main>

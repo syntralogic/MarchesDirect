@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { X, ShieldCheck, GraduationCap, Briefcase, Search, Calendar, Phone, Users } from 'lucide-react';
-import { AppointmentModal } from '@/components/AppointmentModal';
-import { CallbackModal } from '@/components/CallbackModal';
 import { useLang } from '@/contexts/LangContext';
 
 import mem1 from "@/assets/1.jpeg";
@@ -126,8 +124,6 @@ export default function TeamProfilePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
-  const [apptOpen, setApptOpen] = useState(false);
-  const [callbackOpen, setCallbackOpen] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -243,13 +239,13 @@ export default function TeamProfilePage() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-2">
               <button 
-                onClick={() => { setSelectedMember(null); setApptOpen(true); }}
+                onClick={() => { setSelectedMember(null); navigate('/question?type=rappel'); }}
                 className="flex-1 bg-orange text-white font-bold py-2.5 rounded-lg hover:bg-orange/90 transition-colors flex items-center justify-center gap-1.5 text-xs"
               >
                 <Calendar size={14} /> {t('bookAppointment')}
               </button>
               <button 
-                onClick={() => { setSelectedMember(null); setCallbackOpen(true); }}
+                onClick={() => { setSelectedMember(null); navigate('/question?type=rappel'); }}
                 className="flex-1 border border-orange text-orange font-bold py-2.5 rounded-lg hover:bg-orange/10 transition-colors flex items-center justify-center gap-1.5 text-xs"
               >
                 <Phone size={14} /> {t('callBack')}
@@ -259,8 +255,6 @@ export default function TeamProfilePage() {
         </div>
       )}
 
-      <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </>
   );
 }
