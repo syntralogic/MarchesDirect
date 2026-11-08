@@ -4,31 +4,24 @@ import { listSaved, removeSearch, currentIds, saveSearch, syncSaved, renameSearc
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { DEPARTMENTS } from '@/data/departments';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
+import { REGIONS, deptsLabel } from '@/data/zones';
+import { familyLabel } from '@/data/tradeFamilies';
+import { markViewed } from '@/lib/savedSearches';
 
 // 8 nov. (Hedi : « il doit juste taper son métier, choisir la zone, le montant, marchés publics / privés ou tout,
 // mettre un titre — Placo Paris, Placo dans le Nord — et les annonces arrivent »). Un suivi = cinq choix simples,
 // enregistré tel quel ; la liste dessous montre chaque suivi avec ses nouveautés réelles. Un appui ouvre les annonces.
-const REGIONS: [string, string, string[]][] = [
-  ['ara', 'Auvergne-Rhône-Alpes', ['01', '03', '07', '15', '26', '38', '42', '43', '63', '69', '73', '74']],
-  ['bfc', 'Bourgogne-Franche-Comté', ['21', '25', '39', '58', '70', '71', '89', '90']],
-  ['bre', 'Bretagne', ['22', '29', '35', '56']], ['cvl', 'Centre-Val de Loire', ['18', '28', '36', '37', '41', '45']],
-  ['cor', 'Corse', ['2A', '2B']], ['ges', 'Grand Est', ['08', '10', '51', '52', '54', '55', '57', '67', '68', '88']],
-  ['hdf', 'Hauts-de-France', ['02', '59', '60', '62', '80']], ['idf', 'Île-de-France', ['75', '77', '78', '91', '92', '93', '94', '95']],
-  ['nor', 'Normandie', ['14', '27', '50', '61', '76']], ['naq', 'Nouvelle-Aquitaine', ['16', '17', '19', '23', '24', '33', '40', '47', '64', '79', '86', '87']],
-  ['occ', 'Occitanie', ['09', '11', '12', '30', '31', '32', '34', '46', '48', '65', '66', '81', '82']],
-  ['pdl', 'Pays de la Loire', ['44', '49', '53', '72', '85']], ['pac', 'Provence-Alpes-Côte d’Azur', ['04', '05', '06', '13', '83', '84']],
-];
+
 const AMOUNTS: [string, string][] = [['', 'Peu importe'], ['10000', '10 000 € et plus'], ['50000', '50 000 € et plus'], ['100000', '100 000 € et plus'], ['500000', '500 000 € et plus']];
 const TYPES: [string, string][] = [['public_procurement', 'Marchés publics'], ['tender', 'Appels d’offres privés'], ['subcontracting', 'Sous-traitance']];
 const chip = (on: boolean) => `min-h-[44px] rounded-full border px-3.5 text-[14px] font-bold ${on ? 'border-[#FB923C] bg-[#3A2312] text-[#FDBA74]' : 'border-[#2B4468] text-[#D6E0EC]'}`;
 const field = 'h-[48px] w-full rounded-xl border border-[#2B4468] bg-[#0A1628] px-3 text-[16px] text-[#F2F5F9] placeholder:text-[#6B7A90]';
 const label = 'mb-1 block text-[13px] font-bold text-[#B4C1D3]';
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function zoneLabel(zone: string) {
   if (!zone) return 'Toute la France';
   if (zone.startsWith('r:')) return REGIONS.find(r => r[0] === zone.slice(2))?.[1] || 'Région';
-  const d = DEPARTMENTS.find(x => x.code === zone); return d ? d.name : zone;
+  return deptsLabel(zone);
 }
 function zoneDepts(zone: string) {
   if (!zone) return '';
@@ -39,10 +32,9 @@ function zoneDepts(zone: string) {
 function summary(query: string) {
   const p = new URLSearchParams(query);
   const dep = p.get('department') || '';
-  const reg = REGIONS.find(r => r[2].join(',') === dep);
-  const zone = !dep ? 'Toute la France' : reg ? reg[1] : dep.split(',').length > 1 ? `${dep.split(',').length} départements` : zoneLabel(dep);
+  const zone = deptsLabel(dep);
   const min = p.get('min_value'); const j = (p.get('journey') || '').split(',').filter(Boolean);
-  return [cap(p.get('q') || 'Tous métiers'), zone, min ? `${Number(min).toLocaleString('fr-FR')} € et plus` : null,
+  return [p.get('q') ? p.get('q')!.split(' ').map(familyLabel).join(', ') : 'Tous métiers', zone, min ? `${Number(min).toLocaleString('fr-FR')} € et plus` : null,
     j.length && j.length < 3 ? j.map(x => TYPES.find(t => t[0] === x)?.[1]).filter(Boolean).join(', ') : null].filter(Boolean).join(' · ');
 }
 
@@ -73,7 +65,7 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
   }, [list, sessionId]);
 
   const allMetiers = useMemo(() => [...metiers, ...(typing.trim() && !metiers.includes(typing.trim().toLowerCase()) ? [typing.trim().toLowerCase()] : [])], [metiers, typing]);
-  const autoTitle = `${allMetiers.length ? allMetiers.map(cap).join(', ') : 'Tous métiers'} · ${zoneLabel(zone)}`;
+  const autoTitle = `${allMetiers.length ? allMetiers.map(familyLabel).join(', ') : 'Tous métiers'} · ${zoneLabel(zone)}`;
   const shownTitle = titleTouched ? title : autoTitle;
   const addMetier = (m: string) => { const v = m.trim().toLowerCase(); if (v && !metiers.includes(v) && metiers.length < 4) setMetiers([...metiers, v]); setTyping(''); };
 
@@ -85,9 +77,12 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
     if (zoneDepts(zone)) p.set('department', zoneDepts(zone));
     if (min) { p.set('min_value', min); p.set('include_unknown_value', '1'); }
     if (types.length && types.length < 3) p.set('journey', types.join(','));
-    const err = await saveSearch((shownTitle || autoTitle).trim().slice(0, 160), p.toString(), false, []);
+    const label = (shownTitle || autoTitle).trim().slice(0, 160);
+    const err = await saveSearch(label, p.toString(), false, []);
     setSaving(false);
     if (err) { setMsg(err); return; }
+    // Les annonces déjà en ligne au moment de créer le suivi ne sont pas des « nouveautés ».
+    try { const ids = await currentIds({ id: '', label, query: p.toString(), ranked: false, seen: [], savedAt: '', viewedAt: '' }, sessionId); markViewed(p.toString(), ids); } catch { /* compteur affiché au prochain passage */ }
     setOkMsg(`« ${(shownTitle || autoTitle).trim()} » est suivi. Les nouvelles annonces apparaîtront ici et dans vos messages.`);
     setMetiers([]); setTyping(''); setZone(''); setMin(''); setTypes([]); setTitle(''); setTitleTouched(false); setOpen(false);
     await refresh();
@@ -112,7 +107,7 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
           <div>
             <span className={label}>1. Votre métier</span>
             {metiers.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{metiers.map(m => (
-              <button key={m} type="button" onClick={() => setMetiers(metiers.filter(x => x !== m))} className={chip(true)} aria-label={`Retirer ${m}`}>{cap(m)} ×</button>))}</div>}
+              <button key={m} type="button" onClick={() => setMetiers(metiers.filter(x => x !== m))} className={chip(true)} aria-label={`Retirer ${familyLabel(m)}`}>{familyLabel(m)} ×</button>))}</div>}
             <MetierAutocomplete id="suivi-metier" value={typing} onChange={setTyping} onPick={s => addMetier(s.q)} onSubmitFree={() => addMetier(typing)}
               placeholder={metiers.length ? 'Ajouter un autre métier (facultatif)' : 'Ex. : placo, plomberie, nettoyage…'} className={field} />
           </div>
