@@ -1,7 +1,8 @@
 import { lastListPath } from '@/lib/lastList';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import ProfileAvatar from '@/components/ProfileAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { NotificationBell } from '@/components/NotificationBell';
 import { ELENA } from '@/data/homeContent';
@@ -74,7 +75,7 @@ export function Header() {
             </Link>
             {isAuthenticated && <NotificationBell />}
             <Link to={space} aria-label="Mon espace" className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[14px] font-semibold text-[#D6E0EC] hover:bg-white/5 hover:text-white">
-              <User size={18} /> Mon espace
+              <ProfileAvatar size={24} /> Mon espace
             </Link>
           </div>
 
@@ -84,7 +85,7 @@ export function Header() {
             </Link>
             {isAuthenticated && <NotificationBell />}
             <Link to={space} aria-label="Mon espace" className="rounded-lg p-2 text-[#D6E0EC]">
-              <User size={21} />
+              <ProfileAvatar size={28} />
             </Link>
             <button
               onClick={() => setMenuOpen(o => !o)}
@@ -128,3 +129,4 @@ export function Header() {
     </header>
   );
 }
+

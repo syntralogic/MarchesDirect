@@ -11,6 +11,7 @@ import InstallOffer from '@/components/pwa/InstallOffer';
 import DocumentsTab from '@/components/espace/DocumentsTab';
 import SecurityCard from '@/components/espace/SecurityCard';
 import SavedSearchesTab from '@/components/espace/SavedSearchesTab';
+import ProfilePhoto from '@/components/espace/ProfilePhoto';
 
 // « Mon espace » (5 nov.) : mes dossiers suivis, mes favoris, et l'accès aux nouveaux marchés.
 // Fonctionne sans compte (ce navigateur) ; une fois connecté par lien e-mail, on retrouve aussi les dossiers liés à
@@ -63,6 +64,8 @@ export default function MonEspacePage() {
         {who && <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#123B2A] px-2.5 py-1 text-[12px] font-bold text-[#6EE7B7]">✓ Entreprise identifiée par son SIRET</span>}
         <p className="mt-1 text-[14px] text-[#B4C1D3]">{dossiers == null ? '\u00a0' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
       </div>
+
+      <ProfilePhoto />
 
       <div className="flex gap-1.5" role="tablist">
         {([['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Enregistrés${!favLoading || savedIds.size ? ' · ' + savedIds.size : ''}`], ['recherches', 'Mes suivis'], ['documents', 'Documents']] as const).map(([k, l]) => (
