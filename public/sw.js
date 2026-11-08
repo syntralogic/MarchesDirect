@@ -12,7 +12,7 @@ self.addEventListener('push', (event) => {
     body: data.body || 'Touchez pour voir où en est votre dossier avec Elena.',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
-    tag: 'md-dossier',
+    tag: data.tag || 'md-dossier',
     renotify: true,
     data: { url: data.url || '/mon-espace' },
   }));
