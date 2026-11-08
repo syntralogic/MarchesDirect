@@ -9,6 +9,9 @@ import { useFavorites } from '@/contexts/FavoritesContext';
 import { MiniProgress, stateLine } from '@/components/suivi/DossierTimeline';
 import InstallOffer from '@/components/pwa/InstallOffer';
 import MessagesTab from '@/components/espace/MessagesTab';
+import { SinceLastVisit, MarketPulse, NotToMiss, ProfileProgress } from '@/components/espace/EspaceHighlights';
+import { useProfilePhotoUrl } from '@/components/ProfileAvatar';
+import { pushState, refreshPushSubscription } from '@/lib/pwa';
 import SecurityCard from '@/components/espace/SecurityCard';
 import SavedSearchesTab from '@/components/espace/SavedSearchesTab';
 import { ProfilePhotoCompact } from '@/components/espace/ProfilePhoto';
@@ -65,6 +68,9 @@ export default function MonEspacePage() {
     espaceApi.fil(sessionId, [...savedIds]).then(r => { if (live) setFil(r); }).catch(() => { if (live) setFilError(true); });
     return () => { live = false; };
   }, [sessionId, savedIds, favLoading, filRetry, isAuthenticated]);
+  const photoUrl = useProfilePhotoUrl();
+  const [pushOn, setPushOn] = useState(() => pushState() === 'granted');
+  useEffect(() => { void refreshPushSubscription(sessionId); }, [sessionId]);
   const readAll = () => { espaceApi.lu(sessionId).then(() => setFilRetry(n => n + 1)).catch(() => {}); };
 
   const who = (isAuthenticated ? company?.name : name) || null;
@@ -96,6 +102,9 @@ export default function MonEspacePage() {
         <p className="text-[14px] text-[#B4C1D3]">{dossiers == null ? '\u00a0' : actions ? `${actions} action${actions > 1 ? 's' : ''} vous attend${actions > 1 ? 'ent' : ''}` : 'Suivez vos dossiers sans avoir à appeler.'}</p>
       </div>
 
+      {fil && <SinceLastVisit fil={fil} />}
+      {fil && <MarketPulse fil={fil} />}
+
       {/* 8 nov. (Hedi) : tableau de bord. Quatre chiffres réels, chacun ouvre l'endroit où agir. */}
       <div className="grid grid-cols-2 gap-2" aria-label="Votre activité">
         <Link to="/mon-espace?onglet=recherches" className={tile}>
@@ -115,6 +124,15 @@ export default function MonEspacePage() {
           <span className="text-[12.5px] font-bold text-[#D6E0EC]">dossier{sum && sum.dossiersEnCours > 1 ? 's' : ''} en cours</span>
         </Link>
       </div>
+
+      {fil && <NotToMiss fil={fil} />}
+      {fil && <ProfileProgress sessionId={sessionId} onPush={() => setPushOn(pushState() === 'granted')} steps={[
+        { key: 'siret', label: 'Entreprise identifiée', done: !!who, to: '/vos-marches' },
+        { key: 'photo', label: 'Photo ou logo ajouté', done: !!photoUrl },
+        { key: 'suivi', label: 'Un suivi créé', done: fil.searches > 0, to: '/mon-espace?onglet=recherches' },
+        { key: 'push', label: 'Notifications activées', done: pushOn || pushState() === 'unsupported' },
+        { key: 'compte', label: 'Compte connecté (téléphone et ordinateur)', done: isAuthenticated, to: '/connexion?next=/mon-espace' },
+      ]} />}
 
       <div className="flex gap-1.5" role="tablist">
         {([['messages', `Messages${unreadMsgs ? ' · ' + unreadMsgs : ''}`], ['dossiers', `Dossiers${dossiers ? ' · ' + dossiers.length : ''}`], ['favoris', `Enregistrés${!favLoading || savedIds.size ? ' · ' + savedIds.size : ''}`], ['recherches', 'Mes suivis']] as const).map(([k, l]) => (

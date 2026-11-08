@@ -55,7 +55,20 @@ export async function subscribePush(sessionId: string): Promise<'ok' | 'denied' 
     const reg = await navigator.serviceWorker.ready;
     const { data } = await apiClient.get<{ publicKey: string }>('/suivi/push/key');
     const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(data.publicKey) });
-    await apiClient.post('/suivi/push/subscribe', { sessionId, subscription: { endpoint: sub.endpoint } });
+    // 8 nov. : les clés du navigateur partent aussi, pour recevoir un texte (« 356 nouvelles annonces… »).
+    const j = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+    await apiClient.post('/suivi/push/subscribe', { sessionId, subscription: { endpoint: sub.endpoint, keys: j.keys || null } });
     return 'ok';
   } catch { return 'error'; }
+}
+/** Déjà abonné sur ce téléphone : renvoie l'abonnement au serveur (clés comprises), sans redemander la permission. */
+export async function refreshPushSubscription(sessionId: string): Promise<boolean> {
+  try {
+    if (!pushSupported() || Notification.permission !== 'granted') return false;
+    const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription();
+    if (!sub) return false;
+    const j = sub.toJSON() as { keys?: { p256dh?: string; auth?: string } };
+    await apiClient.post('/suivi/push/subscribe', { sessionId, subscription: { endpoint: sub.endpoint, keys: j.keys || null } });
+    return true;
+  } catch { return false; }
 }

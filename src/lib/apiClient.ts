@@ -861,7 +861,11 @@ export type ApiAlert = {
 
 // 8 nov. : fil de « Mon espace » (nouveautés des recherches suivies, échéances, réponses d'Elena, dossiers).
 export type EspaceItem = { id: string; kind: 'nouveautes' | 'echeance' | 'message' | 'dossier'; at: string; title: string; detail: string | null; link: string; count?: number; unread?: boolean };
-export type EspaceFil = { summary: { nouveautes: number; echeances: number; messagesNonLus: number; dossiersEnCours: number }; items: EspaceItem[]; lastReadAt: string | null; searches: number };
+export type EspacePick = { id: string; title: string; city: string | null; deadline: string | null; journey: string | null; lot: string | null; follow: string };
+export type EspacePouls = { rate: number; per: 'jour ouvré' | 'semaine' | 'mois'; yearCount: number; zoneLabel: string; activity: string;
+  recent: { day: string; buyer: string | null; objet: string; pme: boolean; dept: string | null } | null };
+export type EspaceFil = { summary: { nouveautes: number; echeances: number; messagesNonLus: number; dossiersEnCours: number }; items: EspaceItem[]; lastReadAt: string | null; searches: number;
+  aNePasManquer?: EspacePick[]; pouls?: EspacePouls | null; visit?: { prevSeenAt: string | null; visitDays: number } };
 export const espaceApi = {
   fil: async (sessionId: string, favIds: string[]) => (await apiClient.get<EspaceFil>('/espace/fil', { params: { sessionId, ...(favIds.length ? { fav: favIds.slice(0, 100).join(',') } : {}) } })).data,
   lu: async (sessionId: string) => (await apiClient.post<{ ok: true }>('/espace/lu', { sessionId })).data,
