@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Globe, ArrowRight, ChevronRight } from 'lucide-react';
 import { useLang } from '@/contexts/LangContext';
-import { CallbackModal } from '@/components/CallbackModal';
+import { useNavigate } from 'react-router-dom';
 
 export default function InternationalPage() {
   const { t } = useLang();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<string | null>(null);
-  const [callbackOpen, setCallbackOpen] = useState(false);
 
   const MARKETS = [
     {
@@ -147,7 +147,7 @@ export default function InternationalPage() {
                   "Explorer" a country's opportunities could only ever open
                   a callback-request modal - which reads as broken/dead
                   once clicked. Relabeled to say exactly what it does. */}
-              <button onClick={() => setCallbackOpen(true)} className="w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2">
+              <button onClick={() => navigate('/question?type=rappel')} className="w-full bg-orange text-white font-semibold py-3 rounded-xl hover:bg-orange/90 transition-colors text-sm flex items-center justify-center gap-2">
                 {t('intlExplore')} {active.name} <ArrowRight size={14} />
               </button>
             </div>
@@ -160,7 +160,6 @@ export default function InternationalPage() {
           )}
         </div>
       </div>
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
   );
 }

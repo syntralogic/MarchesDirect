@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageMeta from '@/components/common/PageMeta';
 import { Calendar, Phone, Mail, CheckCircle, Loader2 } from 'lucide-react';
-import { AppointmentModal } from '@/components/AppointmentModal';
-import { CallbackModal } from '@/components/CallbackModal';
 import { useLang } from '@/contexts/LangContext';
 import RequestPrivacyNote from '@/components/RequestPrivacyNote';
 import { useBrand } from '@/hooks/use-brand';
@@ -17,10 +16,9 @@ type ContactOption = 'rdv' | 'rappel' | 'message';
 
 export default function ContactPage() {
   const { t } = useLang();
+  const navigate = useNavigate();
   const { brandId } = useBrand();
   const [activeOption, setActiveOption] = useState<ContactOption>('message');
-  const [apptOpen, setApptOpen] = useState(false);
-  const [callbackOpen, setCallbackOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const startTracker = useMemo(() => createFormStartTracker('contact'), []);
   const [submitting, setSubmitting] = useState(false);
@@ -112,8 +110,8 @@ export default function ContactPage() {
           <button
             key={opt.key}
             onClick={() => {
-              if (opt.key === 'rdv') { setApptOpen(true); return; }
-              if (opt.key === 'rappel') { setCallbackOpen(true); return; }
+              if (opt.key === 'rdv') { navigate('/question?type=rappel'); return; }
+              if (opt.key === 'rappel') { navigate('/question?type=rappel'); return; }
               setActiveOption(opt.key);
             }}
             className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center transition-all ${
@@ -199,8 +197,6 @@ export default function ContactPage() {
         </form>
       )}
 
-      <AppointmentModal open={apptOpen} onClose={() => setApptOpen(false)} />
-      <CallbackModal open={callbackOpen} onClose={() => setCallbackOpen(false)} />
     </div>
   );
 }
