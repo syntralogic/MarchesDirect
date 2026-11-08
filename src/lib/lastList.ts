@@ -1,11 +1,21 @@
 // 7 nov. (revue externe) : après une fiche, « Vos marchés » faisait perdre la recherche. La dernière liste consultée
 // (adresse avec ses filtres) est gardée pour l'onglet du navigateur et sert à tous les liens « Vos marchés ».
 const KEY = 'md_last_list';
+// 8 nov. : gardée aussi d'une visite à l'autre (nouvel onglet, appli ouverte depuis l'écran d'accueil), pas seulement
+// pour l'onglet en cours ; une liste vide (« /vos-marches » sans critère) n'efface pas la dernière vraie recherche.
 export function rememberList(pathAndSearch: string) {
-  try { sessionStorage.setItem(KEY, pathAndSearch); } catch { /* stockage indisponible */ }
+  try {
+    sessionStorage.setItem(KEY, pathAndSearch);
+    if (pathAndSearch !== '/vos-marches') localStorage.setItem(KEY, pathAndSearch);
+  } catch { /* stockage indisponible */ }
 }
 export function lastListPath(): string {
-  try { const v = sessionStorage.getItem(KEY); if (v && v.startsWith('/vos-marches')) return v; } catch { /* idem */ }
+  try {
+    const v = sessionStorage.getItem(KEY);
+    if (v && v.startsWith('/vos-marches') && v !== '/vos-marches') return v;
+    const l = localStorage.getItem(KEY); if (l && l.startsWith('/vos-marches')) return l;
+    if (v && v.startsWith('/vos-marches')) return v;
+  } catch { /* idem */ }
   return '/vos-marches';
 }
 
