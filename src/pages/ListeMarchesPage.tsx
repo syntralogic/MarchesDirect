@@ -5,7 +5,7 @@ import { useFavorites } from '@/contexts/FavoritesContext';
 import ActivityDot from '@/components/ActivityDot';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { chantiersApi, opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus, type ApiOpportunity } from '@/lib/apiClient';
+import { espaceApi, chantiersApi, opportunitiesApi, siretApi, crmApi, getApiErrorMessage, type ApiSiretStatus, type ApiOpportunity } from '@/lib/apiClient';
 import { getSessionId, trackVisitorEvent, trackRequestSubmitted } from '@/lib/visitorTracking';
 import { useBrand } from '@/hooks/use-brand';
 import { useIdempotency } from '@/lib/useIdempotency';
@@ -15,7 +15,7 @@ import { loadCoords, saveCoords, validateCoords, leadMessage, type CoordErrors, 
 import CoordonneesScreen from '@/components/fiche/CoordonneesScreen';
 import ConfirmationScreen from '@/components/fiche/ConfirmationScreen';
 import { formatDeadlineExact } from '@/lib/deadlineFormat';
-import { isSaved as searchIsSaved, saveSearch, markViewed } from '@/lib/savedSearches';
+import { listSaved, isSaved as searchIsSaved, saveSearch, markViewed } from '@/lib/savedSearches';
 import { deptFromPostal } from '@/components/home/CompanySearchForm';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
 import RefinePanel, { refineFromParams, paramsWithRefine, searchParamsFor, journeySet, toggleJourney, type Journey, type JourneyKey } from '@/components/liste/RefinePanel';
@@ -282,11 +282,19 @@ export default function ListeMarchesPage() {
 
   const ranked = useMemo(() => (cards ? (done ? rank(cards, scores) : cards) : []), [cards, scores, done]);
   // Recherche sauvegardée : on garde les marchés vus pour compter ensuite les « nouveaux ».
-  const searchKey = useMemo(() => { const p = new URLSearchParams(params); p.delete('source'); return p.toString(); }, [refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const searchKey = useMemo(() => { const p = new URLSearchParams(params); p.delete('source'); p.delete('suivi'); return p.toString(); }, [refineKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [savedSearch, setSavedSearch] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   useEffect(() => { setSavedSearch(searchIsSaved(searchKey)); }, [searchKey]);
   useEffect(() => { if (cards && cards.length && savedSearch) markViewed(searchKey, cards.map(c => c.id)); }, [cards, savedSearch, searchKey]);
+  // 8 nov. : ouvrir une recherche suivie (depuis Mon espace › Messages, « Mes suivis » ou directement) remet ses
+  // « nouveautés » à zéro dans le tableau de bord. Le paramètre ?suivi= du fil est retiré de l'adresse ensuite.
+  useEffect(() => {
+    const fromFeed = params.get('suivi');
+    const match = fromFeed || listSaved().find(x => x.query === searchKey && !x.id.startsWith('local-'))?.id;
+    if (match) espaceApi.rechercheVue(sessionId, match).catch(() => {});
+    if (fromFeed) { const p = new URLSearchParams(params); p.delete('suivi'); setParams(p, { replace: true }); }
+  }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const n = useMemo(() => counts(ranked, scores), [ranked, scores]);
   // Le type est filtré côté serveur dans les deux modes : les compteurs portent sur tout le résultat, pas sur la page chargée.
   const byType = ranked;

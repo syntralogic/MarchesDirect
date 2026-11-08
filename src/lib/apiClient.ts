@@ -855,6 +855,15 @@ export type ApiAlert = {
   created_at: string;
 };
 
+// 8 nov. : fil de « Mon espace » (nouveautés des recherches suivies, échéances, réponses d'Elena, dossiers).
+export type EspaceItem = { id: string; kind: 'nouveautes' | 'echeance' | 'message' | 'dossier'; at: string; title: string; detail: string | null; link: string; count?: number; unread?: boolean };
+export type EspaceFil = { summary: { nouveautes: number; echeances: number; messagesNonLus: number; dossiersEnCours: number }; items: EspaceItem[]; lastReadAt: string | null; searches: number };
+export const espaceApi = {
+  fil: async (sessionId: string, favIds: string[]) => (await apiClient.get<EspaceFil>('/espace/fil', { params: { sessionId, ...(favIds.length ? { fav: favIds.slice(0, 100).join(',') } : {}) } })).data,
+  lu: async (sessionId: string) => (await apiClient.post<{ ok: true }>('/espace/lu', { sessionId })).data,
+  rechercheVue: async (sessionId: string, id: string) => (await apiClient.post<{ ok: true }>(`/espace/recherche-vue/${id}`, { sessionId })).data,
+};
+
 // 7 nov. : recherches sauvegardées côté serveur (session du téléphone, puis compte à la connexion).
 export type ApiSavedSearch = { id: string; label: string; query: string; ranked: boolean; alert_enabled: boolean; created_at: string; updated_at: string };
 export const savedSearchesApi = {
