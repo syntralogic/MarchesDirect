@@ -14,7 +14,7 @@ const html = (s: string) => ({ __html: s });
 export default function GuidePage() {
   const { slug = '' } = useParams<{ slug: string }>();
   const g = guideBySlug(slug);
-  useEffect(() => { if (g) trackVisitorEvent('view_guide', g.title); }, [g]);
+  useEffect(() => { if (g) trackVisitorEvent('view_seo_page', g.title); }, [g]);
 
   if (!g) return (
     <main className="mx-auto w-full max-w-[720px] px-4 pb-24 pt-6 text-[#F2F5F9]">
