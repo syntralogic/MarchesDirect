@@ -1,7 +1,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import ProfilePhoto from '@/components/espace/ProfilePhoto';
+import ProfilePhoto, { ProfilePhotoCompact } from '@/components/espace/ProfilePhoto';
 import ProfileAvatar from '@/components/ProfileAvatar';
 import { saveLocalAvatar } from '@/lib/localAvatar';
 
@@ -34,6 +34,14 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); });
 describe('photo accessible from Mon espace', () => {
+  it('renders the compact dashboard photo and keeps local upload available', async () => {
+    await act(async () => root.render(<ProfilePhotoCompact />));
+    expect(host.querySelector('button')?.getAttribute('aria-label')).toBe('Ajouter ma photo');
+    await choose();
+    expect(host.querySelector('img')?.src).toBe(PHOTO);
+    expect(host.querySelector('button')?.getAttribute('aria-label')).toBe('Modifier ma photo');
+    expect(state.upload).not.toHaveBeenCalled();
+  });
   it('saves without an account or server upload and updates every displayed avatar', async () => {
     await render(); expect(host.textContent).toContain('Ajouter ma photo');
     await choose(); expect(state.upload).not.toHaveBeenCalled();

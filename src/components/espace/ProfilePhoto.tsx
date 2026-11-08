@@ -10,7 +10,7 @@ import ProfileAvatar, { useProfilePhoto } from '@/components/ProfileAvatar';
 // photo (ou la silhouette) avec un petit bouton appareil photo pour l'ajouter ou la changer.
 export function ProfilePhotoCompact() {
   const { isAuthenticated, loading, refreshProfile } = useAuth();
-  const photo = useProfilePhotoUrl();
+  const { url: photo } = useProfilePhoto();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
