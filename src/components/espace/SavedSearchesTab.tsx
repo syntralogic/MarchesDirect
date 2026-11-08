@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listSaved, removeSearch, currentIds, saveSearch, syncSaved, renameSearch, setSearchAlert, SAVED_LIMIT, type SavedSearch } from '@/lib/savedSearches';
 import { getApiErrorMessage, opportunitiesApi } from '@/lib/apiClient';
-import { DEPARTMENTS } from '@/data/departments';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
-import { REGIONS, deptsLabel } from '@/data/zones';
+import { deptsLabel } from '@/data/zones';
+import ZonePicker, { zoneTokens } from '@/components/ZonePicker';
 import { familyLabel } from '@/data/tradeFamilies';
 import { markViewed } from '@/lib/savedSearches';
 
@@ -22,17 +22,6 @@ const field = 'h-[48px] w-full rounded-xl border border-[#2B4468] bg-[#0A1628] p
 const label = 'mb-1 block text-[13px] font-bold text-[#B4C1D3]';
 
 // 8 nov. (Hedi) : plusieurs zones à la fois (« 75, 91, 93, 59 », ou des régions entières), ou bien « autour d'une ville ».
-function zoneLabel(zone: string) {
-  if (!zone) return 'Toute la France';
-  if (zone.startsWith('r:')) return REGIONS.find(r => r[0] === zone.slice(2))?.[1] || 'Région';
-  return deptsLabel(zone);
-}
-const zoneShort = (zone: string) => (zone.startsWith('r:') ? zoneLabel(zone) : zone);
-function zonesDepts(zones: string[]) {
-  const set = new Set<string>();
-  for (const z of zones) for (const d of z.startsWith('r:') ? (REGIONS.find(r => r[0] === z.slice(2))?.[2] || []) : [z]) set.add(d);
-  return [...set].join(',');
-}
 /** Résumé lisible d'un suivi enregistré, relu depuis sa recherche. */
 function summary(query: string) {
   const p = new URLSearchParams(query);
@@ -54,7 +43,7 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
   // Formulaire : métiers (plusieurs possibles), zone, montant, types, titre.
   const [open, setOpen] = useState(false);
   const [metiers, setMetiers] = useState<string[]>([]); const [typing, setTyping] = useState('');
-  const [zones, setZones] = useState<string[]>([]); const [near, setNear] = useState(false); const [min, setMin] = useState(''); const [types, setTypes] = useState<string[]>([]);
+  const [zones, setZones] = useState<string[]>([]); // codes départements const [near, setNear] = useState(false); const [min, setMin] = useState(''); const [types, setTypes] = useState<string[]>([]);
   // 8 nov. (Hedi : « Paris 100 km ») : zone « autour d'une ville », avec rayon.
   const [city, setCity] = useState(''); const [radius, setRadius] = useState<(typeof RADII)[number]>(50);
   const [title, setTitle] = useState(''); const [titleTouched, setTitleTouched] = useState(false);
@@ -74,14 +63,9 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
   const allMetiers = useMemo(() => [...metiers, ...(typing.trim() && !metiers.includes(typing.trim().toLowerCase()) ? [typing.trim().toLowerCase()] : [])], [metiers, typing]);
   // 8 nov. (Hedi) : le nom se remplit tout seul avec ce qui est choisi — « Chauffage, Plomberie · Paris 100 km · 50 k€ et +
   // · publics » — et reste modifiable. Tant que rien n'est choisi, il reste vide (l'exemple s'affiche en gris).
+  const zt = zoneTokens(zones);
   const zoneTxt = near ? (city.trim() ? `${city.trim().replace(/^./, c => c.toUpperCase())} ${radius} km` : '')
-    : zones.length === 1 ? zoneLabel(zones[0]) : zones.map(zoneShort).join(', ');
-  const addZone = (z: string) => {
-    if (!z) return;
-    if (z === 'near') { setNear(true); setZones([]); return; }
-    if (z === 'france') { setNear(false); setZones([]); return; }
-    setNear(false); setZones(zs => (zs.includes(z) || zs.length >= 12 ? zs : [...zs, z]));
-  };
+    : zt.length === 1 ? zt[0].label : zt.map(t => (t.key.startsWith('r:') ? t.label : t.codes[0])).join(', ');
   const autoTitle = [allMetiers.map(familyLabel).join(', '), zoneTxt, AMOUNT_SHORT[min] || '',
     types.length && types.length < 3 ? types.map(t => TYPE_SHORT[t]).join(', ') : ''].filter(Boolean).join(' · ');
   const shownTitle = titleTouched ? title : autoTitle;
@@ -97,7 +81,7 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
       const g = await opportunitiesApi.geocodeCity(city.trim());
       if (!g) { setSaving(false); setMsg(`Ville « ${city.trim()} » introuvable. Vérifiez l’orthographe ou choisissez un département.`); return; }
       p.set('lat', String(g.lat)); p.set('lng', String(g.lng)); p.set('radius_km', String(radius)); p.set('ville', city.trim().replace(/^./, c => c.toUpperCase()));
-    } else if (zones.length) { p.set('department', zonesDepts(zones)); if (zones.length > 1) p.set('zones', zones.map(zoneShort).join(', ')); }
+    } else if (zones.length) { p.set('department', zones.join(',')); if (zt.length > 1) p.set('zones', zoneTxt); }
     if (min) { p.set('min_value', min); p.set('include_unknown_value', '1'); }
     if (types.length && types.length < 3) p.set('journey', types.join(','));
     const label = ((shownTitle || autoTitle).trim() || 'Tous métiers · Toute la France').slice(0, 160);
@@ -137,17 +121,10 @@ export default function SavedSearchesTab({ sessionId }: { sessionId: string }) {
 
           <div>
             <label htmlFor="suivi-zone" className={label}>2. Zone{zones.length ? ' (plusieurs possibles)' : ''}</label>
-            {(zones.length > 0 || near) && <div className="mb-2 flex flex-wrap gap-2">
-              {zones.map(z => <button key={z} type="button" onClick={() => setZones(zones.filter(x => x !== z))} className={chip(true)} aria-label={`Retirer ${zoneLabel(z)}`}>{zoneLabel(z)} ×</button>)}
-              {near && <button type="button" onClick={() => setNear(false)} className={chip(true)} aria-label="Retirer autour d’une ville">Autour d’une ville ×</button>}
-            </div>}
-            <select id="suivi-zone" value="" onChange={e => addZone(e.target.value)} className={field}>
-              <option value="">{zones.length || near ? '+ Ajouter une zone' : 'Toute la France (ou choisissez)'}</option>
-              {(zones.length > 0 || near) && <option value="france">Toute la France</option>}
-              <option value="near">Autour d’une ville (rayon en km)…</option>
-              <optgroup label="Régions">{REGIONS.map(r => <option key={r[0]} value={`r:${r[0]}`} disabled={zones.includes(`r:${r[0]}`)}>{r[1]}</option>)}</optgroup>
-              <optgroup label="Départements">{DEPARTMENTS.map(d => <option key={d.code} value={d.code} disabled={zones.includes(d.code)}>{d.code} · {d.name}</option>)}</optgroup>
-            </select>
+            {!near && <ZonePicker id="suivi-zone" value={zones} onChange={setZones} selectClassName={field} />}
+            <button type="button" onClick={() => { setNear(n => !n); setZones([]); }} className="mt-2 min-h-[40px] text-left text-[13.5px] font-bold text-[#FB923C] underline">
+              {near ? '← Choisir plutôt des départements ou régions' : 'Ou : autour d’une ville (ex. Paris 100 km)'}
+            </button>
             {near && <div className="mt-2 flex flex-col gap-2">
               <input value={city} onChange={e => setCity(e.target.value)} placeholder="Ville, ex. : Paris, Bordeaux…" aria-label="Ville" autoComplete="address-level2" className={field} />
               <div className="flex gap-2" role="group" aria-label="Rayon">

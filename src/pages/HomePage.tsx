@@ -8,12 +8,12 @@ import DemoVideoModal from '@/components/DemoVideoModal';
 import PageMeta from '@/components/common/PageMeta';
 import { CallbackModal } from '@/components/CallbackModal';
 import { CompanySearchForm, type CompanySearchHandle } from '@/components/home/CompanySearchForm';
-import { DEPARTMENTS } from '@/data/departments';
 import { ELENA, TEAM } from '@/data/homeContent';
 import { chantiersApi, opportunitiesApi } from '@/lib/apiClient';
 import ReturnBlock from '@/components/home/ReturnBlock';
 import SavedMarketsBanner from '@/components/home/SavedMarketsBanner';
 import MetierAutocomplete from '@/components/MetierAutocomplete';
+import ZonePicker from '@/components/ZonePicker';
 import type { MetierSuggestion } from '@/data/tradeFamilies';
 import { chantierLine, type Chantier, type ChantiersStats } from '@/lib/chantiers';
 import { GUIDE_CATALOG, PUBLISHED_GUIDES } from '@/content/guides/catalog';
@@ -130,13 +130,13 @@ function OpenCounter() {
 function SimpleSearch() {
   const navigate = useNavigate();
   const [metier, setMetier] = useState('');
-  const [dept, setDept] = useState('FR');
+  const [depts, setDepts] = useState<string[]>([]); // 8 nov. : plusieurs départements possibles
   const go = (q: string, focus?: string) => {
     // Recherche simple -> la liste v26 (cartes d'abord, sans pourcentage), jamais l'ancienne page de filtres.
     const p = new URLSearchParams();
     if (q.trim()) p.set('q', q.trim());
     if (focus) p.set('focus', focus);
-    if (dept !== 'FR') p.set('department', dept);
+    if (depts.length) p.set('department', depts.join(','));
     navigate(`/vos-marches?${p.toString()}`);
   };
   const submit = (e: React.FormEvent) => { e.preventDefault(); go(metier); };
@@ -148,10 +148,7 @@ function SimpleSearch() {
       <label htmlFor="md-metier" className="text-[15px] font-bold">Votre métier</label>
       <MetierAutocomplete id="md-metier" value={metier} onChange={setMetier} onPick={pick} onSubmitFree={() => go(metier)} placeholder="Ex. : nettoyage, peinture, sécurité, architecte…" className={`${FIELD} placeholder:text-[#6B7A90]`} />
       <label htmlFor="md-zone" className="text-[15px] font-bold">Votre zone</label>
-      <select id="md-zone" value={dept} onChange={e => setDept(e.target.value)} className={FIELD}>
-        <option value="FR">Toute la France</option>
-        {DEPARTMENTS.map(d => <option key={d.code} value={d.code}>{d.code} – {d.name}</option>)}
-      </select>
+      <ZonePicker id="md-zone" value={depts} onChange={setDepts} selectClassName={FIELD} />
       <button type="submit" className={BTN}>Rechercher des marchés</button>
       <p className="text-center text-[13px] font-bold text-[#FDBA74]">Marchés publics · Appels d’offres privés · Sous-traitance</p>
       <p className="text-center text-[15px] text-[#B4C1D3]">Indiquez ensuite votre entreprise (nom ou SIRET) pour voir le pourcentage de chaque marché</p>

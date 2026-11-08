@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEPARTMENTS } from '@/data/departments';
+import ZonePicker, { codesFromParam, zoneTokens } from '@/components/ZonePicker';
 import { opportunitiesApi, type OpportunitySearchParams } from '@/lib/apiClient';
 
 // Volet « Affiner » de la liste (validé le 5 nov. sur maquette) : même langage que le moteur de l'accueil
@@ -94,7 +95,7 @@ export function searchParamsFor(q: string | undefined, r: Refine, extra: Partial
 }
 
 const euro = (v: string) => `${Number(v).toLocaleString('fr-FR')} €`;
-const deptName = (code: string) => { const d = DEPARTMENTS.find(x => x.code === code); return d ? `${d.name} (${d.code})` : code; };
+const deptName = (code: string) => { const t = zoneTokens(codesFromParam(code)); if (t.length === 1) return t[0].label; if (t.length > 1 && t.length <= 4) return t.map(x => x.key.startsWith('r:') ? x.label : x.codes[0]).join(', '); const d = DEPARTMENTS.find(x => x.code === code); return d ? `${d.name} (${d.code})` : `${codesFromParam(code).length} départements`; };
 
 /** Puces des filtres actifs (volet replié). */
 export function activeChips(r: Refine): { key: string; label: string; clear: (r: Refine) => Refine }[] {
@@ -192,14 +193,11 @@ export default function RefinePanel({ q, value, typeCounts, onApply }: Props) {
           <span className={LBL}>Où ?</span>
           <div className="mt-2 flex gap-1.5 rounded-xl bg-[#0A1628] p-1" role="group" aria-label="Où">
             <button type="button" className={SEG(draft.where === 'france')} onClick={() => setDraft(d => ({ ...d, where: 'france' }))}>Toute la France</button>
-            <button type="button" className={SEG(draft.where === 'department')} onClick={() => setDraft(d => ({ ...d, where: 'department' }))}>Un département</button>
+            <button type="button" className={SEG(draft.where === 'department')} onClick={() => setDraft(d => ({ ...d, where: 'department' }))}>Départements</button>
             <button type="button" className={SEG(draft.where === 'near')} onClick={() => { if (draft.lat == null) locate(); else setDraft(d => ({ ...d, where: 'near' })); }}>Autour de moi</button>
           </div>
           {draft.where === 'department' && (
-            <select aria-label="Département" value={draft.department} onChange={e => setDraft(d => ({ ...d, department: e.target.value }))} className={`${FIELD} mt-2`}>
-              <option value="">Choisir un département</option>
-              {DEPARTMENTS.map(d => <option key={d.code} value={d.code}>{d.code} – {d.name}</option>)}
-            </select>)}
+            <div className="mt-2"><ZonePicker value={codesFromParam(draft.department)} onChange={codes => setDraft(d => ({ ...d, department: codes.join(','), where: codes.length ? 'department' : 'department' }))} selectClassName={FIELD} /></div>)}
           {draft.where === 'near' && (
             <div className="mt-2 flex items-center gap-2">
               <span className="flex-1 text-[14px] text-[#D6E0EC]">{draft.lat != null ? 'Position trouvée' : geoState === 'asking' ? 'Recherche de votre position…' : 'Position non disponible'}</span>
