@@ -208,11 +208,11 @@ export default function ListeMarchesPage() {
       } else if (tradeId || q || dept || refine.where === 'near') {
         const r = await opportunitiesApi.search(searchParamsFor(q, refine, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 40 }));
         if (stop()) return;
-        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? deptsLabel(dept) : 'Toute la France');
+        setZoneLabel(refine.where === 'near' && refine.lat != null ? (params.get('ville') ? `${params.get('ville')} ${refine.radius} km` : `Autour de moi · ${refine.radius} km`) : dept ? (params.get('zones') || deptsLabel(dept)) : 'Toute la France');
         setSearchTotal(r.pagination?.total ?? r.results.length);
         const mapped = r.results.map(toCard);
         setCards(mapped); writeCards(cacheKey, mapped);
-        setZoneLabel(refine.where === 'near' && refine.lat != null ? `Autour de moi · ${refine.radius} km` : dept ? deptsLabel(dept) : 'Toute la France');
+        setZoneLabel(refine.where === 'near' && refine.lat != null ? (params.get('ville') ? `${params.get('ville')} ${refine.radius} km` : `Autour de moi · ${refine.radius} km`) : dept ? (params.get('zones') || deptsLabel(dept)) : 'Toute la France');
         // Totaux par type (mêmes filtres, type libre), pour que le visiteur voie qu'il n'y a pas que du marché public.
         const journeys = ['public_procurement', 'tender', 'subcontracting'] as const;
         const totals = await Promise.all(journeys.map(j => opportunitiesApi.search(searchParamsFor(q, { ...refine, journey: j }, { ...(tradeId ? { trade_id: tradeId } : {}), limit: 1 })).then(x => x.pagination?.total ?? 0).catch(() => 0)));
